@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -73,9 +73,9 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -84,9 +84,9 @@
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 3rem 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+@@ -151,8 +151,145 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Roast picker (customizable select) */
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.5rem;
++      margin-top: 1.5rem;
++      width: min(100%, 340px);
++    }
++
++    .order-form label {
++      font-weight: 600;
++      letter-spacing: 0.5px;
++    }
++
++    .order-form .btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0.5rem;
++    }
++
++    .roast-select {
++      width: 100%;
++      font: inherit;
++      text-align: left;
++    }
++
++    .roast-select,
++    .roast-select::picker(select) {
++      appearance: base-select;
++    }
++
++    @supports (appearance: base-select) {
++      .roast-select {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        padding: 0.6rem 0.9rem;
++        background: rgba(255, 255, 255, 0.95);
++        color: var(--text);
++        border: 2px solid var(--accent);
++        border-radius: 8px;
++        cursor: pointer;
++      }
++
++      .roast-select::picker-icon {
++        color: var(--primary);
++      }
++
++      .roast-select::picker(select) {
++        width: anchor-size(width);
++        margin-top: 4px;
++        padding: 6px;
++        background: var(--light);
++        border: 2px solid var(--secondary);
++        border-radius: 8px;
++        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
++      }
++
++      .roast-select option {
++        display: flex;
++        align-items: center;
++        gap: 12px;
++        padding: 10px;
++        border-radius: 6px;
++        color: var(--text);
++        cursor: pointer;
++      }
++
++      .roast-select option:hover,
++      .roast-select option:focus-visible {
++        background: var(--secondary);
++      }
++
++      .roast-select option::checkmark {
++        display: none;
++      }
++
++      /* Selected state: contrasting background + bold title */
++      .roast-select option:checked {
++        background: var(--primary);
++        color: white;
++      }
++
++      .roast-select option:checked .option-title {
++        font-weight: 700;
++      }
++
++      .roast-select option:checked .option-desc {
++        color: var(--secondary);
++      }
++
++      .roast-select svg {
++        flex: none;
++        width: 28px;
++        height: 28px;
++      }
++
++      .roast-select selectedcontent {
++        display: flex;
++        align-items: center;
++        gap: 10px;
++      }
++
++      .roast-select selectedcontent .option-desc {
++        display: none;
++      }
++    }
++
++    .option-text {
++      display: flex;
++      flex-direction: column;
++      line-height: 1.3;
++    }
++
++    .option-title {
++      font-weight: 600;
++    }
++
++    .option-desc {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -170,9 +307,52 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="order-form" action="/order-online" method="get">
++      <label for="roast-picker">Choose your roast</label>
++      <select class="roast-select" id="roast-picker" name="roast">
++        <button>
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="6" ry="9"/><path d="M12 3c-2 4 2 14 0 18"/></svg>
++          <span class="option-text">
++            <span class="option-title">Light Roast<span class="visually-hidden">.</span></span>
++            <span class="option-desc">Bright, fruity, and gently acidic.</span>
++          </span>
++        </option>
++        <option value="medium" selected>
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="6" ry="9" fill="currentColor" fill-opacity="0.35"/><path d="M12 3c-2 4 2 14 0 18"/></svg>
++          <span class="option-text">
++            <span class="option-title">Medium Roast<span class="visually-hidden">.</span></span>
++            <span class="option-desc">Balanced and smooth with caramel notes.</span>
++          </span>
++        </option>
++        <option value="dark">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="6" ry="9" fill="currentColor"/><path d="M12 3c-2 4 2 14 0 18" stroke="white"/></svg>
++          <span class="option-text">
++            <span class="option-title">Dark Roast<span class="visually-hidden">.</span></span>
++            <span class="option-desc">Bold, smoky, and full-bodied.</span>
++          </span>
++        </option>
++        <option value="espresso">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h11v3a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 12h1.5a2 2 0 0 1 0 4H16"/><path d="M3 21h16"/><path d="M9 4c-1 1.5 1 2.5 0 4M12 4c-1 1.5 1 2.5 0 4"/></svg>
++          <span class="option-text">
++            <span class="option-title">Espresso<span class="visually-hidden">.</span></span>
++            <span class="option-desc">Intense, concentrated, rich crema.</span>
++          </span>
++        </option>
++        <option value="cold-brew">
++          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12l-1.5 16a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z"/><rect x="9" y="9" width="3" height="3" rx="0.5"/><rect x="12.5" y="13" width="3" height="3" rx="0.5"/></svg>
++          <span class="option-text">
++            <span class="option-title">Cold Brew<span class="visually-hidden">.</span></span>
++            <span class="option-desc">Steeped 18 hours for a mellow, chilled sip.</span>
++          </span>
++        </option>
++      </select>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+     <section>

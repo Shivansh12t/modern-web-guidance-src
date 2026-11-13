@@ -1,0 +1,220 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,107 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Newsletter Form */
++    .newsletter {
++      max-width: 460px;
++      margin: 0 auto 28px;
++      padding: 20px 24px;
++      background: rgba(255, 255, 255, 0.55);
++      border-radius: 8px;
++    }
++
++    .newsletter h3 {
++      font-size: 1.1rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .newsletter p.newsletter-sub {
++      font-size: 0.85rem;
++      margin-bottom: 12px;
++      color: var(--text);
++    }
++
++    .newsletter-row {
++      display: flex;
++      gap: 8px;
++      align-items: stretch;
++    }
++
++    .newsletter-input {
++      flex: 1;
++      padding: 10px 12px;
++      border: 1.5px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      background: white;
++      outline: none;
++      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
++    }
++
++    .newsletter-input:focus {
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    /* Only show error state after blur (via .is-invalid class or :user-invalid when not focused) */
++    .newsletter-input.is-invalid,
++    .newsletter-input:not(:focus):user-invalid {
++      border-color: #d32f2f;
++      background-color: #fff8f8;
++      box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12);
++    }
++
++    .newsletter-input.is-valid {
++      border-color: #2e7d32;
++    }
++
++    .newsletter-btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 10px 18px;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.3s;
++      white-space: nowrap;
++    }
++
++    .newsletter-btn:hover {
++      background: #3e2723;
++    }
++
++    .newsletter-error {
++      color: #c62828;
++      font-size: 0.8rem;
++      text-align: left;
++      margin-top: 6px;
++      min-height: 1.2em;
++      display: none;
++    }
++
++    .newsletter-error.visible {
++      display: block;
++    }
++
++    .newsletter-success {
++      color: #2e7d32;
++      font-size: 0.85rem;
++      font-weight: 500;
++      margin-top: 8px;
++      display: none;
++    }
++
++    .newsletter-success.visible {
++      display: block;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +296,34 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <div class="newsletter">
++      <h3>Stay Caffeinated</h3>
++      <p class="newsletter-sub">Sign up for our newsletter for seasonal drops &amp; exclusive offers.</p>
++      <form id="newsletter-form" novalidate>
++        <div class="newsletter-row">
++          <input
++            type="email"
++            id="newsletter-email"
++            name="email"
++            class="newsletter-input"
++            placeholder="Enter your email address"
++            aria-label="Email address"
++            aria-describedby="newsletter-error"
++            required
++          >
++          <button type="submit" class="newsletter-btn">Subscribe</button>
++        </div>
++        <div id="newsletter-error" class="newsletter-error" role="alert" aria-live="polite">
++          Please enter a valid email address.
++        </div>
++        <div id="newsletter-success" class="newsletter-success" role="status" aria-live="polite">
++          Thanks for subscribing! Check your inbox soon.
++        </div>
++      </form>
++    </div>
++
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +331,73 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('newsletter-form');
++      const emailInput = document.getElementById('newsletter-email');
++      const errorMsg = document.getElementById('newsletter-error');
++      const successMsg = document.getElementById('newsletter-success');
++
++      function isValidEmail(value) {
++        const trimmed = value.trim();
++        if (!trimmed) return false;
++        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) && emailInput.checkValidity();
++      }
++
++      function clearError() {
++        emailInput.classList.remove('is-invalid');
++        emailInput.removeAttribute('aria-invalid');
++        errorMsg.classList.remove('visible');
++      }
++
++      function showError() {
++        emailInput.classList.remove('is-valid');
++        emailInput.classList.add('is-invalid');
++        emailInput.setAttribute('aria-invalid', 'true');
++        errorMsg.classList.add('visible');
++        successMsg.classList.remove('visible');
++      }
++
++      // Never show an error while the user is actively typing/focused;
++      // if an error was previously shown, clear it as soon as they start editing.
++      emailInput.addEventListener('input', function () {
++        clearError();
++        emailInput.classList.remove('is-valid');
++        successMsg.classList.remove('visible');
++      });
++
++      // Validate only when the user clicks/tabs away (on blur)
++      emailInput.addEventListener('blur', function () {
++        const val = emailInput.value.trim();
++        if (val === '') {
++          clearError();
++          emailInput.classList.remove('is-valid');
++          return;
++        }
++        if (!isValidEmail(val)) {
++          showError();
++        } else {
++          clearError();
++          emailInput.classList.add('is-valid');
++        }
++      });
++
++      form.addEventListener('submit', function (e) {
++        e.preventDefault();
++        const val = emailInput.value.trim();
++        if (!isValidEmail(val)) {
++          showError();
++          return;
++        }
++        clearError();
++        emailInput.classList.remove('is-valid');
++        emailInput.value = '';
++        successMsg.classList.add('visible');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

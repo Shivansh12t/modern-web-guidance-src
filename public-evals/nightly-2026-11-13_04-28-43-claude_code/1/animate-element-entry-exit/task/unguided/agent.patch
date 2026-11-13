@@ -1,0 +1,299 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,136 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Promo Section */
++    .promo {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .promo-subtitle {
++      color: #6d4c41;
++      margin-top: 5px;
++    }
++
++    .promo-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .promo-controls button {
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++      background: var(--primary);
++      color: white;
++      padding: 8px 18px;
++      border-radius: 5px;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .promo-controls button:hover,
++    .promo-controls button:focus-visible {
++      background: white;
++      color: var(--primary);
++    }
++
++    .promo-controls button[aria-pressed="false"] {
++      background: white;
++      color: var(--primary);
++    }
++
++    #domContainer {
++      min-height: 120px;
++    }
++
++    #domContainer .card {
++      padding: 0;
++      overflow: hidden;
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++      transform-origin: center;
++      animation: promoIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
++    }
++
++    #domContainer .card.is-exiting {
++      animation: promoOut 0.35s ease-in both;
++      pointer-events: none;
++    }
++
++    #domContainer .card[hidden] {
++      display: none;
++    }
++
++    .promo-card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .promo-card .promo-body {
++      padding: 16px 20px 20px;
++      flex: 1;
++    }
++
++    .promo-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: bold;
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-bottom: 8px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .promo-empty {
++      color: #8d6e63;
++      font-style: italic;
++      margin-top: 20px;
++    }
++
++    @keyframes promoIn {
++      from {
++        opacity: 0;
++        transform: scale(0.85);
++      }
++
++      to {
++        opacity: 1;
++        transform: scale(1);
++      }
++    }
++
++    @keyframes promoOut {
++      from {
++        opacity: 1;
++        transform: scale(1);
++      }
++
++      to {
++        opacity: 0;
++        transform: scale(0.85);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      #domContainer .card,
++      #domContainer .card.is-exiting {
++        animation-duration: 0.01ms;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +322,32 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="promo" aria-labelledby="promoTitle">
++      <h2 id="promoTitle">Special Promotions</h2>
++      <p class="promo-subtitle">Limited-time deals, freshly brewed for you.</p>
++
++      <div class="promo-controls">
++        <button type="button" id="addBtn">Add Promo</button>
++        <button type="button" id="removeBtn">Remove Last Promo</button>
++        <button type="button" id="toggleBtn" aria-controls="toggleCard" aria-pressed="true">Toggle Featured Promo</button>
++      </div>
++
++      <div id="domContainer" class="grid" aria-live="polite">
++        <div class="card promo-card" id="toggleCard">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
++            alt="Latte with latte art" loading="lazy">
++          <div class="promo-body">
++            <span class="promo-badge">Featured</span>
++            <h3>Happy Hour: 2-for-1 Lattes</h3>
++            <p>Every weekday from 2&ndash;4 PM, bring a friend and share the warmth.</p>
++          </div>
++        </div>
++      </div>
++      <p class="promo-empty" id="promoEmpty" hidden>No promotions right now &mdash; add one above!</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +358,125 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var container = document.getElementById('domContainer');
++      var addBtn = document.getElementById('addBtn');
++      var removeBtn = document.getElementById('removeBtn');
++      var toggleBtn = document.getElementById('toggleBtn');
++      var toggleCard = document.getElementById('toggleCard');
++      var emptyMsg = document.getElementById('promoEmpty');
++      var EXIT_MS = 350;
++
++      var promos = [
++        { title: 'Free Pastry Friday', text: 'Get a free croissant with any large drink every Friday.', badge: 'Weekly',
++          img: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80', alt: 'Fresh croissants' },
++        { title: 'Cold Brew Club', text: 'Buy 5 cold brews, get the 6th on the house.', badge: 'Rewards',
++          img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80', alt: 'Iced coffee in a glass' },
++        { title: '20% Off Whole Beans', text: 'Take our house roast home &mdash; this week only.', badge: 'Sale',
++          img: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80', alt: 'Roasted coffee beans' },
++        { title: 'Early Bird Espresso', text: 'Half-price espresso shots before 8 AM.', badge: 'Morning',
++          img: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80', alt: 'Espresso shot being pulled' }
++      ];
++      var promoIndex = 0;
++
++      function isActive(card) {
++        return !card.hidden && !card.classList.contains('is-exiting');
++      }
++
++      function updateEmpty() {
++        var any = Array.prototype.some.call(container.querySelectorAll('.card'), isActive);
++        emptyMsg.hidden = any;
++      }
++
++      // Play the exit animation, then run `done` once it finishes (with a timeout fallback).
++      function animateOut(card, done) {
++        if (card.classList.contains('is-exiting')) return;
++        card.classList.add('is-exiting');
++        updateEmpty();
++        var finished = false;
++        function finish() {
++          if (finished) return;
++          finished = true;
++          card.removeEventListener('animationend', onEnd);
++          card.classList.remove('is-exiting');
++          done(card);
++          updateEmpty();
++        }
++        function onEnd(e) { if (e.target === card) finish(); }
++        card.addEventListener('animationend', onEnd);
++        setTimeout(finish, EXIT_MS + 100);
++      }
++
++      function restartEnter(card) {
++        // Re-trigger the CSS entry animation.
++        card.style.animation = 'none';
++        void card.offsetWidth;
++        card.style.animation = '';
++      }
++
++      function createCard(p) {
++        var card = document.createElement('div');
++        card.className = 'card promo-card';
++        card.innerHTML =
++          '<img loading="lazy">' +
++          '<div class="promo-body"><span class="promo-badge"></span><h3></h3><p></p></div>';
++        var img = card.querySelector('img');
++        img.src = p.img;
++        img.alt = p.alt;
++        card.querySelector('.promo-badge').textContent = p.badge;
++        card.querySelector('h3').textContent = p.title;
++        card.querySelector('p').innerHTML = p.text;
++        return card;
++      }
++
++      function showToggleCard() {
++        if (toggleCard.classList.contains('is-exiting')) {
++          // Cancel an in-progress exit.
++          toggleCard.classList.remove('is-exiting');
++        }
++        toggleCard.hidden = false;
++        restartEnter(toggleCard);
++        toggleBtn.setAttribute('aria-pressed', 'true');
++        updateEmpty();
++      }
++
++      function hideToggleCard() {
++        toggleBtn.setAttribute('aria-pressed', 'false');
++        animateOut(toggleCard, function (c) {
++          if (toggleBtn.getAttribute('aria-pressed') === 'false') c.hidden = true;
++        });
++      }
++
++      addBtn.addEventListener('click', function () {
++        var card = createCard(promos[promoIndex % promos.length]);
++        promoIndex++;
++        container.appendChild(card);
++        updateEmpty();
++      });
++
++      removeBtn.addEventListener('click', function () {
++        var cards = Array.prototype.filter.call(container.querySelectorAll('.card'), isActive);
++        var last = cards[cards.length - 1];
++        if (!last) return;
++        if (last === toggleCard) {
++          // Keep the default card in the DOM so it can be toggled back.
++          hideToggleCard();
++        } else {
++          animateOut(last, function (c) { c.remove(); });
++        }
++      });
++
++      toggleBtn.addEventListener('click', function () {
++        if (isActive(toggleCard)) hideToggleCard();
++        else showToggleCard();
++      });
++
++      updateEmpty();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

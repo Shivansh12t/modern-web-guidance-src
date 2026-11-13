@@ -1,0 +1,729 @@
+diff --git a/index.html b/index.html
+index 66c9173..8804cc6 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,269 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal Favorites (interactive) */
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    .seasonal-head {
++      text-align: center;
++    }
++
++    .seasonal-sub {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .seasonal-toolbar {
++      display: flex;
++      justify-content: center;
++      gap: 10px;
++      margin-top: 12px;
++    }
++
++    .tool-btn,
++    .icon-btn,
++    .seg button,
++    .chip {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .tool-btn {
++      background: transparent;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      border-radius: 999px;
++      padding: 4px 14px;
++      font-size: 0.85rem;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .tool-btn:hover {
++      background: var(--primary);
++      color: white;
++    }
++
++    .seasonal-grid {
++      /* Positioning root for leaving cards; layout containment keeps the
++         component's animations from affecting the rest of the page. */
++      position: relative;
++      contain: layout;
++    }
++
++    .seasonal-grid .card {
++      display: flex;
++      flex-direction: column;
++      padding: 0;
++      overflow: hidden;
++      text-align: left;
++      contain: layout;
++      /* Scoped view transition root: names inside are scoped to each card. */
++      view-transition-name: none;
++    }
++
++    .seasonal-grid .card.is-leaving {
++      position: absolute;
++      margin: 0;
++      pointer-events: none;
++      z-index: 1;
++    }
++
++    .card-media {
++      position: relative;
++      aspect-ratio: 16 / 10;
++      background: var(--secondary);
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .card-controls {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      display: flex;
++      gap: 6px;
++    }
++
++    .icon-btn {
++      width: 32px;
++      height: 32px;
++      border-radius: 50%;
++      border: none;
++      background: rgba(255, 255, 255, 0.92);
++      color: var(--primary);
++      font-size: 1rem;
++      line-height: 1;
++      display: grid;
++      place-items: center;
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
++      transition: background 0.2s, transform 0.2s;
++    }
++
++    .icon-btn:hover:not(:disabled) {
++      background: var(--accent);
++      transform: scale(1.08);
++    }
++
++    .icon-btn:disabled {
++      opacity: 0.4;
++      cursor: default;
++    }
++
++    .card-body {
++      padding: 16px 18px 18px;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      flex: 1;
++    }
++
++    .card-title-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 8px;
++    }
++
++    .seasonal-grid .card h3 {
++      margin: 0;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++      view-transition-name: price;
++    }
++
++    .card-desc {
++      font-size: 0.9rem;
++      margin: 0;
++    }
++
++    .opt-label {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.06em;
++      color: #8d6e63;
++      margin-bottom: 4px;
++    }
++
++    .seg {
++      display: inline-flex;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      overflow: hidden;
++    }
++
++    .seg button {
++      border: none;
++      background: white;
++      color: var(--text);
++      padding: 4px 12px;
++      font-size: 0.85rem;
++    }
++
++    .seg button + button {
++      border-left: 1px solid var(--secondary);
++    }
++
++    .seg button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .chips {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .chip {
++      border: 1px solid var(--secondary);
++      background: white;
++      color: var(--text);
++      border-radius: 999px;
++      padding: 2px 10px;
++      font-size: 0.8rem;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .chip[aria-pressed="true"] {
++      background: #fff3e0;
++      border-color: var(--accent);
++    }
++
++    .chip[aria-pressed="true"]::before {
++      content: "✓ ";
++    }
++
++    .summary {
++      list-style: none;
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      min-height: 1.6em;
++      font-size: 0.8rem;
++    }
++
++    .summary li {
++      background: var(--primary);
++      color: white;
++      border-radius: 4px;
++      padding: 1px 8px;
++    }
++
++    .summary .summary-empty {
++      background: none;
++      color: #8d6e63;
++      padding: 1px 0;
++      font-style: italic;
++    }
++
++    .seasonal-grid .card .btn {
++      align-self: flex-start;
++      margin-top: auto;
++    }
++
++    .seasonal-empty,
++    .seasonal-noscript {
++      text-align: center;
++      margin-top: 20px;
++      color: #6d4c41;
++    }
++
++    button:focus-visible,
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Card-scoped view transition styling */
++    ::view-transition-group(*) {
++      animation-duration: 260ms;
++      animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -175,25 +438,21 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++    <section class="seasonal" aria-labelledby="seasonal-title">
++      <div class="seasonal-head">
++        <h2 id="seasonal-title">Seasonal Favorites</h2>
++        <p class="seasonal-sub">Reorder, remove, or customize drinks to build your lineup.</p>
++        <div class="seasonal-toolbar">
++          <button type="button" class="tool-btn" data-action="restore" hidden>Restore removed (<span data-restore-count>0</span>)</button>
++          <button type="button" class="tool-btn" data-action="reset">Reset lineup</button>
+         </div>
+       </div>
++      <div class="grid seasonal-grid" id="seasonal-grid" role="list"></div>
++      <p class="seasonal-empty" hidden>Your lineup is empty. Use “Restore removed” or “Reset lineup” to bring drinks back.</p>
++      <p class="sr-only" aria-live="polite" id="seasonal-status"></p>
++      <noscript>
++        <p class="seasonal-noscript">Enable JavaScript to customize seasonal drinks. Browse them all on our <a href="/menu/seasonal">seasonal menu</a>.</p>
++      </noscript>
+     </section>
+   </main>
+ 
+@@ -207,6 +466,415 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const DRINKS = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          desc: 'Creamy oat milk with a hint of Vermont maple syrup.',
++          href: '/menu/seasonal',
++          img: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=640&q=70',
++          alt: 'Latte with leaf latte art in a white cup',
++          price: 5.25
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          desc: 'Bold, smokey, and perfect for a morning boost.',
++          href: '/menu/espresso',
++          img: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=640&q=70',
++          alt: 'Espresso shot in a small ceramic cup',
++          price: 3.5
++        },
++        {
++          id: 'cold-brew',
++          name: 'Cold Brew',
++          desc: 'Steeped for 18 hours for maximum smoothness.',
++          href: '/menu/cold-brew',
++          img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=640&q=70',
++          alt: 'Iced coffee in a tall glass',
++          price: 4.75
++        },
++        {
++          id: 'spiced-cider-mocha',
++          name: 'Spiced Mocha',
++          desc: 'Dark chocolate, cinnamon, and a whisper of nutmeg.',
++          href: '/menu/seasonal',
++          img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&q=70',
++          alt: 'Coffee in a cup on a wooden table',
++          price: 5.5
++        }
++      ];
++
++      const SIZES = [
++        { id: 'S', label: 'Small', delta: -0.5 },
++        { id: 'M', label: 'Medium', delta: 0 },
++        { id: 'L', label: 'Large', delta: 0.75 }
++      ];
++
++      const ADDONS = [
++        { id: 'shot', label: 'Extra shot', price: 0.9 },
++        { id: 'oat', label: 'Oat milk', price: 0.7 },
++        { id: 'vanilla', label: 'Vanilla', price: 0.6 },
++        { id: 'foam', label: 'Cold foam', price: 0.8 },
++        { id: 'decaf', label: 'Decaf', price: 0 }
++      ];
++
++      const DURATION = 320;
++      const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
++      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const motionOK = () => !reduceMotion.matches;
++      const supportsScopedVT = typeof Element !== 'undefined' &&
++        typeof Element.prototype.startViewTransition === 'function';
++
++      const section = document.querySelector('.seasonal');
++      const grid = document.getElementById('seasonal-grid');
++      const emptyMsg = section.querySelector('.seasonal-empty');
++      const restoreBtn = section.querySelector('[data-action="restore"]');
++      const restoreCount = section.querySelector('[data-restore-count]');
++      const status = document.getElementById('seasonal-status');
++
++      const byId = new Map(DRINKS.map(d => [d.id, d]));
++      const freshOptions = () => ({ size: 'M', addons: new Set() });
++
++      // Component state
++      let order = DRINKS.map(d => d.id);
++      let removed = [];
++      const options = new Map(DRINKS.map(d => [d.id, freshOptions()]));
++      const cards = new Map(); // id -> element (only for cards in the lineup)
++
++      const money = n => '$' + n.toFixed(2);
++      const announce = msg => { status.textContent = ''; requestAnimationFrame(() => { status.textContent = msg; }); };
++
++      function priceOf(id) {
++        const o = options.get(id);
++        const size = SIZES.find(s => s.id === o.size);
++        let total = byId.get(id).price + size.delta;
++        o.addons.forEach(a => { total += ADDONS.find(x => x.id === a).price; });
++        return total;
++      }
++
++      /* ---------- Card construction ---------- */
++
++      function buildCard(id) {
++        const d = byId.get(id);
++        const card = document.createElement('article');
++        card.className = 'card';
++        card.dataset.id = id;
++        card.setAttribute('role', 'listitem');
++        card.setAttribute('aria-labelledby', `drink-${id}-title`);
++        card.innerHTML = `
++          <div class="card-media">
++            <img src="${d.img}" alt="${d.alt}" loading="lazy" width="640" height="400">
++            <div class="card-controls">
++              <button type="button" class="icon-btn" data-action="move" data-dir="-1" aria-label="Move ${d.name} earlier" title="Move earlier">&#8592;</button>
++              <button type="button" class="icon-btn" data-action="move" data-dir="1" aria-label="Move ${d.name} later" title="Move later">&#8594;</button>
++              <button type="button" class="icon-btn" data-action="remove" aria-label="Remove ${d.name}" title="Remove">&#10005;</button>
++            </div>
++          </div>
++          <div class="card-body">
++            <div class="card-title-row">
++              <h3 id="drink-${id}-title">${d.name}</h3>
++              <span class="price" aria-live="polite"></span>
++            </div>
++            <p class="card-desc">${d.desc}</p>
++            <div>
++              <div class="opt-label" id="drink-${id}-size">Size</div>
++              <div class="seg" role="group" aria-labelledby="drink-${id}-size">
++                ${SIZES.map(s => `<button type="button" data-action="size" data-size="${s.id}" aria-label="${s.label}">${s.id}</button>`).join('')}
++              </div>
++            </div>
++            <div>
++              <div class="opt-label" id="drink-${id}-addons">Add-ons</div>
++              <div class="chips" role="group" aria-labelledby="drink-${id}-addons">
++                ${ADDONS.map(a => `<button type="button" class="chip" data-action="addon" data-addon="${a.id}">${a.label}${a.price ? ` +${money(a.price)}` : ''}</button>`).join('')}
++              </div>
++            </div>
++            <div>
++              <div class="opt-label">Your drink</div>
++              <ul class="summary" aria-label="Selected customizations"></ul>
++            </div>
++            <a href="${d.href}" class="btn">View Details</a>
++          </div>`;
++        syncCard(card, id);
++        return card;
++      }
++
++      // Write the current options for `id` into the card's DOM.
++      function syncCard(card, id) {
++        const o = options.get(id);
++        card.querySelector('.price').textContent = money(priceOf(id));
++        card.querySelectorAll('[data-action="size"]').forEach(b =>
++          b.setAttribute('aria-pressed', String(b.dataset.size === o.size)));
++        card.querySelectorAll('[data-action="addon"]').forEach(b =>
++          b.setAttribute('aria-pressed', String(o.addons.has(b.dataset.addon))));
++
++        const list = card.querySelector('.summary');
++        const items = [SIZES.find(s => s.id === o.size).label]
++          .concat(ADDONS.filter(a => o.addons.has(a.id)).map(a => a.label));
++        list.replaceChildren(...items.map((label, i) => {
++          const li = document.createElement('li');
++          li.textContent = label;
++          // Names are scoped to this card's view transition, so they
++          // never collide with identically-named items in other cards.
++          li.style.viewTransitionName = 'item-' + label.toLowerCase().replace(/\W+/g, '-');
++          return li;
++        }));
++        if (items.length === 1) {
++          const li = document.createElement('li');
++          li.className = 'summary-empty';
++          li.textContent = 'No add-ons';
++          li.style.viewTransitionName = 'item-none';
++          list.append(li);
++        }
++      }
++
++      /* ---------- Card-level (customization) transitions ---------- */
++
++      // Each card animates independently: scoped view transitions run on the
++      // card element itself (not the document), so the nav, page, and other
++      // cards stay interactive and multiple cards can transition concurrently.
++      const cardTransitions = new WeakMap();
++
++      function updateCardAnimated(card, id) {
++        if (!motionOK()) { syncCard(card, id); return; }
++
++        if (supportsScopedVT) {
++          try {
++            const prev = cardTransitions.get(card);
++            if (prev) prev.skipTransition();
++            const vt = card.startViewTransition(() => syncCard(card, id));
++            cardTransitions.set(card, vt);
++            vt.finished.finally(() => {
++              if (cardTransitions.get(card) === vt) cardTransitions.delete(card);
++            });
++            return;
++          } catch (_) { /* fall through to WAAPI fallback */ }
++        }
++
++        // Fallback: FLIP the summary chips + pulse the price, all scoped to this card.
++        const list = card.querySelector('.summary');
++        const before = new Map();
++        list.querySelectorAll('li').forEach(li => before.set(li.textContent, li.getBoundingClientRect()));
++        const oldPrice = card.querySelector('.price').textContent;
++
++        syncCard(card, id);
++
++        list.querySelectorAll('li').forEach(li => {
++          const prev = before.get(li.textContent);
++          if (prev) {
++            const now = li.getBoundingClientRect();
++            const dx = prev.left - now.left, dy = prev.top - now.top;
++            if (dx || dy) {
++              li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
++                { duration: 240, easing: EASE });
++            }
++          } else {
++            li.animate([{ opacity: 0, transform: 'scale(0.6)' }, { opacity: 1, transform: 'none' }],
++              { duration: 240, easing: EASE });
++          }
++        });
++        const price = card.querySelector('.price');
++        if (price.textContent !== oldPrice) {
++          price.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }],
++            { duration: 240, easing: EASE });
++        }
++      }
++
++      /* ---------- Grid-level (reorder / remove / restore) transitions ---------- */
++
++      // FLIP with the Web Animations API. Every card owns its own animation, so
++      // a new reorder can start mid-flight: we measure the *visual* position
++      // (including any running transform) and continue smoothly from there.
++      const moveAnims = new WeakMap();
++
++      function snapshot() {
++        const rects = new Map();
++        cards.forEach((el, id) => rects.set(id, el.getBoundingClientRect()));
++        return rects;
++      }
++
++      function playFlip(before) {
++        if (!motionOK()) return;
++        cards.forEach((el, id) => {
++          const prev = before.get(id);
++          if (!prev) return;
++          const running = moveAnims.get(el);
++          if (running) running.cancel();
++          const now = el.getBoundingClientRect();
++          const dx = prev.left - now.left, dy = prev.top - now.top;
++          if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
++          const anim = el.animate(
++            [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
++            { duration: DURATION, easing: EASE }
++          );
++          moveAnims.set(el, anim);
++          anim.finished.then(() => { if (moveAnims.get(el) === anim) moveAnims.delete(el); }, () => {});
++        });
++      }
++
++      function renderOrder() {
++        // Re-append in the desired order (moves existing nodes; preserves focus & state).
++        // Only nodes that are out of place are moved, which keeps DOM churn minimal.
++        let cursor = grid.firstElementChild;
++        while (cursor && cursor.classList.contains('is-leaving')) cursor = cursor.nextElementSibling;
++        order.forEach(id => {
++          let el = cards.get(id);
++          if (!el) { el = buildCard(id); cards.set(id, el); }
++          if (el !== cursor) grid.insertBefore(el, cursor);
++          else cursor = cursor.nextElementSibling;
++          while (cursor && cursor.classList.contains('is-leaving')) cursor = cursor.nextElementSibling;
++        });
++        cards.forEach((el, id) => {
++          const i = order.indexOf(id);
++          el.querySelector('[data-dir="-1"]').disabled = i === 0;
++          el.querySelector('[data-dir="1"]').disabled = i === order.length - 1;
++        });
++        emptyMsg.hidden = order.length > 0;
++        restoreBtn.hidden = removed.length === 0;
++        restoreCount.textContent = removed.length;
++      }
++
++      function move(id, dir) {
++        const i = order.indexOf(id);
++        const j = i + dir;
++        if (i < 0 || j < 0 || j >= order.length) return;
++        const before = snapshot();
++        const focused = document.activeElement;
++        [order[i], order[j]] = [order[j], order[i]];
++        renderOrder();
++        playFlip(before);
++        // Moving DOM nodes drops focus; put it back (or on the opposite arrow at an edge).
++        if (focused && grid.contains(focused) && (document.activeElement !== focused || focused.disabled)) {
++          (focused.disabled ? cards.get(id).querySelector(`[data-dir="${-dir}"]`) : focused).focus({ preventScroll: true });
++        }
++        announce(`${byId.get(id).name} moved to position ${j + 1} of ${order.length}.`);
++      }
++
++      function remove(id) {
++        const el = cards.get(id);
++        if (!el) return;
++        const i = order.indexOf(id);
++        const before = snapshot();
++
++        // Take the card out of flow at its current visual spot so siblings
++        // can reflow immediately while it fades out on its own timeline.
++        const gridRect = grid.getBoundingClientRect();
++        const r = before.get(id);
++        const running = moveAnims.get(el);
++        if (running) running.cancel();
++        el.classList.add('is-leaving');
++        el.setAttribute('aria-hidden', 'true');
++        el.inert = true;
++        Object.assign(el.style, {
++          left: (r.left - gridRect.left) + 'px',
++          top: (r.top - gridRect.top) + 'px',
++          width: r.width + 'px',
++          height: r.height + 'px'
++        });
++
++        order.splice(i, 1);
++        cards.delete(id);
++        removed.push(id);
++        renderOrder();
++        playFlip(before);
++
++        const finish = () => el.remove();
++        if (motionOK()) {
++          el.animate(
++            [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.85)' }],
++            { duration: DURATION * 0.8, easing: 'ease-in', fill: 'forwards' }
++          ).finished.then(finish, finish);
++        } else {
++          finish();
++        }
++
++        // Keep keyboard focus in the component.
++        const next = cards.get(order[Math.min(i, order.length - 1)]);
++        (next ? next.querySelector('[data-action="remove"]') : (restoreBtn.hidden ? null : restoreBtn))?.focus();
++        announce(`${byId.get(id).name} removed.`);
++      }
++
++      function addCards(ids) {
++        if (!ids.length) return;
++        const before = snapshot();
++        renderOrder();
++        playFlip(before);
++        if (!motionOK()) return;
++        ids.forEach(id => {
++          cards.get(id)?.animate(
++            [{ opacity: 0, transform: 'scale(0.85)' }, { opacity: 1, transform: 'none' }],
++            { duration: DURATION, easing: EASE }
++          );
++        });
++      }
++
++      function restore() {
++        const ids = removed.splice(0);
++        order.push(...ids);
++        addCards(ids);
++        announce(`Restored ${ids.length} drink${ids.length === 1 ? '' : 's'}.`);
++      }
++
++      function reset() {
++        const before = snapshot();
++        const restored = removed.splice(0);
++        order = DRINKS.map(d => d.id);
++        DRINKS.forEach(d => options.set(d.id, freshOptions()));
++        cards.forEach((el, id) => updateCardAnimated(el, id));
++        renderOrder();
++        playFlip(before);
++        if (motionOK()) {
++          restored.forEach(id => cards.get(id)?.animate(
++            [{ opacity: 0, transform: 'scale(0.85)' }, { opacity: 1, transform: 'none' }],
++            { duration: DURATION, easing: EASE }
++          ));
++        }
++        announce('Lineup reset.');
++      }
++
++      /* ---------- Events (delegated, scoped to the section) ---------- */
++
++      section.addEventListener('click', e => {
++        const btn = e.target.closest('button[data-action]');
++        if (!btn || !section.contains(btn)) return;
++        const action = btn.dataset.action;
++        if (action === 'restore') return restore();
++        if (action === 'reset') return reset();
++
++        const card = btn.closest('.card');
++        if (!card || card.classList.contains('is-leaving')) return;
++        const id = card.dataset.id;
++        const o = options.get(id);
++
++        switch (action) {
++          case 'move':
++            move(id, Number(btn.dataset.dir));
++            break;
++          case 'remove':
++            remove(id);
++            break;
++          case 'size':
++            if (o.size === btn.dataset.size) return;
++            o.size = btn.dataset.size;
++            updateCardAnimated(card, id);
++            break;
++          case 'addon': {
++            const a = btn.dataset.addon;
++            o.addons.has(a) ? o.addons.delete(a) : o.addons.add(a);
++            updateCardAnimated(card, id);
++            break;
++          }
++        }
++      });
++
++      renderOrder();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

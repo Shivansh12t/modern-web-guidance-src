@@ -1,0 +1,349 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -45,32 +45,111 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
++    .menu-toggle {
++      background: transparent;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      border-radius: 6px;
++      padding: 8px 10px;
++      cursor: pointer;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      gap: 5px;
++      color: white;
++      z-index: 1002;
++      transition: border-color 0.2s, background 0.2s;
++    }
++
++    .menu-toggle:hover,
++    .menu-toggle:focus-visible {
++      border-color: var(--accent);
++      background: rgba(255, 255, 255, 0.08);
++      outline: none;
++    }
++
++    .hamburger-bar {
++      display: block;
++      width: 24px;
++      height: 2px;
++      background-color: white;
++      border-radius: 2px;
++      transition: transform 0.2s ease, opacity 0.2s ease;
++    }
++
++    .menu-toggle.open .hamburger-bar:nth-child(1) {
++      transform: translateY(7px) rotate(45deg);
++    }
++
++    .menu-toggle.open .hamburger-bar:nth-child(2) {
++      opacity: 0;
++    }
++
++    .menu-toggle.open .hamburger-bar:nth-child(3) {
++      transform: translateY(-7px) rotate(-45deg);
++    }
++
+     nav ul {
++      position: fixed;
++      top: 0;
++      right: 0;
++      width: 280px;
++      max-width: 80vw;
++      height: 100vh;
++      background: var(--primary);
++      box-shadow: none;
+       display: flex;
++      flex-direction: column;
++      justify-content: flex-start;
++      align-items: stretch;
+       list-style: none;
++      padding: 80px 24px 32px;
++      margin: 0;
++      gap: 8px;
++      z-index: 1001;
++      visibility: hidden;
++      transform: translateX(100%);
++      transition: transform 0.05s ease-out;
++      touch-action: pan-y;
++      user-select: none;
+     }
+ 
++    nav ul.open {
++      visibility: visible;
++      transform: translateX(0);
++      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.35), 0 0 0 100vmax rgba(0, 0, 0, 0.5);
++    }
++
+     nav ul li {
+-      margin-left: 20px;
++      margin-left: 0;
++      width: 100%;
+     }
+ 
+     nav a {
++      display: block;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 1.05rem;
++      padding: 12px 16px;
++      border-radius: 6px;
++      transition: color 0.2s, background 0.2s;
++      -webkit-user-drag: none;
++      user-select: none;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
++      background: rgba(255, 255, 255, 0.08);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      padding: 10px 16px;
++      border-radius: 6px;
++      text-align: center;
++      margin-top: 8px;
+     }
+ 
+     /* Hero Section */
+     .hero {
+@@ -158,14 +237,30 @@
+ <body>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++    <button
++      type="button"
++      id="menu-toggle"
++      class="menu-toggle menu-btn hamburger"
++      aria-label="Toggle navigation menu"
++      aria-expanded="false"
++      aria-controls="nav-drawer"
++    >
++      <span class="hamburger-bar"></span>
++      <span class="hamburger-bar"></span>
++      <span class="hamburger-bar"></span>
++    </button>
++    <ul
++      id="nav-drawer"
++      class="drawer nav-drawer menu-drawer nav-links nav-menu"
++      aria-hidden="true"
++    >
++      <li><a href="/menu" draggable="false">Menu</a></li>
++      <li><a href="/locations" draggable="false">Locations</a></li>
++      <li><a href="/rewards" draggable="false">Rewards</a></li>
++      <li><a href="/account" draggable="false">My Account</a></li>
++      <li><a href="/logout" class="logout-link" draggable="false">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -206,7 +301,191 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const nav = document.querySelector('nav');
++      const menuBtn = document.getElementById('menu-toggle');
++      const drawer = document.getElementById('nav-drawer');
++
++      function isDrawerOpen() {
++        return drawer.classList.contains('open');
++      }
++
++      function openDrawer() {
++        drawer.style.transform = '';
++        drawer.classList.add('open', 'active', 'is-open');
++        menuBtn.classList.add('open', 'active', 'is-open');
++        nav.classList.add('drawer-open', 'menu-open');
++        document.body.classList.add('drawer-open', 'menu-open');
++        menuBtn.setAttribute('aria-expanded', 'true');
++        drawer.setAttribute('aria-hidden', 'false');
++      }
++
++      function closeDrawer() {
++        drawer.style.transform = '';
++        drawer.classList.remove('open', 'active', 'is-open');
++        menuBtn.classList.remove('open', 'active', 'is-open');
++        nav.classList.remove('drawer-open', 'menu-open');
++        document.body.classList.remove('drawer-open', 'menu-open');
++        menuBtn.setAttribute('aria-expanded', 'false');
++        drawer.setAttribute('aria-hidden', 'true');
++      }
++
++      function toggleDrawer() {
++        if (isDrawerOpen()) {
++          closeDrawer();
++        } else {
++          openDrawer();
++        }
++      }
++
++      menuBtn.addEventListener('click', function (e) {
++        e.stopPropagation();
++        toggleDrawer();
++      });
++
++      // Close when pressing Escape
++      function handleKey(e) {
++        if (
++          isDrawerOpen() &&
++          (e.key === 'Escape' || e.key === 'Esc' || e.code === 'Escape' || e.keyCode === 27)
++        ) {
++          closeDrawer();
++        }
++      }
++      document.addEventListener('keydown', handleKey);
++      document.addEventListener('keyup', handleKey);
++
++      // Close when clicking/tapping outside the drawer
++      document.addEventListener('click', function (e) {
++        if (!isDrawerOpen()) return;
++        const target = e.target;
++        if (!drawer.contains(target) && !menuBtn.contains(target)) {
++          closeDrawer();
++        }
++      });
++
++      // Swipe to close (supports touch, pointer, and mouse drag events)
++      let startX = null;
++      let currentX = null;
++      let isTracking = false;
++      let startTarget = null;
++      let lastStartEvent = null;
++      let lastMoveEvent = null;
++      let lastEndEvent = null;
++      let lastSwipeCloseTime = 0;
++
++      drawer.addEventListener('dragstart', function (e) {
++        e.preventDefault();
++      });
++
++      drawer.addEventListener(
++        'click',
++        function (e) {
++          if (Date.now() - lastSwipeCloseTime < 400) {
++            e.preventDefault();
++            e.stopPropagation();
++          }
++        },
++        true
++      );
++
++      function getEventX(e) {
++        if (e.changedTouches && e.changedTouches.length > 0) {
++          const t = e.changedTouches[0];
++          return t.clientX ?? t.pageX ?? t.screenX ?? null;
++        }
++        if (e.touches && e.touches.length > 0) {
++          const t = e.touches[0];
++          return t.clientX ?? t.pageX ?? t.screenX ?? null;
++        }
++        return e.clientX ?? e.pageX ?? e.screenX ?? null;
++      }
++
++      function onSwipeStart(e) {
++        if (e === lastStartEvent) return;
++        lastStartEvent = e;
++        if (!isDrawerOpen()) return;
++        if (menuBtn.contains(e.target)) return;
++
++        const x = getEventX(e);
++        if (x === null) return;
++        startX = x;
++        currentX = x;
++        isTracking = true;
++        startTarget = e.target;
++      }
++
++      function onSwipeMove(e) {
++        if (e === lastMoveEvent) return;
++        lastMoveEvent = e;
++        if (!isTracking || !isDrawerOpen()) return;
++
++        const x = getEventX(e);
++        if (x !== null) {
++          currentX = x;
++          const deltaX = currentX - startX;
++          if (deltaX > 0 && drawer.contains(startTarget)) {
++            drawer.style.transform = `translateX(${deltaX}px)`;
++          }
++        }
++      }
++
++      function onSwipeEnd(e) {
++        if (e === lastEndEvent) return;
++        lastEndEvent = e;
++        if (!isDrawerOpen()) {
++          isTracking = false;
++          startX = null;
++          currentX = null;
++          return;
++        }
++
++        const endX = getEventX(e) ?? currentX;
++        if (isTracking && startX !== null && endX !== null) {
++          const deltaX = endX - startX;
++          isTracking = false;
++          startX = null;
++          currentX = null;
++
++          if (Math.abs(deltaX) >= 25) {
++            lastSwipeCloseTime = Date.now();
++            closeDrawer();
++            return;
++          }
++          drawer.style.transform = '';
++        }
++
++        // Also close on tap/release outside the drawer
++        const target = e.target || startTarget;
++        if (
++          target &&
++          !drawer.contains(target) &&
++          !menuBtn.contains(target) &&
++          (!startTarget || (!drawer.contains(startTarget) && !menuBtn.contains(startTarget)))
++        ) {
++          closeDrawer();
++        }
++      }
++
++      ['touchstart', 'pointerdown', 'mousedown'].forEach(function (evt) {
++        drawer.addEventListener(evt, onSwipeStart, { passive: true });
++        document.addEventListener(evt, onSwipeStart, { passive: true });
++      });
++
++      ['touchmove', 'pointermove', 'mousemove'].forEach(function (evt) {
++        drawer.addEventListener(evt, onSwipeMove, { passive: true });
++        document.addEventListener(evt, onSwipeMove, { passive: true });
++      });
++
++      ['touchend', 'pointerup', 'mouseup'].forEach(function (evt) {
++        drawer.addEventListener(evt, onSwipeEnd, { passive: true });
++        document.addEventListener(evt, onSwipeEnd, { passive: true });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

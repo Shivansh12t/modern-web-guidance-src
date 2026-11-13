@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+index 66c9173..283f9d4 100644
+--- a/index.html
++++ b/index.html
+@@ -6,12 +6,39 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @property --supports-atproperty {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --hero-angle {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 135deg;
++    }
++
++    @property --hero-glow-animation {
++      syntax: "*";
++      inherits: false;
++      initial-value: , hero-glow 8s ease-in-out infinite alternate;
++    }
++
++    @function --brand-tint(--color, --alpha: 85%) {
++      result: color-mix(in oklch, var(--color) var(--alpha), white);
++    }
++
++    @mixin --interactive-pill {
++      border-radius: 999px;
++      padding-inline: 14px;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --supports-atproperty: ;
+     }
+ 
+     * {
+@@ -52,7 +79,7 @@
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
+     }
+ 
+     nav a {
+@@ -70,12 +97,80 @@
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++
++      @supports at-rule(@mixin) {
++        @apply --interactive-pill;
++        letter-spacing: 0.03em;
++      }
++    }
++
++    @supports (color: --foo()) {
++      nav {
++        border-block-end: 1px solid --brand-tint(var(--accent), 40%);
++      }
++
++      .logout-link {
++        background: --brand-tint(var(--primary), 75%);
++        border-color: --brand-tint(var(--accent), 85%);
++      }
++    }
++
++    @supports (container-type: scroll-state) {
++      nav {
++        container-type: scroll-state;
++        background: transparent;
++      }
++
++      nav::before {
++        content: "";
++        position: absolute;
++        inset: 0;
++        background: var(--primary);
++        z-index: -1;
++        transition: background-color 0.3s ease, box-shadow 0.3s ease, backdrop-filter 0.3s ease;
++      }
++
++      @container scroll-state(stuck: top) {
++        nav::before {
++          background: color-mix(in oklch, var(--primary) 88%, transparent);
++          backdrop-filter: blur(10px);
++          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
++        }
++      }
+     }
+ 
+     /* Hero Section */
++    @keyframes hero-fade-in {
++      from {
++        opacity: 0.9;
++      }
++      to {
++        opacity: 1;
++      }
++    }
++
++    @keyframes hero-glow {
++      from {
++        --hero-angle: 120deg;
++      }
++      to {
++        --hero-angle: 240deg;
++      }
++    }
++
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background:
++        var(
++          --supports-atproperty,
++          conic-gradient(
++            from var(--hero-angle, 135deg) at 50% 50%,
++            rgba(255, 171, 64, 0.22),
++            rgba(78, 52, 46, 0.35),
++            rgba(255, 171, 64, 0.22)
++          ),
++        )
++        linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -86,6 +181,13 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      animation:
++        hero-fade-in 0.6s ease-out both
++        var(--hero-glow-animation, );
++
++      @supports at-rule(@media) {
++        text-wrap: balance;
++      }
+     }
+ 
+     .hero h1 {
+@@ -115,11 +217,58 @@
+       text-align: center;
+     }
+ 
++    .card:first-child {
++      --featured: true;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    @container style(--a: 1) or (not (style(--a: 1))) {
++      .grid {
++        align-items: stretch;
++      }
++
++      .card {
++        display: flex;
++        flex-direction: column;
++        justify-content: space-between;
++        border: 1px solid rgba(78, 52, 46, 0.12);
++        transition: transform 0.25s ease, box-shadow 0.25s ease;
++      }
++
++      .card:hover {
++        transform: translateY(-4px);
++        box-shadow: 0 8px 20px rgba(62, 39, 35, 0.15);
++      }
++    }
++
++    @container style(--featured: true) {
++      .card h3 {
++        color: var(--accent);
++      }
++
++      .card .btn {
++        background: var(--accent);
++        color: var(--text);
++        font-weight: 600;
++      }
++    }
++
++    @supports (container-type: size) {
++      .grid {
++        container-type: inline-size;
++      }
++
++      @container (min-width: 720px) {
++        .card:first-child {
++          border-block-start: 4px solid var(--accent);
++        }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);

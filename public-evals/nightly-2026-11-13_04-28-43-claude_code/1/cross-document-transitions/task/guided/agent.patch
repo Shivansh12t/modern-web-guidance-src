@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,139 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 30px;
++    }
++
++    .pagination a {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.4em;
++      padding: 10px 18px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      color: var(--primary);
++      text-decoration: none;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .pagination a:hover,
++    .pagination a:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .pagination a[aria-disabled="true"] {
++      opacity: 0.4;
++      pointer-events: none;
++    }
++
++    .pagination .page-status {
++      font-size: 0.9rem;
++    }
++
++    /* Cross-document view transitions (opt-in only when motion is OK) */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      ::view-transition-group(root) {
++        animation-duration: 0.4s;
++        animation-timing-function: ease-in-out;
++      }
++
++      html:active-view-transition-type(next)::view-transition-old(root) {
++        animation-name: slide-to-left;
++      }
++
++      html:active-view-transition-type(next)::view-transition-new(root) {
++        animation-name: slide-from-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-old(root) {
++        animation-name: slide-to-right;
++      }
++
++      html:active-view-transition-type(previous)::view-transition-new(root) {
++        animation-name: slide-from-left;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
++    @keyframes slide-to-left {
++      to { transform: translateX(-100%); }
++    }
++
++    @keyframes slide-from-right {
++      from { transform: translateX(100%); }
++    }
++
++    @keyframes slide-to-right {
++      to { transform: translateX(100%); }
++    }
++
++    @keyframes slide-from-left {
++      from { transform: translateX(-100%); }
++    }
+   </style>
++  <script>
++    // Determine the transition direction for cross-document navigations.
++    // Must run before first render, so it lives inline in <head>.
++    (() => {
++      const pageOf = (url) => {
++        if (!url) return null;
++        const n = parseInt(new URL(url, location.href).searchParams.get('page'), 10);
++        return Number.isFinite(n) && n > 0 ? n : 1;
++      };
++
++      const directionBetween = (fromUrl, toUrl) => {
++        const from = pageOf(fromUrl);
++        const to = pageOf(toUrl);
++        if (from === null || to === null || from === to) return null;
++        return to > from ? 'next' : 'previous';
++      };
++
++      // Fallback for browsers without the Navigation API: remember the clicked link's direction.
++      document.addEventListener('click', (e) => {
++        const link = e.target.closest?.('.pagination a[data-direction]');
++        if (link) sessionStorage.setItem('vt-direction', link.dataset.direction);
++      });
++
++      // Outgoing page
++      window.addEventListener('pageswap', (e) => {
++        if (!e.viewTransition) return;
++        const dir = directionBetween(location.href, e.activation?.entry?.url) ||
++          sessionStorage.getItem('vt-direction');
++        if (dir) e.viewTransition.types.add(dir);
++      });
++
++      // Incoming page
++      window.addEventListener('pagereveal', (e) => {
++        const stored = sessionStorage.getItem('vt-direction');
++        sessionStorage.removeItem('vt-direction');
++        if (!e.viewTransition) return;
++        const activation = window.navigation?.activation;
++        const dir = (activation && directionBetween(activation.from?.url, activation.entry?.url)) || stored;
++        if (dir) e.viewTransition.types.add(dir);
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -193,8 +323,33 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal favorites pages">
++        <a id="previous" href="?page=1" rel="prev" data-direction="previous" aria-disabled="true">
++          <span aria-hidden="true">&larr;</span> Previous
++        </a>
++        <span class="page-status" aria-live="polite">Page 1</span>
++        <a id="next" href="?page=2" rel="next" data-direction="next">
++          Next <span aria-hidden="true">&rarr;</span>
++        </a>
++      </div>
++      <script>
++        (() => {
++          const n = parseInt(new URLSearchParams(location.search).get('page'), 10);
++          const page = Number.isFinite(n) && n > 0 ? n : 1;
++          const prev = document.getElementById('previous');
++          const next = document.getElementById('next');
++          next.href = `?page=${page + 1}`;
++          if (page > 1) {
++            prev.href = `?page=${page - 1}`;
++            prev.removeAttribute('aria-disabled');
++          } else {
++            prev.setAttribute('tabindex', '-1');
++          }
++          document.querySelector('.pagination .page-status').textContent = `Page ${page}`;
++        })();
++      </script>
+     </section>
+   </main>
+ 
+   <footer>

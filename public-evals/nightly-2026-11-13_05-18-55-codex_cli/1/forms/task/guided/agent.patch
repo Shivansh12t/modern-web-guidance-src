@@ -1,0 +1,63 @@
+diff --git a/REGISTRATION.md b/REGISTRATION.md
+new file mode 100644
+--- a/REGISTRATION.md
++++ b/REGISTRATION.md
+@@ -0,0 +1,58 @@
++Daily Grind registration integration
++===================================
++
++This repository is a static site. The registration interface is implemented in
++`index.html`, `rewards.css`, and `rewards.js`. It does not store accounts or pretend
++to register people locally. Deploy over HTTPS and connect the same-origin API
++below before accepting real registrations.
++
++API contract
++------------
++
++- GET /api/rewards/csrf: return JSON `{ "token": "<server-issued session-bound token>" }`.
++  Tokens must be unpredictable, cryptographically generated, 32–512 characters,
++  bound to the user's session and validated by the server on registration.
++  Use Cache-Control: no-store and a Secure, HttpOnly, SameSite session cookie.
++- POST /api/rewards/register: accept JSON with name, email, password, coffee
++  (hot/iced/both/null), updates (boolean), terms (boolean), and website (honeypot).
++  Require a valid X-CSRF-Token, same-origin Origin/Fetch-Metadata checks, and HTTPS.
++  The no-JavaScript fallback sends URL-encoded fields to the same POST endpoint;
++  either serve a server-rendered form with a server-issued hidden CSRF token or
++  reject requests without the token with an accessible error page. Never bypass
++  CSRF validation for the fallback.
++- After the server has safely accepted registration and queued a verification
++  email, return JSON `{ "status": "verification_required" }` (e.g. HTTP 202).
++  Use the same response for an existing email to prevent account enumeration.
++- Field validation: return HTTP 422 and JSON `{ "errors": { "name": "..." } }`.
++  Supported keys: name, email, password, terms. Messages must never echo passwords
++  or reveal whether an email has an existing account. HTTP 403 signals CSRF
++  failure; HTTP 429 signals rate limiting. Other/network errors remain retryable.
++
++Server responsibilities
++-----------------------
++
++Enforce all types, lengths, allowed preference values, required consent, Unicode
++names, normalized email, and password length (15–128 characters) on the server.
++Check passwords against a compromised-password blocklist. Hash passwords using
++an established password-hashing library (e.g. Argon2id); never store plaintext.
++Use parameterized database queries, uniqueness constraints and transactions to
++handle duplicate requests safely. Rate-limit registrations and verification
++emails; reject filled honeypots. Send expiring, single-use verification links.
++Do not activate accounts before verification. Record terms version and consent
++timestamps separately from optional marketing consent. Redact credentials and
++personal details from logs; never cache registration responses. No form data is
++written to localStorage, sessionStorage, URLs, or analytics by this interface.
++
++Serve the real Rewards Terms at /terms and privacy notice at /privacy-policy,
++and ensure the published program matches the advertised benefits. These routes
++and account infrastructure are not provided by this static repository.
++
++Recommended deployment headers: Content-Security-Policy (script-src 'self';
++connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none';
++img-src 'self' https://images.unsplash.com; allow the existing inline stylesheet
++by its CSP hash or move it into a same-origin stylesheet), HSTS, and
++X-Content-Type-Options: nosniff. Restrict framing using a response header rather
++than relying on a CSP meta element.
++
++Security reference:
++https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html

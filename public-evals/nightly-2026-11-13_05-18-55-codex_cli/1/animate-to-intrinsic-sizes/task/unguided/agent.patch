@@ -1,0 +1,188 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,13 +151,126 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Grid tracks animate to the content's natural height without a height cap. */
++    .collapsible {
++      display: grid;
++      grid-template-rows: 1fr;
++      opacity: 1;
++      visibility: visible;
++      transition: grid-template-rows 320ms ease, opacity 320ms ease,
++        visibility 0s;
++    }
++
++    .collapsible.is-collapsed {
++      grid-template-rows: 0fr;
++      opacity: 0;
++      visibility: hidden;
++      transition: grid-template-rows 320ms ease, opacity 320ms ease,
++        visibility 0s 320ms;
++    }
++
++    .collapsible-inner {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    #promo-alert {
++      background: var(--accent);
++    }
++
++    .promo-message {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 20px;
++      padding: 12px 5%;
++      text-align: center;
++    }
++
++    #alert-dismiss {
++      flex-shrink: 0;
++      border: 0;
++      background: transparent;
++      color: var(--text);
++      font-size: 1.5rem;
++      width: 44px;
++      height: 44px;
++      cursor: pointer;
++    }
++
++    .faq {
++      margin-top: 40px;
++    }
++
++    .faq h2 {
++      margin-bottom: 20px;
++      text-align: center;
++    }
++
++    .faq-item {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      width: 100%;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 20px;
++      padding: 20px;
++      border: 0;
++      background: transparent;
++      color: var(--primary);
++      font: inherit;
++      font-weight: 600;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    .faq-icon {
++      transition: transform 320ms ease;
++    }
++
++    #faq-trigger[aria-expanded="true"] .faq-icon {
++      transform: rotate(45deg);
++    }
++
++    .faq-answer {
++      padding: 0 20px 20px;
++    }
++
++    button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -4px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .collapsible,
++      .collapsible.is-collapsed,
++      .faq-icon {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <aside id="promo-alert" class="collapsible" aria-label="Special offer">
++    <div class="collapsible-inner">
++      <div class="promo-message">
++        <p><strong>A little perk for your morning.</strong> Join Rewards and enjoy a free coffee on your birthday.</p>
++        <button id="alert-dismiss" type="button" aria-label="Dismiss special offer">&times;</button>
++      </div>
++    </div>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +307,24 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <div class="faq-item">
++        <h3>
++          <button id="faq-trigger" type="button" aria-expanded="false" aria-controls="faq-content">
++            Where do your coffee beans come from?
++            <span class="faq-icon" aria-hidden="true">+</span>
++          </button>
++        </h3>
++        <div id="faq-content" class="collapsible is-collapsed" role="region" aria-labelledby="faq-trigger" aria-hidden="true" inert>
++          <div class="collapsible-inner">
++            <p class="faq-answer">We source our beans ethically from coffee-growing communities around the world and roast them locally to bring out their unique flavors. Ask our team about the origin of today's roast!</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +335,32 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const faqTrigger = document.getElementById('faq-trigger');
++    const faqContent = document.getElementById('faq-content');
++    const promoAlert = document.getElementById('promo-alert');
++    const alertDismiss = document.getElementById('alert-dismiss');
++
++    function setExpanded(element, expanded) {
++      element.classList.toggle('is-collapsed', !expanded);
++      element.setAttribute('aria-hidden', String(!expanded));
++      element.inert = !expanded;
++    }
++
++    faqTrigger.addEventListener('click', () => {
++      const expanded = faqTrigger.getAttribute('aria-expanded') !== 'true';
++      faqTrigger.setAttribute('aria-expanded', String(expanded));
++      setExpanded(faqContent, expanded);
++    });
++
++    alertDismiss.addEventListener('click', () => {
++      if (promoAlert.contains(document.activeElement)) {
++        document.querySelector('nav a').focus({ preventScroll: true });
++      }
++      setExpanded(promoAlert, false);
++    });
++  </script>
+ </body>
+ 
+ </html>

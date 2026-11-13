@@ -1,0 +1,275 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,133 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Parallax Section */
++    .parallax {
++      position: relative;
++      min-height: 70vh;
++      overflow: hidden;
++      isolation: isolate;
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      padding: 80px 20px;
++      background: var(--primary); /* fallback while image loads */
++      color: white;
++    }
++
++    .parallax__layer {
++      position: absolute;
++      left: 0;
++      right: 0;
++      pointer-events: none;
++    }
++
++    /* Oversized so the translated layer never reveals an edge */
++    .parallax__layer--back {
++      top: -25%;
++      bottom: -25%;
++      z-index: -3;
++      background:
++        linear-gradient(rgba(30, 18, 14, 0.65), rgba(30, 18, 14, 0.75)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70') center / cover no-repeat;
++    }
++
++    .parallax__layer--mid,
++    .parallax__layer--front {
++      top: 0;
++      bottom: 0;
++    }
++
++    .parallax__layer--mid {
++      z-index: -2;
++      opacity: 0.35;
++    }
++
++    .parallax__layer--front {
++      z-index: -1;
++      opacity: 0.8;
++    }
++
++    .parallax.is-active .parallax__layer {
++      will-change: transform;
++    }
++
++    .bean {
++      position: absolute;
++      left: var(--x);
++      top: var(--y);
++      width: var(--s, 40px);
++      height: auto;
++      transform: rotate(var(--r, 0deg));
++      color: var(--accent);
++    }
++
++    .parallax__layer--mid .bean {
++      color: var(--secondary);
++      filter: blur(1.5px);
++    }
++
++    .parallax__content {
++      position: relative;
++      max-width: 640px;
++      text-align: center;
++      background: rgba(30, 18, 14, 0.55);
++      padding: 40px 32px;
++      border-radius: 12px;
++      backdrop-filter: blur(4px);
++      -webkit-backdrop-filter: blur(4px);
++    }
++
++    .parallax__eyebrow {
++      text-transform: uppercase;
++      letter-spacing: 3px;
++      font-size: 0.8rem;
++      color: var(--accent);
++      margin-bottom: 0.5rem;
++    }
++
++    .parallax__content h2 {
++      font-size: 2.25rem;
++      line-height: 1.2;
++      margin-bottom: 1rem;
++    }
++
++    .parallax__content .btn {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .parallax__content .btn:hover {
++      background: #ffc277;
++    }
++
++    .btn:focus-visible,
++    nav a:focus-visible,
++    .footer-links a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @media (max-width: 600px) {
++      .parallax__content h2 {
++        font-size: 1.75rem;
++      }
++
++      .bean--optional {
++        display: none;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .parallax__layer {
++        transform: none !important;
++        will-change: auto !important;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +298,44 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" data-parallax aria-labelledby="roastery-heading">
++    <!-- Shared bean shape (decorative) -->
++    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
++      <defs>
++        <symbol id="bean-shape" viewBox="0 0 40 56">
++          <ellipse cx="20" cy="28" rx="18" ry="26" fill="currentColor" />
++          <path d="M20 4c-6 8 6 16 0 24s6 16 0 24" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="3" stroke-linecap="round" />
++        </symbol>
++      </defs>
++    </svg>
++
++    <div class="parallax__layer parallax__layer--back" data-speed="0.25" aria-hidden="true"></div>
++    <div class="parallax__layer parallax__layer--mid" data-speed="0.45" aria-hidden="true">
++      <svg class="bean" style="--x:6%;--y:18%;--s:56px;--r:-20deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean bean--optional" style="--x:22%;--y:70%;--s:40px;--r:35deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean bean--optional" style="--x:48%;--y:10%;--s:34px;--r:60deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean" style="--x:72%;--y:62%;--s:60px;--r:-45deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean bean--optional" style="--x:88%;--y:20%;--s:44px;--r:15deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean bean--optional" style="--x:60%;--y:85%;--s:30px;--r:80deg" focusable="false"><use href="#bean-shape" /></svg>
++    </div>
++    <div class="parallax__layer parallax__layer--front" data-speed="0.8" aria-hidden="true">
++      <svg class="bean" style="--x:3%;--y:60%;--s:72px;--r:25deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean bean--optional" style="--x:15%;--y:8%;--s:48px;--r:-60deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean" style="--x:80%;--y:80%;--s:84px;--r:-15deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean bean--optional" style="--x:92%;--y:45%;--s:52px;--r:50deg" focusable="false"><use href="#bean-shape" /></svg>
++      <svg class="bean bean--optional" style="--x:38%;--y:88%;--s:44px;--r:-30deg" focusable="false"><use href="#bean-shape" /></svg>
++    </div>
++
++    <div class="parallax__content">
++      <p class="parallax__eyebrow">From Farm to Cup</p>
++      <h2 id="roastery-heading">Roasted in Small Batches, Every Morning</h2>
++      <p>We partner directly with growers and roast just a few kilos at a time, so every bag that leaves our roastery is at its peak flavor.</p>
++      <a href="/about" class="btn">Discover Our Process</a>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +367,92 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    /*
++     * Lightweight scroll parallax.
++     * - Only transforms (GPU-composited), batched in requestAnimationFrame.
++     * - Runs only while the section is on screen (IntersectionObserver).
++     * - Fully disabled when the user prefers reduced motion (and reacts live if that changes).
++     * - Purely decorative: content is readable and static without JS.
++     */
++    (function () {
++      var section = document.querySelector('[data-parallax]');
++      if (!section) return;
++
++      var layers = Array.prototype.map.call(
++        section.querySelectorAll('[data-speed]'),
++        function (el) { return { el: el, speed: parseFloat(el.dataset.speed) || 0 }; }
++      );
++      var motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++      var visible = false;
++      var ticking = false;
++      var viewportH = window.innerHeight;
++
++      function reset() {
++        layers.forEach(function (l) { l.el.style.transform = ''; });
++      }
++
++      function update() {
++        ticking = false;
++        if (!visible || motionQuery.matches) return;
++
++        var rect = section.getBoundingClientRect();
++        // Distance of the section's center from the viewport's center (px).
++        var offset = rect.top + rect.height / 2 - viewportH / 2;
++        // Background is oversized by 25% top/bottom; keep motion within it.
++        var limit = rect.height * 0.25;
++
++        for (var i = 0; i < layers.length; i++) {
++          var l = layers[i];
++          var y = offset * l.speed * -1;
++          if (y > limit) y = limit;
++          else if (y < -limit) y = -limit;
++          l.el.style.transform = 'translate3d(0,' + y.toFixed(1) + 'px,0)';
++        }
++      }
++
++      function requestTick() {
++        if (!ticking) {
++          ticking = true;
++          window.requestAnimationFrame(update);
++        }
++      }
++
++      function setActive(on) {
++        visible = on;
++        section.classList.toggle('is-active', on && !motionQuery.matches);
++        if (on) requestTick();
++      }
++
++      if ('IntersectionObserver' in window) {
++        new IntersectionObserver(function (entries) {
++          setActive(entries[0].isIntersecting);
++        }, { rootMargin: '100px 0px' }).observe(section);
++      } else {
++        setActive(true);
++      }
++
++      window.addEventListener('scroll', requestTick, { passive: true });
++      window.addEventListener('resize', function () {
++        viewportH = window.innerHeight;
++        requestTick();
++      }, { passive: true });
++
++      function onMotionPrefChange() {
++        if (motionQuery.matches) {
++          section.classList.remove('is-active');
++          reset();
++        } else {
++          setActive(visible);
++        }
++      }
++      if (motionQuery.addEventListener) motionQuery.addEventListener('change', onMotionPrefChange);
++      else if (motionQuery.addListener) motionQuery.addListener(onMotionPrefChange);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

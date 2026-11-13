@@ -1,0 +1,201 @@
+diff --git a/index.html b/index.html
+index 66c9173..e7ae9f3 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,100 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal drinks table */
++    .table-wrap {
++      margin-top: 30px;
++      overflow-x: auto;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .table-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      margin-top: 30px;
++      color: #6d4c41;
++    }
++
++    #seasonal-drinks {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.95rem;
++    }
++
++    #seasonal-drinks caption {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    #seasonal-drinks th,
++    #seasonal-drinks td {
++      padding: 12px 16px;
++      text-align: left;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    #seasonal-drinks th.num,
++    #seasonal-drinks td.num {
++      text-align: right;
++    }
++
++    #seasonal-drinks thead th {
++      background: var(--primary);
++      color: white;
++      padding: 0;
++    }
++
++    #seasonal-drinks thead th button {
++      all: inherit;
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      width: 100%;
++      padding: 12px 16px;
++      cursor: pointer;
++      font-weight: bold;
++      box-sizing: border-box;
++    }
++
++    #seasonal-drinks thead th.num button {
++      justify-content: flex-end;
++    }
++
++    #seasonal-drinks thead th button:hover,
++    #seasonal-drinks thead th button:focus-visible {
++      color: var(--accent);
++      outline: none;
++    }
++
++    #seasonal-drinks .sort-indicator::after {
++      content: "\2195";
++      opacity: 0.5;
++    }
++
++    #seasonal-drinks th[aria-sort="ascending"] .sort-indicator::after {
++      content: "\25B2";
++      opacity: 1;
++    }
++
++    #seasonal-drinks th[aria-sort="descending"] .sort-indicator::after {
++      content: "\25BC";
++      opacity: 1;
++    }
++
++    #seasonal-drinks tbody tr:nth-child(even) {
++      background: #f5f0ee;
++    }
++
++    #seasonal-drinks tbody tr:hover {
++      background: #efe6e2;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +288,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <p class="table-hint">Compare our seasonal lineup &mdash; click any column header to sort.</p>
++      <div class="table-wrap">
++        <table id="seasonal-drinks">
++          <caption>Seasonal featured drinks. Column headers are buttons that sort the table.</caption>
++          <thead>
++            <tr>
++              <th scope="col" data-type="text" aria-sort="none"><button type="button">Drink <span class="sort-indicator" aria-hidden="true"></span></button></th>
++              <th scope="col" data-type="text" aria-sort="none"><button type="button">Roast <span class="sort-indicator" aria-hidden="true"></span></button></th>
++              <th scope="col" data-type="text" aria-sort="none"><button type="button">Serving <span class="sort-indicator" aria-hidden="true"></span></button></th>
++              <th scope="col" class="num" data-type="number" aria-sort="none"><button type="button">Caffeine (mg) <span class="sort-indicator" aria-hidden="true"></span></button></th>
++              <th scope="col" class="num" data-type="number" aria-sort="none"><button type="button">Calories <span class="sort-indicator" aria-hidden="true"></span></button></th>
++              <th scope="col" class="num" data-type="number" aria-sort="none"><button type="button">Price <span class="sort-indicator" aria-hidden="true"></span></button></th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <td>Maple Oat Latte</td>
++              <td>Medium</td>
++              <td>Hot or iced, 16 oz</td>
++              <td class="num">150</td>
++              <td class="num">210</td>
++              <td class="num" data-value="5.75">$5.75</td>
++            </tr>
++            <tr>
++              <td>Dark Roast Espresso</td>
++              <td>Dark</td>
++              <td>Hot, double shot (2 oz)</td>
++              <td class="num">125</td>
++              <td class="num">5</td>
++              <td class="num" data-value="3.25">$3.25</td>
++            </tr>
++            <tr>
++              <td>Cold Brew</td>
++              <td>Medium-Dark</td>
++              <td>Iced, 16 oz</td>
++              <td class="num">200</td>
++              <td class="num">10</td>
++              <td class="num" data-value="4.50">$4.50</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +344,45 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var table = document.getElementById('seasonal-drinks');
++      if (!table) return;
++      var headers = table.querySelectorAll('thead th');
++      var tbody = table.tBodies[0];
++
++      function cellValue(row, index, type) {
++        var cell = row.cells[index];
++        var raw = cell.getAttribute('data-value') || cell.textContent.trim();
++        if (type === 'number') {
++          var n = parseFloat(raw.replace(/[^0-9.\-]/g, ''));
++          return isNaN(n) ? 0 : n;
++        }
++        return raw.toLowerCase();
++      }
++
++      headers.forEach(function (th, index) {
++        th.querySelector('button').addEventListener('click', function () {
++          var type = th.getAttribute('data-type');
++          var direction = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
++          var factor = direction === 'ascending' ? 1 : -1;
++
++          var rows = Array.prototype.slice.call(tbody.rows);
++          rows.sort(function (a, b) {
++            var va = cellValue(a, index, type);
++            var vb = cellValue(b, index, type);
++            if (type === 'number') return (va - vb) * factor;
++            return va.localeCompare(vb) * factor;
++          });
++          rows.forEach(function (row) { tbody.appendChild(row); });
++
++          headers.forEach(function (other) { other.setAttribute('aria-sort', 'none'); });
++          th.setAttribute('aria-sort', direction);
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

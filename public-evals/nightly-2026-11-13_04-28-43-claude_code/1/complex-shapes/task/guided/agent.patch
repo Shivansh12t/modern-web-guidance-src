@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,10 +85,59 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      /* Containing block for the decorative shape; clips any overflow so it never affects layout */
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+     }
+ 
++    /* Hero content sits above the decorative shape */
++    .hero > :not(.shaped-element) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative organic shape: taken out of flow (absolute) with a fixed
++       aspect-ratio so it reserves no space and causes no layout shift. */
++    .shaped-element {
++      position: absolute;
++      z-index: 0;
++      right: -4%;
++      bottom: -12%;
++      inline-size: clamp(180px, 32vw, 440px);
++      aspect-ratio: 1 / 1;
++      pointer-events: none;
++      background: url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=75') center / cover no-repeat,
++        var(--accent);
++      opacity: 0.85;
++
++      /* Free-form organic silhouette via an SVG mask (scales with the element) */
++      --blob: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath fill='%23000' d='M43.4,-62.7C55.4,-52.3,63.6,-38.4,69.6,-23C75.6,-7.6,79.4,9.3,74.6,23.4C69.8,37.5,56.4,48.8,42.1,58.6C27.8,68.4,12.6,76.7,-3.9,81.9C-20.4,87.2,-38.1,89.4,-50.6,81.4C-63.1,73.4,-70.4,55.2,-75.8,37.4C-81.2,19.6,-84.7,2.2,-80.6,-13.1C-76.5,-28.4,-64.9,-41.6,-51.6,-51.8C-38.3,-62,-23.4,-69.2,-7.9,-70.8C7.6,-72.4,31.4,-73.1,43.4,-62.7Z' transform='translate(100 100)'/%3E%3C/svg%3E");
++      -webkit-mask-image: var(--blob);
++      -webkit-mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      -webkit-mask-position: center;
++      mask-image: var(--blob);
++      mask-size: 100% 100%;
++      mask-repeat: no-repeat;
++      mask-position: center;
++    }
++
++    /* Fallback for browsers without CSS masking: simpler organic-ish shape */
++    @supports (not (mask-image: url(x))) and (not (-webkit-mask-image: url(x))) {
++      .shaped-element {
++        clip-path: ellipse(46% 42% at 50% 50%);
++      }
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        opacity: 0.4;
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -168,8 +217,9 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

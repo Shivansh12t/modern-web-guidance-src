@@ -1,0 +1,247 @@
+diff --git a/components/drink-card.js b/components/drink-card.js
+new file mode 100644
+index 0000000..7538a12
+--- /dev/null
++++ b/components/drink-card.js
+@@ -0,0 +1,171 @@
++/**
++ * <drink-card> — reusable menu card rendered in Shadow DOM so its layout and
++ * styles are isolated from (and cannot leak into) the page's global CSS.
++ *
++ * Content (light DOM, so it stays readable without JS and is indexable):
++ *   slot="title"        Drink name (required)
++ *   default slot        Description text
++ *
++ * Attributes:
++ *   href                Action link URL (link is hidden if omitted)
++ *   action-label        Action link text (default: "View Details")
++ *   limited             Boolean. Shows the "Limited" badge when present.
++ *   badge-label         Badge text (default: "Limited")
++ *
++ * All attributes are reactive, so the page can toggle the badge at any time:
++ *   card.limited = true;                // or card.setAttribute('limited', '')
++ *   card.limited = false;               // or card.removeAttribute('limited')
++ *
++ * Theming hooks (optional, the only intended way to style from outside):
++ *   --drink-card-primary, --drink-card-accent, --drink-card-text,
++ *   --drink-card-bg, --drink-card-btn-hover
++ *   ::part(card | title | description | action | badge)
++ */
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      /* Reset every inherited property so page styles can't bleed in. */
++      all: initial;
++      display: block;
++      box-sizing: border-box;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      line-height: 1.6;
++      color: var(--drink-card-text, #3e2723);
++    }
++
++    :host([hidden]) { display: none; }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    .card {
++      position: relative;
++      height: 100%;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      background: var(--drink-card-bg, #fff);
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .badge {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      background: var(--drink-card-accent, #ffab40);
++      color: var(--drink-card-text, #3e2723);
++      font-size: 0.7rem;
++      font-weight: 700;
++      letter-spacing: 0.5px;
++      text-transform: uppercase;
++      padding: 2px 8px;
++      border-radius: 999px;
++    }
++
++    .badge[hidden], .btn[hidden] { display: none; }
++
++    .title {
++      display: block;
++      margin-bottom: 10px;
++      font-size: 1.17em;
++      font-weight: bold;
++      color: var(--drink-card-primary, #4e342e);
++    }
++
++    /* Leave room for the badge so long titles don't run underneath it. */
++    :host([limited]) .title { padding: 0 64px; }
++
++    .description { flex: 1; }
++
++    .btn {
++      display: inline-block;
++      background: var(--drink-card-primary, #4e342e);
++      color: #fff;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    .btn:hover { background: var(--drink-card-btn-hover, #3e2723); }
++
++    .btn:focus-visible {
++      outline: 2px solid var(--drink-card-accent, #ffab40);
++      outline-offset: 2px;
++    }
++  </style>
++  <article class="card" part="card">
++    <span class="badge" part="badge" hidden></span>
++    <h3 class="title" part="title"><slot name="title"></slot></h3>
++    <p class="description" part="description"><slot></slot></p>
++    <a class="btn" part="action" hidden></a>
++  </article>
++`;
++
++class DrinkCard extends HTMLElement {
++  static observedAttributes = ['href', 'action-label', 'limited', 'badge-label'];
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.appendChild(template.content.cloneNode(true));
++    this._badge = root.querySelector('.badge');
++    this._action = root.querySelector('.btn');
++  }
++
++  connectedCallback() {
++    // Handle properties set before the element was upgraded.
++    for (const prop of ['href', 'actionLabel', 'limited', 'badgeLabel']) {
++      if (Object.prototype.hasOwnProperty.call(this, prop)) {
++        const value = this[prop];
++        delete this[prop];
++        this[prop] = value;
++      }
++    }
++    this._render();
++  }
++
++  attributeChangedCallback() {
++    this._render();
++  }
++
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(v) { v ? this.setAttribute('href', v) : this.removeAttribute('href'); }
++
++  get actionLabel() { return this.getAttribute('action-label') || 'View Details'; }
++  set actionLabel(v) { this.setAttribute('action-label', v); }
++
++  get limited() { return this.hasAttribute('limited'); }
++  set limited(v) { this.toggleAttribute('limited', Boolean(v)); }
++
++  get badgeLabel() { return this.getAttribute('badge-label') || 'Limited'; }
++  set badgeLabel(v) { this.setAttribute('badge-label', v); }
++
++  _render() {
++    this._badge.textContent = this.badgeLabel;
++    this._badge.hidden = !this.limited;
++
++    const href = this.href;
++    this._action.hidden = !href;
++    if (href) {
++      this._action.setAttribute('href', href);
++    } else {
++      this._action.removeAttribute('href');
++    }
++    this._action.textContent = this.actionLabel;
++  }
++}
++
++if (!customElements.get('drink-card')) {
++  customElements.define('drink-card', DrinkCard);
++}
++
++export default DrinkCard;
+diff --git a/index.html b/index.html
+index 66c9173..68b796f 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,14 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    /* Card layout/styles live inside <drink-card>'s Shadow DOM
++       (components/drink-card.js). Only pre-upgrade fallback here. */
++    drink-card:not(:defined) {
++      display: block;
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -153,6 +148,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="components/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +174,18 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <drink-card href="/menu/seasonal" limited>
++          <span slot="title">Maple Oat Latte</span>
++          Creamy oat milk with a hint of Vermont maple syrup.
++        </drink-card>
++        <drink-card href="/menu/espresso">
++          <span slot="title">Dark Roast Espresso</span>
++          Bold, smokey, and perfect for a morning boost.
++        </drink-card>
++        <drink-card href="/menu/cold-brew">
++          <span slot="title">Cold Brew</span>
++          Steeped for 18 hours for maximum smoothness.
++        </drink-card>
+       </div>
+     </section>
+   </main>

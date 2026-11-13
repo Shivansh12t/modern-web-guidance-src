@@ -1,0 +1,174 @@
+diff --git a/src/components/TopStoriesCarousel.astro b/src/components/TopStoriesCarousel.astro
+new file mode 100644
+index 0000000..77b313b
+--- /dev/null
++++ b/src/components/TopStoriesCarousel.astro
+@@ -0,0 +1,127 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++<top-stories-carousel class="block bg-white border-b border-gray-300" role="region" aria-label="Top Stories" aria-roledescription="carousel">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <h2 class="text-sm font-semibold text-amber-800 mb-2">Top Stories</h2>
++        <div class="story-viewport" id="top-stories-slides">
++            {articles.map((article, index) => (
++                <div class:list={['story-slide', { 'is-active': index === 0 }]} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${articles.length}`} aria-hidden={index !== 0 ? 'true' : undefined} inert={index !== 0}>
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="story-link font-bold text-gray-900 hover:text-amber-400">
++                        <h3>{article.data.title}</h3>
++                    </a>
++                    <time class="text-xs text-gray-500" datetime={article.data.date.toISOString()}>{article.data.date.toLocaleDateString()}</time>
++                </div>
++            ))}
++        </div>
++        <div class="flex flex-wrap items-center gap-3 mt-3">
++            <button type="button" data-step="-1" aria-controls="top-stories-slides" disabled={articles.length < 2} class="story-control">← Previous</button>
++            <span class="text-xs text-gray-500" aria-live="polite" aria-atomic="true" data-status>{articles.length ? 1 : 0} / {articles.length}</span>
++            <button type="button" data-step="1" aria-controls="top-stories-slides" disabled={articles.length < 2} class="story-control">Next →</button>
++        </div>
++    </div>
++</top-stories-carousel>
++
++<script>
++    class TopStoriesCarousel extends HTMLElement {
++        private controller?: AbortController;
++
++        connectedCallback() {
++            this.controller = new AbortController();
++            const slides = Array.from(this.querySelectorAll<HTMLElement>('.story-slide'));
++            const status = this.querySelector<HTMLElement>('[data-status]');
++            let index = 0;
++            let transitioning = false;
++
++            this.querySelectorAll<HTMLButtonElement>('[data-step]').forEach(button => {
++                button.addEventListener('click', async () => {
++                    if (transitioning || slides.length < 2) return;
++                    const step = Number(button.dataset.step);
++                    const direction = step > 0 ? 'forward' : 'backward';
++                    const update = () => {
++                        slides[index].classList.remove('is-active');
++                        slides[index].inert = true;
++                        slides[index].setAttribute('aria-hidden', 'true');
++                        index = (index + step + slides.length) % slides.length;
++                        slides[index].classList.add('is-active');
++                        slides[index].inert = false;
++                        slides[index].removeAttribute('aria-hidden');
++                        if (status) status.textContent = `${index + 1} / ${slides.length}`;
++                    };
++
++                    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
++                    const supportsTypedTransitions = document.startViewTransition && CSS.supports('selector(:active-view-transition-type(forward))');
++                    if (reducedMotion) {
++                        update();
++                        return;
++                    }
++
++                    transitioning = true;
++                    try {
++                        if (supportsTypedTransitions) {
++                            const transition = document.startViewTransition({ update, types: [direction] });
++                            await transition.finished;
++                        } else {
++                            update();
++                            const animation = slides[index].animate(
++                                [{ transform: `translateX(${step > 0 ? '100%' : '-100%'})` }, { transform: 'translateX(0)' }],
++                                { duration: 300, easing: 'ease-in-out' },
++                            );
++                            await animation.finished;
++                        }
++                    } finally {
++                        transitioning = false;
++                    }
++                }, { signal: this.controller!.signal });
++            });
++        }
++
++        disconnectedCallback() {
++            this.controller?.abort();
++        }
++    }
++
++    if (!customElements.get('top-stories-carousel')) {
++        customElements.define('top-stories-carousel', TopStoriesCarousel);
++    }
++</script>
++
++<style>
++    .story-viewport { display: grid; overflow: hidden; }
++    .story-slide { grid-area: 1 / 1; visibility: hidden; min-width: 0; }
++    .story-slide.is-active { visibility: visible; view-transition-name: top-story; }
++    .story-link { display: block; }
++    .story-control { border: 1px solid var(--color-gray-300); border-radius: 0.25rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; cursor: pointer; }
++    .story-control:hover { background: var(--color-gray-100); }
++    .story-control:active { background: var(--color-amber-100); }
++    .story-control:disabled { cursor: default; opacity: 0.5; }
++    .story-control:focus-visible, .story-link:focus-visible { outline: 2px solid var(--color-amber-800); outline-offset: 2px; }
++</style>
++
++<style is:global>
++    @keyframes story-to-left { to { transform: translateX(-100%); } }
++    @keyframes story-from-right { from { transform: translateX(100%); } }
++    @keyframes story-to-right { to { transform: translateX(100%); } }
++    @keyframes story-from-left { from { transform: translateX(-100%); } }
++
++    html:active-view-transition-type(forward, backward)::view-transition-old(root),
++    html:active-view-transition-type(forward, backward)::view-transition-new(root) { animation: none; }
++    html:active-view-transition-type(forward, backward)::view-transition-group(top-story) { animation-duration: 300ms; animation-timing-function: ease-in-out; overflow: clip; }
++    html:active-view-transition-type(forward, backward)::view-transition-old(top-story),
++    html:active-view-transition-type(forward, backward)::view-transition-new(top-story) { animation-duration: 300ms; animation-timing-function: ease-in-out; mix-blend-mode: normal; }
++    html:active-view-transition-type(forward)::view-transition-old(top-story) { animation-name: story-to-left; }
++    html:active-view-transition-type(forward)::view-transition-new(top-story) { animation-name: story-from-right; }
++    html:active-view-transition-type(backward)::view-transition-old(top-story) { animation-name: story-to-right; }
++    html:active-view-transition-type(backward)::view-transition-new(top-story) { animation-name: story-from-left; }
++
++    @media (prefers-reduced-motion: reduce) {
++        ::view-transition-group(top-story), ::view-transition-old(top-story), ::view-transition-new(top-story) { animation: none !important; }
++    }
++</style>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..29a8886 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import TopStoriesCarousel from '../components/TopStoriesCarousel.astro';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -39,20 +40,7 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesCarousel articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+@@ -81,4 +69,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

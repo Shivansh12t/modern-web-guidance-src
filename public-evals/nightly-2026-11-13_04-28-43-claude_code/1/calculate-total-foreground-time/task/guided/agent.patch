@@ -1,0 +1,77 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,73 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    /*
++     * Foreground-time tracking.
++     *
++     * Primary source: VisibilityStateEntry ('visibility-state' performance
++     * entries, Chromium 115+), which records the full visibility history from
++     * navigation start regardless of when this script runs.
++     *
++     * Fallback (Firefox/Safari): accumulate time between visibilitychange
++     * events. This script is inline in <head> so it runs as early as possible,
++     * which keeps the initial-state guess accurate.
++     */
++    (() => {
++      const supportsVisibilityEntries =
++        'VisibilityStateEntry' in window &&
++        PerformanceObserver.supportedEntryTypes?.includes('visibility-state');
++
++      // Fallback accumulator, only wired up when the native API is missing.
++      let accumulated = 0;
++      let visibleSince = null;
++
++      if (!supportsVisibilityEntries) {
++        // Assume the page has been in its current state since navigation start.
++        if (document.visibilityState === 'visible') visibleSince = 0;
++
++        document.addEventListener('visibilitychange', () => {
++          const now = performance.now();
++          if (document.visibilityState === 'visible') {
++            visibleSince ??= now;
++          } else if (visibleSince !== null) {
++            accumulated += now - visibleSince;
++            visibleSince = null;
++          }
++        });
++      }
++
++      /**
++       * Total time (ms) the page has been visible since navigation start,
++       * excluding periods when the tab was backgrounded or minimized.
++       * @returns {number}
++       */
++      function getTotalForegroundTime() {
++        const now = performance.now();
++
++        if (supportsVisibilityEntries) {
++          const entries = performance.getEntriesByType('visibility-state');
++          if (entries.length > 0) {
++            let total = 0;
++            for (let i = 0; i < entries.length; i++) {
++              if (entries[i].name !== 'visible') continue;
++              const end = i + 1 < entries.length ? entries[i + 1].startTime : now;
++              total += end - entries[i].startTime;
++            }
++            return total;
++          }
++          // Supported but no entries yet: treat as total time since navigation.
++          return now;
++        }
++
++        return accumulated + (visibleSince !== null ? now - visibleSince : 0);
++      }
++
++      window.getTotalForegroundTime = getTotalForegroundTime;
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

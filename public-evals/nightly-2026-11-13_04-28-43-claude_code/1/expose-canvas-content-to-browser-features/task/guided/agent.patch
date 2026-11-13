@@ -1,0 +1,412 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,122 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Customizer */
++    .customizer {
++      margin-top: 60px;
++    }
++
++    .customizer>h2 {
++      text-align: center;
++    }
++
++    .customizer-intro {
++      text-align: center;
++      max-width: 60ch;
++      margin: 0.25rem auto 0;
++    }
++
++    .customizer-layout {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 32px;
++      margin-top: 24px;
++    }
++
++    .cup-stage {
++      position: relative;
++      flex: 1 1 280px;
++      max-width: 400px;
++    }
++
++    #canvas {
++      display: block;
++      width: 100%;
++      aspect-ratio: 400 / 500;
++    }
++
++    /* The drawable label panel lives inside the canvas and is painted onto the cup sleeve */
++    .cup-panel {
++      width: 190px;
++      padding: 10px 12px;
++      font-size: 13px;
++      line-height: 1.3;
++      color: var(--text);
++    }
++
++    .cup-panel h3 {
++      font-size: 14px;
++      text-align: center;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .cup-panel label {
++      display: block;
++      font-weight: 600;
++      margin-top: 6px;
++    }
++
++    .cup-panel input,
++    .cup-panel select {
++      display: block;
++      width: 100%;
++      margin-top: 2px;
++      padding: 4px 6px;
++      font: inherit;
++      color: inherit;
++      background: #fffdf8;
++      border: 1px solid #a1887f;
++      border-radius: 4px;
++    }
++
++    .cup-panel input:focus-visible,
++    .cup-panel select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .cup-panel output {
++      display: block;
++      margin-top: 8px;
++      font-style: italic;
++      text-align: center;
++      min-height: 2.6em;
++    }
++
++    /* Fallback when HTML-in-Canvas is unsupported: overlay the panel on the canvas */
++    .cup-panel.is-overlay {
++      position: absolute;
++      top: 0;
++      left: 0;
++      transform-origin: 0 0;
++    }
++
++    .order-summary {
++      flex: 1 1 260px;
++      max-width: 380px;
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-summary h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .order-summary output {
++      display: block;
++      font-size: 1.1rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +308,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-title">
++      <h2 id="customizer-title">Customize Your Cup</h2>
++      <p class="customizer-intro">Name your cup, pick your milk and syrup, and watch your drink come to life.</p>
++      <div class="customizer-layout">
++        <div class="cup-stage">
++          <canvas id="canvas" content="drawable">
++            <form class="cup-panel" id="cup-panel" drawable>
++              <h3>Your Cup</h3>
++              <label for="cup-name">Name on cup</label>
++              <input id="cup-name" name="name" type="text" maxlength="16" autocomplete="given-name"
++                placeholder="e.g. Sam">
++              <label for="cup-milk">Milk</label>
++              <select id="cup-milk" name="milk">
++                <option value="none">No milk</option>
++                <option value="whole" selected>Whole milk</option>
++                <option value="oat">Oat milk</option>
++                <option value="almond">Almond milk</option>
++                <option value="soy">Soy milk</option>
++              </select>
++              <label for="cup-syrup">Syrup</label>
++              <select id="cup-syrup" name="syrup">
++                <option value="none">No syrup</option>
++                <option value="vanilla">Vanilla</option>
++                <option value="caramel">Caramel</option>
++                <option value="maple" selected>Maple</option>
++                <option value="hazelnut">Hazelnut</option>
++              </select>
++              <output id="cup-label" for="cup-name cup-milk cup-syrup" aria-live="polite"></output>
++            </form>
++          </canvas>
++        </div>
++        <div class="order-summary">
++          <h3>Your Order</h3>
++          <output id="order-text" for="cup-name cup-milk cup-syrup"></output>
++          <a id="order-link" href="/order-online" class="btn">Order This Cup</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +359,237 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const ctx = canvas.getContext('2d');
++      const stage = canvas.parentElement;
++      const panel = document.getElementById('cup-panel');
++      const nameInput = document.getElementById('cup-name');
++      const milkSelect = document.getElementById('cup-milk');
++      const syrupSelect = document.getElementById('cup-syrup');
++      const cupLabel = document.getElementById('cup-label');
++      const orderText = document.getElementById('order-text');
++      const orderLink = document.getElementById('order-link');
++
++      // All drawing happens in a fixed design space, scaled to the canvas size.
++      const DESIGN_W = 400;
++      const DESIGN_H = 500;
++      const CX = 185;                       // cup center x
++      const RIM_Y = 120, BASE_Y = 445;      // cup rim / base y
++      const RIM_HALF = 135, BASE_HALF = 105;
++      const PANEL_X = CX - 95, PANEL_Y = 168; // where the HTML panel is drawn (design units)
++
++      const MILK_COLORS = {
++        none: '#3b2314', whole: '#9b6a45', oat: '#a97c55', almond: '#94643f', soy: '#a0714b'
++      };
++      const SYRUP_COLORS = {
++        none: null, vanilla: '#f3e5ab', caramel: '#c47a2c', maple: '#a0522d', hazelnut: '#8b5a2b'
++      };
++      const SLEEVE_COLORS = {
++        none: '#c8a97e', vanilla: '#e8d9a8', caramel: '#d9a066', maple: '#c98a5b', hazelnut: '#b98e66'
++      };
++
++      const supportsHtmlInCanvas =
++        'content' in HTMLCanvasElement.prototype &&
++        typeof CanvasRenderingContext2D.prototype.drawElementImage === 'function';
++
++      // Fallback: canvas children are not rendered, so overlay the real form on the canvas.
++      if (!supportsHtmlInCanvas) {
++        panel.removeAttribute('drawable');
++        panel.classList.add('is-overlay');
++        stage.append(panel);
++      }
++
++      const halfWidthAt = (y) =>
++        RIM_HALF + (BASE_HALF - RIM_HALF) * ((y - RIM_Y) / (BASE_Y - RIM_Y));
++
++      function drawCup() {
++        const milk = milkSelect.value;
++        const syrup = syrupSelect.value;
++
++        // Steam
++        ctx.save();
++        ctx.strokeStyle = 'rgba(141, 110, 99, 0.35)';
++        ctx.lineWidth = 6;
++        ctx.lineCap = 'round';
++        for (const dx of [-45, 0, 45]) {
++          ctx.beginPath();
++          ctx.moveTo(CX + dx, 100);
++          ctx.bezierCurveTo(CX + dx - 22, 78, CX + dx + 22, 58, CX + dx, 36);
++          ctx.bezierCurveTo(CX + dx - 14, 24, CX + dx + 10, 14, CX + dx, 6);
++          ctx.stroke();
++        }
++        ctx.restore();
++
++        // Saucer
++        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
++        ctx.beginPath();
++        ctx.ellipse(CX + 6, 470, 178, 28, 0, 0, Math.PI * 2);
++        ctx.fill();
++        const saucer = ctx.createLinearGradient(0, 430, 0, 490);
++        saucer.addColorStop(0, '#ffffff');
++        saucer.addColorStop(1, '#d7ccc8');
++        ctx.fillStyle = saucer;
++        ctx.beginPath();
++        ctx.ellipse(CX, 460, 175, 28, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.lineWidth = 1.5;
++        ctx.stroke();
++
++        // Handle
++        ctx.strokeStyle = '#efebe9';
++        ctx.lineWidth = 18;
++        ctx.beginPath();
++        ctx.moveTo(CX + halfWidthAt(170) - 4, 170);
++        ctx.bezierCurveTo(CX + 215, 160, CX + 215, 330, CX + halfWidthAt(340) - 4, 340);
++        ctx.stroke();
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.lineWidth = 2;
++        ctx.stroke();
++
++        // Cup body
++        const body = ctx.createLinearGradient(CX - RIM_HALF, 0, CX + RIM_HALF, 0);
++        body.addColorStop(0, '#d7ccc8');
++        body.addColorStop(0.35, '#ffffff');
++        body.addColorStop(1, '#cfc4bf');
++        ctx.fillStyle = body;
++        ctx.beginPath();
++        ctx.moveTo(CX - RIM_HALF, RIM_Y);
++        ctx.lineTo(CX - BASE_HALF, BASE_Y);
++        ctx.ellipse(CX, BASE_Y, BASE_HALF, 16, 0, Math.PI, 0, true);
++        ctx.lineTo(CX + RIM_HALF, RIM_Y);
++        ctx.closePath();
++        ctx.fill();
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.lineWidth = 1.5;
++        ctx.stroke();
++
++        // Sleeve behind the HTML panel
++        const sTop = PANEL_Y - 8;
++        const sBot = PANEL_Y + panelHeight() + 8;
++        ctx.fillStyle = SLEEVE_COLORS[syrup];
++        ctx.beginPath();
++        ctx.moveTo(CX - halfWidthAt(sTop) - 2, sTop);
++        ctx.lineTo(CX + halfWidthAt(sTop) + 2, sTop);
++        ctx.lineTo(CX + halfWidthAt(sBot) + 2, sBot);
++        ctx.lineTo(CX - halfWidthAt(sBot) - 2, sBot);
++        ctx.closePath();
++        ctx.fill();
++        ctx.fillStyle = 'rgba(255, 253, 248, 0.92)';
++        ctx.beginPath();
++        ctx.roundRect(PANEL_X - 2, PANEL_Y - 2, 194, panelHeight() + 4, 8);
++        ctx.fill();
++
++        // Rim + coffee surface
++        ctx.fillStyle = '#ffffff';
++        ctx.beginPath();
++        ctx.ellipse(CX, RIM_Y, RIM_HALF, 24, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.strokeStyle = '#bcaaa4';
++        ctx.stroke();
++        const coffee = ctx.createRadialGradient(CX, RIM_Y + 4, 10, CX, RIM_Y + 4, 125);
++        coffee.addColorStop(0, milk === 'none' ? '#5a3825' : '#e9d3b5');
++        coffee.addColorStop(milk === 'none' ? 0.3 : 0.45, MILK_COLORS[milk]);
++        coffee.addColorStop(1, '#2e1a0e');
++        ctx.fillStyle = coffee;
++        ctx.beginPath();
++        ctx.ellipse(CX, RIM_Y + 4, RIM_HALF - 12, 17, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        // Syrup drizzle swirl
++        const syrupColor = SYRUP_COLORS[syrup];
++        if (syrupColor) {
++          ctx.save();
++          ctx.strokeStyle = syrupColor;
++          ctx.lineWidth = 3;
++          ctx.lineCap = 'round';
++          ctx.beginPath();
++          for (let t = 0; t <= Math.PI * 5; t += 0.1) {
++            const r = 6 + t * 5.5;
++            const x = CX + Math.cos(t) * r;
++            const y = RIM_Y + 4 + Math.sin(t) * r * 0.13;
++            t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
++          }
++          ctx.stroke();
++          ctx.restore();
++        }
++      }
++
++      // Panel size in design units (= its CSS size, since the panel is drawn at the design scale).
++      const panelHeight = () => panel.offsetHeight || 230;
++
++      function scale() {
++        return canvas.width / DESIGN_W; // device pixels per design unit
++      }
++
++      function render() {
++        ctx.setTransform(1, 0, 0, 1, 0, 0);
++        ctx.clearRect(0, 0, canvas.width, canvas.height);
++        ctx.setTransform(scale(), 0, 0, scale(), 0, 0);
++        drawCup();
++        if (supportsHtmlInCanvas) {
++          // Draws the live form; the browser syncs hit testing/focus rings to this position.
++          ctx.drawElementImage(panel, PANEL_X, PANEL_Y, panel.offsetWidth, panel.offsetHeight);
++        }
++      }
++
++      function positionOverlay() {
++        const s = canvas.clientWidth / DESIGN_W; // CSS px per design unit
++        panel.style.transform = `translate(${PANEL_X * s}px, ${PANEL_Y * s}px) scale(${s})`;
++      }
++
++      function requestRender() {
++        if (supportsHtmlInCanvas) canvas.requestPaint();
++        else render();
++      }
++
++      if (supportsHtmlInCanvas) canvas.onpaint = render;
++
++      // Keep the backing store at device-pixel resolution for crisp high-DPI rendering.
++      const observer = new ResizeObserver(([entry]) => {
++        const dpc = entry.devicePixelContentBoxSize;
++        canvas.width = dpc
++          ? dpc[0].inlineSize
++          : Math.round(entry.contentRect.width * window.devicePixelRatio);
++        canvas.height = dpc
++          ? dpc[0].blockSize
++          : Math.round(entry.contentRect.height * window.devicePixelRatio);
++        if (!supportsHtmlInCanvas) positionOverlay();
++        requestRender();
++      });
++      const supportsDevicePixelContentBox =
++        typeof ResizeObserverEntry !== 'undefined' &&
++        'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++      observer.observe(canvas, supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {});
++
++      function updateText() {
++        const name = nameInput.value.trim();
++        const milk = milkSelect.value;
++        const syrup = syrupSelect.value;
++        const milkText = milk === 'none' ? 'black coffee' : `latte with ${milkSelect.selectedOptions[0].text.toLowerCase()}`;
++        const syrupText = syrup === 'none' ? '' : ` & ${syrupSelect.selectedOptions[0].text.toLowerCase()} syrup`;
++        const drink = `${milkText}${syrupText}`;
++        cupLabel.value = name ? `For ${name} ☕` : 'Add your name!';
++        orderText.value = `${name ? `${name}'s` : 'A'} ${drink}.`;
++        const params = new URLSearchParams({ milk, syrup });
++        if (name) params.set('name', name);
++        orderLink.href = `/order-online?${params}`;
++      }
++
++      panel.addEventListener('submit', (e) => e.preventDefault());
++      panel.addEventListener('input', () => {
++        updateText();
++        requestRender();
++      });
++
++      updateText();
++      requestRender();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

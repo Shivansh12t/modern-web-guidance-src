@@ -1,0 +1,222 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,16 +3,81 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --primary-light: #4e342e;
++      --primary-dark: #d7ccc8;
++      --primary: var(--primary-light);
++
++      --secondary-light: #d7ccc8;
++      --secondary-dark: #2c1e1a;
++      --secondary: var(--secondary-light);
++
++      --accent-light: #ffab40;
++      --accent-dark: #ffd180;
++      --accent: var(--accent-light);
++
++      --text-light: #3e2723;
++      --text-dark: #f5f5f5;
++      --text: var(--text-light);
++
++      --bg-light: #fafafa;
++      --bg-dark: #18100d;
++      --light: var(--bg-light);
++
++      --surface-light: #ffffff;
++      --surface-dark: #261a16;
++      --surface: var(--surface-light);
++
++      --btn-bg-light: #4e342e;
++      --btn-bg-dark: #ffab40;
++      --btn-bg: var(--btn-bg-light);
++
++      --btn-hover-light: #3e2723;
++      --btn-hover-dark: #ffd180;
++      --btn-hover: var(--btn-hover-light);
++
++      --btn-text-light: #ffffff;
++      --btn-text-dark: #261a16;
++      --btn-text: var(--btn-text-light);
++
++      --card-shadow-light: rgba(0, 0, 0, 0.1);
++      --card-shadow-dark: rgba(0, 0, 0, 0.45);
++      --card-shadow: var(--card-shadow-light);
++
++      @media (prefers-color-scheme: dark) {
++        --primary: var(--primary-dark);
++        --secondary: var(--secondary-dark);
++        --accent: var(--accent-dark);
++        --text: var(--text-dark);
++        --light: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-hover: var(--btn-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --card-shadow: var(--card-shadow-dark);
++      }
++
++      @supports (color: light-dark(white, black)) {
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --light: light-dark(var(--bg-light), var(--bg-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --btn-bg: light-dark(var(--btn-bg-light), var(--btn-bg-dark));
++        --btn-hover: light-dark(var(--btn-hover-light), var(--btn-hover-dark));
++        --btn-text: light-dark(var(--btn-text-light), var(--btn-text-dark));
++        --card-shadow: light-dark(var(--card-shadow-light), var(--card-shadow-dark));
++      }
++
++      color-scheme: light dark;
++      color: var(--text);
++      accent-color: var(--accent);
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -28,9 +93,9 @@
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
++      background: var(--primary-light);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -106,38 +171,89 @@
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
++    .card,
++    .themed-card {
++      background: var(--surface);
++      color: var(--text);
++      accent-color: var(--accent);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .card h3,
++    .themed-card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .themed-card.force-dark,
++    .force-dark {
++      color-scheme: only dark;
++      background: var(--surface);
++      color: var(--text);
++      accent-color: var(--accent);
++    }
++
++    .themed-card.force-light,
++    .force-light {
++      color-scheme: only light;
++      background: var(--surface);
++      color: var(--text);
++      accent-color: var(--accent);
++    }
++
++    @supports not (color: light-dark(white, black)) {
++      .themed-card.force-dark,
++      .force-dark {
++        --primary: var(--primary-dark);
++        --secondary: var(--secondary-dark);
++        --accent: var(--accent-dark);
++        --text: var(--text-dark);
++        --light: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --btn-bg: var(--btn-bg-dark);
++        --btn-hover: var(--btn-hover-dark);
++        --btn-text: var(--btn-text-dark);
++        --card-shadow: var(--card-shadow-dark);
++      }
++
++      .themed-card.force-light,
++      .force-light {
++        --primary: var(--primary-light);
++        --secondary: var(--secondary-light);
++        --accent: var(--accent-light);
++        --text: var(--text-light);
++        --light: var(--bg-light);
++        --surface: var(--surface-light);
++        --btn-bg: var(--btn-bg-light);
++        --btn-hover: var(--btn-hover-light);
++        --btn-text: var(--btn-text-light);
++        --card-shadow: var(--card-shadow-light);
++      }
++    }
++
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+@@ -177,19 +293,19 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card themed-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card themed-card force-dark">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card themed-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

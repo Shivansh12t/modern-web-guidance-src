@@ -1,0 +1,302 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,71 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Sign-in */
++    .signin {
++      max-width: 420px;
++      margin: -60px auto 0;
++      position: relative;
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
++    }
++
++    .signin h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      text-align: center;
++    }
++
++    .signin label {
++      display: block;
++      font-size: 0.9rem;
++      margin: 12px 0 4px;
++    }
++
++    .signin input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++    }
++
++    .signin input:focus {
++      outline: 2px solid var(--accent);
++      border-color: transparent;
++    }
++
++    .signin button {
++      width: 100%;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++    }
++
++    .signin button:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .form-message {
++      min-height: 1.4em;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      text-align: center;
++    }
++
++    .form-message.error {
++      color: #c62828;
++    }
++
++    .form-message.success {
++      color: #2e7d32;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -173,8 +236,20 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="signin" aria-labelledby="signin-title">
++    <h2 id="signin-title">Sign In</h2>
++    <form id="signin-form" novalidate>
++      <label for="username">Email or username</label>
++      <input id="username" name="username" type="text" autocomplete="username webauthn" required>
++      <label for="password">Password</label>
++      <input id="password" name="password" type="password" autocomplete="current-password" required>
++      <button type="submit" class="btn" data-testid="signin-button">Sign In</button>
++      <p id="signin-message" class="form-message" role="status" aria-live="polite"></p>
++    </form>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +281,205 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const form = document.getElementById('signin-form');
++      const message = document.getElementById('signin-message');
++      const button = form.querySelector('[data-testid="signin-button"]');
++
++      function showMessage(text, type) {
++        message.textContent = text;
++        message.className = 'form-message' + (type ? ' ' + type : '');
++      }
++
++      // ---------- base64url helpers (fallback when JSON helpers are unavailable) ----------
++      function b64urlToBuffer(value) {
++        const b64 = value.replace(/-/g, '+').replace(/_/g, '/');
++        const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
++        const bin = atob(padded);
++        const bytes = new Uint8Array(bin.length);
++        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToB64url(buffer) {
++        const bytes = new Uint8Array(buffer);
++        let bin = '';
++        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
++        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      function parseCreationOptions(json) {
++        if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function') {
++          return PublicKeyCredential.parseCreationOptionsFromJSON(json);
++        }
++        return {
++          ...json,
++          challenge: b64urlToBuffer(json.challenge),
++          user: { ...json.user, id: b64urlToBuffer(json.user.id) },
++          excludeCredentials: (json.excludeCredentials || []).map((c) => ({
++            ...c,
++            id: b64urlToBuffer(c.id),
++          })),
++        };
++      }
++
++      function credentialToJSON(cred) {
++        if (typeof cred.toJSON === 'function') {
++          try { return cred.toJSON(); } catch (_) { /* fall through */ }
++        }
++        const r = cred.response;
++        const response = {
++          clientDataJSON: bufferToB64url(r.clientDataJSON),
++          attestationObject: bufferToB64url(r.attestationObject),
++        };
++        if (typeof r.getTransports === 'function') response.transports = r.getTransports();
++        if (typeof r.getAuthenticatorData === 'function') {
++          response.authenticatorData = bufferToB64url(r.getAuthenticatorData());
++        }
++        if (typeof r.getPublicKey === 'function') {
++          const pk = r.getPublicKey();
++          if (pk) response.publicKey = bufferToB64url(pk);
++        }
++        if (typeof r.getPublicKeyAlgorithm === 'function') {
++          response.publicKeyAlgorithm = r.getPublicKeyAlgorithm();
++        }
++        return {
++          id: cred.id,
++          rawId: bufferToB64url(cred.rawId),
++          type: cred.type,
++          authenticatorAttachment: cred.authenticatorAttachment || undefined,
++          clientExtensionResults: cred.getClientExtensionResults(),
++          response,
++        };
++      }
++
++      // ---------- capability detection ----------
++      async function canSilentlyRegisterPasskey() {
++        if (!window.isSecureContext) return false;
++        if (typeof window.PublicKeyCredential === 'undefined') return false;
++        if (!navigator.credentials || typeof navigator.credentials.create !== 'function') return false;
++        if (typeof PublicKeyCredential.getClientCapabilities !== 'function') return false;
++        try {
++          const caps = await PublicKeyCredential.getClientCapabilities();
++          // conditionalCreate = browser can create a passkey without a modal
++          // right after a password sign-in through its password manager.
++          return caps.conditionalCreate === true;
++        } catch (_) {
++          return false;
++        }
++      }
++
++      // ---------- orphan cleanup ----------
++      async function signalOrphanedCredential(rpId, credentialId) {
++        if (!rpId || !credentialId) return;
++        if (typeof PublicKeyCredential.signalUnknownCredential !== 'function') return;
++        try {
++          await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId });
++        } catch (_) {
++          // best effort only
++        }
++      }
++
++      // ---------- silent passkey upgrade ----------
++      async function silentlyRegisterPasskey() {
++        if (!(await canSilentlyRegisterPasskey())) return;
++
++        const optionsRes = await fetch('/api/register/options', {
++          method: 'POST',
++          credentials: 'same-origin',
++          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++          body: JSON.stringify({}),
++        });
++        if (!optionsRes.ok) return;
++
++        const optionsJSON = await optionsRes.json();
++        const publicKey = parseCreationOptions(optionsJSON.publicKey || optionsJSON);
++        const rpId = (publicKey.rp && publicKey.rp.id) || location.hostname;
++
++        let credential;
++        try {
++          credential = await navigator.credentials.create({
++            publicKey,
++            mediation: 'conditional',
++          });
++        } catch (_) {
++          // NotAllowedError etc.: browser declined to create silently. Do nothing.
++          return;
++        }
++        if (!credential) return;
++
++        let verified = false;
++        try {
++          const verifyRes = await fetch('/api/register/verify', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++            body: JSON.stringify(credentialToJSON(credential)),
++          });
++          if (verifyRes.ok) {
++            const body = await verifyRes.json().catch(() => ({}));
++            verified = body.verified !== false;
++          }
++        } catch (_) {
++          verified = false;
++        }
++
++        if (!verified) {
++          // The authenticator saved a passkey the server doesn't know about;
++          // tell the credential manager to remove it.
++          await signalOrphanedCredential(rpId, credential.id);
++        }
++      }
++
++      // ---------- password sign-in ----------
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++
++        const username = form.username.value.trim();
++        const password = form.password.value;
++        if (!username || !password) {
++          showMessage('Please enter your username and password.', 'error');
++          return;
++        }
++
++        button.disabled = true;
++        showMessage('Signing in…');
++
++        let ok = false;
++        try {
++          const res = await fetch('/api/login', {
++            method: 'POST',
++            credentials: 'same-origin',
++            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++            body: JSON.stringify({ username, password }),
++          });
++          ok = res.ok;
++          if (!ok) {
++            const body = await res.json().catch(() => ({}));
++            showMessage(body.error || body.message || 'Invalid username or password.', 'error');
++          }
++        } catch (_) {
++          showMessage('Unable to reach the server. Please try again.', 'error');
++        } finally {
++          button.disabled = false;
++        }
++
++        if (!ok) return;
++
++        showMessage('Welcome back! You are signed in.', 'success');
++
++        // Fire-and-forget: never surfaces UI or errors to the user.
++        silentlyRegisterPasskey().catch((err) => {
++          console.debug('Silent passkey registration skipped:', err);
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

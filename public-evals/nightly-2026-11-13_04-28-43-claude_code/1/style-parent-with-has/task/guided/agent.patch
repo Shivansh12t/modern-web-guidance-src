@@ -1,0 +1,272 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,133 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Contact Form */
++    .contact {
++      max-width: 640px;
++      margin: 40px auto 0;
++      padding: 0 20px;
++    }
++
++    .contact h2 {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .contact-intro {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .contact-form {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: grid;
++      gap: 16px;
++    }
++
++    .required-note {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .field {
++      display: grid;
++      gap: 6px;
++      padding: 12px 14px;
++      border: 1px solid transparent;
++      border-left: 4px solid var(--secondary);
++      border-radius: 6px;
++      background: #fdfbfa;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .field label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .field input,
++    .field textarea {
++      font: inherit;
++      color: var(--text);
++      padding: 10px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: white;
++      width: 100%;
++    }
++
++    .field textarea {
++      min-height: 140px;
++      resize: vertical;
++    }
++
++    .field input:focus-visible,
++    .field textarea:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .error-msg {
++      display: none;
++      color: #b3261e;
++      font-size: 0.875rem;
++      font-weight: 600;
++    }
++
++    /* Error state: highlight the whole field wrapper only after the user has
++       interacted with the field (or tried to submit), never on page load. */
++    .field:has(:user-invalid) {
++      border-color: #b3261e;
++      border-left-color: #b3261e;
++      background: #fdecea;
++    }
++
++    .field:has(:user-invalid) label {
++      color: #b3261e;
++    }
++
++    .field :user-invalid {
++      border-color: #b3261e;
++    }
++
++    .field:has(:user-invalid) .error-msg {
++      display: block;
++    }
++
++    .field:has(:user-valid) {
++      border-left-color: #2e7d32;
++    }
++
++    .contact-form button {
++      justify-self: start;
++      font: inherit;
++      border: none;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +321,47 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="contact" aria-labelledby="contact-heading">
++    <h2 id="contact-heading">Get in Touch</h2>
++    <p class="contact-intro">Questions, feedback, or catering requests? Drop us a line.</p>
++    <form class="contact-form" id="contact-form" action="/contact" method="post">
++      <p class="required-note">Fields marked <span aria-hidden="true">*</span> are required.</p>
++
++      <div class="field">
++        <label for="contact-name">Name <span aria-hidden="true">*</span></label>
++        <input type="text" id="contact-name" name="name" autocomplete="name" required maxlength="100"
++          data-error="contact-name-error">
++        <div id="contact-name-error" class="error-msg">
++          <span role="img" aria-label="Error">⚠️</span> Enter your name.
++        </div>
++      </div>
++
++      <div class="field">
++        <label for="contact-email">Email <span aria-hidden="true">*</span></label>
++        <span id="contact-email-hint" class="hint">Format: you@example.com</span>
++        <input type="email" id="contact-email" name="email" autocomplete="email" required
++          aria-describedby="contact-email-hint" data-error="contact-email-error">
++        <div id="contact-email-error" class="error-msg">
++          <span role="img" aria-label="Error">⚠️</span> Enter an email address in the format you@example.com.
++        </div>
++      </div>
++
++      <div class="field">
++        <label for="contact-message">Message <span aria-hidden="true">*</span></label>
++        <span id="contact-message-hint" class="hint">At least 10 characters.</span>
++        <textarea id="contact-message" name="message" required minlength="10" maxlength="2000"
++          aria-describedby="contact-message-hint" data-error="contact-message-error"></textarea>
++        <div id="contact-message-error" class="error-msg">
++          <span role="img" aria-label="Error">⚠️</span> Enter a message of at least 10 characters.
++        </div>
++      </div>
++
++      <button type="submit" class="btn">Send Message</button>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +370,86 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep aria-invalid and the error message link in sync with the visual :user-invalid state.
++    (() => {
++      const form = document.getElementById('contact-form');
++      if (!form) return;
++
++      const linkError = (el, shown) => {
++        const errorId = el.dataset.error;
++        if (!errorId) return;
++        const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter((id) => id && id !== errorId);
++        if (shown) ids.push(errorId);
++        if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
++        else el.removeAttribute('aria-describedby');
++      };
++
++      const announcer = document.createElement('div');
++      announcer.setAttribute('aria-live', 'polite');
++      announcer.classList.add('visually-hidden');
++      document.body.append(announcer);
++      let announceTimer;
++      let announcedField;
++
++      const spokenText = (node) => {
++        const copy = node.cloneNode(true);
++        copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
++        copy.querySelectorAll('[role="img"][aria-label]').forEach((n) => n.replaceWith(`${n.getAttribute('aria-label')}: `));
++        return copy.textContent.replace(/\s+/g, ' ').trim();
++      };
++
++      const announceError = (el) => {
++        const error = document.getElementById(el.dataset.error);
++        if (!error) return;
++        const label = el.labels?.[0] ? `${spokenText(el.labels[0])}: ` : '';
++        clearTimeout(announceTimer);
++        announcer.textContent = '';
++        announcedField = el;
++        announceTimer = setTimeout(() => { announcer.textContent = label + spokenText(error); }, 500);
++      };
++
++      const flagged = new WeakSet();
++      const announced = new WeakSet();
++      const syncAria = (el, announce = false) => {
++        if (!el.matches?.('input, select, textarea')) return;
++        if (el.matches(':user-invalid')) {
++          if (announce && !announced.has(el)) {
++            announceError(el);
++            announced.add(el);
++          }
++          el.setAttribute('aria-invalid', 'true');
++          linkError(el, true);
++          flagged.add(el);
++        } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
++          el.setAttribute('aria-invalid', 'false');
++          linkError(el, false);
++          flagged.delete(el);
++          announced.delete(el);
++          if (announcedField === el) {
++            clearTimeout(announceTimer);
++            announcer.textContent = '';
++          }
++        }
++      };
++
++      [...form.elements].forEach((el) => syncAria(el));
++      form.addEventListener('blur', (e) => syncAria(e.target, true), true);
++      form.addEventListener('input', (e) => {
++        if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
++      });
++      form.addEventListener('change', (e) => syncAria(e.target, true), true);
++      form.addEventListener('invalid', (e) => {
++        announced.add(e.target);
++        syncAria(e.target);
++      }, true);
++      form.addEventListener('reset', () => {
++        setTimeout(() => [...form.elements].forEach((el) => syncAria(el)));
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

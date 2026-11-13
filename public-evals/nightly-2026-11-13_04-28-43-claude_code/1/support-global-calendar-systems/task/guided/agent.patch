@@ -1,0 +1,369 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,154 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* World Calendar Converter */
++    .calendar-converter {
++      margin-top: 60px;
++    }
++
++    .calendar-converter > h2,
++    .calendar-converter > .section-intro {
++      text-align: center;
++    }
++
++    .converter-form {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: flex-end;
++      gap: 0.75rem 1rem;
++      margin: 20px auto 0;
++    }
++
++    .converter-form .field {
++      display: flex;
++      flex-direction: column;
++      gap: 0.25rem;
++    }
++
++    .converter-form label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .converter-form input,
++    .converter-form button {
++      font: inherit;
++      font-size: max(1rem, 1em);
++      min-height: 48px;
++      padding: 0.5rem 0.75rem;
++      border-radius: 5px;
++    }
++
++    .converter-form input {
++      border: 2px solid #767676;
++      background: white;
++      color: var(--text);
++      accent-color: var(--primary);
++    }
++
++    .converter-form button {
++      border: none;
++      background: var(--primary);
++      color: white;
++      cursor: pointer;
++    }
++
++    .converter-form button:hover {
++      background: #3e2723;
++    }
++
++    .converter-form input:focus-visible,
++    .converter-form button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .converter-status {
++      text-align: center;
++      margin-top: 10px;
++      font-size: 0.9rem;
++      min-height: 1.6em;
++    }
++
++    .calendar-card {
++      text-align: start;
++    }
++
++    .calendar-card .localized {
++      font-size: 1.1rem;
++      font-weight: 600;
++      margin-bottom: 10px;
++    }
++
++    .calendar-card dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 12px;
++      font-size: 0.9rem;
++      margin-bottom: 12px;
++    }
++
++    .calendar-card dt {
++      color: #6d4c41;
++    }
++
++    .calendar-card dd {
++      font-weight: 600;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .relative-badge {
++      display: inline-block;
++      padding: 0 8px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      border: 1px solid currentColor;
++    }
++
++    .relative-badge[data-relative="Past"] { color: #5d4037; background: #efebe9; }
++    .relative-badge[data-relative="Today"] { color: #1b5e20; background: #e8f5e9; }
++    .relative-badge[data-relative="Future"] { color: #0d47a1; background: #e3f2fd; }
++
++    .calendar-card details summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .month-table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 8px;
++      font-size: 0.85rem;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .month-table th,
++    .month-table td {
++      padding: 4px 6px;
++      border-bottom: 1px solid var(--secondary);
++      text-align: start;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    .month-table tr.current-month {
++      background: #fff3e0;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +340,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-converter" aria-labelledby="calendar-converter-heading">
++      <h2 id="calendar-converter-heading">World Calendar Converter</h2>
++      <p class="section-intro">Coffee is enjoyed around the world &mdash; and so are many calendars. Pick a date to see it in the Islamic, Hebrew, and Japanese calendars.</p>
++
++      <form class="converter-form" id="calendar-form" aria-labelledby="calendar-converter-heading">
++        <div class="field">
++          <label for="calendar-date-input">Date (Gregorian)</label>
++          <input type="date" id="calendar-date-input" name="date" required>
++        </div>
++        <button type="submit">Convert date</button>
++      </form>
++      <p class="converter-status" id="calendar-status" role="status" aria-live="polite"></p>
++
++      <div class="grid calendar-results">
++        <article class="card calendar-card" id="islamic-date" data-calendar="islamic" aria-labelledby="islamic-heading">
++          <h3 id="islamic-heading">Islamic (Hijri)</h3>
++          <div class="calendar-output"><p>Loading&hellip;</p></div>
++        </article>
++        <article class="card calendar-card" id="hebrew-date" data-calendar="hebrew" aria-labelledby="hebrew-heading">
++          <h3 id="hebrew-heading">Hebrew</h3>
++          <div class="calendar-output"><p>Loading&hellip;</p></div>
++        </article>
++        <article class="card calendar-card" id="japanese-date" data-calendar="japanese" aria-labelledby="japanese-heading">
++          <h3 id="japanese-heading">Japanese</h3>
++          <div class="calendar-output"><p>Loading&hellip;</p></div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +381,172 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load the Temporal polyfill only where the native API is missing (e.g. Safari).
++    if (typeof Temporal === 'undefined') {
++      try {
++        const mod = await import('https://esm.sh/temporal-polyfill@1/full');
++        globalThis.Temporal = mod.Temporal;
++      } catch (err) {
++        console.error('Failed to load Temporal polyfill', err);
++      }
++    }
++
++    const form = document.getElementById('calendar-form');
++    const input = document.getElementById('calendar-date-input');
++    const status = document.getElementById('calendar-status');
++    const cards = document.querySelectorAll('.calendar-card');
++
++    // Candidate calendar IDs in order of preference. "islamic" alone is
++    // deprecated in some engines, so prefer the well-defined variants.
++    const CALENDAR_CANDIDATES = {
++      islamic: ['islamic-umalqura', 'islamic-civil', 'islamic-tbla', 'islamic'],
++      hebrew: ['hebrew'],
++      japanese: ['japanese'],
++    };
++
++    function supportedCalendars() {
++      try {
++        return new Set(Intl.supportedValuesOf('calendar'));
++      } catch {
++        return null;
++      }
++    }
++
++    const supported = supportedCalendars();
++
++    function resolveCalendar(key, probe) {
++      for (const id of CALENDAR_CANDIDATES[key]) {
++        if (supported && !supported.has(id)) continue;
++        try {
++          const d = probe.withCalendar(id);
++          if (d.calendarId === id) return id;
++        } catch { /* try next */ }
++      }
++      return null;
++    }
++
++    function el(tag, props = {}, children = []) {
++      const node = document.createElement(tag);
++      Object.assign(node, props);
++      for (const child of [].concat(children)) {
++        node.append(child instanceof Node ? child : document.createTextNode(String(child)));
++      }
++      return node;
++    }
++
++    function formatLocalized(date, calendarId) {
++      const opts = { year: 'numeric', month: 'long', day: 'numeric' };
++      // Era-based calendars (Japanese) need the era name to be meaningful.
++      if (date.era !== undefined) opts.era = 'long';
++      return date.toLocaleString(`en-u-ca-${calendarId}`, opts);
++    }
++
++    function monthName(date, calendarId) {
++      return date.toLocaleString(`en-u-ca-${calendarId}`, { month: 'long' });
++    }
++
++    function renderCard(card, isoDate, today) {
++      const output = card.querySelector('.calendar-output');
++      const key = card.dataset.calendar;
++      const calendarId = resolveCalendar(key, isoDate);
++
++      if (!calendarId) {
++        output.replaceChildren(el('p', { textContent: 'This calendar is not supported by your browser.' }));
++        return;
++      }
++
++      const date = isoDate.withCalendar(calendarId);
++      const todayInCal = today.withCalendar(calendarId);
++      const cmp = Temporal.PlainDate.compare(date, todayInCal);
++      const relative = cmp < 0 ? 'Past' : cmp > 0 ? 'Future' : 'Today';
++
++      const yearText = date.era !== undefined && date.eraYear !== undefined && date.eraYear !== date.year
++        ? `${date.year} (${date.era} ${date.eraYear})`
++        : String(date.year);
++
++      const dl = el('dl');
++      const rows = [
++        ['Year', yearText],
++        ['Month', date.month],
++        ['Month code', date.monthCode],
++        ['Day', date.day],
++        ['Months in year', date.monthsInYear],
++        ['Status', el('span', { className: 'relative-badge', textContent: relative })],
++      ];
++      for (const [label, value] of rows) {
++        const dd = el('dd', {}, value);
++        dd.dataset.field = label.toLowerCase().replace(/\s+/g, '-');
++        dl.append(el('dt', { textContent: label }), dd);
++      }
++      dl.querySelector('.relative-badge').dataset.relative = relative;
++
++      const tbody = el('tbody');
++      for (let m = 1; m <= date.monthsInYear; m++) {
++        const first = date.with({ month: m, day: 1 });
++        const row = el('tr', {}, [
++          el('td', { textContent: m }),
++          el('td', { textContent: monthName(first, calendarId) }),
++          el('td', { textContent: first.monthCode }),
++          el('td', { textContent: first.daysInMonth }),
++        ]);
++        if (m === date.month) {
++          row.className = 'current-month';
++          row.setAttribute('aria-current', 'date');
++        }
++        tbody.append(row);
++      }
++
++      const table = el('table', { className: 'month-table' }, [
++        el('caption', { className: 'visually-hidden', textContent: `Months of ${calendarId} year ${date.year}` }),
++        el('thead', {}, el('tr', {}, ['#', 'Month', 'Code', 'Days'].map(h => el('th', { scope: 'col', textContent: h })))),
++        tbody,
++      ]);
++
++      const details = el('details', {}, [
++        el('summary', { textContent: `Months in ${date.year} (${date.monthsInYear})` }),
++        table,
++      ]);
++
++      output.replaceChildren(
++        el('p', { className: 'localized', textContent: formatLocalized(date, calendarId) }),
++        el('p', { className: 'calendar-id' }, el('small', { textContent: `Calendar: ${calendarId}` })),
++        dl,
++        details,
++      );
++    }
++
++    function update() {
++      if (typeof Temporal === 'undefined') {
++        status.textContent = 'Calendar conversion is unavailable in this browser.';
++        return;
++      }
++      let isoDate;
++      try {
++        isoDate = Temporal.PlainDate.from(input.value);
++      } catch {
++        status.textContent = 'Please choose a valid date.';
++        return;
++      }
++      const today = Temporal.Now.plainDateISO();
++      cards.forEach(card => renderCard(card, isoDate, today));
++      status.textContent = `Showing ${isoDate.toLocaleString('en', { dateStyle: 'long' })} in three calendars.`;
++    }
++
++    if (typeof Temporal !== 'undefined') {
++      input.value = Temporal.Now.plainDateISO().toString();
++    }
++
++    form.addEventListener('submit', (e) => {
++      e.preventDefault();
++      update();
++    });
++    input.addEventListener('change', update);
++
++    update();
++  </script>
++
+ </body>
+ 
+ </html>

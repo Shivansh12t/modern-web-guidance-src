@@ -1,0 +1,179 @@
+diff --git a/index.html b/index.html
+index 66c9173..a727ecd 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,67 @@
+       background: #3e2723;
+     }
+ 
++    /* Sortable Table */
++    .table-wrapper {
++      margin-top: 30px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow-x: auto;
++    }
++
++    #seasonal-drinks {
++      width: 100%;
++      border-collapse: collapse;
++      text-align: left;
++    }
++
++    #seasonal-drinks th,
++    #seasonal-drinks td {
++      padding: 14px 18px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    #seasonal-drinks thead th {
++      background-color: var(--primary);
++      color: white;
++      cursor: pointer;
++      user-select: none;
++      position: relative;
++      font-weight: 600;
++      transition: background-color 0.2s;
++    }
++
++    #seasonal-drinks thead th:hover {
++      background-color: #3e2723;
++    }
++
++    #seasonal-drinks thead th::after {
++      content: ' ↕';
++      font-size: 0.85em;
++      opacity: 0.6;
++    }
++
++    #seasonal-drinks thead th[data-sort-dir="asc"]::after {
++      content: ' ▲';
++      opacity: 1;
++      color: var(--accent);
++    }
++
++    #seasonal-drinks thead th[data-sort-dir="desc"]::after {
++      content: ' ▼';
++      opacity: 1;
++      color: var(--accent);
++    }
++
++    #seasonal-drinks tbody tr:last-child td {
++      border-bottom: none;
++    }
++
++    #seasonal-drinks tbody tr:hover {
++      background-color: #f5f0ee;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +255,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div class="table-wrapper">
++        <table id="seasonal-drinks">
++          <thead>
++            <tr>
++              <th data-column="0" aria-sort="none">Drink</th>
++              <th data-column="1" aria-sort="none">Description</th>
++              <th data-column="2" aria-sort="none">Roast / Style</th>
++              <th data-column="3" aria-sort="none">Caffeine (mg)</th>
++              <th data-column="4" aria-sort="none">Calories</th>
++              <th data-column="5" aria-sort="none">Price</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <td><strong>Maple Oat Latte</strong></td>
++              <td>Creamy oat milk with a hint of Vermont maple syrup.</td>
++              <td>Medium Espresso</td>
++              <td data-value="150">150 mg</td>
++              <td data-value="190">190 cal</td>
++              <td data-value="5.50">$5.50</td>
++            </tr>
++            <tr>
++              <td><strong>Dark Roast Espresso</strong></td>
++              <td>Bold, smokey, and perfect for a morning boost.</td>
++              <td>Dark Roast</td>
++              <td data-value="185">185 mg</td>
++              <td data-value="15">15 cal</td>
++              <td data-value="3.75">$3.75</td>
++            </tr>
++            <tr>
++              <td><strong>Cold Brew</strong></td>
++              <td>Steeped for 18 hours for maximum smoothness.</td>
++              <td>Slow-Steeped</td>
++              <td data-value="210">210 mg</td>
++              <td data-value="5">5 cal</td>
++              <td data-value="4.75">$4.75</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +309,58 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const table = document.getElementById('seasonal-drinks');
++      if (!table) return;
++
++      const headers = table.querySelectorAll('thead th');
++      const tbody = table.querySelector('tbody');
++
++      function parseCellValue(cell) {
++        const raw = cell.getAttribute('data-value') ?? cell.textContent.trim();
++        const numericCleaned = raw.replace(/[^0-9.-]+/g, '');
++        if (numericCleaned !== '' && /^[$€£]?\s*-?\d+(\.\d+)?\s*(mg|cal|oz|%)?$/i.test(raw)) {
++          return { type: 'number', value: parseFloat(numericCleaned) };
++        }
++        return { type: 'string', value: raw.toLowerCase() };
++      }
++
++      headers.forEach((header, index) => {
++        header.addEventListener('click', () => {
++          const currentDir = header.getAttribute('data-sort-dir');
++          const nextDir = currentDir === 'asc' ? 'desc' : 'asc';
++
++          headers.forEach((h) => {
++            h.removeAttribute('data-sort-dir');
++            h.setAttribute('aria-sort', 'none');
++          });
++
++          header.setAttribute('data-sort-dir', nextDir);
++          header.setAttribute('aria-sort', nextDir === 'asc' ? 'ascending' : 'descending');
++
++          const rows = Array.from(tbody.querySelectorAll('tr'));
++          rows.sort((rowA, rowB) => {
++            const cellA = rowA.children[index];
++            const cellB = rowB.children[index];
++            const valA = parseCellValue(cellA);
++            const valB = parseCellValue(cellB);
++
++            let comparison = 0;
++            if (valA.type === 'number' && valB.type === 'number') {
++              comparison = valA.value - valB.value;
++            } else {
++              comparison = String(valA.value).localeCompare(String(valB.value));
++            }
++
++            return nextDir === 'asc' ? comparison : -comparison;
++          });
++
++          rows.forEach((row) => tbody.appendChild(row));
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

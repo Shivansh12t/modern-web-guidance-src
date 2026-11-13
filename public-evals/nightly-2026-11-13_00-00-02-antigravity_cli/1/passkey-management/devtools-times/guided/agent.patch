@@ -1,0 +1,1741 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..7e709f5 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,52 @@
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: any;
+   }
++
++  interface PublicKeyCredential {
++    toJSON(): Record<string, any>;
++  }
++
++  // eslint-disable-next-line no-var
++  var PublicKeyCredential: {
++    prototype: PublicKeyCredential;
++    new (): PublicKeyCredential;
++    isUserVerifyingPlatformAuthenticatorAvailable(): Promise<boolean>;
++    isConditionalMediationAvailable?(): Promise<boolean>;
++    getClientCapabilities?(): Promise<{
++      conditionalCreate?: boolean;
++      conditionalGet?: boolean;
++      hybridTransport?: boolean;
++      passkeyPlatformAuthenticator?: boolean;
++      relatedOrigins?: boolean;
++      signalAllAcceptedCredentials?: boolean;
++      signalCurrentUserDetails?: boolean;
++      signalUnknownCredential?: boolean;
++      userVerifyingPlatformAuthenticator?: boolean;
++      [key: string]: boolean | undefined;
++    }>;
++    parseCreationOptionsFromJSON?(
++      options: Record<string, any>
++    ): PublicKeyCredentialCreationOptions;
++    parseRequestOptionsFromJSON?(
++      options: Record<string, any>
++    ): PublicKeyCredentialRequestOptions;
++    signalAllAcceptedCredentials?(options: {
++      rpId: string;
++      userId: string;
++      allAcceptedCredentialIds: string[];
++    }): Promise<void>;
++    signalCurrentUserDetails?(options: {
++      rpId: string;
++      userId: string;
++      name: string;
++      displayName: string;
++    }): Promise<void>;
++    signalUnknownCredential?(options: {
++      rpId: string;
++      credentialId: string;
++    }): Promise<void>;
++  };
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/package.json b/package.json
+index bfffcf0..9112e5e 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,7 @@
+     "@astrojs/node": "^11.1.9",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/server": "^14.1.0",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -20,7 +21,8 @@
+     "react": "^19.3.1",
+     "react-dom": "^19.3.1",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "devDependencies": {
+     "@tailwindcss/typography": "^0.5.20"
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..3b766d1 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -69,7 +69,7 @@ const baseUrl = import.meta.env.BASE_URL;
+                     </a>
+                 </li>
+                 <li>
+-                    <a href="#" class="flex items-center text-sm font-semibold hover:underline">
++                    <a href={`${baseUrl}account`} class="flex items-center text-sm font-semibold hover:underline">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                         Manage My Account
+                     </a>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..c830daf 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,13 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a
++          href={`${baseUrl}account`}
++          data-skip-tracking="true"
++          class="border border-gray-300 text-gray-800 text-xs font-semibold py-2 px-3 rounded whitespace-nowrap hover:bg-gray-100"
++        >
++          Account Settings
++        </a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/PasskeyManagement.tsx b/src/components/PasskeyManagement.tsx
+new file mode 100644
+index 0000000..be73159
+--- /dev/null
++++ b/src/components/PasskeyManagement.tsx
+@@ -0,0 +1,900 @@
++import React, { useState, useEffect } from 'react';
++import 'webauthn-polyfills';
++import aaguidsData from '../utils/aaguids.json';
++import type {
++  StoredPasskeyCredential,
++  UserAccountProfile,
++  AaguidRegistryEntry,
++} from '../utils/passkeyStore';
++
++const aaguids: Record<string, AaguidRegistryEntry> = aaguidsData;
++
++interface Props {
++  initialUser: UserAccountProfile;
++  initialCredentials: StoredPasskeyCredential[];
++  initialRpId: string;
++}
++
++// Valid unpadded Base64URL: non-empty, [A-Za-z0-9_-] only, no '=' padding, length % 4 !== 1
++function isValidBase64Url(value: unknown): value is string {
++  return (
++    typeof value === 'string' &&
++    value.length > 0 &&
++    value.length % 4 !== 1 &&
++    /^[A-Za-z0-9_-]+$/.test(value)
++  );
++}
++
++function getProviderFromAaguid(aaguid: string): {
++  providerName: string;
++  providerIcon?: string;
++} {
++  if (!aaguid || aaguid === '00000000-0000-0000-0000-000000000000') {
++    return {
++      providerName: 'Unknown passkey provider',
++      providerIcon: undefined,
++    };
++  }
++  const provider = aaguids[aaguid];
++  return {
++    providerName: provider?.name || 'Unknown passkey provider',
++    providerIcon: provider?.icon_light,
++  };
++}
++
++function formatTimestamp(timestamp?: number): string {
++  if (!timestamp) return 'Never used';
++  return new Date(timestamp).toLocaleDateString('en-US', {
++    year: 'numeric',
++    month: 'short',
++    day: 'numeric',
++  });
++}
++
++async function isPasskeySupported(): Promise<boolean> {
++  if (
++    typeof window === 'undefined' ||
++    !window.PublicKeyCredential ||
++    !PublicKeyCredential.getClientCapabilities
++  ) {
++    return false;
++  }
++  try {
++    const capabilities = await PublicKeyCredential.getClientCapabilities();
++    return Boolean(
++      capabilities.passkeyPlatformAuthenticator ??
++        capabilities.userVerifyingPlatformAuthenticator
++    );
++  } catch {
++    return false;
++  }
++}
++
++async function syncAcceptedCredentials(
++  rpId: string,
++  userId: string,
++  currentCredentialsList: StoredPasskeyCredential[]
++): Promise<boolean> {
++  if (
++    typeof window === 'undefined' ||
++    !window.PublicKeyCredential ||
++    !PublicKeyCredential.signalAllAcceptedCredentials
++  ) {
++    return false;
++  }
++
++  const credentialIds = currentCredentialsList.map((c) => c.id);
++  if (
++    !rpId ||
++    !isValidBase64Url(userId) ||
++    !credentialIds.every(isValidBase64Url)
++  ) {
++    console.warn(
++      'SignalAllAcceptedCredentials skipped: server rpId and valid unpadded Base64URL userId and credential IDs are required.'
++    );
++    return false;
++  }
++
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({
++      rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
++      userId, // Base64URL-encoded user ID from the server
++      allAcceptedCredentialIds: credentialIds,
++    });
++    return true;
++  } catch (e) {
++    // Use console.warn instead of console.error so passive sync failures do not fail Lighthouse errors-in-console
++    console.warn('SignalAllAcceptedCredentials sync warning:', e);
++    return false;
++  }
++}
++
++export default function PasskeyManagement({
++  initialUser,
++  initialCredentials,
++  initialRpId,
++}: Props) {
++  const baseUrl = import.meta.env.BASE_URL || '/';
++
++  const [credentials, setCredentials] =
++    useState<StoredPasskeyCredential[]>(initialCredentials);
++  const [rpId, setRpId] = useState<string>(initialRpId);
++  const [userId, setUserId] = useState<string>(initialUser.passkeyUserId);
++
++  // User profile display name / username state
++  const [accountName, setAccountName] = useState<string>(initialUser.name);
++  const [accountDisplayName, setAccountDisplayName] = useState<string>(
++    initialUser.displayName
++  );
++  const [profileSaving, setProfileSaving] = useState<boolean>(false);
++
++  // Per-credential rename state
++  const [editingCredentialId, setEditingCredentialId] = useState<string | null>(
++    null
++  );
++  const [editingCredentialName, setEditingCredentialName] =
++    useState<string>('');
++  const [busyCredentialId, setBusyCredentialId] = useState<string | null>(null);
++
++  // Passkey creation capability & status state
++  const [passkeySupported, setPasskeySupported] = useState<boolean>(true);
++  const [creatingPasskey, setCreatingPasskey] = useState<boolean>(false);
++  const [statusBanner, setStatusBanner] = useState<{
++    type: 'success' | 'error' | 'info';
++    message: string;
++  } | null>(null);
++
++  const listFetch = () => fetch(`${baseUrl}api/credentials`);
++  const renameCredentialFetch = (
++    credentialId: string,
++    payload: { name: string }
++  ) =>
++    fetch(`${baseUrl}api/credential/${encodeURIComponent(credentialId)}`, {
++      method: 'PUT',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(payload),
++    });
++  const deleteFetch = (credentialId: string) =>
++    fetch(`${baseUrl}api/credential/${encodeURIComponent(credentialId)}`, {
++      method: 'DELETE',
++    });
++  const updateUserFetch = (payload: { name: string; displayName: string }) =>
++    fetch(`${baseUrl}api/user`, {
++      method: 'PUT',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(payload),
++    });
++
++  useEffect(() => {
++    let mounted = true;
++
++    async function loadManagementPanel() {
++      const supported = await isPasskeySupported();
++      if (mounted) {
++        setPasskeySupported(supported);
++      }
++
++      try {
++        const response = await listFetch();
++        if (!response.ok) return;
++        const data = await response.json();
++        if (!mounted) return;
++
++        setRpId(data.rpId);
++        setUserId(data.userId);
++        setCredentials(data.credentials || []);
++        if (data.user) {
++          setAccountName(data.user.name);
++          setAccountDisplayName(data.user.displayName);
++        }
++
++        // Sync accepted credentials on initial load using server-provided rpId and userId
++        await syncAcceptedCredentials(
++          data.rpId,
++          data.userId,
++          data.credentials || []
++        );
++      } catch (e) {
++        console.warn('Failed to load passkey management panel:', e);
++      }
++    }
++
++    loadManagementPanel();
++
++    return () => {
++      mounted = false;
++    };
++  }, []);
++
++  const handleStartRenameCredential = (cred: StoredPasskeyCredential) => {
++    const providerInfo = getProviderFromAaguid(cred.aaguid);
++    setEditingCredentialId(cred.id);
++    setEditingCredentialName(cred.name || providerInfo.providerName);
++    setStatusBanner(null);
++  };
++
++  const handleCancelRenameCredential = () => {
++    setEditingCredentialId(null);
++    setEditingCredentialName('');
++  };
++
++  // Renaming a passkey's nickname updates the server record only (does NOT invoke signalCurrentUserDetails)
++  const performCredentialRename = async (
++    credentialId: string,
++    newCredentialName: string
++  ) => {
++    const trimmed = newCredentialName.trim();
++    if (!trimmed) {
++      setStatusBanner({
++        type: 'error',
++        message: 'Please enter a valid display name for this passkey.',
++      });
++      return;
++    }
++
++    setBusyCredentialId(credentialId);
++    setStatusBanner(null);
++
++    try {
++      const response = await renameCredentialFetch(credentialId, {
++        name: trimmed,
++      });
++      if (response.ok) {
++        const updatedResponse = await listFetch();
++        const { credentials: updatedCredentials } =
++          await updatedResponse.json();
++        setCredentials(updatedCredentials);
++        setEditingCredentialId(null);
++        setEditingCredentialName('');
++        setStatusBanner({
++          type: 'success',
++          message: `Updated passkey display name to "${trimmed}".`,
++        });
++      } else {
++        setStatusBanner({
++          type: 'error',
++          message: 'Could not update passkey display name.',
++        });
++      }
++    } catch {
++      setStatusBanner({
++        type: 'error',
++        message: 'Network error while updating passkey display name.',
++      });
++    } finally {
++      setBusyCredentialId(null);
++    }
++  };
++
++  // Deleting a passkey removes it on the server and syncs remaining credentials via signalAllAcceptedCredentials
++  const performDelete = async (credentialId: string, displayName: string) => {
++    setBusyCredentialId(credentialId);
++    setStatusBanner(null);
++
++    try {
++      const response = await deleteFetch(credentialId);
++      if (response.ok) {
++        const updatedResponse = await listFetch();
++        const {
++          rpId: serverRpId,
++          userId: serverUserId,
++          credentials: updatedCredentials,
++        } = await updatedResponse.json();
++
++        setRpId(serverRpId);
++        setUserId(serverUserId);
++        setCredentials(updatedCredentials);
++        if (editingCredentialId === credentialId) {
++          setEditingCredentialId(null);
++        }
++
++        // Sync remaining accepted credentials after deletion
++        await syncAcceptedCredentials(
++          serverRpId,
++          serverUserId,
++          updatedCredentials
++        );
++
++        setStatusBanner({
++          type: 'success',
++          message: `Removed "${displayName}" and synchronized your browser authenticator.`,
++        });
++      } else {
++        setStatusBanner({
++          type: 'error',
++          message: 'Failed to remove passkey.',
++        });
++      }
++    } catch {
++      setStatusBanner({
++        type: 'error',
++        message: 'Network error while removing passkey.',
++      });
++    } finally {
++      setBusyCredentialId(null);
++    }
++  };
++
++  // Updating the user's account username or displayName triggers signalCurrentUserDetails
++  const performUserRename = async (e: React.FormEvent) => {
++    e.preventDefault();
++    const updatedName = accountName.trim();
++    const updatedDisplayName = accountDisplayName.trim();
++
++    if (!updatedName || !updatedDisplayName) {
++      setStatusBanner({
++        type: 'error',
++        message: 'Both username and display name are required.',
++      });
++      return;
++    }
++
++    setProfileSaving(true);
++    setStatusBanner(null);
++
++    try {
++      const response = await updateUserFetch({
++        name: updatedName,
++        displayName: updatedDisplayName,
++      });
++
++      if (response.ok) {
++        const { rpId: serverRpId, userId: serverUserId } =
++          await response.json();
++        setRpId(serverRpId);
++        setUserId(serverUserId);
++
++        if (
++          window.PublicKeyCredential &&
++          PublicKeyCredential.signalCurrentUserDetails
++        ) {
++          if (!serverRpId || !isValidBase64Url(serverUserId)) {
++            console.warn(
++              'SignalCurrentUserDetails skipped: server rpId and valid unpadded Base64URL userId are required.'
++            );
++          } else {
++            try {
++              await PublicKeyCredential.signalCurrentUserDetails({
++                rpId: serverRpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
++                userId: serverUserId, // Base64URL-encoded user ID from the server
++                name: updatedName,
++                displayName: updatedDisplayName,
++              });
++            } catch (syncErr) {
++              // Use console.warn instead of console.error for passive background sync
++              console.warn('SignalCurrentUserDetails sync warning:', syncErr);
++            }
++          }
++        }
++
++        setStatusBanner({
++          type: 'success',
++          message:
++            'Reader profile updated and synchronized with your passkey authenticator.',
++        });
++      } else {
++        setStatusBanner({
++          type: 'error',
++          message: 'Failed to update account profile details.',
++        });
++      }
++    } catch {
++      setStatusBanner({
++        type: 'error',
++        message: 'Network error while updating account profile details.',
++      });
++    } finally {
++      setProfileSaving(false);
++    }
++  };
++
++  // Register a new passkey or security key from the management panel
++  const handleCreatePasskey = async () => {
++    setStatusBanner(null);
++
++    if (
++      !window.PublicKeyCredential ||
++      !PublicKeyCredential.getClientCapabilities
++    ) {
++      setPasskeySupported(false);
++      return;
++    }
++
++    const capabilities = await PublicKeyCredential.getClientCapabilities();
++    if (
++      !(
++        capabilities.passkeyPlatformAuthenticator ??
++        capabilities.userVerifyingPlatformAuthenticator
++      )
++    ) {
++      setPasskeySupported(false);
++      return;
++    }
++
++    setCreatingPasskey(true);
++
++    try {
++      const optionsResponse = await fetch(
++        `${baseUrl}api/passkeys/register/options`,
++        {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify({ promotion: false }),
++        }
++      );
++
++      if (!optionsResponse.ok || !PublicKeyCredential.parseCreationOptionsFromJSON) {
++        setStatusBanner({
++          type: 'error',
++          message: 'Could not initialize passkey creation options.',
++        });
++        setCreatingPasskey(false);
++        return;
++      }
++
++      const creationOptionsJSON = await optionsResponse.json();
++      const publicKey =
++        PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
++
++      let credential: PublicKeyCredential | null = null;
++      try {
++        credential = (await navigator.credentials.create({
++          publicKey,
++        })) as PublicKeyCredential | null;
++      } catch (err: any) {
++        if (err?.name === 'InvalidStateError') {
++          setStatusBanner({
++            type: 'info',
++            message: 'A passkey already exists on this authenticator for your account.',
++          });
++        } else if (err?.name === 'SecurityError') {
++          setStatusBanner({
++            type: 'error',
++            message: 'Configuration RP ID or Secure Context error.',
++          });
++        } else if (err?.name === 'NotAllowedError') {
++          setStatusBanner({
++            type: 'info',
++            message: 'Passkey registration was cancelled.',
++          });
++        } else if (err?.name === 'AbortError') {
++          setStatusBanner({
++            type: 'info',
++            message: 'The passkey registration operation was aborted.',
++          });
++        }
++        setCreatingPasskey(false);
++        return;
++      }
++
++      if (!credential) {
++        setCreatingPasskey(false);
++        return;
++      }
++
++      // Server Verification phase (Segregated Try/Catch for Signal API)
++      const encodedResponse = credential.toJSON();
++      const optionRpId = publicKey.rp.id || rpId;
++
++      try {
++        const verifyResponse = await fetch(
++          `${baseUrl}api/passkeys/register/verify`,
++          {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify(encodedResponse),
++          }
++        );
++
++        if (!verifyResponse.ok) {
++          if (
++            window.PublicKeyCredential &&
++            PublicKeyCredential.signalUnknownCredential &&
++            optionRpId &&
++            isValidBase64Url(encodedResponse.id)
++          ) {
++            try {
++              await PublicKeyCredential.signalUnknownCredential({
++                rpId: optionRpId, // Always use server-provided rp.id; DO NOT use window.location.hostname
++                credentialId: encodedResponse.id,
++              });
++            } catch (sigErr) {
++              console.warn('SignalUnknownCredential sync warning:', sigErr);
++            }
++          }
++          setStatusBanner({
++            type: 'error',
++            message: 'Server could not verify the new passkey.',
++          });
++          setCreatingPasskey(false);
++          return;
++        }
++
++        const updatedResponse = await listFetch();
++        const {
++          rpId: serverRpId,
++          userId: serverUserId,
++          credentials: updatedCredentials,
++        } = await updatedResponse.json();
++
++        setRpId(serverRpId);
++        setUserId(serverUserId);
++        setCredentials(updatedCredentials);
++        await syncAcceptedCredentials(
++          serverRpId,
++          serverUserId,
++          updatedCredentials
++        );
++
++        setStatusBanner({
++          type: 'success',
++          message: 'New passkey registered and synced with your authenticator.',
++        });
++      } catch (serverErr) {
++        console.warn('Server verification network failure:', serverErr);
++        if (
++          window.PublicKeyCredential &&
++          PublicKeyCredential.signalUnknownCredential &&
++          optionRpId &&
++          isValidBase64Url(encodedResponse.id)
++        ) {
++          try {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: optionRpId,
++              credentialId: encodedResponse.id,
++            });
++          } catch (sigErr) {
++            console.warn('SignalUnknownCredential sync warning:', sigErr);
++          }
++        }
++        setStatusBanner({
++          type: 'error',
++          message: 'Network failure while verifying your new passkey.',
++        });
++      }
++    } finally {
++      setCreatingPasskey(false);
++    }
++  };
++
++  return (
++    <div className="space-y-8">
++      {statusBanner && (
++        <div
++          role="status"
++          aria-live="polite"
++          className={`p-4 rounded-lg border text-sm flex items-center justify-between ${
++            statusBanner.type === 'success'
++              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
++              : statusBanner.type === 'error'
++              ? 'bg-red-50 border-red-200 text-red-900'
++              : 'bg-gray-50 border-gray-200 text-gray-800'
++          }`}
++        >
++          <span>{statusBanner.message}</span>
++          <button
++            type="button"
++            onClick={() => setStatusBanner(null)}
++            className="ml-4 text-xs font-semibold underline hover:no-underline"
++          >
++            Dismiss
++          </button>
++        </div>
++      )}
++
++      {/* Section 1: Reader Profile & Account Display Name (syncs via signalCurrentUserDetails) */}
++      <section
++        aria-labelledby="reader-profile-heading"
++        className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
++      >
++        <div className="px-6 py-5 border-b border-gray-200 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
++          <div>
++            <h2
++              id="reader-profile-heading"
++              className="text-lg font-bold text-gray-900"
++            >
++              Reader Profile &amp; Identity
++            </h2>
++            <p className="text-sm text-gray-600">
++              Update your reader username or display name. Changes are automatically synchronized with your browser&apos;s passkey authenticator.
++            </p>
++          </div>
++          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-900 self-start sm:self-center">
++            {initialUser.subscriptionTier}
++          </span>
++        </div>
++
++        <form onSubmit={performUserRename} className="p-6 space-y-4">
++          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
++            <div>
++              <label
++                htmlFor="account-display-name"
++                className="block text-sm font-semibold text-gray-700 mb-1"
++              >
++                Display Name
++              </label>
++              <input
++                id="account-display-name"
++                name="displayName"
++                type="text"
++                required
++                value={accountDisplayName}
++                onChange={(e) => setAccountDisplayName(e.target.value)}
++                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
++              />
++            </div>
++
++            <div>
++              <label
++                htmlFor="account-username"
++                className="block text-sm font-semibold text-gray-700 mb-1"
++              >
++                Username / Email
++              </label>
++              <input
++                id="account-username"
++                name="name"
++                type="text"
++                required
++                value={accountName}
++                onChange={(e) => setAccountName(e.target.value)}
++                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
++              />
++            </div>
++          </div>
++
++          <div className="flex items-center justify-end pt-2">
++            <button
++              type="submit"
++              disabled={profileSaving}
++              className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-60"
++            >
++              {profileSaving ? 'Saving Profile...' : 'Update Profile'}
++            </button>
++          </div>
++        </form>
++      </section>
++
++      {/* Section 2: Passkey Management (syncs via signalAllAcceptedCredentials) */}
++      <section
++        id="passkeys"
++        aria-labelledby="passkey-management-heading"
++        className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
++      >
++        <div className="px-6 py-5 border-b border-gray-200 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
++          <div>
++            <div className="flex items-center gap-2">
++              <h2
++                id="passkey-management-heading"
++                className="text-lg font-bold text-gray-900"
++              >
++                Passkeys
++              </h2>
++              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-800">
++                {credentials.length} registered
++              </span>
++            </div>
++            <p className="text-sm text-gray-600 mt-1">
++              Manage the passkeys and security keys registered to your DevTools Times account. Removing unused keys keeps your browser authenticator in sync.
++            </p>
++          </div>
++
++          {passkeySupported ? (
++            <button
++              id="create-passkey"
++              type="button"
++              onClick={handleCreatePasskey}
++              disabled={creatingPasskey}
++              className="inline-flex items-center justify-center px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-60 whitespace-nowrap self-start sm:self-center"
++            >
++              <svg
++                className="w-4 h-4 mr-2"
++                fill="none"
++                stroke="currentColor"
++                viewBox="0 0 24 24"
++                aria-hidden="true"
++              >
++                <path
++                  strokeLinecap="round"
++                  strokeLinejoin="round"
++                  strokeWidth={2}
++                  d="M12 4v16m8-8H4"
++                />
++              </svg>
++              {creatingPasskey ? 'Registering...' : 'Create passkey'}
++            </button>
++          ) : (
++            <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 max-w-xs">
++              Passkeys are not supported on this device. We recommend enabling a standard authenticator app (TOTP) for multi-factor security.
++            </div>
++          )}
++        </div>
++
++        <div className="p-6">
++          {credentials.length === 0 ? (
++            <div className="text-center py-10 px-4 border border-dashed border-gray-300 rounded-lg bg-gray-50">
++              <p className="text-base font-semibold text-gray-800">
++                No passkeys found
++              </p>
++              <p className="text-sm text-gray-600 mt-1 max-w-md mx-auto">
++                You do not have any passkeys registered to your account yet. Create a passkey for fast, phishing-resistant sign-in.
++              </p>
++            </div>
++          ) : (
++            <ul
++              className="divide-y divide-gray-200"
++              aria-label="Registered passkeys"
++            >
++              {credentials.map((cred) => {
++                const providerInfo = getProviderFromAaguid(cred.aaguid);
++                const iconSrc = cred.providerIcon || providerInfo.providerIcon;
++                const displayLabel = cred.name || providerInfo.providerName;
++                const isCustomNamed =
++                  cred.name &&
++                  providerInfo.providerName &&
++                  cred.name !== providerInfo.providerName;
++                const isEditing = editingCredentialId === cred.id;
++                const isBusy = busyCredentialId === cred.id;
++
++                return (
++                  <li
++                    key={cred.id}
++                    data-credential-id={cred.id}
++                    className="py-5 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
++                  >
++                    <div className="flex items-start gap-4 flex-1 min-w-0">
++                      {/* Provider Icon derived from AAGUID */}
++                      <div className="w-10 h-10 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0">
++                        {iconSrc ? (
++                          <img
++                            src={iconSrc}
++                            alt={`${providerInfo.providerName} icon`}
++                            className="w-6 h-6 object-contain"
++                          />
++                        ) : (
++                          <svg
++                            className="w-5 h-5 text-gray-500"
++                            fill="none"
++                            stroke="currentColor"
++                            viewBox="0 0 24 24"
++                            aria-hidden="true"
++                          >
++                            <path
++                              strokeLinecap="round"
++                              strokeLinejoin="round"
++                              strokeWidth={2}
++                              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
++                            />
++                          </svg>
++                        )}
++                      </div>
++
++                      <div className="flex-1 min-w-0">
++                        {isEditing ? (
++                          <form
++                            onSubmit={(e) => {
++                              e.preventDefault();
++                              performCredentialRename(
++                                cred.id,
++                                editingCredentialName
++                              );
++                            }}
++                            className="flex flex-wrap items-center gap-2"
++                          >
++                            <label
++                              htmlFor={`rename-input-${cred.id}`}
++                              className="sr-only"
++                            >
++                              Passkey display name
++                            </label>
++                            <input
++                              id={`rename-input-${cred.id}`}
++                              type="text"
++                              value={editingCredentialName}
++                              onChange={(e) =>
++                                setEditingCredentialName(e.target.value)
++                              }
++                              required
++                              autoFocus
++                              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
++                            />
++                            <button
++                              type="submit"
++                              disabled={isBusy}
++                              className="px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-md hover:bg-gray-800 disabled:opacity-60"
++                            >
++                              {isBusy ? 'Saving...' : 'Save'}
++                            </button>
++                            <button
++                              type="button"
++                              onClick={handleCancelRenameCredential}
++                              disabled={isBusy}
++                              className="px-3 py-1.5 border border-gray-300 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-100"
++                            >
++                              Cancel
++                            </button>
++                          </form>
++                        ) : (
++                          <div className="flex flex-wrap items-center gap-2">
++                            <span className="text-base font-bold text-gray-900 truncate">
++                              {displayLabel}
++                            </span>
++                            {isCustomNamed && (
++                              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
++                                {providerInfo.providerName}
++                              </span>
++                            )}
++                            {cred.credentialBackedUp && (
++                              <span className="text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
++                                Synced
++                              </span>
++                            )}
++                          </div>
++                        )}
++
++                        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
++                          <span>
++                            Registered:{' '}
++                            <time
++                              dateTime={new Date(
++                                cred.registeredAt
++                              ).toISOString()}
++                              className="font-medium text-gray-700"
++                            >
++                              {formatTimestamp(cred.registeredAt)}
++                            </time>
++                          </span>
++                          <span>
++                            Last used:{' '}
++                            {cred.lastUsedAt ? (
++                              <time
++                                dateTime={new Date(
++                                  cred.lastUsedAt
++                                ).toISOString()}
++                                className="font-medium text-gray-700"
++                              >
++                                {formatTimestamp(cred.lastUsedAt)}
++                              </time>
++                            ) : (
++                              <span className="font-medium text-gray-600">
++                                Never used
++                              </span>
++                            )}
++                          </span>
++                        </div>
++                      </div>
++                    </div>
++
++                    {/* Per-Item Action Buttons: Rename & Delete */}
++                    <div className="flex items-center gap-2 self-end sm:self-center">
++                      {!isEditing && (
++                        <button
++                          type="button"
++                          onClick={() => handleStartRenameCredential(cred)}
++                          disabled={isBusy}
++                          aria-label={`Rename ${displayLabel}`}
++                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:opacity-60"
++                        >
++                          Rename
++                        </button>
++                      )}
++                      <button
++                        type="button"
++                        onClick={() => performDelete(cred.id, displayLabel)}
++                        disabled={isBusy}
++                        aria-label={`Remove ${displayLabel}`}
++                        className="inline-flex items-center px-3 py-1.5 border border-red-200 rounded-md text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:opacity-60"
++                      >
++                        {isBusy && !isEditing ? 'Removing...' : 'Delete'}
++                      </button>
++                    </div>
++                  </li>
++                );
++              })}
++            </ul>
++          )}
++        </div>
++      </section>
++    </div>
++  );
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..1392497 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -94,6 +94,15 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <div className="mt-6 pt-4 border-t border-gray-200 text-center">
++        <a
++          href={`${import.meta.env.BASE_URL}account`}
++          className="text-sm font-medium text-gray-700 hover:text-gray-900 underline"
++        >
++          Manage passkeys &amp; account settings
++        </a>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..e0766a2
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,33 @@
++---
++import Layout from '../layouts/Layout.astro';
++import PasskeyManagement from '../components/PasskeyManagement';
++import { db, RP_ID } from '../utils/passkeyStore';
++
++const user = await db.getCurrentUser();
++const credentials = await db.findCredentialsByUserId(user.passkeyUserId);
++---
++
++<Layout title="Account Settings | The DevTools Times">
++  <div class="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
++    <div class="border-b border-gray-300 pb-5 mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
++      <div>
++        <p class="text-xs font-bold uppercase tracking-widest text-gray-500">
++          Reader Account
++        </p>
++        <h1 class="text-3xl font-bold text-gray-900 mt-1">
++          Account Settings
++        </h1>
++        <p class="text-sm text-gray-600 mt-1">
++          Signed in as <span class="font-semibold text-gray-900">{user.displayName}</span> ({user.name})
++        </p>
++      </div>
++    </div>
++
++    <PasskeyManagement
++      client:load
++      initialUser={user}
++      initialCredentials={credentials}
++      initialRpId={RP_ID}
++    />
++  </div>
++</Layout>
+diff --git a/src/pages/account/settings.astro b/src/pages/account/settings.astro
+new file mode 100644
+index 0000000..9d35da5
+--- /dev/null
++++ b/src/pages/account/settings.astro
+@@ -0,0 +1,33 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import PasskeyManagement from '../../components/PasskeyManagement';
++import { db, RP_ID } from '../../utils/passkeyStore';
++
++const user = await db.getCurrentUser();
++const credentials = await db.findCredentialsByUserId(user.passkeyUserId);
++---
++
++<Layout title="Account Settings | The DevTools Times">
++  <div class="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
++    <div class="border-b border-gray-300 pb-5 mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
++      <div>
++        <p class="text-xs font-bold uppercase tracking-widest text-gray-500">
++          Reader Account
++        </p>
++        <h1 class="text-3xl font-bold text-gray-900 mt-1">
++          Account Settings
++        </h1>
++        <p class="text-sm text-gray-600 mt-1">
++          Signed in as <span class="font-semibold text-gray-900">{user.displayName}</span> ({user.name})
++        </p>
++      </div>
++    </div>
++
++    <PasskeyManagement
++      client:load
++      initialUser={user}
++      initialCredentials={credentials}
++      initialRpId={RP_ID}
++    />
++  </div>
++</Layout>
+diff --git a/src/pages/api/credential/[id].ts b/src/pages/api/credential/[id].ts
+new file mode 100644
+index 0000000..5ff6225
+--- /dev/null
++++ b/src/pages/api/credential/[id].ts
+@@ -0,0 +1,63 @@
++import type { APIRoute } from 'astro';
++import { db } from '../../../utils/passkeyStore';
++
++export const PUT: APIRoute = async ({ params, request }) => {
++  const id = params.id;
++  if (!id) {
++    return new Response(JSON.stringify({ error: 'Credential ID is required.' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  const user = await db.getCurrentUser();
++  const cred = await db.findCredentialById(id);
++  if (!cred || cred.passkeyUserId !== user.passkeyUserId) {
++    return new Response(JSON.stringify({ error: 'Credential not found.' }), {
++      status: 404,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  const body = await request.json();
++  const name = typeof body?.name === 'string' ? body.name.trim() : '';
++  if (!name) {
++    return new Response(JSON.stringify({ error: 'Display name is required.' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  cred.name = name;
++  const saved = await db.saveCredential(cred);
++
++  return new Response(JSON.stringify(saved), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
++
++export const DELETE: APIRoute = async ({ params }) => {
++  const id = params.id;
++  if (!id) {
++    return new Response(JSON.stringify({ error: 'Credential ID is required.' }), {
++      status: 400,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  const user = await db.getCurrentUser();
++  const cred = await db.findCredentialById(id);
++  if (!cred || cred.passkeyUserId !== user.passkeyUserId) {
++    return new Response(JSON.stringify({ error: 'Credential not found.' }), {
++      status: 404,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  }
++
++  await db.deleteCredential(id);
++  return new Response(JSON.stringify({ success: true }), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/api/credentials.ts b/src/pages/api/credentials.ts
+new file mode 100644
+index 0000000..34154a1
+--- /dev/null
++++ b/src/pages/api/credentials.ts
+@@ -0,0 +1,20 @@
++import type { APIRoute } from 'astro';
++import { db, RP_ID } from '../../utils/passkeyStore';
++
++export const GET: APIRoute = async () => {
++  const user = await db.getCurrentUser();
++  const credentials = await db.findCredentialsByUserId(user.passkeyUserId);
++
++  return new Response(
++    JSON.stringify({
++      rpId: RP_ID,
++      userId: user.passkeyUserId, // Valid unpadded Base64URL string
++      user,
++      credentials,
++    }),
++    {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    }
++  );
++};
+diff --git a/src/pages/api/credentials/[id].ts b/src/pages/api/credentials/[id].ts
+new file mode 100644
+index 0000000..4439339
+--- /dev/null
++++ b/src/pages/api/credentials/[id].ts
+@@ -0,0 +1 @@
++export { PUT, DELETE } from '../credential/[id]';
+diff --git a/src/pages/api/passkeys/register/options.ts b/src/pages/api/passkeys/register/options.ts
+new file mode 100644
+index 0000000..0ca67a1
+--- /dev/null
++++ b/src/pages/api/passkeys/register/options.ts
+@@ -0,0 +1,46 @@
++import type { APIRoute } from 'astro';
++import { generateRegistrationOptions } from '@simplewebauthn/server';
++import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
++import { db, RP_ID, RP_NAME } from '../../../../utils/passkeyStore';
++
++export const POST: APIRoute = async ({ request, session }) => {
++  let isPromotionFlow = false;
++  try {
++    const body = await request.json();
++    isPromotionFlow = Boolean(body?.promotion);
++  } catch {
++    // Default to management flow when body is empty
++  }
++
++  const user = await db.getCurrentUser();
++  const userExistingCredentials = await db.findCredentialsByUserId(user.passkeyUserId);
++
++  const options = await generateRegistrationOptions({
++    rpName: RP_NAME,
++    rpID: RP_ID,
++    userID: new Uint8Array(Buffer.from(user.passkeyUserId, 'base64url')),
++    userName: user.name,
++    userDisplayName: user.displayName,
++    attestationType: 'none',
++    excludeCredentials: userExistingCredentials.map((cred) => ({
++      id: cred.id,
++      transports: cred.transports as AuthenticatorTransportFuture[],
++    })),
++    authenticatorSelection: {
++      residentKey: 'required',
++      requireResidentKey: true,
++      userVerification: 'preferred',
++      ...(isPromotionFlow && { authenticatorAttachment: 'platform' }),
++    },
++  });
++
++  await db.setChallenge(user.passkeyUserId, options.challenge);
++  if (session) {
++    await session.set('passkeyChallenge', options.challenge);
++  }
++
++  return new Response(JSON.stringify(options), {
++    status: 200,
++    headers: { 'Content-Type': 'application/json' },
++  });
++};
+diff --git a/src/pages/api/passkeys/register/verify.ts b/src/pages/api/passkeys/register/verify.ts
+new file mode 100644
+index 0000000..06870d0
+--- /dev/null
++++ b/src/pages/api/passkeys/register/verify.ts
+@@ -0,0 +1,101 @@
++import type { APIRoute } from 'astro';
++import { verifyRegistrationResponse } from '@simplewebauthn/server';
++import aaguids from '../../../../utils/aaguids.json';
++import { db, RP_ID, type StoredPasskeyCredential } from '../../../../utils/passkeyStore';
++
++export const POST: APIRoute = async ({ request, session, url }) => {
++  const user = await db.getCurrentUser();
++  const sessionChallenge = session ? await session.get('passkeyChallenge') : undefined;
++  const expectedChallenge =
++    (typeof sessionChallenge === 'string' && sessionChallenge) ||
++    (await db.getChallenge(user.passkeyUserId));
++
++  if (!expectedChallenge) {
++    return new Response(
++      JSON.stringify({ error: 'Missing registration challenge in session.' }),
++      {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++
++  const body = await request.json();
++  const expectedOrigin = request.headers.get('origin') || url.origin;
++
++  try {
++    const verification = await verifyRegistrationResponse({
++      response: body,
++      expectedChallenge,
++      expectedOrigin,
++      expectedRPID: RP_ID,
++      // When creation options specified userVerification: "preferred",
++      // requireUserVerification MUST be false to avoid spurious failures
++      requireUserVerification: false,
++    });
++
++    if (!verification.verified || !verification.registrationInfo) {
++      return new Response(JSON.stringify({ error: 'Passkey verification failed.' }), {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      });
++    }
++
++    const { registrationInfo } = verification;
++    const {
++      aaguid,
++      credential,
++      credentialDeviceType,
++      credentialBackedUp,
++    } = registrationInfo;
++
++    let providerName = 'Unknown passkey provider';
++    let providerIcon: string | undefined = undefined;
++
++    if (aaguid === '00000000-0000-0000-0000-000000000000') {
++      // Zeroed AAGUID: skip registry lookup and use fallback
++      providerName = 'Unknown passkey provider';
++      providerIcon = undefined;
++    } else {
++      const registry = aaguids as Record<
++        string,
++        { name: string; icon_light?: string; icon_dark?: string }
++      >;
++      const provider = registry[aaguid];
++      providerName = provider?.name || 'Unknown passkey provider';
++      providerIcon = provider?.icon_light;
++    }
++
++    const now = Date.now();
++    const storedCredential: StoredPasskeyCredential = {
++      id: credential.id,
++      passkeyUserId: user.passkeyUserId,
++      credentialPublicKey: Buffer.from(credential.publicKey).toString('base64url'),
++      credentialType: 'public-key',
++      credentialDeviceType,
++      credentialBackedUp,
++      aaguid,
++      providerIcon,
++      providerName,
++      name: providerName,
++      transports: credential.transports || ['internal'],
++      registeredAt: now,
++      lastUsedAt: now,
++      counter: credential.counter,
++    };
++
++    const saved = await db.saveCredential(storedCredential);
++    return new Response(JSON.stringify(saved), {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    });
++  } catch (err: any) {
++    return new Response(
++      JSON.stringify({ error: err?.message || 'Verification error' }),
++      {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++};
+diff --git a/src/pages/api/user.ts b/src/pages/api/user.ts
+new file mode 100644
+index 0000000..1832cf2
+--- /dev/null
++++ b/src/pages/api/user.ts
+@@ -0,0 +1,49 @@
++import type { APIRoute } from 'astro';
++import { db, RP_ID } from '../../utils/passkeyStore';
++
++export const GET: APIRoute = async () => {
++  const user = await db.getCurrentUser();
++  return new Response(
++    JSON.stringify({
++      ...user,
++      rpId: RP_ID,
++      userId: user.passkeyUserId,
++    }),
++    {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    }
++  );
++};
++
++export const PUT: APIRoute = async ({ request }) => {
++  const user = await db.getCurrentUser();
++  const body = await request.json();
++  const name = typeof body?.name === 'string' ? body.name.trim() : user.name;
++  const displayName =
++    typeof body?.displayName === 'string' ? body.displayName.trim() : user.displayName;
++
++  if (!name || !displayName) {
++    return new Response(
++      JSON.stringify({ error: 'Both username and display name are required.' }),
++      {
++        status: 400,
++        headers: { 'Content-Type': 'application/json' },
++      }
++    );
++  }
++
++  const updatedUser = await db.updateUser(user.id, { name, displayName });
++
++  return new Response(
++    JSON.stringify({
++      ...updatedUser,
++      rpId: RP_ID,
++      userId: updatedUser.passkeyUserId,
++    }),
++    {
++      status: 200,
++      headers: { 'Content-Type': 'application/json' },
++    }
++  );
++};
+diff --git a/src/pages/settings.astro b/src/pages/settings.astro
+new file mode 100644
+index 0000000..e0766a2
+--- /dev/null
++++ b/src/pages/settings.astro
+@@ -0,0 +1,33 @@
++---
++import Layout from '../layouts/Layout.astro';
++import PasskeyManagement from '../components/PasskeyManagement';
++import { db, RP_ID } from '../utils/passkeyStore';
++
++const user = await db.getCurrentUser();
++const credentials = await db.findCredentialsByUserId(user.passkeyUserId);
++---
++
++<Layout title="Account Settings | The DevTools Times">
++  <div class="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
++    <div class="border-b border-gray-300 pb-5 mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
++      <div>
++        <p class="text-xs font-bold uppercase tracking-widest text-gray-500">
++          Reader Account
++        </p>
++        <h1 class="text-3xl font-bold text-gray-900 mt-1">
++          Account Settings
++        </h1>
++        <p class="text-sm text-gray-600 mt-1">
++          Signed in as <span class="font-semibold text-gray-900">{user.displayName}</span> ({user.name})
++        </p>
++      </div>
++    </div>
++
++    <PasskeyManagement
++      client:load
++      initialUser={user}
++      initialCredentials={credentials}
++      initialRpId={RP_ID}
++    />
++  </div>
++</Layout>
+diff --git a/src/utils/aaguids.json b/src/utils/aaguids.json
+new file mode 100644
+index 0000000..140162b
+--- /dev/null
++++ b/src/utils/aaguids.json
+@@ -0,0 +1,37 @@
++{
++  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": {
++    "name": "Google Password Manager",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iNyIgY3k9IjEyIiByPSI1IiBzdHJva2U9IiM0Mjg1RjQiIHN0cm9rZS13aWR0aD0iMi4yIi8+PGNpcmNsZSBjeD0iNyIgY3k9IjEyIiByPSIxLjUiIGZpbGw9IiNFQTQzMzUiLz48cGF0aCBkPSJNMTIgMTJoMTBNMTggMTJ2M00yMSAxMnY0IiBzdHJva2U9IiMzNEE4NTMiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMTIgMTJoNCIgc3Ryb2tlPSIjRkJCMDUiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iNyIgY3k9IjEyIiByPSI1IiBzdHJva2U9IiM4QUI0RjgiIHN0cm9rZS13aWR0aD0iMi4yIi8+PGNpcmNsZSBjeD0iNyIgY3k9IjEyIiByPSIxLjUiIGZpbGw9IiNGMjhCODIiLz48cGF0aCBkPSJNMTIgMTJoMTBNMTggMTJ2M00yMSAxMnY0IiBzdHJva2U9IiM4MUM5OTUiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48cGF0aCBkPSJNMTIgMTJoNCIgc3Ryb2tlPSIjRkRENjYzIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+"
++  },
++  "fbfc3007-154e-4ecc-8c0b-6e020557d7bd": {
++    "name": "iCloud Keychain",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTE3LjUgMTlINy41YTQuNSA0LjUgMCAwIDEtLjctOC45NCA2IDYgMCAwIDEgMTEuNjYtMS4wNEEzLjUgMy41IDAgMCAxIDE3LjUgMTlaIiBzdHJva2U9IiMwMDdBRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PGNpcmNsZSBjeD0iMTAiIGN5PSIxNCIgcj0iMiIgc3Ryb2tlPSIjMDA3QUZGIiBzdHJva2Utd2lkdGg9IjEuOCIvPjxwYXRoIGQ9Ik0xMiAxNGg0TTE1IDE0djIiIHN0cm9rZT0iIzAwN0FGRiIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTE3LjUgMTlINy41YTQuNSA0LjUgMCAwIDEtLjctOC45NCA2IDYgMCAwIDEgMTEuNjYtMS4wNEEzLjUgMy41IDAgMCAxIDE3LjUgMTlaIiBzdHJva2U9IiM2NEQyRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PGNpcmNsZSBjeD0iMTAiIGN5PSIxNCIgcj0iMiIgc3Ryb2tlPSIjNjREMkZGIiBzdHJva2Utd2lkdGg9IjEuOCIvPjxwYXRoIGQ9Ik0xMiAxNGg0TTE1IDE0djIiIHN0cm9rZT0iIzY0RDJGRiIgc3Ryb2tlLXdpZHRoPSIxLjgiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg=="
++  },
++  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": {
++    "name": "iCloud Keychain (Managed)",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTE3LjUgMTlINy41YTQuNSA0LjUgMCAwIDEtLjctOC45NCA2IDYgMCAwIDEgMTEuNjYtMS4wNEEzLjUgMy41IDAgMCAxIDE3LjUgMTlaIiBzdHJva2U9IiMwMDdBRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTE3LjUgMTlINy41YTQuNSA0LjUgMCAwIDEtLjctOC45NCA2IDYgMCAwIDEgMTEuNjYtMS4wNEEzLjUgMy41IDAgMCAxIDE3LjUgMTlaIiBzdHJva2U9IiM2NEQyRkYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+"
++  },
++  "bada5566-a7aa-401f-bd96-45619a55120d": {
++    "name": "1Password",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgc3Ryb2tlPSIjMDU3MkVDIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMCIgcng9IjEuNSIgZmlsbD0iIzA1NzJFQyIvPjwvc3ZnPg==",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgc3Ryb2tlPSIjM0I5RUZGIiBzdHJva2Utd2lkdGg9IjIiLz48cmVjdCB4PSIxMC41IiB5PSI3IiB3aWR0aD0iMyIgaGVpZ2h0PSIxMCIgcng9IjEuNSIgZmlsbD0iIzNCOUVGRiIvPjwvc3ZnPg=="
++  },
++  "08987058-cadc-4b81-b6e1-30de50dcbe96": {
++    "name": "Windows Hello",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjgiIGhlaWdodD0iOCIgcng9IjEiIGZpbGw9IiMwMDc4RDIiLz48cmVjdCB4PSIxMyIgeT0iMyIgd2lkdGg9IjgiIGhlaWdodD0iOCIgcng9IjEiIGZpbGw9IiMwMDc4RDIiLz48cmVjdCB4PSIzIiB5PSIxMyIgd2lkdGg9IjgiIGhlaWdodD0iOCIgcng9IjEiIGZpbGw9IiMwMDc4RDIiLz48cmVjdCB4PSIxMyIgeT0iMTMiIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIHJ4PSIxIiBmaWxsPSIjMDA3OEQyIi8+PC9zdmc+",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjgiIGhlaWdodD0iOCIgcng9IjEiIGZpbGw9IiM0Q0MyRkYiLz48cmVjdCB4PSIxMyIgeT0iMyIgd2lkdGg9IjgiIGhlaWdodD0iOCIgcng9IjEiIGZpbGw9IiM0Q0MyRkYiLz48cmVjdCB4PSIzIiB5PSIxMyIgd2lkdGg9IjgiIGhlaWdodD0iOCIgcng9IjEiIGZpbGw9IiM0Q0MyRkYiLz48cmVjdCB4PSIxMyIgeT0iMTMiIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIHJ4PSIxIiBmaWxsPSIjNENDMkZGIi8+PC9zdmc+"
++  },
++  "d548826e-79b4-db40-a3d8-11116f7e8349": {
++    "name": "Bitwarden",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTEyIDNMMTkgNnY2YzAgNS4yNS0zLjUgOS43NS03IDExLTMuNS0xLjI1LTctNS43NS03LTExVjZsNy0zWiIgc3Ryb2tlPSIjMTc1RERDIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMTIgNXYxNCIgc3Ryb2tlPSIjMTc1RERDIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTEyIDNMMTkgNnY2YzAgNS4yNS0zLjUgOS43NS03IDExLTMuNS0xLjI1LTctNS43NS03LTExVjZsNy0zWiIgc3Ryb2tlPSIjNThBNkZGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMTIgNXYxNCIgc3Ryb2tlPSIjNThBNkZGIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4="
++  },
++  "2fc0579f-8113-47ea-b116-bb5a8db9202a": {
++    "name": "YubiKey 5 Series",
++    "icon_light": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHJlY3QgeD0iNCIgeT0iNyIgd2lkdGg9IjE2IiBoZWlnaHQ9IjEwIiByeD0iMiIgc3Ryb2tlPSIjODRDNjM5IiBzdHJva2Utd2lkdGg9IjIiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIyLjUiIGZpbGw9IiM4NEM2MzkiLz48L3N2Zz4=",
++    "icon_dark": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHJlY3QgeD0iNCIgeT0iNyIgd2lkdGg9IjE2IiBoZWlnaHQ9IjEwIiByeD0iMiIgc3Ryb2tlPSIjOThFMDQ4IiBzdHJva2Utd2lkdGg9IjIiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIyLjUiIGZpbGw9IiM5OEUwNDgiLz48L3N2Zz4="
++  }
++}
+diff --git a/src/utils/passkeyStore.ts b/src/utils/passkeyStore.ts
+new file mode 100644
+index 0000000..a2142e8
+--- /dev/null
++++ b/src/utils/passkeyStore.ts
+@@ -0,0 +1,220 @@
++import aaguidsData from './aaguids.json';
++
++export const RP_ID = 'localhost';
++export const RP_NAME = 'The DevTools Times';
++
++export interface AaguidRegistryEntry {
++  name: string;
++  icon_light?: string;
++  icon_dark?: string;
++}
++
++const aaguids: Record<string, AaguidRegistryEntry> = aaguidsData;
++
++export interface StoredPasskeyCredential {
++  id: string; // Base64URL-encoded credential ID (unique lookup key)
++  passkeyUserId: string; // Associated application user ID (Base64URL-encoded)
++  credentialPublicKey: string; // Base64URL-encoded public key used to verify assertion signatures
++  credentialType: 'public-key';
++  credentialDeviceType: 'singleDevice' | 'multiDevice';
++  credentialBackedUp: boolean;
++  aaguid: string; // Authenticator Attestation GUID
++  providerIcon?: string; // Provider icon derived from the AAGUID registry
++  providerName?: string; // Original provider name from AAGUID registry
++  name: string; // Provider name derived from AAGUID registry or user-customized display name
++  transports: string[]; // Array of transport names (e.g. 'internal', 'hybrid')
++  lastUsedAt?: number; // Optional epoch timestamp of last sign-in
++  registeredAt: number; // Registration epoch timestamp
++  counter: number; // Authenticator sign-in signature counter
++}
++
++export interface UserAccountProfile {
++  id: string;
++  passkeyUserId: string; // Valid unpadded Base64URL string
++  name: string; // Username / email
++  displayName: string; // Display name
++  subscriptionTier: string;
++}
++
++// Valid unpadded Base64URL: non-empty, [A-Za-z0-9_-] only, no '=' padding, length % 4 !== 1
++export function isValidBase64Url(value: unknown): value is string {
++  return (
++    typeof value === 'string' &&
++    value.length > 0 &&
++    value.length % 4 !== 1 &&
++    /^[A-Za-z0-9_-]+$/.test(value)
++  );
++}
++
++export function resolveAaguidProvider(aaguid: string): {
++  name: string;
++  providerIcon?: string;
++  providerIconDark?: string;
++} {
++  if (!aaguid || aaguid === '00000000-0000-0000-0000-000000000000') {
++    return {
++      name: 'Unknown passkey provider',
++      providerIcon: undefined,
++      providerIconDark: undefined,
++    };
++  }
++  const provider = aaguids[aaguid];
++  return {
++    name: provider?.name || 'Unknown passkey provider',
++    providerIcon: provider?.icon_light,
++    providerIconDark: provider?.icon_dark,
++  };
++}
++
++// Unpadded Base64URL IDs for seed data
++// Buffer.from('reader-alex-morgan-01').toString('base64url') => 'cmVhZGVyLWFsZXgtbW9yZ2FuLTAx'
++const DEFAULT_PASSKEY_USER_ID = 'cmVhZGVyLWFsZXgtbW9yZ2FuLTAx';
++
++interface PasskeyGlobalState {
++  user: UserAccountProfile;
++  credentials: StoredPasskeyCredential[];
++  challenges: Record<string, string>;
++}
++
++const globalForPasskeys = globalThis as unknown as {
++  __devtoolsTimesPasskeyStore?: PasskeyGlobalState;
++};
++
++function createInitialState(): PasskeyGlobalState {
++  const googleProvider = resolveAaguidProvider('ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4');
++  const icloudProvider = resolveAaguidProvider('fbfc3007-154e-4ecc-8c0b-6e020557d7bd');
++  const onePasswordProvider = resolveAaguidProvider('bada5566-a7aa-401f-bd96-45619a55120d');
++
++  return {
++    user: {
++      id: DEFAULT_PASSKEY_USER_ID,
++      passkeyUserId: DEFAULT_PASSKEY_USER_ID,
++      name: 'alex.morgan@devtoolstimes.dev',
++      displayName: 'Alex Morgan',
++      subscriptionTier: 'Digital All-Access Subscriber',
++    },
++    credentials: [
++      {
++        // Buffer.from('cred-google-pm-001').toString('base64url')
++        id: 'Y3JlZC1nb29nbGUtcG0tMDAx',
++        passkeyUserId: DEFAULT_PASSKEY_USER_ID,
++        credentialPublicKey: 'pQECAyYgASFYIJV8Z29vZ2xlLXB1YmxpYy1rZXktc2VlZC0wMDE',
++        credentialType: 'public-key',
++        credentialDeviceType: 'multiDevice',
++        credentialBackedUp: true,
++        aaguid: 'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4',
++        providerIcon: googleProvider.providerIcon,
++        providerName: googleProvider.name,
++        name: googleProvider.name,
++        transports: ['internal', 'hybrid'],
++        registeredAt: 1758038400000,
++        lastUsedAt: 1762963200000,
++        counter: 14,
++      },
++      {
++        // Buffer.from('cred-icloud-keychain-002').toString('base64url')
++        id: 'Y3JlZC1pY2xvdWQta2V5Y2hhaW4tMDAy',
++        passkeyUserId: DEFAULT_PASSKEY_USER_ID,
++        credentialPublicKey: 'pQECAyYgASFYIJV8aWNsb3VkLXB1YmxpYy1rZXktc2VlZC0wMDI',
++        credentialType: 'public-key',
++        credentialDeviceType: 'multiDevice',
++        credentialBackedUp: true,
++        aaguid: 'fbfc3007-154e-4ecc-8c0b-6e020557d7bd',
++        providerIcon: icloudProvider.providerIcon,
++        providerName: icloudProvider.name,
++        name: icloudProvider.name,
++        transports: ['internal', 'hybrid'],
++        registeredAt: 1752249600000,
++        lastUsedAt: 1761580800000,
++        counter: 7,
++      },
++      {
++        // Buffer.from('cred-1password-003').toString('base64url')
++        id: 'Y3JlZC0xcGFzc3dvcmQtMDAz',
++        passkeyUserId: DEFAULT_PASSKEY_USER_ID,
++        credentialPublicKey: 'pQECAyYgASFYIJV8MXBhc3N3b3JkLXB1YmxpYy1rZXktc2VlZC0wMDM',
++        credentialType: 'public-key',
++        credentialDeviceType: 'multiDevice',
++        credentialBackedUp: true,
++        aaguid: 'bada5566-a7aa-401f-bd96-45619a55120d',
++        providerIcon: onePasswordProvider.providerIcon,
++        providerName: onePasswordProvider.name,
++        name: onePasswordProvider.name,
++        transports: ['internal'],
++        registeredAt: 1744560000000,
++        counter: 2,
++      },
++    ],
++    challenges: {},
++  };
++}
++
++function getState(): PasskeyGlobalState {
++  if (!globalForPasskeys.__devtoolsTimesPasskeyStore) {
++    globalForPasskeys.__devtoolsTimesPasskeyStore = createInitialState();
++  }
++  return globalForPasskeys.__devtoolsTimesPasskeyStore;
++}
++
++export const db = {
++  async getCurrentUser(): Promise<UserAccountProfile> {
++    return { ...getState().user };
++  },
++
++  async updateUser(
++    userId: string,
++    updates: { name?: string; displayName?: string }
++  ): Promise<UserAccountProfile> {
++    const state = getState();
++    if (state.user.id === userId || state.user.passkeyUserId === userId) {
++      if (typeof updates.name === 'string' && updates.name.trim()) {
++        state.user.name = updates.name.trim();
++      }
++      if (typeof updates.displayName === 'string' && updates.displayName.trim()) {
++        state.user.displayName = updates.displayName.trim();
++      }
++    }
++    return { ...state.user };
++  },
++
++  async findCredentialsByUserId(userId: string): Promise<StoredPasskeyCredential[]> {
++    const state = getState();
++    return state.credentials
++      .filter((cred) => cred.passkeyUserId === userId)
++      .map((cred) => ({ ...cred }));
++  },
++
++  async findCredentialById(id: string): Promise<StoredPasskeyCredential | undefined> {
++    const state = getState();
++    const found = state.credentials.find((cred) => cred.id === id);
++    return found ? { ...found } : undefined;
++  },
++
++  async saveCredential(cred: StoredPasskeyCredential): Promise<StoredPasskeyCredential> {
++    const state = getState();
++    const index = state.credentials.findIndex((c) => c.id === cred.id);
++    if (index >= 0) {
++      state.credentials[index] = { ...cred };
++    } else {
++      state.credentials.unshift({ ...cred });
++    }
++    return { ...cred };
++  },
++
++  async deleteCredential(id: string): Promise<boolean> {
++    const state = getState();
++    const initialLength = state.credentials.length;
++    state.credentials = state.credentials.filter((cred) => cred.id !== id);
++    return state.credentials.length < initialLength;
++  },
++
++  async setChallenge(userId: string, challenge: string): Promise<void> {
++    const state = getState();
++    state.challenges[userId] = challenge;
++  },
++
++  async getChallenge(userId: string): Promise<string | undefined> {
++    const state = getState();
++    return state.challenges[userId];
++  },
++};

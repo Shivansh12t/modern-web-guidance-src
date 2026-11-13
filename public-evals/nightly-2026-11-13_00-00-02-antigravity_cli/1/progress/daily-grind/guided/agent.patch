@@ -1,0 +1,237 @@
+diff --git a/index.html b/index.html
+index 66c9173..4c355a8 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,157 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
++    /* Order & Rewards Progress Section */
++    .progress-panel {
++      background: white;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-bottom: 36px;
++    }
++
++    .progress-panel h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      font-size: 1.4rem;
++    }
++
++    .progress-group {
++       display: grid;
++      gap: 20px;
++    }
++
++    .progress-item {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    .progress-status {
++      font-size: 0.85rem;
++      color: var(--primary);
++      font-weight: normal;
++    }
++
++    .progress-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 12px;
++    }
++
++    .btn-sm {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 6px 14px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .btn-sm:hover {
++      background: #3e2723;
++    }
++
++    .btn-sm.btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .btn-sm.btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    /* Styled Native Progress Bar */
++    progress {
++      /* Reset default browser styles */
++      appearance: none;
++      border: 0 solid;
++      /* Clip bar to element’s border-radius */
++      overflow: clip;
++      display: block;
++      inline-size: 100%;
++      block-size: 12px;
++
++      --progress-bar-radius: 1e5px;
++      --progress-bar-track: var(--secondary);
++      --progress-bar-fill: var(--primary);
++      border-radius: var(--progress-bar-radius);
++      /* Apply color for custom progress track (background) */
++      background: var(--progress-bar-track, #d7ccc8);
++      /* Subtle depth on the empty part of the track */
++      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
++
++      /* Lets the fill position itself in track units (cqi) */
++      container-type: inline-size;
++      /* Segment length relative to the track */
++      --progress-bar-indeterminate-size: 30%;
++      --progress-bar-indeterminate-animation-duration: 1.5s;
++
++      /* Respect prefers-reduced-motion */
++      @media (prefers-reduced-motion: reduce) {
++        --progress-bar-indeterminate-animation-duration: 10s;
++      }
++    }
++
++    progress:indeterminate {
++      --progress-bar-animation: var(
++        --progress-bar-indeterminate-animation,
++        progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear
++      );
++    }
++
++    progress:dir(rtl) {
++      --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++    }
++
++    /* Let <progress> styling show through */
++    progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    /* Webkit, Chrome */
++    progress::-webkit-progress-value {
++      background: var(--progress-bar-fill, var(--primary));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    /* Firefox */
++    progress::-moz-progress-bar {
++      background: var(--progress-bar-fill, var(--primary));
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    /* Physical: left to right regardless of direction (reverse under :dir(rtl) to mirror). */
++    @keyframes progress-bar-indeterminate {
++      from, to {
++        inline-size: var(--progress-bar-indeterminate-size);
++        /* Pin to the physical left; Chromium would otherwise lay the fill out at the inline start */
++        margin-right: auto;
++      }
++      from { translate: -100%; } /* Own width: fully outside the left edge */
++      to { translate: 100cqi; }  /* Track width: fully outside the right edge */
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -175,8 +326,34 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-panel" aria-labelledby="order-reward-heading">
++      <h2 id="order-reward-heading">Order &amp; Bean Rewards Status</h2>
++      <div class="progress-group">
++        <div class="progress-item">
++          <div class="progress-header">
++            <label for="reward-progress">Bean Rewards Progress</label>
++            <span id="reward-status" class="progress-status" role="status" aria-live="polite">75 / 100 Beans toward your next free drink</span>
++          </div>
++          <progress id="reward-progress" value="75" max="100"></progress>
++          <div class="progress-controls">
++            <button type="button" id="add-beans-btn" class="btn-sm">+25 Beans</button>
++            <button type="button" id="sync-rewards-btn" class="btn-sm btn-outline">Sync Rewards (Indeterminate)</button>
++            <button type="button" id="reset-rewards-btn" class="btn-sm btn-outline">Reset</button>
++          </div>
++        </div>
++
++        <div class="progress-item">
++          <div class="progress-header">
++            <label for="order-sync-progress">Live Roastery Order Queue</label>
++            <span id="order-sync-status" class="progress-status" role="status" aria-live="polite">Syncing barista prep status…</span>
++          </div>
++          <progress id="order-sync-progress" max="100"></progress>
++        </div>
++      </div>
++    </section>
++
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +384,38 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const rewardProgress = document.getElementById('reward-progress');
++    const rewardStatus = document.getElementById('reward-status');
++    const addBeansBtn = document.getElementById('add-beans-btn');
++    const syncRewardsBtn = document.getElementById('sync-rewards-btn');
++    const resetRewardsBtn = document.getElementById('reset-rewards-btn');
++
++    const updateDeterminateProgress = (nextValue) => {
++      const clamped = Math.min(100, Math.max(0, nextValue));
++      rewardProgress.value = clamped;
++      if (clamped >= 100) {
++        rewardStatus.textContent = '100 / 100 Beans — Free handcrafted drink reward unlocked!';
++      } else {
++        rewardStatus.textContent = `${clamped} / 100 Beans toward your next free drink`;
++      }
++    };
++
++    addBeansBtn.addEventListener('click', () => {
++      const current = rewardProgress.hasAttribute('value') ? Number(rewardProgress.value) : 75;
++      updateDeterminateProgress(current + 25);
++    });
++
++    syncRewardsBtn.addEventListener('click', () => {
++      rewardProgress.removeAttribute('value');
++      rewardStatus.textContent = 'Syncing reward balance with roastery…';
++    });
++
++    resetRewardsBtn.addEventListener('click', () => {
++      updateDeterminateProgress(25);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

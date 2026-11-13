@@ -1,0 +1,595 @@
+diff --git a/index.html b/index.html
+index 66c9173..84ed1b4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,244 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Coffee Menu (tabs) */
++    @property --fade-start {
++      syntax: "<length>";
++      inherits: false;
++      initial-value: 0px;
++    }
++
++    @property --fade-end {
++      syntax: "<length>";
++      inherits: false;
++      initial-value: 0px;
++    }
++
++    .coffee-menu h2 {
++      text-align: center;
++    }
++
++    .menu-intro {
++      text-align: center;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .menu-tabs {
++      /* Strategy: single-row horizontal scroller (works with touch swipe, keeps all tabs in keyboard order) */
++      display: flex;
++      gap: 4px;
++      margin-top: 24px;
++      position: relative;
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scrollbar-width: none;
++      scroll-snap-type: inline proximity;
++      border-block-end: 1px solid var(--secondary);
++
++      /* Edge fades that only appear when there are more tabs in that direction */
++      --fade-size: 3rem;
++      --fade-dir: right;
++      --fade-start-pos: 0;
++      --fade-end-pos: 100%;
++      scroll-padding-inline: var(--fade-size);
++      mask:
++        linear-gradient(black, black) no-clip subtract,
++        linear-gradient(to var(--fade-dir), black, transparent) var(--fade-start-pos) 0 / var(--fade-start) 100% no-repeat no-clip,
++        linear-gradient(to var(--fade-dir), transparent, black) var(--fade-end-pos) 0 / var(--fade-end) 100% no-repeat no-clip;
++      animation: menu-reveal-fade-start linear both, menu-hide-fade-end linear both;
++      animation-timeline: scroll(self inline);
++      animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
++
++      &:dir(rtl) {
++        --fade-dir: left;
++        --fade-start-pos: 100%;
++        --fade-end-pos: 0;
++      }
++
++      /* Fallback for browsers without scroll-driven animations (toggled by script) */
++      &.more-start {
++        --fade-start: var(--fade-size);
++      }
++
++      &.more-end {
++        --fade-end: var(--fade-size);
++      }
++    }
++
++    @supports not (animation-timeline: scroll()) {
++      .menu-tabs {
++        transition: --fade-start .2s, --fade-end .2s;
++      }
++    }
++
++    @keyframes menu-reveal-fade-start {
++      to {
++        --fade-start: var(--fade-size);
++      }
++    }
++
++    @keyframes menu-hide-fade-end {
++      from {
++        --fade-end: var(--fade-size);
++      }
++    }
++
++    .menu-tabs::-webkit-scrollbar {
++      display: none;
++    }
++
++    .menu-tabs [role="tab"] {
++      flex: none;
++      position: relative;
++      scroll-snap-align: start;
++      min-block-size: 44px;
++      padding: 10px 18px;
++      border: 0;
++      background: none;
++      color: #6d4c41;
++      font: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      white-space: nowrap;
++      cursor: pointer;
++      border-radius: 6px 6px 0 0;
++      transition: color .2s, background-color .2s;
++    }
++
++    /* Center the tabs when they fit, without clipping the first tab when they overflow */
++    .menu-tabs [role="tab"]:first-child {
++      margin-inline-start: auto;
++    }
++
++    .menu-tabs [role="tab"]:last-child {
++      margin-inline-end: auto;
++    }
++
++    .menu-tabs [role="tab"]:hover {
++      color: var(--primary);
++      background-color: rgba(215, 204, 200, 0.4);
++    }
++
++    .menu-tabs [role="tab"]:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: -4px;
++    }
++
++    .menu-tabs [role="tab"][aria-selected="true"] {
++      color: var(--primary);
++    }
++
++    /* Selected indicator: an underline (not color alone), drawn with a border so it survives forced colors */
++    .menu-tabs [role="tab"][aria-selected="true"] {
++      anchor-name: --menu-active-tab;
++    }
++
++    @supports (anchor-name: --a) {
++      .menu-tabs::after {
++        content: "";
++        position: absolute;
++        position-anchor: --menu-active-tab;
++        inset-block-end: 0;
++        inset-inline-start: anchor(left);
++        inset-inline-end: anchor(right);
++        border-block-end: 3px solid var(--accent);
++        pointer-events: none;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        .menu-tabs::after {
++          transition: inset .25s ease;
++        }
++      }
++    }
++
++    @supports not (anchor-name: --a) {
++      .menu-tabs [role="tab"][aria-selected="true"]::after {
++        content: "";
++        position: absolute;
++        inset: auto 0 0;
++        border-block-end: 3px solid var(--accent);
++      }
++    }
++
++    /* All panels share one grid cell, so hidden="until-found" panels don't add gaps */
++    .menu-panels {
++      display: grid;
++    }
++
++    .menu-panels > [role="tabpanel"] {
++      grid-area: 1 / 1;
++    }
++
++    .menu-panels .grid {
++      margin-top: 24px;
++    }
++
++    .drink-card {
++      display: flex;
++      flex-direction: column;
++      padding: 0;
++      overflow: hidden;
++    }
++
++    .drink-card img {
++      display: block;
++      inline-size: 100%;
++      block-size: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .drink-card .card-body {
++      display: flex;
++      flex: 1;
++      flex-direction: column;
++      align-items: center;
++      padding: 20px;
++    }
++
++    .drink-card .card-body p {
++      flex: 1;
++    }
++
++    .drink-card .price {
++      display: inline-block;
++      margin-bottom: 6px;
++      font-weight: 700;
++      color: #8d6e63;
++    }
++
++    .drink-card .btn {
++      align-self: center;
++    }
++
++    @media (max-width: 600px) {
++      nav {
++        flex-direction: column;
++        gap: 8px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++        gap: 6px 14px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .hero h1 {
++        font-size: 2.2rem;
++      }
++
++      .menu-tabs [role="tab"] {
++        padding: 10px 14px;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -175,23 +413,244 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section id="coffee-menu" class="coffee-menu" aria-labelledby="coffee-menu-heading">
++      <h2 id="coffee-menu-heading">Our Coffee Menu</h2>
++      <p class="menu-intro">Handcrafted drinks for every mood and every season.</p>
++      <div class="menu-tabs" role="tablist" focusgroup="tablist nomemory" aria-labelledby="coffee-menu-heading">
++        <button type="button" role="tab" id="tab-seasonal" aria-selected="true" focusgroupstart>Seasonal</button>
++        <button type="button" role="tab" id="tab-espresso" aria-selected="false">Espresso</button>
++        <button type="button" role="tab" id="tab-brewed" aria-selected="false">Brewed Coffee</button>
++        <button type="button" role="tab" id="tab-cold-brew" aria-selected="false">Cold Brew &amp; Iced</button>
++        <button type="button" role="tab" id="tab-tea" aria-selected="false">Tea &amp; Matcha</button>
++        <button type="button" role="tab" id="tab-blended" aria-selected="false">Blended &amp; Cocoa</button>
++        <button type="button" role="tab" id="tab-refreshers" aria-selected="false">Refreshers</button>
++      </div>
++      <div class="menu-panels">
++        <div role="tabpanel" id="panel-seasonal" aria-labelledby="tab-seasonal">
++          <div class="grid">
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?auto=format&fit=crop&w=600&h=450&q=75" alt="Latte in a white cup on linen" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Maple Oat Latte</h3>
++                <span class="price">$5.75</span>
++                <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++                <a href="/menu/seasonal" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=600&h=450&q=75" alt="Latte with leaf latte art in a glass mug" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Gingerbread Latte</h3>
++                <span class="price">$5.95</span>
++                <p>Espresso, steamed milk, molasses and warm ginger spice.</p>
++                <a href="/menu/seasonal/gingerbread-latte" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&h=450&q=75" alt="Overhead view of a latte with rosetta art" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Pumpkin Spice Latte</h3>
++                <span class="price">$5.95</span>
++                <p>Real pumpkin, cinnamon and nutmeg, finished with latte art.</p>
++                <a href="/menu/seasonal/pumpkin-spice-latte" class="btn">View Details</a>
++              </div>
++            </article>
++          </div>
++        </div>
++        <div role="tabpanel" id="panel-espresso" aria-labelledby="tab-espresso" hidden="until-found">
++          <div class="grid">
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&h=450&q=75" alt="Espresso with golden crema in a black cup" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Dark Roast Espresso</h3>
++                <span class="price">$3.25</span>
++                <p>Bold, smokey, and perfect for a morning boost.</p>
++                <a href="/menu/espresso" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1559496417-e7f25cb247f3?auto=format&fit=crop&w=600&h=450&q=75" alt="Cortado in a small glass in the sunlight" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Cortado</h3>
++                <span class="price">$4.25</span>
++                <p>Equal parts espresso and silky steamed milk.</p>
++                <a href="/menu/espresso/cortado" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1534778101976-62847782c213?auto=format&fit=crop&w=600&h=450&q=75" alt="Cappuccino with latte art on a wooden table" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Cappuccino</h3>
++                <span class="price">$4.75</span>
++                <p>A classic: rich espresso under a deep cap of microfoam.</p>
++                <a href="/menu/espresso/cappuccino" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&h=450&q=75" alt="Several flat whites with heart latte art" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Flat White</h3>
++                <span class="price">$4.75</span>
++                <p>Ristretto shots with velvety, thin-textured milk.</p>
++                <a href="/menu/espresso/flat-white" class="btn">View Details</a>
++              </div>
++            </article>
++          </div>
++        </div>
++        <div role="tabpanel" id="panel-brewed" aria-labelledby="tab-brewed" hidden="until-found">
++          <div class="grid">
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1497515114629-f71d768fd07c?auto=format&fit=crop&w=600&h=450&q=75" alt="Steaming cup of black coffee beside coffee beans" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>House Drip</h3>
++                <span class="price">$2.75</span>
++                <p>Our signature medium roast, brewed fresh every 30 minutes.</p>
++                <a href="/menu/brewed/house-drip" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&h=450&q=75" alt="Overhead view of a freshly brewed black coffee" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Single-Origin Pour-Over</h3>
++                <span class="price">$4.50</span>
++                <p>Hand-poured to order to highlight each bean's character.</p>
++                <a href="/menu/brewed/pour-over" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&h=450&q=75" alt="Milk being poured into a coffee cup" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Café au Lait</h3>
++                <span class="price">$3.75</span>
++                <p>Fresh drip coffee mellowed with steamed whole milk.</p>
++                <a href="/menu/brewed/cafe-au-lait" class="btn">View Details</a>
++              </div>
++            </article>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div role="tabpanel" id="panel-cold-brew" aria-labelledby="tab-cold-brew" hidden="until-found">
++          <div class="grid">
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&h=450&q=75" alt="Iced cold brew with swirling cream" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Cold Brew</h3>
++                <span class="price">$4.50</span>
++                <p>Steeped for 18 hours for maximum smoothness.</p>
++                <a href="/menu/cold-brew" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&h=450&q=75" alt="Iced latte in a glass on a wooden table" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Iced Vanilla Latte</h3>
++                <span class="price">$5.25</span>
++                <p>Espresso and house-made vanilla over ice and cold milk.</p>
++                <a href="/menu/cold-brew/iced-vanilla-latte" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?auto=format&fit=crop&w=600&h=450&q=75" alt="Iced espresso drink with a straw in a plastic cup" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Brown Sugar Shaken Espresso</h3>
++                <span class="price">$5.50</span>
++                <p>Shaken with brown sugar and cinnamon, topped with oat milk.</p>
++                <a href="/menu/cold-brew/shaken-espresso" class="btn">View Details</a>
++              </div>
++            </article>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div role="tabpanel" id="panel-tea" aria-labelledby="tab-tea" hidden="until-found">
++          <div class="grid">
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=600&h=450&q=75" alt="Matcha latte with latte art" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Ceremonial Matcha Latte</h3>
++                <span class="price">$5.25</span>
++                <p>Stone-ground Uji matcha whisked with your choice of milk.</p>
++                <a href="/menu/tea/matcha-latte" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=600&h=450&q=75" alt="Milky chai in a white cup with cookies" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Masala Chai Latte</h3>
++                <span class="price">$4.95</span>
++                <p>Black tea simmered with cardamom, clove and black pepper.</p>
++                <a href="/menu/tea/chai-latte" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&h=450&q=75" alt="Glass cup of tea with loose tea bags" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Earl Grey</h3>
++                <span class="price">$3.50</span>
++                <p>Bright bergamot-scented black tea, served by the pot.</p>
++                <a href="/menu/tea/earl-grey" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=600&h=450&q=75" alt="Cup of black tea surrounded by dried tea leaves" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>English Breakfast</h3>
++                <span class="price">$3.50</span>
++                <p>A robust Assam and Ceylon blend that loves a splash of milk.</p>
++                <a href="/menu/tea/english-breakfast" class="btn">View Details</a>
++              </div>
++            </article>
++          </div>
++        </div>
++        <div role="tabpanel" id="panel-blended" aria-labelledby="tab-blended" hidden="until-found">
++          <div class="grid">
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&h=450&q=75" alt="Cookies and cream frappé with chocolate drizzle" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Cookies &amp; Cream Frappé</h3>
++                <span class="price">$5.95</span>
++                <p>Blended ice, chocolate cookies and whipped cream.</p>
++                <a href="/menu/blended/cookies-cream-frappe" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=600&h=450&q=75" alt="Hot chocolate being poured into a mug" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Velvet Hot Chocolate</h3>
++                <span class="price">$4.50</span>
++                <p>Single-origin dark chocolate melted into steamed milk.</p>
++                <a href="/menu/blended/hot-chocolate" class="btn">View Details</a>
++              </div>
++            </article>
++          </div>
++        </div>
++        <div role="tabpanel" id="panel-refreshers" aria-labelledby="tab-refreshers" hidden="until-found">
++          <div class="grid">
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?auto=format&fit=crop&w=600&h=450&q=75" alt="Bright red berry drink garnished with thyme" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Wild Berry Refresher</h3>
++                <span class="price">$4.75</span>
++                <p>Muddled raspberries and blackberries with sparkling water.</p>
++                <a href="/menu/refreshers/wild-berry" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1563227812-0ea4c22e6cc8?auto=format&fit=crop&w=600&h=450&q=75" alt="Iced red hibiscus drinks with grapefruit slices" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Grapefruit Hibiscus Cooler</h3>
++                <span class="price">$4.75</span>
++                <p>Iced hibiscus tea shaken with fresh pink grapefruit.</p>
++                <a href="/menu/refreshers/hibiscus-cooler" class="btn">View Details</a>
++              </div>
++            </article>
++            <article class="card drink-card">
++              <img src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&h=450&q=75" alt="Iced tea with lime on a wooden board" width="600" height="450" loading="lazy" decoding="async">
++              <div class="card-body">
++                <h3>Lime Iced Black Tea</h3>
++                <span class="price">$3.95</span>
++                <p>Freshly brewed black tea over ice with a squeeze of lime.</p>
++                <a href="/menu/refreshers/lime-iced-tea" class="btn">View Details</a>
++              </div>
++            </article>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +666,85 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const menu = document.getElementById('coffee-menu');
++    const tablist = menu.querySelector('[role="tablist"]');
++    const tabs = [...tablist.querySelectorAll('[role="tab"]')];
++    const panels = tabs.map(tab => document.getElementById(tab.id.replace(/^tab-/, 'panel-')));
++
++    function select(tab) {
++      if (tab.getAttribute('aria-selected') !== 'true') {
++        tabs.forEach((t, i) => {
++          const isSelected = t === tab;
++          t.setAttribute('aria-selected', String(isSelected));
++          t.toggleAttribute('focusgroupstart', isSelected);
++          if (isSelected) {
++            panels[i].removeAttribute('hidden');
++          } else {
++            // Falls back to plain `hidden` where until-found isn't supported
++            panels[i].hidden = 'until-found';
++          }
++        });
++      }
++      // Reveal the selected tab (and a peek of its neighbour) inside the tab bar only, not the page
++      tab.scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' });
++    }
++
++    // Selection follows focus (arrow keys via focusgroup); click covers Safari, which doesn't focus buttons on click
++    tablist.addEventListener('focusin', e => {
++      const tab = e.target.closest('[role="tab"]');
++      if (tab) select(tab);
++    });
++    tablist.addEventListener('click', e => {
++      const tab = e.target.closest('[role="tab"]');
++      if (tab) select(tab);
++    });
++
++    // Find-in-page revealed a hidden panel: sync the tab selection with it
++    panels.forEach((panel, i) => {
++      panel.addEventListener('beforematch', () => select(tabs[i]));
++    });
++
++    // Edge-fade fallback for browsers without scroll-driven animations
++    if (!CSS.supports('animation-timeline', 'scroll()')) {
++      const [first, last] = [tabs[0], tabs.at(-1)];
++      // rootMargin absorbs sub-pixel widths that would leave an edge tab a hair short of fully visible
++      const observer = new IntersectionObserver(entries => {
++        for (const { target, intersectionRatio } of entries) {
++          tablist.classList.toggle(target === first ? 'more-start' : 'more-end', intersectionRatio < 1);
++        }
++      }, { root: tablist, threshold: 1, rootMargin: '1px' });
++      observer.observe(first);
++      observer.observe(last);
++    }
++
++    // Arrow-key roving focus: native focusgroup, else the polyfill, else a minimal handler
++    if (!Object.hasOwn(HTMLElement.prototype, 'focusGroup')) {
++      try {
++        const { polyfill } = await import('https://esm.sh/@microsoft/focusgroup-polyfill');
++        polyfill();
++      } catch {
++        tabs.forEach(t => { t.tabIndex = t.getAttribute('aria-selected') === 'true' ? 0 : -1; });
++        tablist.addEventListener('focusin', () => {
++          tabs.forEach(t => { t.tabIndex = t.getAttribute('aria-selected') === 'true' ? 0 : -1; });
++        });
++        tablist.addEventListener('keydown', e => {
++          const i = tabs.indexOf(document.activeElement);
++          if (i < 0) return;
++          const rtl = getComputedStyle(tablist).direction === 'rtl';
++          const next = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 }[e.key];
++          let target;
++          if (next) target = tabs[(i + next + tabs.length) % tabs.length];
++          else if (e.key === 'Home') target = tabs[0];
++          else if (e.key === 'End') target = tabs.at(-1);
++          if (!target) return;
++          e.preventDefault();
++          target.focus();
++        });
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

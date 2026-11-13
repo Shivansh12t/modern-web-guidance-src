@@ -1,0 +1,398 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/index.html b/index.html
+index 66c9173..e3e01b0 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,24 @@
+       color: var(--primary);
+     }
+ 
++    .grid > [role="row"] {
++      display: contents;
++    }
++
++    .card .btn {
++      scroll-margin-block: 6rem 1rem;
++    }
++
++    .card .btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .grid-help {
++      text-align: center;
++      margin-top: 0.5rem;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -176,22 +194,23 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <p id="seasonal-help" class="grid-help" hidden>Use arrow keys to explore the cards, Enter to view details, and Tab to leave.</p>
++      <div class="grid" data-spatial-grid data-heading="seasonal-heading" data-instructions="seasonal-help">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" aria-label="View Details: Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" aria-label="View Details: Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" aria-label="View Details: Cold Brew">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +226,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./spatial-navigation.mjs"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..828ec01 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "jsdom": "^31.0.0"
+   }
+ }
+diff --git a/spatial-navigation.mjs b/spatial-navigation.mjs
+new file mode 100644
+index 0000000..5db78e5
+--- /dev/null
++++ b/spatial-navigation.mjs
+@@ -0,0 +1,135 @@
++const directions = {
++  ArrowLeft: { near: 'right', far: 'left', sign: -1, start: 'top', end: 'bottom' },
++  ArrowRight: { near: 'left', far: 'right', sign: 1, start: 'top', end: 'bottom' },
++  ArrowUp: { near: 'bottom', far: 'top', sign: -1, start: 'left', end: 'right' },
++  ArrowDown: { near: 'top', far: 'bottom', sign: 1, start: 'left', end: 'right' },
++};
++
++// Use physical edges, rather than DOM indexes or assumed column counts.
++export function findSpatialTarget(current, candidates, key) {
++  const direction = directions[key];
++  if (!direction) return undefined;
++  const { near, far, sign, start, end } = direction;
++  const origin = current.rect;
++  const ranked = candidates.filter(item => item !== current).flatMap(item => {
++    const rect = item.rect;
++    if (rect.width <= 0 || rect.height <= 0) return [];
++    const distance = sign * (rect[near] - origin[far]);
++    if (distance < -1) return [];
++    const gap = Math.max(0, distance);
++    const offset = Math.abs((rect[start] + rect[end] - origin[start] - origin[end]) / 2);
++    const aligned = Math.min(rect[end], origin[end]) > Math.max(rect[start], origin[start]);
++    return [{ item, gap, offset, aligned }];
++  });
++  ranked.sort((a, b) => Number(b.aligned) - Number(a.aligned) ||
++    (a.aligned ? a.gap - b.gap || a.offset - b.offset :
++      (a.gap + 2 * a.offset) - (b.gap + 2 * b.offset)));
++  return ranked[0]?.item;
++}
++
++function isVisible(element) {
++  if (element.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
++  if (element.checkVisibility) {
++    return element.checkVisibility({ visibilityProperty: true, opacityProperty: true });
++  }
++  // Fallback for browsers without checkVisibility().
++  const style = getComputedStyle(element);
++  return element.getClientRects().length > 0 && style.visibility === 'visible';
++}
++
++export function enhanceSpatialGrid(grid) {
++  const cards = Array.from(grid.querySelectorAll('.card'));
++  const links = cards.map(card => card.querySelector('a[href]'));
++  if (!links.length || links.some(link => !link)) return;
++
++  const instructions = document.getElementById(grid.dataset.instructions);
++  grid.setAttribute('role', 'grid');
++  grid.setAttribute('aria-labelledby', grid.dataset.heading);
++  if (instructions) {
++    instructions.hidden = false;
++    grid.setAttribute('aria-describedby', instructions.id);
++  }
++  cards.forEach(card => card.setAttribute('role', 'gridcell'));
++
++  const visibleLinks = () => links.filter(link =>
++    isVisible(link) && !link.matches(':disabled, [aria-disabled="true"]'));
++
++  function setActive(active) {
++    links.forEach(link => { link.tabIndex = link === active ? 0 : -1; });
++  }
++
++  let rowSignature = '';
++  function syncRows() {
++    const visibleCards = cards.filter(isVisible);
++    const rows = [];
++    // CSS grid rows have a shared top edge; read fresh geometry after reflow.
++    for (const card of visibleCards) {
++      const top = card.getBoundingClientRect().top;
++      let row = rows.find(row => Math.abs(row.top - top) <= 1);
++      if (!row) {
++        row = { top, cards: [] };
++        rows.push(row);
++      }
++      row.cards.push(card);
++    }
++    rows.sort((a, b) => a.top - b.top);
++    const signature = rows.map(row => row.cards.map(card => cards.indexOf(card)).join(',')).join('|');
++    if (signature !== rowSignature) {
++      rowSignature = signature;
++      const focused = document.activeElement;
++      const oldRows = Array.from(grid.querySelectorAll(':scope > [role="row"]'));
++      // display: contents preserves the existing CSS grid, including wrapping/RTL.
++      for (const row of rows) {
++        const wrapper = document.createElement('div');
++        wrapper.setAttribute('role', 'row');
++        grid.append(wrapper);
++        row.cards.forEach(card => wrapper.append(card));
++      }
++      // Keep hidden cards in the DOM so a later resize can restore them.
++      cards.filter(card => !visibleCards.includes(card)).forEach(card => grid.append(card));
++      oldRows.forEach(row => row.remove());
++      if (links.includes(focused) && document.activeElement !== focused && isVisible(focused)) {
++        focused.focus({ preventScroll: true });
++      }
++    }
++    const visible = visibleLinks();
++    setActive(visible.find(link => link === document.activeElement) ||
++      visible.find(link => link.tabIndex === 0) || visible[0]);
++  }
++
++  grid.addEventListener('focusin', event => {
++    if (visibleLinks().includes(event.target)) setActive(event.target);
++  });
++
++  grid.addEventListener('keydown', event => {
++    if (!directions[event.key] || event.defaultPrevented ||
++      event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
++    const target = event.composedPath()[0];
++    if (target.isContentEditable || target.matches?.(':read-write, select, input, textarea, [role="slider"]')) return;
++    // Nested controls keep their own keyboard behavior.
++    if (!visibleLinks().includes(target)) return;
++    syncRows();
++    const candidates = visibleLinks().map(element => ({ element, rect: element.getBoundingClientRect() }));
++    const current = candidates.find(item => item.element === target);
++    if (!current) return;
++    const next = findSpatialTarget(current, candidates, event.key);
++    if (!next) return; // Preserve native viewport scrolling at every boundary.
++    event.preventDefault();
++    setActive(next.element);
++    next.element.focus({ preventScroll: true });
++    next.element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++  });
++
++  syncRows();
++  if (typeof ResizeObserver !== 'undefined') {
++    const observer = new ResizeObserver(syncRows);
++    observer.observe(grid);
++    cards.forEach(card => observer.observe(card));
++  } else {
++    window.addEventListener('resize', syncRows);
++  }
++}
++
++if (typeof document !== 'undefined') {
++  document.querySelectorAll('[data-spatial-grid]').forEach(enhanceSpatialGrid);
++}
+diff --git a/spatial-navigation.test.mjs b/spatial-navigation.test.mjs
+new file mode 100644
+index 0000000..8c86718
+--- /dev/null
++++ b/spatial-navigation.test.mjs
+@@ -0,0 +1,160 @@
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { test } from 'node:test';
++import { JSDOM } from 'jsdom';
++import { enhanceSpatialGrid, findSpatialTarget } from './spatial-navigation.mjs';
++
++function rect(left, top, width = 100, height = 50) {
++  return { left, top, width, height, right: left + width, bottom: top + height };
++}
++
++function item(left, top, width, height) {
++  return { rect: rect(left, top, width, height) };
++}
++
++test('all four arrows follow the adjacent visual row or column', () => {
++  const center = item(120, 70);
++  const neighbors = [item(0, 70), item(240, 70), item(120, 0), item(120, 140)];
++  for (const [index, key] of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].entries()) {
++    assert.equal(findSpatialTarget(center, [center, ...neighbors], key), neighbors[index]);
++  }
++});
++
++test('geometry handles wrapping, single columns, and reversed visual order', () => {
++  const first = item(120, 0);
++  const second = item(0, 0);
++  const third = item(120, 70);
++  const items = [first, second, third];
++  assert.equal(findSpatialTarget(first, items, 'ArrowLeft'), second);
++  assert.equal(findSpatialTarget(first, items, 'ArrowDown'), third);
++  assert.equal(findSpatialTarget(first, items, 'ArrowRight'), undefined);
++  second.rect = rect(120, 70);
++  third.rect = rect(120, 140);
++  assert.equal(findSpatialTarget(first, items, 'ArrowDown'), second);
++  assert.equal(findSpatialTarget(second, items, 'ArrowRight'), undefined);
++});
++
++test('aligned targets win over closer diagonals, including wide cards', () => {
++  const current = item(0, 0, 300, 50);
++  const aligned = item(240, 150);
++  const diagonal = item(320, 60);
++  assert.equal(findSpatialTarget(current, [current, diagonal, aligned], 'ArrowDown'), aligned);
++});
++
++test('overlapping edges do not qualify based only on centers', () => {
++  const current = item(0, 0);
++  const overlapping = item(20, 0);
++  assert.equal(findSpatialTarget(current, [current, overlapping], 'ArrowRight'), undefined);
++});
++
++test('aligned ties prefer nearest center; fallback weighs perpendicular distance', () => {
++  const current = item(0, 0);
++  const offset = item(120, 40);
++  const aligned = item(120, 0);
++  assert.equal(findSpatialTarget(current, [current, offset, aligned], 'ArrowRight'), aligned);
++  const nearbyDiagonal = item(120, 60);
++  const distantDiagonal = item(110, 300);
++  assert.equal(findSpatialTarget(current, [current, distantDiagonal, nearbyDiagonal], 'ArrowRight'), nearbyDiagonal);
++});
++
++test('zero-sized targets are skipped and subpixel edge rounding is tolerated', () => {
++  const current = item(0, 0);
++  const hidden = item(110, 0, 0, 0);
++  const rounded = item(99.5, 0);
++  assert.equal(findSpatialTarget(current, [current, hidden, rounded], 'ArrowRight'), rounded);
++  assert.equal(findSpatialTarget(current, [current, hidden], 'ArrowRight'), undefined);
++});
++
++function fixture(t) {
++  const dom = new JSDOM(readFileSync(new URL('./index.html', import.meta.url), 'utf8'));
++  const { document } = dom.window;
++  globalThis.document = document;
++  globalThis.window = dom.window;
++  globalThis.getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
++  t.after(() => {
++    dom.window.close();
++    delete globalThis.document;
++    delete globalThis.window;
++    delete globalThis.getComputedStyle;
++  });
++  const grid = document.querySelector('[data-spatial-grid]');
++  const cards = [...grid.querySelectorAll('.card')];
++  const links = [...grid.querySelectorAll('a')];
++  const positions = [rect(0, 0), rect(120, 0), rect(0, 70)];
++  const scrolled = [];
++  [...cards, ...links].forEach((element, i) => {
++    element.getBoundingClientRect = () => positions[i % 3];
++    element.getClientRects = () => element.closest('[hidden]') ? [] : [positions[i % 3]];
++  });
++  links.forEach(link => { link.scrollIntoView = options => scrolled.push({ link, options }); });
++  enhanceSpatialGrid(grid);
++  function press(target, key, options = {}) {
++    const event = new dom.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options });
++    target.dispatchEvent(event);
++    return event;
++  }
++  return { document, grid, cards, links, positions, press, scrolled };
++}
++
++test('grid semantics, one tab stop, focus movement, scrolling and pointer focus', t => {
++  const { document, grid, links, press, scrolled } = fixture(t);
++  assert.equal(grid.getAttribute('role'), 'grid');
++  assert.equal(grid.getAttribute('aria-labelledby'), 'seasonal-heading');
++  assert.equal(document.getElementById('seasonal-help').hidden, false);
++  assert.equal(grid.querySelectorAll('[role="row"]').length, 2);
++  assert.equal(grid.querySelectorAll('[role="gridcell"]').length, 3);
++  assert.deepEqual(links.map(link => link.tabIndex), [0, -1, -1]);
++  links[0].focus();
++  assert.equal(press(links[0], 'ArrowRight').defaultPrevented, true);
++  assert.equal(document.activeElement, links[1]);
++  assert.deepEqual(links.map(link => link.tabIndex), [-1, 0, -1]);
++  assert.deepEqual(scrolled[0], { link: links[1], options: { block: 'nearest', inline: 'nearest' } });
++  links[2].focus();
++  assert.deepEqual(links.map(link => link.tabIndex), [-1, -1, 0]);
++  assert.equal(press(links[2], 'Tab').defaultPrevented, false);
++  assert.equal(press(links[2], 'Tab', { shiftKey: true }).defaultPrevented, false);
++  assert.equal(press(links[2], 'Enter').defaultPrevented, false);
++});
++
++test('boundaries, modified keys, consumed events, and nested controls stay native', t => {
++  const { document, grid, links, press } = fixture(t);
++  links[0].focus();
++  assert.equal(press(links[0], 'ArrowLeft').defaultPrevented, false);
++  for (const modifier of ['altKey', 'ctrlKey', 'metaKey', 'shiftKey', 'isComposing']) {
++    assert.equal(press(links[0], 'ArrowRight', { [modifier]: true }).defaultPrevented, false);
++  }
++  links[0].addEventListener('keydown', event => event.preventDefault(), { once: true });
++  press(links[0], 'ArrowRight');
++  assert.equal(document.activeElement, links[0]);
++  const input = document.createElement('input');
++  grid.querySelector('.card').append(input);
++  input.focus();
++  assert.equal(press(input, 'ArrowRight').defaultPrevented, false);
++  assert.equal(document.activeElement, input);
++});
++
++test('fresh geometry updates navigation and accessible rows without losing focus', t => {
++  const { document, grid, links, positions, press } = fixture(t);
++  links[0].focus();
++  positions[1] = rect(0, 70);
++  positions[2] = rect(0, 140);
++  assert.equal(press(links[0], 'ArrowDown').defaultPrevented, true);
++  assert.equal(document.activeElement, links[1]);
++  assert.equal(grid.querySelectorAll('[role="row"]').length, 3);
++  assert.equal(press(links[1], 'ArrowRight').defaultPrevented, false);
++});
++
++test('hidden and disabled links are excluded and resizing preserves the active link', t => {
++  const { document, cards, links, press } = fixture(t);
++  links[0].focus();
++  cards[1].hidden = true;
++  assert.equal(press(links[0], 'ArrowRight').defaultPrevented, false);
++  cards[1].hidden = false;
++  links[1].setAttribute('aria-disabled', 'true');
++  assert.equal(press(links[0], 'ArrowRight').defaultPrevented, false);
++  links[1].removeAttribute('aria-disabled');
++  links[1].focus();
++  window.dispatchEvent(new window.Event('resize'));
++  assert.equal(document.activeElement, links[1]);
++  assert.deepEqual(links.map(link => link.tabIndex), [-1, 0, -1]);
++});

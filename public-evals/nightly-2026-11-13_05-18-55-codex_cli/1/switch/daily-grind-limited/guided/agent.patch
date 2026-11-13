@@ -1,0 +1,216 @@
+diff --git a/index.html b/index.html
+index 66c9173..f09789f 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,36 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light">
++  <script>
++    try {
++      if (localStorage.getItem('daily-grind.dark-mode') === 'true') {
++        document.querySelector('meta[name="color-scheme"]').content = 'dark';
++      }
++    } catch {
++      // Keep the default light theme when storage is unavailable.
++    }
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
+       --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      --secondary: light-dark(#d7ccc8, #302522);
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --text: light-dark(#3e2723, #f1e6df);
++      --light: light-dark(#fafafa, #1c1715);
++      --surface: light-dark(white, #29211e);
++      --heading: light-dark(#4e342e, #efc9aa);
++      --border: light-dark(#d7ccc8, #655149);
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="light"]) {
++      color-scheme: light;
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="dark"]) {
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -108,7 +130,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +139,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+@@ -135,6 +157,84 @@
+       background: #3e2723;
+     }
+ 
++    .preferences {
++      margin-top: 40px;
++      padding: 24px;
++      background: var(--surface);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++    }
++
++    .preferences h2 {
++      margin-bottom: 16px;
++      color: var(--heading);
++    }
++
++    .preference-row {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 16px;
++    }
++
++    .preference-label {
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .preference-control {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      min-height: 44px;
++    }
++
++    .preference-control input {
++      appearance: none;
++      width: 52px;
++      height: 30px;
++      border: 2px solid var(--border);
++      border-radius: 30px;
++      background: var(--secondary);
++      cursor: pointer;
++      accent-color: var(--primary);
++    }
++
++    .preference-control input::before {
++      content: '';
++      display: block;
++      width: 22px;
++      height: 22px;
++      margin: 2px;
++      border-radius: 50%;
++      background: var(--text);
++    }
++
++    .preference-control input:checked {
++      background: var(--accent);
++      border-color: var(--accent);
++    }
++
++    .preference-control input:checked::before {
++      transform: translateX(22px);
++      background: #3e2723;
++    }
++
++    .preference-control input:focus-visible {
++      outline: 3px solid var(--heading);
++      outline-offset: 4px;
++    }
++
++    .preference-state {
++      min-width: 3ch;
++    }
++
++    .preference-note {
++      margin-top: 12px;
++      font-size: 0.85rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +295,21 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences" aria-labelledby="preferences-title" hidden>
++      <h2 id="preferences-title">Preferences</h2>
++      <div class="preference-row">
++        <div>
++          <label class="preference-label" for="dark-mode">Dark mode</label>
++          <p id="dark-mode-description">A darker look for your daily coffee ritual.</p>
++        </div>
++        <div class="preference-control">
++          <input id="dark-mode" type="checkbox" switch role="switch" aria-describedby="dark-mode-description">
++          <span class="preference-state" aria-hidden="true">Off</span>
++        </div>
++      </div>
++      <p class="preference-note" role="status">Your preference is saved on this device.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +322,46 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const key = 'daily-grind.dark-mode';
++      const scheme = document.querySelector('meta[name="color-scheme"]');
++      const toggle = document.getElementById('dark-mode');
++      const state = document.querySelector('.preference-state');
++      const note = document.querySelector('.preference-note');
++
++      function applyPreference(enabled) {
++        scheme.content = enabled ? 'dark' : 'light';
++        toggle.checked = enabled;
++        state.textContent = enabled ? 'On' : 'Off';
++      }
++
++      applyPreference(scheme.content === 'dark');
++      try {
++        localStorage.getItem(key);
++      } catch {
++        note.textContent = 'Changes apply for this visit. Device storage is unavailable.';
++      }
++      document.querySelector('.preferences').hidden = false;
++
++      toggle.addEventListener('change', () => {
++        applyPreference(toggle.checked);
++        try {
++          localStorage.setItem(key, String(toggle.checked));
++          note.textContent = 'Your preference is saved on this device.';
++        } catch {
++          note.textContent = 'Changes apply for this visit. Your preference could not be saved.';
++        }
++      });
++
++      window.addEventListener('storage', (event) => {
++        if (event.storageArea === window.localStorage && (event.key === key || event.key === null)) {
++          applyPreference(event.newValue === 'true');
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

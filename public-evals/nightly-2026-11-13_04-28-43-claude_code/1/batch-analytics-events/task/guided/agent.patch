@@ -1,0 +1,189 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,184 @@
++/**
++ * The Daily Grind – client-side analytics.
++ *
++ * Records page views and click interactions, then debounces and batches them
++ * into a single deferred background request using `fetchLater()` with
++ * `activateAfter`. Every new event aborts the pending request and reschedules
++ * one containing the full queue, so rapid interactions coalesce into one
++ * beacon. The browser still delivers the latest batch if the user leaves the
++ * page before the batch window expires.
++ */
++(() => {
++  // Analytics collection endpoint (expects a JSON array of events via POST).
++  const ANALYTICS_ENDPOINT = '/api/analytics';
++
++  // All events within this window are batched into a single request.
++  const BATCH_WINDOW = 10 * 1000;
++
++  // Keep batches well under the ~64KB per-origin fetchLater() quota.
++  const MAX_QUEUE_SIZE = 100;
++  const MAX_PAYLOAD_BYTES = 32 * 1024;
++
++  // Minimal fetchLater() polyfill for browsers without native support
++  // (currently Firefox and Safari). Sends on timeout or when the page becomes
++  // hidden, using fetch keepalive (or sendBeacon as a last resort).
++  globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++    let timeoutHandle;
++    let activated = false;
++
++    function sendNow() {
++      if (!(init.signal && init.signal.aborted)) {
++        if (
++          'keepalive' in Request.prototype ||
++          init.method !== 'POST' ||
++          init.headers
++        ) {
++          fetch(url, Object.assign({}, init, { keepalive: true })).catch(() => {});
++          activated = true;
++        } else {
++          activated = navigator.sendBeacon(url, init.body);
++        }
++      }
++      destroy();
++    }
++
++    function destroy() {
++      document.removeEventListener('visibilitychange', sendNow);
++      clearTimeout(timeoutHandle);
++    }
++
++    if (document.visibilityState === 'hidden') {
++      queueMicrotask(sendNow);
++    } else {
++      document.addEventListener('visibilitychange', sendNow);
++      if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++        timeoutHandle = setTimeout(sendNow, init.activateAfter);
++      }
++    }
++
++    if (init.signal) {
++      init.signal.addEventListener('abort', destroy);
++    }
++
++    return {
++      get activated() {
++        return activated;
++      },
++    };
++  };
++
++  const sessionId = crypto.randomUUID?.() ?? String(Date.now()) + Math.random().toString(16).slice(2);
++  const encoder = new TextEncoder();
++
++  let eventQueue = [];
++  let fetchLaterResult = null;
++  let fetchLaterController = null;
++
++  function resetQueue() {
++    eventQueue = [];
++    fetchLaterResult = null;
++    fetchLaterController = null;
++  }
++
++  function scheduleBatch() {
++    // Abort the pending beacon; it will be replaced by one with the full queue.
++    fetchLaterController?.abort();
++    fetchLaterController = new AbortController();
++
++    try {
++      fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
++        method: 'POST',
++        headers: { 'content-type': 'application/json' },
++        body: JSON.stringify(eventQueue),
++        signal: fetchLaterController.signal,
++        activateAfter: BATCH_WINDOW,
++      });
++    } catch (error) {
++      // Quota exceeded or unsupported environment: drop this batch quietly
++      // rather than affecting the user experience.
++      resetQueue();
++    }
++  }
++
++  function trackEvent(type, data = {}) {
++    // Start a fresh batch once the previous one has been sent.
++    if (fetchLaterResult?.activated) resetQueue();
++
++    const event = {
++      type,
++      ts: Date.now(),
++      path: location.pathname,
++      sessionId,
++      ...data,
++    };
++
++    // If adding this event would make the batch too large, let the current
++    // batch go out as-is (it's already scheduled) and start a new one.
++    const nextSize = encoder.encode(JSON.stringify([...eventQueue, event])).byteLength;
++    if (
++      eventQueue.length > 0 &&
++      (eventQueue.length >= MAX_QUEUE_SIZE || nextSize > MAX_PAYLOAD_BYTES)
++    ) {
++      fetchLaterController = null; // Keep the full, pending batch alive.
++      fetchLaterResult = null;
++      eventQueue = [];
++    }
++
++    eventQueue.push(event);
++    scheduleBatch();
++  }
++
++  // Describe a clicked element without capturing user-entered content.
++  function describeTarget(el) {
++    const interactive = el.closest('a, button, [role="button"], input[type="submit"], [data-track]');
++    const target = interactive ?? el;
++    const section = target.closest('nav, header, main, footer, section');
++    const card = target.closest('.card');
++
++    return {
++      tag: target.tagName.toLowerCase(),
++      id: target.id || undefined,
++      classes: target.classList.length ? [...target.classList].join(' ') : undefined,
++      label:
++        target.dataset?.track ||
++        target.getAttribute('aria-label') ||
++        (target.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80) ||
++        undefined,
++      href: target instanceof HTMLAnchorElement ? target.getAttribute('href') : undefined,
++      region: section?.tagName.toLowerCase(),
++      card: card?.querySelector('h3')?.textContent.trim(),
++      interactive: Boolean(interactive),
++    };
++  }
++
++  function trackPageView(extra = {}) {
++    trackEvent('page_view', {
++      title: document.title,
++      referrer: document.referrer || undefined,
++      viewport: `${innerWidth}x${innerHeight}`,
++      ...extra,
++    });
++  }
++
++  // Page view (the script is deferred, so the DOM is ready here).
++  trackPageView();
++
++  // Count back/forward cache restores as page views too.
++  addEventListener('pageshow', (event) => {
++    if (event.persisted) trackPageView({ bfcache: true });
++  });
++
++  // Click interactions (passive, capture phase so nothing can block it).
++  document.addEventListener(
++    'click',
++    (event) => {
++      if (!(event.target instanceof Element)) return;
++      trackEvent('click', {
++        target: describeTarget(event.target),
++        x: Math.round(event.clientX),
++        y: Math.round(event.clientY),
++      });
++    },
++    { capture: true, passive: true },
++  );
++})();

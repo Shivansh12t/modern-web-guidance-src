@@ -1,0 +1,188 @@
+diff --git a/index.html b/index.html
+index 66c9173..db6a632 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,110 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee FAQ */
++    #coffee-faq {
++      margin-top: 40px;
++    }
++
++    #coffee-faq h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 20px;
++    }
++
++    .faq-item {
++      margin-top: 12px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .faq-trigger {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      width: 100%;
++      padding: 20px;
++      border: 0;
++      border-radius: 8px;
++      background: transparent;
++      color: var(--primary);
++      font: inherit;
++      font-weight: 600;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    .faq-trigger::before {
++      content: '';
++      flex: 0 0 8px;
++      height: 8px;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: rotate(-45deg);
++      transition: transform 0.3s ease;
++    }
++
++    .faq-trigger[aria-expanded="true"]::before {
++      transform: rotate(45deg);
++    }
++
++    .faq-trigger:hover,
++    .faq-trigger[aria-expanded="true"] {
++      background: var(--secondary);
++    }
++
++    .faq-trigger:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .faq-panel {
++      display: grid;
++      grid-template-rows: 1fr;
++      visibility: visible;
++    }
++
++    /* Grid tracks animate natural content height without fixed height limits. */
++    .faq-ready .faq-panel {
++      grid-template-rows: 0fr;
++      visibility: hidden;
++      transition: grid-template-rows 0.3s ease, visibility 0s linear 0.3s;
++    }
++
++    .faq-ready .is-open .faq-panel {
++      grid-template-rows: 1fr;
++      visibility: visible;
++      transition-delay: 0s;
++    }
++
++    .faq-panel-inner {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    .faq-panel p {
++      padding: 16px 20px 20px;
++    }
++
++    .faq-panel a {
++      color: var(--primary);
++      text-underline-offset: 3px;
++    }
++
++    .faq-panel a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #coffee-faq .faq-panel,
++      #coffee-faq .faq-trigger::before {
++        transition: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +299,39 @@
+         </div>
+       </div>
+     </section>
++    <section id="coffee-faq" aria-labelledby="coffee-faq-heading">
++      <h2 id="coffee-faq-heading">Coffee Questions, Answered</h2>
++      <div class="faq-item">
++        <h3>
++          <button class="faq-trigger" type="button" aria-expanded="true" aria-controls="faq-sourcing">Where do you source your coffee?</button>
++        </h3>
++        <div class="faq-panel" id="faq-sourcing">
++          <div class="faq-panel-inner">
++            <p>Ethical sourcing is at the heart of every cup we serve. Our coffee origins vary with the season, so ask your barista about the beans we're brewing today and the people who grow them.</p>
++          </div>
++        </div>
++      </div>
++      <div class="faq-item">
++        <h3>
++          <button class="faq-trigger" type="button" aria-expanded="true" aria-controls="faq-roasting">How is your coffee roasted?</button>
++        </h3>
++        <div class="faq-panel" id="faq-roasting">
++          <div class="faq-panel-inner">
++            <p>We roast locally to bring out each coffee's character, from balanced everyday cups to our bold dark roast espresso. Ask your barista to help you find a roast that suits your taste and brewing method.</p>
++          </div>
++        </div>
++      </div>
++      <div class="faq-item">
++        <h3>
++          <button class="faq-trigger" type="button" aria-expanded="true" aria-controls="faq-rewards">How do I join and use your rewards program?</button>
++        </h3>
++        <div class="faq-panel" id="faq-rewards">
++          <div class="faq-panel-inner">
++            <p>Visit our <a href="/rewards">Rewards page</a> to learn how to join, earn rewards, and redeem them. Already a member? Check <a href="/account">My Account</a> for your rewards information, or ask your barista for help.</p>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +344,32 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const faq = document.getElementById('coffee-faq');
++      const items = [...faq.querySelectorAll('.faq-item')];
++
++      const setExpanded = (item, expanded) => {
++        const trigger = item.querySelector('.faq-trigger');
++        const panel = item.querySelector('.faq-panel');
++        // Return focus before making a closing panel unavailable.
++        if (!expanded && panel.contains(document.activeElement)) trigger.focus();
++        trigger.setAttribute('aria-expanded', String(expanded));
++        panel.inert = !expanded;
++        item.classList.toggle('is-open', expanded);
++      };
++
++      // Answers remain readable if JavaScript is unavailable.
++      items.forEach(item => {
++        setExpanded(item, false);
++        item.querySelector('.faq-trigger').addEventListener('click', () => {
++          const expand = !item.classList.contains('is-open');
++          items.forEach(other => setExpanded(other, other === item && expand));
++        });
++      });
++      faq.classList.add('faq-ready');
++    })();
++  </script>
+ </body>
+ 
+ </html>

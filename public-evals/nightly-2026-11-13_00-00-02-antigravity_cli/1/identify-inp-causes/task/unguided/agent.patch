@@ -1,0 +1,470 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,466 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    /**
++     * Field Rum Instrumentation for Interaction to Next Paint (INP)
++     * Monitors user interactions in the field and attributes slow interactions
++     * to specific scripts (via Long Animation Frames / PerformanceScriptTiming)
++     * and rendering phases (input delay, processing duration, presentation delay,
++     * pre-layout/rAF work, and style & layout recalculation).
++     */
++    const INP_GOOD_THRESHOLD = 200;
++    const INP_POOR_THRESHOLD = 500;
++    const SLOW_INTERACTION_THRESHOLD = 200;
++    const EVENT_DURATION_THRESHOLD = 16;
++    const MAX_LOAF_BUFFER_SIZE = 150;
++    const ANALYTICS_ENDPOINT = '/api/rum/inp';
++
++    const loafEntries = [];
++    const longTaskEntries = [];
++    const interactionsById = new Map();
++    const interactionList = [];
++    let lastReportedINPId = null;
++
++    function getRating(value) {
++      if (value <= INP_GOOD_THRESHOLD) return 'good';
++      if (value <= INP_POOR_THRESHOLD) return 'needs-improvement';
++      return 'poor';
++    }
++
++    function getLoadState(timestamp) {
++      if (document.readyState === 'loading') return 'loading';
++      const navEntry = performance.getEntriesByType('navigation')[0];
++      if (!navEntry) return document.readyState;
++      if (timestamp < navEntry.domInteractive) return 'loading';
++      if (timestamp < navEntry.domContentLoadedEventStart) return 'dom-interactive';
++      if (timestamp < navEntry.loadEventStart) return 'dom-content-loaded';
++      return 'complete';
++    }
++
++    function getElementSelector(el) {
++      if (!el || el.nodeType !== 1) return 'unknown';
++      const parts = [];
++      let current = el;
++      while (current && current.nodeType === 1 && current !== document.body && parts.length < 4) {
++        let selector = current.nodeName.toLowerCase();
++        if (current.id) {
++          selector += `#${current.id}`;
++          parts.unshift(selector);
++          break;
++        }
++        if (typeof current.className === 'string' && current.className.trim()) {
++          const classes = current.className.trim().split(/\s+/).slice(0, 2).join('.');
++          if (classes) selector += `.${classes}`;
++        }
++        parts.unshift(selector);
++        current = current.parentElement;
++      }
++      return parts.join(' > ') || el.nodeName.toLowerCase();
++    }
++
++    /**
++     * Attributes a PerformanceScriptTiming entry to the specific interaction phase
++     * where it executed (input-delay, processing-duration, or presentation-delay).
++     */
++    function classifyScriptPhase(script, interaction, loaf) {
++      const scriptStart = script.startTime;
++      const scriptEnd = script.startTime + script.duration;
++
++      if (scriptEnd <= interaction.processingStart) {
++        return 'input-delay';
++      }
++      if (
++        (loaf.renderStart > 0 && scriptStart >= loaf.renderStart) ||
++        scriptStart >= interaction.processingEnd
++      ) {
++        return 'presentation-delay';
++      }
++      return 'processing-duration';
++    }
++
++    /**
++     * Extracts detailed rendering phase timings and script attribution from
++     * overlapping Long Animation Frame (long-animation-frame) entries.
++     */
++    function extractLoAFAttribution(interaction, rawLoAFs) {
++      const overlappingLoAFs = rawLoAFs || loafEntries.filter((loaf) => {
++        const loafEnd = loaf.startTime + loaf.duration;
++        return loaf.startTime < interaction.nextPaintTime && loafEnd > interaction.startTime;
++      });
++
++      const attributedScripts = [];
++      const loafBreakdowns = overlappingLoAFs.map((loaf) => {
++        const loafEnd = loaf.startTime + loaf.duration;
++        const hasRender = loaf.renderStart > 0;
++        const hasStyleAndLayout = loaf.styleAndLayoutStart > 0;
++
++        const workDuration = hasRender
++          ? Math.max(0, loaf.renderStart - loaf.startTime)
++          : loaf.duration;
++        const totalRenderDuration = hasRender
++          ? Math.max(0, loafEnd - loaf.renderStart)
++          : 0;
++        const preLayoutRenderDuration = hasRender
++          ? Math.max(0, (hasStyleAndLayout ? loaf.styleAndLayoutStart : loafEnd) - loaf.renderStart)
++          : 0;
++        const styleAndLayoutDuration = hasStyleAndLayout
++          ? Math.max(0, loafEnd - loaf.styleAndLayoutStart)
++          : 0;
++
++        const scripts = Array.from(loaf.scripts || []).map((script) => {
++          const compileDuration = script.executionStart > script.startTime
++            ? Math.max(0, script.executionStart - script.startTime)
++            : 0;
++          const executionDuration = Math.max(0, script.duration - compileDuration);
++          const phase = classifyScriptPhase(script, interaction, loaf);
++
++          const scriptRecord = {
++            invoker: script.invoker || 'unknown',
++            invokerType: script.invokerType || 'unknown',
++            sourceURL: script.sourceURL || window.location.href,
++            sourceFunctionName: script.sourceFunctionName || '(anonymous)',
++            sourceCharPosition: typeof script.sourceCharPosition === 'number' ? script.sourceCharPosition : -1,
++            startTime: Math.round(script.startTime * 100) / 100,
++            executionStart: Math.round((script.executionStart || script.startTime) * 100) / 100,
++            duration: Math.round(script.duration * 100) / 100,
++            compileDuration: Math.round(compileDuration * 100) / 100,
++            executionDuration: Math.round(executionDuration * 100) / 100,
++            forcedStyleAndLayoutDuration: Math.round((script.forcedStyleAndLayoutDuration || 0) * 100) / 100,
++            pauseDuration: Math.round((script.pauseDuration || 0) * 100) / 100,
++            windowAttribution: script.windowAttribution || 'self',
++            phase,
++          };
++
++          attributedScripts.push(scriptRecord);
++          return scriptRecord;
++        });
++
++        return {
++          startTime: Math.round(loaf.startTime * 100) / 100,
++          duration: Math.round(loaf.duration * 100) / 100,
++          blockingDuration: Math.round((loaf.blockingDuration || 0) * 100) / 100,
++          renderStart: Math.round((loaf.renderStart || 0) * 100) / 100,
++          styleAndLayoutStart: Math.round((loaf.styleAndLayoutStart || 0) * 100) / 100,
++          renderingPhases: {
++            workDuration: Math.round(workDuration * 100) / 100,
++            totalRenderDuration: Math.round(totalRenderDuration * 100) / 100,
++            preLayoutRenderDuration: Math.round(preLayoutRenderDuration * 100) / 100,
++            styleAndLayoutDuration: Math.round(styleAndLayoutDuration * 100) / 100,
++          },
++          scripts,
++        };
++      });
++
++      attributedScripts.sort((a, b) => b.duration - a.duration);
++      const culpritScript = attributedScripts[0] || null;
++
++      const totalForcedStyleAndLayout = attributedScripts.reduce(
++        (sum, s) => sum + s.forcedStyleAndLayoutDuration,
++        0
++      );
++      const totalStyleAndLayout = loafBreakdowns.reduce(
++        (sum, l) => sum + l.renderingPhases.styleAndLayoutDuration,
++        0
++      );
++      const totalPreLayoutRender = loafBreakdowns.reduce(
++        (sum, l) => sum + l.renderingPhases.preLayoutRenderDuration,
++        0
++      );
++
++      return {
++        longAnimationFrames: loafBreakdowns,
++        scripts: attributedScripts,
++        culpritScript,
++        renderingSummary: {
++          styleAndLayoutDuration: Math.round(totalStyleAndLayout * 100) / 100,
++          preLayoutRenderDuration: Math.round(totalPreLayoutRender * 100) / 100,
++          forcedStyleAndLayoutDuration: Math.round(totalForcedStyleAndLayout * 100) / 100,
++        },
++      };
++    }
++
++    /**
++     * Builds a complete diagnostic payload for an interaction, breaking down
++     * the three core INP phases and correlating with Long Animation Frame scripts.
++     */
++    function buildInteractionAttribution(interaction, overrideLoAFs) {
++      const inputDelay = Math.max(0, interaction.processingStart - interaction.startTime);
++      const processingDuration = Math.max(0, interaction.processingEnd - interaction.processingStart);
++      const presentationDelay = Math.max(0, interaction.nextPaintTime - interaction.processingEnd);
++      const totalSubparts = inputDelay + processingDuration + presentationDelay || 1;
++
++      const phases = {
++        inputDelay: {
++          duration: Math.round(inputDelay * 100) / 100,
++          percentage: Math.round((inputDelay / totalSubparts) * 1000) / 10,
++        },
++        processingDuration: {
++          duration: Math.round(processingDuration * 100) / 100,
++          percentage: Math.round((processingDuration / totalSubparts) * 1000) / 10,
++        },
++        presentationDelay: {
++          duration: Math.round(presentationDelay * 100) / 100,
++          percentage: Math.round((presentationDelay / totalSubparts) * 1000) / 10,
++        },
++      };
++
++      let dominantPhase = 'processing-duration';
++      if (inputDelay >= processingDuration && inputDelay >= presentationDelay) {
++        dominantPhase = 'input-delay';
++      } else if (presentationDelay >= inputDelay && presentationDelay >= processingDuration) {
++        dominantPhase = 'presentation-delay';
++      }
++
++      const loafAttribution = extractLoAFAttribution(interaction, overrideLoAFs);
++
++      return {
++        metric: 'INP',
++        interactionId: interaction.interactionId,
++        value: Math.round(interaction.duration * 100) / 100,
++        rating: getRating(interaction.duration),
++        interactionTarget: interaction.targetSelector,
++        interactionType: interaction.interactionType,
++        eventTypes: Array.from(interaction.eventTypes),
++        interactionTime: Math.round(interaction.startTime * 100) / 100,
++        nextPaintTime: Math.round(interaction.nextPaintTime * 100) / 100,
++        loadState: interaction.loadState,
++        dominantPhase,
++        phases,
++        renderingSummary: loafAttribution.renderingSummary,
++        culpritScript: loafAttribution.culpritScript,
++        scripts: loafAttribution.scripts,
++        longAnimationFrames: loafAttribution.longAnimationFrames,
++        pageUrl: window.location.href,
++        timestamp: Date.now(),
++      };
++    }
++
++    /**
++     * Computes the current INP value (p98 interaction latency) across all
++     * observed page interactions.
++     */
++    function computeCurrentINP() {
++      if (interactionList.length === 0) return null;
++      const sorted = [...interactionList].sort((a, b) => b.duration - a.duration);
++      const index = Math.min(sorted.length - 1, Math.floor(sorted.length / 50));
++      return sorted[index];
++    }
++
++    /**
++     * Sends telemetry payload to the RUM collection endpoint via sendBeacon
++     * with a fetch keepalive fallback.
++     */
++    function sendTelemetry(payload) {
++      window.__INP_TELEMETRY__.reports.push(payload);
++      window.dispatchEvent(new CustomEvent('inp:attribution', { detail: payload }));
++
++      const body = JSON.stringify(payload);
++      try {
++        if (navigator.sendBeacon) {
++          const blob = new Blob([body], { type: 'application/json' });
++          navigator.sendBeacon(ANALYTICS_ENDPOINT, blob);
++          return;
++        }
++      } catch (_) {
++        // Fallback to fetch keepalive below
++      }
++
++      try {
++        fetch(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          body,
++          headers: { 'Content-Type': 'application/json' },
++          keepalive: true,
++        }).catch(() => {});
++      } catch (_) {}
++    }
++
++    // Expose field telemetry state for inspection & debugging
++    window.__INP_TELEMETRY__ = {
++      interactions: interactionList,
++      loafEntries,
++      longTaskEntries,
++      reports: [],
++      getINP() {
++        const inpInteraction = computeCurrentINP();
++        return inpInteraction ? buildInteractionAttribution(inpInteraction) : null;
++      },
++      getSlowInteractions(threshold = SLOW_INTERACTION_THRESHOLD) {
++        return interactionList
++          .filter((item) => item.duration >= threshold)
++          .sort((a, b) => b.duration - a.duration)
++          .map((item) => buildInteractionAttribution(item));
++      },
++    };
++
++    // 1. Observe Long Animation Frames (LoAF) for script & rendering phase attribution
++    if (
++      typeof PerformanceObserver !== 'undefined' &&
++      PerformanceObserver.supportedEntryTypes &&
++      PerformanceObserver.supportedEntryTypes.includes('long-animation-frame')
++    ) {
++      try {
++        const loafObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            loafEntries.push(entry);
++            if (loafEntries.length > MAX_LOAF_BUFFER_SIZE) {
++              loafEntries.shift();
++            }
++          }
++        });
++        loafObserver.observe({ type: 'long-animation-frame', buffered: true });
++      } catch (_) {}
++    }
++
++    // 2. Fallback Long Tasks observer for browsers without LoAF support
++    if (
++      typeof PerformanceObserver !== 'undefined' &&
++      PerformanceObserver.supportedEntryTypes &&
++      PerformanceObserver.supportedEntryTypes.includes('longtask')
++    ) {
++      try {
++        const longTaskObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            longTaskEntries.push(entry);
++            if (longTaskEntries.length > MAX_LOAF_BUFFER_SIZE) {
++              longTaskEntries.shift();
++            }
++          }
++        });
++        longTaskObserver.observe({ type: 'longtask', buffered: true });
++      } catch (_) {}
++    }
++
++    // 3. Observe Event Timing entries to group by interactionId and compute INP phases
++    if (
++      typeof PerformanceObserver !== 'undefined' &&
++      PerformanceObserver.supportedEntryTypes &&
++      PerformanceObserver.supportedEntryTypes.includes('event')
++    ) {
++      try {
++        const eventObserver = new PerformanceObserver((list) => {
++          for (const entry of list.getEntries()) {
++            if (!entry.interactionId) continue;
++
++            const id = entry.interactionId;
++            const entryEnd = entry.startTime + entry.duration;
++            const interactionType = entry.name.startsWith('key') ? 'keyboard' : 'pointer';
++
++            let interaction = interactionsById.get(id);
++            if (!interaction) {
++              interaction = {
++                interactionId: id,
++                startTime: entry.startTime,
++                processingStart: entry.processingStart,
++                processingEnd: entry.processingEnd,
++                nextPaintTime: entryEnd,
++                duration: entry.duration,
++                targetSelector: getElementSelector(entry.target),
++                interactionType,
++                eventTypes: new Set([entry.name]),
++                loadState: getLoadState(entry.startTime),
++                entries: [entry],
++              };
++              interactionsById.set(id, interaction);
++              interactionList.push(interaction);
++            } else {
++              interaction.startTime = Math.min(interaction.startTime, entry.startTime);
++              interaction.processingStart = Math.min(interaction.processingStart, entry.processingStart);
++              interaction.processingEnd = Math.max(interaction.processingEnd, entry.processingEnd);
++              interaction.nextPaintTime = Math.max(interaction.nextPaintTime, entryEnd);
++              interaction.duration = Math.max(
++                interaction.duration,
++                entry.duration,
++                interaction.nextPaintTime - interaction.startTime
++              );
++              interaction.eventTypes.add(entry.name);
++              interaction.entries.push(entry);
++              if (interaction.targetSelector === 'unknown' && entry.target) {
++                interaction.targetSelector = getElementSelector(entry.target);
++              }
++            }
++
++            // Defer attribution slightly so any co-occurring LoAF entry has been dispatched
++            if (interaction.duration >= SLOW_INTERACTION_THRESHOLD && !interaction.reportedSlow) {
++              interaction.reportedSlow = true;
++              requestAnimationFrame(() => {
++                setTimeout(() => {
++                  const report = buildInteractionAttribution(interaction);
++                  report.reportType = 'slow-interaction';
++                  sendTelemetry(report);
++                }, 0);
++              });
++            }
++          }
++        });
++
++        eventObserver.observe({
++          type: 'event',
++          buffered: true,
++          durationThreshold: EVENT_DURATION_THRESHOLD,
++        });
++      } catch (_) {}
++    }
++
++    // 4. Integrate with web-vitals/attribution onINP when available
++    function handleWebVitalsINP(metric) {
++      const attr = metric.attribution || {};
++      const syntheticInteraction = {
++        interactionId: (attr.processedEventEntries && attr.processedEventEntries[0]?.interactionId) || metric.id,
++        startTime: attr.interactionTime || 0,
++        processingStart: (attr.interactionTime || 0) + (attr.inputDelay || 0),
++        processingEnd:
++          (attr.interactionTime || 0) + (attr.inputDelay || 0) + (attr.processingDuration || 0),
++        nextPaintTime: attr.nextPaintTime || (attr.interactionTime || 0) + metric.value,
++        duration: metric.value,
++        targetSelector: attr.interactionTarget || getElementSelector(attr.interactionTargetElement),
++        interactionType: attr.interactionType || 'pointer',
++        eventTypes: new Set((attr.processedEventEntries || []).map((e) => e.name)),
++        loadState: attr.loadState || getLoadState(attr.interactionTime || performance.now()),
++        entries: attr.processedEventEntries || [],
++      };
++
++      const report = buildInteractionAttribution(
++        syntheticInteraction,
++        attr.longAnimationFrameEntries
++      );
++      report.reportType = 'web-vitals-inp';
++      report.metricId = metric.id;
++      report.navigationType = metric.navigationType;
++      sendTelemetry(report);
++    }
++
++    import('https://unpkg.com/web-vitals@4/dist/web-vitals.attribution.mjs')
++      .then(({ onINP }) => {
++        if (typeof onINP === 'function') {
++          onINP(handleWebVitalsINP, { reportAllChanges: true });
++        }
++      })
++      .catch(() => {
++        // Offline or blocked CDN: native PerformanceObserver instrumentation above remains active
++      });
++
++    // 5. Flush final INP attribution report when page visibility hides or unloads
++    function flushINPOnHide() {
++      const inpInteraction = computeCurrentINP();
++      if (!inpInteraction || inpInteraction.interactionId === lastReportedINPId) return;
++      lastReportedINPId = inpInteraction.interactionId;
++
++      const finalReport = buildInteractionAttribution(inpInteraction);
++      finalReport.reportType = 'final-inp';
++      sendTelemetry(finalReport);
++    }
++
++    document.addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') {
++        flushINPOnHide();
++      }
++    });
++    window.addEventListener('pagehide', flushINPOnHide);
++  </script>
++
+ </body>
+ 
+ </html>

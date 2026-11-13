@@ -1,0 +1,1479 @@
+diff --git a/index.html b/index.html
+index 66c9173..8d0999e 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,14 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #ff9100;
+       --text: #3e2723;
+       --light: #fafafa;
++      --success: #2e7d32;
++      --info: #1565c0;
+     }
+ 
+     * {
+@@ -38,17 +42,26 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      cursor: pointer;
++      user-select: none;
++      transition: color 0.2s;
++    }
++
++    .logo:hover {
++      color: var(--accent);
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -59,11 +72,15 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 0.2s, border-color 0.2s, background-color 0.2s;
++      padding: 6px 10px;
++      border-radius: 4px;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
++      background: rgba(255, 255, 255, 0.1);
+     }
+ 
+     .logout-link {
+@@ -74,8 +91,9 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      height: 52vh;
++      min-height: 320px;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -86,6 +104,7 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      transition: background-image 0.3s ease;
+     }
+ 
+     .hero h1 {
+@@ -93,6 +112,15 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .hero-status {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      background: rgba(0, 0, 0, 0.45);
++      padding: 4px 12px;
++      border-radius: 999px;
++      border: 1px solid rgba(255, 171, 64, 0.6);
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,6 +128,124 @@
+       padding: 0 20px;
+     }
+ 
++    /* Client-Side View Switcher Bar & Stage */
++    .view-switcher-bar {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      background: white;
++      padding: 14px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++      margin-bottom: 24px;
++      border-left: 4px solid var(--accent);
++    }
++
++    .view-switcher-tabs {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .view-tab {
++      background: #f3efed;
++      color: var(--text);
++      border: 1px solid #d7ccc8;
++      padding: 6px 14px;
++      border-radius: 20px;
++      cursor: pointer;
++      font-size: 0.85rem;
++      font-weight: 600;
++      transition: all 0.2s;
++    }
++
++    .view-tab:hover {
++      background: var(--secondary);
++    }
++
++    .view-tab.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .view-stage {
++      background: white;
++      border-radius: 10px;
++      padding: 24px;
++      margin-bottom: 36px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
++      border: 1px solid #e6dedb;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .view-stage.view-updated {
++      border-color: var(--accent);
++      box-shadow: 0 6px 18px rgba(255, 171, 64, 0.22);
++    }
++
++    .view-stage-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 2px solid #f2ece9;
++      padding-bottom: 14px;
++      margin-bottom: 18px;
++      flex-wrap: wrap;
++      gap: 10px;
++    }
++
++    .view-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-size: 0.78rem;
++      font-weight: 700;
++      padding: 3px 10px;
++      border-radius: 12px;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++    }
++
++    .view-content-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++      gap: 18px;
++      margin-top: 14px;
++    }
++
++    .view-item-card {
++      background: #fcfaf9;
++      border: 1px solid #e8dfdc;
++      border-radius: 8px;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .view-item-card img {
++      width: 100%;
++      height: 150px;
++      object-fit: cover;
++    }
++
++    .view-item-body {
++      padding: 14px;
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .price-tag {
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    /* Seasonal Favorites Grid */
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -113,6 +259,28 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      cursor: pointer;
++      border: 2px solid transparent;
++      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
++    }
++
++    .card.selected-card {
++      border-color: var(--accent);
++      background: #fffdf9;
++      box-shadow: 0 6px 16px rgba(255, 171, 64, 0.28);
++    }
++
++    .card-img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
+     }
+ 
+     .card h3 {
+@@ -120,6 +288,13 @@
+       color: var(--primary);
+     }
+ 
++    .card-meta {
++      font-size: 0.82rem;
++      color: #6d4c41;
++      margin-top: 8px;
++      font-weight: 600;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -128,13 +303,181 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.2s, transform 0.1s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:active {
++      transform: scale(0.98);
++    }
++
++    .btn-accent {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 700;
++    }
++
++    .btn-accent:hover {
++      background: var(--accent-dark);
++      color: white;
++    }
++
++    /* Client-Side Performance Monitor Dashboard */
++    .perf-monitor-section {
++      margin-top: 44px;
++      background: #1e1916;
++      color: #f5f0ee;
++      border-radius: 10px;
++      padding: 24px;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      border: 1px solid #3e2723;
++    }
++
++    .perf-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 18px;
++      border-bottom: 1px solid #3a302c;
++      padding-bottom: 12px;
++    }
++
++    .perf-header h2 {
++      font-size: 1.25rem;
++      color: var(--accent);
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .perf-status-dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #4caf50;
++      display: inline-block;
++      box-shadow: 0 0 8px #4caf50;
++    }
++
++    .perf-actions {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .perf-btn {
++      background: #332924;
++      color: #f5f0ee;
++      border: 1px solid #53433c;
++      padding: 6px 12px;
++      border-radius: 4px;
++      cursor: pointer;
++      font-size: 0.8rem;
++      transition: background 0.2s;
++    }
++
++    .perf-btn:hover {
++      background: #4e342e;
++    }
++
++    .perf-summary-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
++      gap: 14px;
++      margin-bottom: 20px;
++    }
++
++    .perf-stat-card {
++      background: #2b231f;
++      border: 1px solid #3f332d;
++      border-radius: 8px;
++      padding: 14px;
++    }
++
++    .perf-stat-card h3 {
++      font-size: 0.82rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #d7ccc8;
++      margin-bottom: 8px;
++    }
++
++    .perf-stat-primary {
++      font-size: 1.5rem;
++      font-weight: 700;
++      color: var(--accent);
++      font-family: monospace;
++    }
++
++    .perf-stat-sub {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.78rem;
++      color: #bcaaa4;
++      margin-top: 6px;
++      font-family: monospace;
++    }
++
++    .perf-log-container {
++      background: #14110f;
++      border: 1px solid #332924;
++      border-radius: 6px;
++      max-height: 280px;
++      overflow-y: auto;
++    }
++
++    .perf-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.83rem;
++      font-family: monospace;
++    }
++
++    .perf-table th,
++    .perf-table td {
++      text-align: left;
++      padding: 9px 12px;
++      border-bottom: 1px solid #27201c;
++    }
++
++    .perf-table th {
++      background: #241d1a;
++      color: #d7ccc8;
++      position: sticky;
++      top: 0;
++    }
++
++    .perf-pill {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 10px;
++      font-size: 0.74rem;
++      font-weight: 600;
++    }
++
++    .perf-pill.fast {
++      background: rgba(76, 175, 80, 0.2);
++      color: #81c784;
++    }
++
++    .perf-pill.moderate {
++      background: rgba(255, 171, 64, 0.2);
++      color: #ffd180;
++    }
++
++    .perf-pill.slow {
++      background: rgba(244, 67, 54, 0.2);
++      color: #e57373;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,61 +495,1004 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav id="main-nav" data-perf-region="navbar">
++    <div class="logo" id="nav-logo" data-view-target="home" role="button" tabindex="0">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" data-view-target="menu">Menu</a></li>
++      <li><a href="/locations" data-view-target="locations">Locations</a></li>
++      <li><a href="/rewards" data-view-target="rewards">Rewards</a></li>
++      <li><a href="/account" data-view-target="account">My Account</a></li>
++      <li><a href="/logout" class="logout-link" data-view-target="logout">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="hero" id="hero-banner">
++    <h1 id="hero-title">Wake Up Your Senses</h1>
++    <p id="hero-subtitle">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a href="/order-online" id="order-now-btn" class="btn" data-perf-region="order-now" data-view-target="order-online">Order Now</a>
++    <div class="hero-status" id="hero-last-paint-status" aria-live="polite">
++      Ready &bull; Monitoring visual paint latency
++    </div>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <!-- Client-Side View Switcher & Dynamic View Stage -->
++    <div class="view-switcher-bar" aria-label="Client-Side View Switcher">
++      <div>
++        <strong>Current View:</strong>
++        <span id="current-view-name" data-current-view="home">Home Overview</span>
++      </div>
++      <div class="view-switcher-tabs" id="view-switcher-tabs">
++        <button type="button" class="view-tab active" data-view-switch="home">Home</button>
++        <button type="button" class="view-tab" data-view-switch="menu">Menu</button>
++        <button type="button" class="view-tab" data-view-switch="order-online">Order Online</button>
++        <button type="button" class="view-tab" data-view-switch="locations">Locations</button>
++        <button type="button" class="view-tab" data-view-switch="rewards">Rewards</button>
++        <button type="button" class="view-tab" data-view-switch="account">My Account</button>
++      </div>
++    </div>
++
++    <section id="client-view-stage" class="view-stage" data-active-view="home" aria-live="polite">
++      <div class="view-stage-header">
++        <div>
++          <span class="view-badge" id="stage-badge">Featured View</span>
++          <h2 id="stage-title" style="margin-top: 6px;">Roastery Highlights &amp; Daily Craft</h2>
++        </div>
++        <div id="stage-paint-indicator" style="font-size: 0.85rem; color: #5d4037; font-family: monospace;">
++          Last Paint: <strong id="stage-last-paint-ms">-- ms</strong>
++        </div>
++      </div>
++      <div id="stage-body">
++        <p>Welcome to The Daily Grind! Select any item from the navigation bar, click <strong>Order Now</strong>, or explore a <strong>Seasonal Favorite</strong> below to switch views and measure real-time client-side paint performance.</p>
++        <div class="view-content-grid">
++          <div class="view-item-card">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Small Batch Roasting">
++            <div class="view-item-body">
++              <div>
++                <h4>Small-Batch Roasting</h4>
++                <p style="font-size: 0.88rem; margin-top: 4px;">Roasted daily in small lots for peak aroma and balanced sweetness.</p>
++              </div>
++              <span class="price-tag" style="margin-top: 10px;">100% Arabica</span>
++            </div>
++          </div>
++          <div class="view-item-card">
++            <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Express Pickup">
++            <div class="view-item-body">
++              <div>
++                <h4>Mobile Express Pickup</h4>
++                <p style="font-size: 0.88rem; margin-top: 4px;">Order ahead online and skip the morning queue at any of our cafes.</p>
++              </div>
++              <span class="price-tag" style="margin-top: 10px;">Ready in 4 mins</span>
++            </div>
++          </div>
++          <div class="view-item-card">
++            <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Direct Trade Beans">
++            <div class="view-item-body">
++              <div>
++                <h4>Direct Trade Partners</h4>
++                <p style="font-size: 0.88rem; margin-top: 4px;">Supporting sustainable high-altitude farms across Colombia, Ethiopia, and Guatemala.</p>
++              </div>
++              <span class="price-tag" style="margin-top: 10px;">Certified Ethical</span>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Seasonal Favorites Section -->
++    <section id="seasonal-favorites-section" data-perf-region="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="grid" id="seasonal-grid">
++        <div class="card" data-seasonal-item="maple-oat-latte" data-view-target="seasonal-maple-oat-latte">
++          <img class="card-img" src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-meta">$5.75 &bull; 190 Cal &bull; Cozy Autumn Spice</div>
++          <a href="/menu/seasonal" class="btn" data-seasonal-btn="maple-oat-latte">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-seasonal-item="dark-roast-espresso" data-view-target="seasonal-dark-roast-espresso">
++          <img class="card-img" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-meta">$3.95 &bull; 15 Cal &bull; Double Shot</div>
++          <a href="/menu/espresso" class="btn" data-seasonal-btn="dark-roast-espresso">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-seasonal-item="cold-brew" data-view-target="seasonal-cold-brew">
++          <img class="card-img" src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-meta">$4.85 &bull; 10 Cal &bull; Nitrogen Infused Option</div>
++          <a href="/menu/cold-brew" class="btn" data-seasonal-btn="cold-brew">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <!-- Client-Side Performance Monitoring Dashboard -->
++    <section id="performance-monitor" class="perf-monitor-section" aria-label="Client-Side Performance Monitor">
++      <div class="perf-header">
++        <h2>
++          <span class="perf-status-dot"></span>
++          Client-Side Paint Performance Monitor
++        </h2>
++        <div class="perf-actions">
++          <span id="perf-total-count" style="font-size: 0.82rem; color: #d7ccc8; font-family: monospace;">0 measurements</span>
++          <button type="button" class="perf-btn" id="perf-clear-btn">Clear Metrics</button>
+         </div>
+       </div>
++
++      <div class="perf-summary-grid" id="perf-summary-cards">
++        <div class="perf-stat-card" id="perf-card-navbar" data-metric-category="navbar">
++          <h3>Navigation Bar Clicks</h3>
++          <div class="perf-stat-primary" id="perf-navbar-last">-- ms</div>
++          <div class="perf-stat-sub">
++            <span>Avg: <strong id="perf-navbar-avg">-- ms</strong></span>
++            <span>Count: <strong id="perf-navbar-count">0</strong></span>
++          </div>
++        </div>
++
++        <div class="perf-stat-card" id="perf-card-order-now" data-metric-category="order-now">
++          <h3>"Order Now" Button</h3>
++          <div class="perf-stat-primary" id="perf-order-now-last">-- ms</div>
++          <div class="perf-stat-sub">
++            <span>Avg: <strong id="perf-order-now-avg">-- ms</strong></span>
++            <span>Count: <strong id="perf-order-now-count">0</strong></span>
++          </div>
++        </div>
++
++        <div class="perf-stat-card" id="perf-card-seasonal-favorites" data-metric-category="seasonal-favorites">
++          <h3>Seasonal Favorites Cards</h3>
++          <div class="perf-stat-primary" id="perf-seasonal-favorites-last">-- ms</div>
++          <div class="perf-stat-sub">
++            <span>Avg: <strong id="perf-seasonal-favorites-avg">-- ms</strong></span>
++            <span>Count: <strong id="perf-seasonal-favorites-count">0</strong></span>
++          </div>
++        </div>
++
++        <div class="perf-stat-card" id="perf-card-view-switch" data-metric-category="view-switch">
++          <h3>Client-Side View Switches</h3>
++          <div class="perf-stat-primary" id="perf-view-switch-last">-- ms</div>
++          <div class="perf-stat-sub">
++            <span>Avg: <strong id="perf-view-switch-avg">-- ms</strong></span>
++            <span>Count: <strong id="perf-view-switch-count">0</strong></span>
++          </div>
++        </div>
++      </div>
++
++      <div class="perf-log-container">
++        <table class="perf-table" id="perf-metrics-table">
++          <thead>
++            <tr>
++              <th>#</th>
++              <th>Category</th>
++              <th>Target / Transition</th>
++              <th>Paint Duration</th>
++              <th>Status</th>
++              <th>Timestamp</th>
++            </tr>
++          </thead>
++          <tbody id="perf-log-tbody">
++            <tr id="perf-empty-row">
++              <td colspan="6" style="text-align: center; color: #8d6e63; padding: 16px;">
++                Waiting for interactions... Click the navigation bar, "Order Now" button, "Seasonal Favorites" cards, or view switcher tabs.
++              </td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/about" data-view-target="about">Our Story</a> |
++      <a href="/careers" data-view-target="careers">Join the Team</a> |
++      <a href="/contact" data-view-target="contact">Contact Us</a> |
++      <a href="/privacy-policy" data-view-target="privacy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      // =========================================================================
++      // 1. View Definitions for Client-Side View Switching & Visual Updates
++      // =========================================================================
++      var VIEWS = {
++        'home': {
++          title: 'Roastery Highlights & Daily Craft',
++          badge: 'Home Overview',
++          heroTitle: 'Wake Up Your Senses',
++          heroSubtitle: 'Ethically sourced, locally roasted, delivered to your cup.',
++          html: [
++            '<p>Welcome to The Daily Grind! Select any item from the navigation bar, click <strong>Order Now</strong>, or explore a <strong>Seasonal Favorite</strong> below to switch views and measure real-time client-side paint performance.</p>',
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80" alt="Small Batch Roasting">',
++            '    <div class="view-item-body"><div><h4>Small-Batch Roasting</h4><p style="font-size:0.88rem;margin-top:4px;">Roasted daily in small lots for peak aroma and balanced sweetness.</p></div><span class="price-tag" style="margin-top:10px;">100% Arabica</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="Express Pickup">',
++            '    <div class="view-item-body"><div><h4>Mobile Express Pickup</h4><p style="font-size:0.88rem;margin-top:4px;">Order ahead online and skip the morning queue at any of our cafes.</p></div><span class="price-tag" style="margin-top:10px;">Ready in 4 mins</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80" alt="Direct Trade Beans">',
++            '    <div class="view-item-body"><div><h4>Direct Trade Partners</h4><p style="font-size:0.88rem;margin-top:4px;">Supporting sustainable high-altitude farms across Colombia, Ethiopia, and Guatemala.</p></div><span class="price-tag" style="margin-top:10px;">Certified Ethical</span></div>',
++            '  </div>',
++            '</div>'
++          ].join('\n')
++        },
++        'menu': {
++          title: 'Full Handcrafted Coffee & Bakery Menu',
++          badge: 'Menu View',
++          heroTitle: 'Handcrafted Beverages & Fresh Pastries',
++          heroSubtitle: 'Dialed-in espresso, slow-steeped cold brews, and house-baked morning goods.',
++          html: [
++            '<p>Browse our signature drinks and bakery pairings made fresh throughout the day.</p>',
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">',
++            '    <div class="view-item-body"><div><h4>Maple Oat Latte</h4><p style="font-size:0.88rem;margin-top:4px;">Velvety steamed oat milk, double ristretto, and pure Vermont amber maple.</p></div><span class="price-tag" style="margin-top:10px;">$5.75</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">',
++            '    <div class="view-item-body"><div><h4>Dark Roast Espresso</h4><p style="font-size:0.88rem;margin-top:4px;">Rich dark cocoa notes with a thick hazelnut-colored crema finish.</p></div><span class="price-tag" style="margin-top:10px;">$3.95</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="18-Hour Cold Brew">',
++            '    <div class="view-item-body"><div><h4>18-Hour Cold Brew</h4><p style="font-size:0.88rem;margin-top:4px;">Slow-steeped coarse single-origin Colombian beans over filtered ice.</p></div><span class="price-tag" style="margin-top:10px;">$4.85</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80" alt="Cardamom Kouign-Amann">',
++            '    <div class="view-item-body"><div><h4>Cardamom Morning Bun</h4><p style="font-size:0.88rem;margin-top:4px;">Flaky laminated pastry swirled with freshly ground green cardamom and orange zest.</p></div><span class="price-tag" style="margin-top:10px;">$4.50</span></div>',
++            '  </div>',
++            '</div>'
++          ].join('\n')
++        },
++        'locations': {
++          title: 'Our Neighborhood Cafe Locations',
++          badge: 'Locations View',
++          heroTitle: 'Find Your Local Daily Grind',
++          heroSubtitle: 'Warm spaces, fast Wi-Fi, and skilled baristas in the heart of the city.',
++          html: [
++            '<p>Visit any of our roasting cafes for pour-over flights, workspace seating, and whole-bean bags.</p>',
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80" alt="Downtown Roastery">',
++            '    <div class="view-item-body"><div><h4>Downtown Roastery &amp; Bar</h4><p style="font-size:0.88rem;margin-top:4px;">412 Artisan Way &bull; Open Daily 6:00 AM &ndash; 7:00 PM</p></div><span class="price-tag" style="margin-top:10px;">Flagship Cafe</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80" alt="Riverside Espresso">',
++            '    <div class="view-item-body"><div><h4>Riverside Market Cafe</h4><p style="font-size:0.88rem;margin-top:4px;">88 Harbor Blvd &bull; Open Daily 6:30 AM &ndash; 6:00 PM</p></div><span class="price-tag" style="margin-top:10px;">Patio Seating</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=600&q=80" alt="University Commons">',
++            '    <div class="view-item-body"><div><h4>University Commons</h4><p style="font-size:0.88rem;margin-top:4px;">205 College Ave &bull; Open Daily 6:30 AM &ndash; 9:00 PM</p></div><span class="price-tag" style="margin-top:10px;">Late Study Hours</span></div>',
++            '  </div>',
++            '</div>'
++          ].join('\n')
++        },
++        'rewards': {
++          title: 'Daily Grind Bean Rewards Club',
++          badge: 'Rewards View',
++          heroTitle: 'Sip, Earn, and Enjoy Free Coffee',
++          heroSubtitle: 'Earn 10 Bean Points per dollar spent and unlock complimentary seasonal drinks.',
++          html: [
++            '<p>Your current member balance: <strong>420 Bean Points</strong> (Gold Roaster Tier &mdash; 1 free drink ready to redeem!).</p>',
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card"><div class="view-item-body"><div><h4>100 Points</h4><p style="font-size:0.88rem;margin-top:4px;">Free extra espresso shot, oat milk swap, or house syrup infusion.</p></div><span class="price-tag" style="margin-top:10px;">Unlocked</span></div></div>',
++            '  <div class="view-item-card"><div class="view-item-body"><div><h4>250 Points</h4><p style="font-size:0.88rem;margin-top:4px;">Any fresh-baked morning pastry or artisan croissant on the house.</p></div><span class="price-tag" style="margin-top:10px;">Unlocked</span></div></div>',
++            '  <div class="view-item-card"><div class="view-item-body"><div><h4>400 Points</h4><p style="font-size:0.88rem;margin-top:4px;">Any handcrafted seasonal beverage up to 16oz, customized your way.</p></div><span class="price-tag" style="margin-top:10px;">Redeem Now</span></div></div>',
++            '</div>'
++          ].join('\n')
++        },
++        'account': {
++          title: 'My Coffee Profile & Preferences',
++          badge: 'Account View',
++          heroTitle: 'Welcome Back, Alex Rivera',
++          heroSubtitle: 'Manage your saved drinks, subscriptions, and express pickup preferences.',
++          html: [
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card"><div class="view-item-body"><div><h4>Usual Morning Order</h4><p style="font-size:0.88rem;margin-top:4px;">12oz Maple Oat Latte (Extra Hot, Light Foam) &bull; Downtown Roastery</p></div><span class="price-tag" style="margin-top:10px;">1-Click Reorder</span></div></div>',
++            '  <div class="view-item-card"><div class="view-item-body"><div><h4>Roaster Subscription</h4><p style="font-size:0.88rem;margin-top:4px;">2x 12oz Whole Bean Bags delivered bi-weekly (Ethiopia Yirgacheffe).</p></div><span class="price-tag" style="margin-top:10px;">Active</span></div></div>',
++            '  <div class="view-item-card"><div class="view-item-body"><div><h4>Payment &amp; Wallet</h4><p style="font-size:0.88rem;margin-top:4px;">Daily Grind Gift Card Balance: $24.50 &bull; Auto-reload enabled.</p></div><span class="price-tag" style="margin-top:10px;">Manage</span></div></div>',
++            '</div>'
++          ].join('\n')
++        },
++        'logout': {
++          title: 'You Have Been Signed Out',
++          badge: 'Session Ended',
++          heroTitle: 'See You Tomorrow Morning!',
++          heroSubtitle: 'Your session has been safely closed. Come back anytime for a fresh cup.',
++          html: [
++            '<p>You are currently signed out of your Daily Grind Rewards account. You can still browse the menu or place a guest express order.</p>',
++            '<button type="button" class="btn btn-accent" data-view-switch="account" style="margin-top:12px;">Sign Back In</button>'
++          ].join('\n')
++        },
++        'order-online': {
++          title: 'Express Online Order Builder',
++          badge: 'Order Now View',
++          heroTitle: 'Skip the Line — Order Ahead',
++          heroSubtitle: 'Freshly ground and pulled to order, timed for your arrival.',
++          html: [
++            '<p>Customize your drink for express counter pickup at <strong>Downtown Roastery (Est. 4 mins)</strong>.</p>',
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Order Maple Oat Latte">',
++            '    <div class="view-item-body"><div><h4>1. Maple Oat Latte (12oz)</h4><p style="font-size:0.88rem;margin-top:4px;">Oat milk + Vermont Maple + Double Ristretto</p></div><span class="price-tag" style="margin-top:10px;">$5.75 &bull; In Cart</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Order Dark Roast Espresso">',
++            '    <div class="view-item-body"><div><h4>2. Dark Roast Espresso</h4><p style="font-size:0.88rem;margin-top:4px;">Double Shot &bull; House Sumatra &amp; Brazil Blend</p></div><span class="price-tag" style="margin-top:10px;">$3.95 &bull; Add +</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Order Cold Brew">',
++            '    <div class="view-item-body"><div><h4>3. 18-Hour Cold Brew</h4><p style="font-size:0.88rem;margin-top:4px;">16oz Iced &bull; Smooth Chocolate Finish</p></div><span class="price-tag" style="margin-top:10px;">$4.85 &bull; Add +</span></div>',
++            '  </div>',
++            '</div>'
++          ].join('\n')
++        },
++        'seasonal-maple-oat-latte': {
++          title: 'Seasonal Favorite: Maple Oat Latte',
++          badge: 'Seasonal Spotlight',
++          heroTitle: 'Maple Oat Latte',
++          heroSubtitle: 'Creamy barista-grade oat milk infused with Grade-A Vermont amber maple syrup.',
++          html: [
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte Detail">',
++            '    <div class="view-item-body"><div><h4>Tasting Profile</h4><p style="font-size:0.88rem;margin-top:4px;">Toasted pecan, warm maple sap, silky micro-foam, and a lingering caramel espresso finish.</p></div><span class="price-tag" style="margin-top:10px;">$5.75 &bull; 190 kcal</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <div class="view-item-body"><div><h4>Craft Details</h4><p style="font-size:0.88rem;margin-top:4px;">Pulled with two shots of our Autumn Equinox Espresso blend and topped with a dusting of organic Ceylon cinnamon.</p></div><button type="button" class="btn btn-accent" data-view-switch="order-online">Order Maple Oat Latte</button></div>',
++            '  </div>',
++            '</div>'
++          ].join('\n')
++        },
++        'seasonal-dark-roast-espresso': {
++          title: 'Seasonal Favorite: Dark Roast Espresso',
++          badge: 'Seasonal Spotlight',
++          heroTitle: 'Dark Roast Espresso',
++          heroSubtitle: 'Bold, smokey, full-bodied double shot roasted for crisp mornings.',
++          html: [
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso Detail">',
++            '    <div class="view-item-body"><div><h4>Tasting Profile</h4><p style="font-size:0.88rem;margin-top:4px;">Bittersweet 85% dark chocolate, roasted walnut, pipe tobacco, and syrupy crema body.</p></div><span class="price-tag" style="margin-top:10px;">$3.95 &bull; 15 kcal</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <div class="view-item-body"><div><h4>Craft Details</h4><p style="font-size:0.88rem;margin-top:4px;">18g dose in, 36g yield out over 29 seconds at 9 bars for zero bitterness and intense aromatics.</p></div><button type="button" class="btn btn-accent" data-view-switch="order-online">Order Dark Roast Espresso</button></div>',
++            '  </div>',
++            '</div>'
++          ].join('\n')
++        },
++        'seasonal-cold-brew': {
++          title: 'Seasonal Favorite: 18-Hour Cold Brew',
++          badge: 'Seasonal Spotlight',
++          heroTitle: '18-Hour Artisanal Cold Brew',
++          heroSubtitle: 'Steeped cold for 18 hours in small batches for ultra-low acidity and velvety smoothness.',
++          html: [
++            '<div class="view-content-grid">',
++            '  <div class="view-item-card">',
++            '    <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew Detail">',
++            '    <div class="view-item-body"><div><h4>Tasting Profile</h4><p style="font-size:0.88rem;margin-top:4px;">Sweet milk chocolate, molasses, and dried cherry with a clean, refreshing finish.</p></div><span class="price-tag" style="margin-top:10px;">$4.85 &bull; 10 kcal</span></div>',
++            '  </div>',
++            '  <div class="view-item-card">',
++            '    <div class="view-item-body"><div><h4>Craft Details</h4><p style="font-size:0.88rem;margin-top:4px;">Available classic over crystal-clear ice or drawn from our nitrogen tap for a cascading creamy head.</p></div><button type="button" class="btn btn-accent" data-view-switch="order-online">Order Cold Brew</button></div>',
++            '  </div>',
++            '</div>'
++          ].join('\n')
++        },
++        'about': {
++          title: 'Our Story: Roasting Since 2014',
++          badge: 'About Us',
++          heroTitle: 'Crafted by Coffee Obsessives',
++          heroSubtitle: 'From a 5-kilo garage roaster to your neighborhood gathering place.',
++          html: '<p>We partner directly with family-owned coffee estates to bring transparent, freshly roasted specialty coffee to every cup.</p>'
++        },
++        'careers': {
++          title: 'Join the Daily Grind Barista & Roastery Team',
++          badge: 'Careers',
++          heroTitle: 'Brew Your Career With Us',
++          heroSubtitle: 'SCA-certified training, competitive pay, and unlimited espresso.',
++          html: '<p>Now hiring Lead Baristas, Production Roasters, and Pastry Bakers across all three locations.</p>'
++        },
++        'contact': {
++          title: 'Get in Touch With Our Roastery',
++          badge: 'Contact Us',
++          heroTitle: 'We Would Love to Hear From You',
++          heroSubtitle: 'Questions about wholesale beans, catering, or your morning cup?',
++          html: '<p>Email us at <strong>hello@thedailygrind.coffee</strong> or call <strong>(555) 019-2834</strong>.</p>'
++        },
++        'privacy': {
++          title: 'Privacy Policy & Member Data',
++          badge: 'Privacy',
++          heroTitle: 'Your Privacy Matters',
++          heroSubtitle: 'Transparent data practices for our Rewards and Online Ordering members.',
++          html: '<p>We only collect telemetry and order information necessary to brew your coffee faster and improve page performance.</p>'
++        }
++      };
++
++      // =========================================================================
++      // 2. Client-Side Performance Monitor Engine
++      // =========================================================================
++      var STORAGE_KEY = 'dailyGrind_perfMetrics';
++      var metricSeq = 0;
++      var currentView = 'home';
++
++      var metricsStore = {
++        all: [],
++        byCategory: {
++          'navbar': [],
++          'order-now': [],
++          'seasonal-favorites': [],
++          'view-switch': []
++        }
++      };
++
++      // Load any persisted session metrics if available
++      try {
++        var saved = sessionStorage.getItem(STORAGE_KEY);
++        if (saved) {
++          var parsed = JSON.parse(saved);
++          if (Array.isArray(parsed)) {
++            parsed.forEach(function (item) {
++              if (item && item.category && metricsStore.byCategory[item.category]) {
++                metricsStore.all.push(item);
++                metricsStore.byCategory[item.category].push(item);
++                if (typeof item.id === 'number' && item.id > metricSeq) {
++                  metricSeq = item.id;
++                }
++              }
++            });
++          }
++        }
++      } catch (err) {
++        // Ignore storage errors in restricted environments
++      }
++
++      /**
++       * Wait until the browser has finished painting the visual updates on the page.
++       * Uses double requestAnimationFrame (rAF #1 runs before paint, rAF #2 runs after paint commit).
++       */
++      function afterNextPaint(callback) {
++        requestAnimationFrame(function () {
++          var prePaintMarkTime = performance.now();
++          requestAnimationFrame(function () {
++            var paintFinishTime = performance.now();
++            callback(paintFinishTime, prePaintMarkTime);
++          });
++        });
++      }
++
++      function getSpeedRating(durationMs) {
++        if (durationMs < 50) return 'fast';
++        if (durationMs < 100) return 'moderate';
++        return 'slow';
++      }
++
++      function saveMetricsToStorage() {
++        try {
++          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(metricsStore.all));
++        } catch (err) {
++          // Ignore storage quota errors
++        }
++      }
++
++      function computeCategoryStats(category) {
++        var list = metricsStore.byCategory[category] || [];
++        var count = list.length;
++        if (count === 0) {
++          return { count: 0, lastDuration: null, avgDuration: null, minDuration: null, maxDuration: null };
++        }
++        var sum = 0;
++        var min = Infinity;
++        var max = -Infinity;
++        for (var i = 0; i < count; i++) {
++          var d = list[i].duration;
++          sum += d;
++          if (d < min) min = d;
++          if (d > max) max = d;
++        }
++        var last = list[count - 1].duration;
++        var avg = Number((sum / count).toFixed(2));
++        return {
++          count: count,
++          lastDuration: last,
++          avgDuration: avg,
++          minDuration: Number(min.toFixed(2)),
++          maxDuration: Number(max.toFixed(2))
++        };
++      }
++
++      function renderPerfDashboard(latestEntry) {
++        var categories = ['navbar', 'order-now', 'seasonal-favorites', 'view-switch'];
++        categories.forEach(function (cat) {
++          var stats = computeCategoryStats(cat);
++          var lastEl = document.getElementById('perf-' + cat + '-last');
++          var avgEl = document.getElementById('perf-' + cat + '-avg');
++          var countEl = document.getElementById('perf-' + cat + '-count');
++          var cardEl = document.getElementById('perf-card-' + cat);
++
++          if (lastEl) {
++            lastEl.textContent = stats.lastDuration !== null ? stats.lastDuration.toFixed(2) + ' ms' : '-- ms';
++          }
++          if (avgEl) {
++            avgEl.textContent = stats.avgDuration !== null ? stats.avgDuration.toFixed(2) + ' ms' : '-- ms';
++          }
++          if (countEl) {
++            countEl.textContent = String(stats.count);
++          }
++          if (cardEl && stats.lastDuration !== null) {
++            cardEl.setAttribute('data-last-paint-ms', stats.lastDuration.toFixed(2));
++            cardEl.setAttribute('data-avg-paint-ms', stats.avgDuration.toFixed(2));
++            cardEl.setAttribute('data-count', String(stats.count));
++          }
++        });
++
++        var totalEl = document.getElementById('perf-total-count');
++        if (totalEl) {
++          var total = metricsStore.all.length;
++          totalEl.textContent = total + (total === 1 ? ' measurement' : ' measurements');
++        }
++
++        if (latestEntry) {
++          var stagePaintEl = document.getElementById('stage-last-paint-ms');
++          if (stagePaintEl) {
++            stagePaintEl.textContent = latestEntry.duration.toFixed(2) + ' ms (' + latestEntry.label + ')';
++          }
++          var heroStatusEl = document.getElementById('hero-last-paint-status');
++          if (heroStatusEl) {
++            heroStatusEl.textContent =
++              'Last visual paint (' + latestEntry.categoryLabel + ' - ' + latestEntry.label + '): ' +
++              latestEntry.duration.toFixed(2) + ' ms';
++          }
++        }
++
++        var tbody = document.getElementById('perf-log-tbody');
++        if (!tbody) return;
++
++        if (metricsStore.all.length === 0) {
++          tbody.innerHTML =
++            '<tr id="perf-empty-row"><td colspan="6" style="text-align: center; color: #8d6e63; padding: 16px;">' +
++            'Waiting for interactions... Click the navigation bar, "Order Now" button, "Seasonal Favorites" cards, or view switcher tabs.' +
++            '</td></tr>';
++          return;
++        }
++
++        var emptyRow = document.getElementById('perf-empty-row');
++        if (emptyRow && emptyRow.parentNode) {
++          emptyRow.parentNode.removeChild(emptyRow);
++        }
++
++        if (latestEntry) {
++          var tr = document.createElement('tr');
++          tr.setAttribute('data-perf-entry-id', String(latestEntry.id));
++          tr.setAttribute('data-perf-category', latestEntry.category);
++          tr.setAttribute('data-paint-duration-ms', latestEntry.duration.toFixed(2));
++
++          var rating = getSpeedRating(latestEntry.duration);
++          tr.innerHTML = [
++            '<td>' + latestEntry.id + '</td>',
++            '<td><strong>' + latestEntry.categoryLabel + '</strong></td>',
++            '<td>' + latestEntry.label + '</td>',
++            '<td><strong>' + latestEntry.duration.toFixed(2) + ' ms</strong></td>',
++            '<td><span class="perf-pill ' + rating + '">' + rating.toUpperCase() + '</span></td>',
++            '<td>' + latestEntry.formattedTime + '</td>'
++          ].join('');
++
++          if (tbody.firstChild) {
++            tbody.insertBefore(tr, tbody.firstChild);
++          } else {
++            tbody.appendChild(tr);
++          }
++        }
++      }
++
++      var CATEGORY_LABELS = {
++        'navbar': 'Navigation Bar',
++        'order-now': 'Order Now Button',
++        'seasonal-favorites': 'Seasonal Favorites',
++        'view-switch': 'Client-Side View Switch'
++      };
++
++      function recordPaintMeasurement(options) {
++        var category = options.category;
++        var label = options.label;
++        var startTime = typeof options.startTime === 'number' ? options.startTime : performance.now();
++        var targetElement = options.targetElement || null;
++        var fromView = options.fromView || null;
++        var toView = options.toView || null;
++
++        metricSeq += 1;
++        var id = metricSeq;
++        var startMark = 'dg-' + category + '-' + id + '-start';
++        var endMark = 'dg-' + category + '-' + id + '-paint-end';
++        var measureName = 'dg-' + category + '-paint-' + id;
++
++        try {
++          performance.mark(startMark, { startTime: startTime });
++        } catch (e) {
++          try { performance.mark(startMark); } catch (err) {}
++        }
++
++        afterNextPaint(function (paintEndTime) {
++          var rawDuration = Math.max(0.01, paintEndTime - startTime);
++          var duration = Number(rawDuration.toFixed(2));
++
++          try {
++            performance.mark(endMark, { startTime: paintEndTime });
++            performance.measure(measureName, startMark, endMark);
++            // Also record a standard category-level measure name for easy querying
++            performance.measure('daily-grind:' + category + ':paint', startMark, endMark);
++          } catch (e) {
++            // Fallback for older User Timing implementations
++          }
++
++          var nowDate = new Date();
++          var formattedTime = nowDate.toLocaleTimeString([], {
++            hour12: false,
++            hour: '2-digit',
++            minute: '2-digit',
++            second: '2-digit'
++          }) + '.' + String(nowDate.getMilliseconds()).padStart(3, '0');
++
++          var entry = {
++            id: id,
++            category: category,
++            categoryLabel: CATEGORY_LABELS[category] || category,
++            label: label,
++            fromView: fromView,
++            toView: toView,
++            startTime: Number(startTime.toFixed(2)),
++            paintEndTime: Number(paintEndTime.toFixed(2)),
++            duration: duration,
++            durationMs: duration,
++            measureName: measureName,
++            timestamp: nowDate.toISOString(),
++            formattedTime: formattedTime
++          };
++
++          metricsStore.all.push(entry);
++          if (!metricsStore.byCategory[category]) {
++            metricsStore.byCategory[category] = [];
++          }
++          metricsStore.byCategory[category].push(entry);
++
++          if (targetElement && targetElement.setAttribute) {
++            targetElement.setAttribute('data-last-paint-ms', duration.toFixed(2));
++            targetElement.setAttribute('data-paint-count', String(
++              Number(targetElement.getAttribute('data-paint-count') || '0') + 1
++            ));
++          }
++
++          saveMetricsToStorage();
++          renderPerfDashboard(entry);
++
++          console.info(
++            '[DailyGrind PerfMonitor] ' + entry.categoryLabel + ' (' + entry.label + ') painted in ' +
++            duration.toFixed(2) + ' ms',
++            entry
++          );
++
++          try {
++            window.dispatchEvent(new CustomEvent('dailygrind:perf-paint', { detail: entry }));
++          } catch (e) {}
++        });
++      }
++
++      // =========================================================================
++      // 3. Client-Side View Switch Execution & Visual Update Logic
++      // =========================================================================
++      function performClientSideViewSwitch(targetViewKey, options) {
++        options = options || {};
++        var interactionStartTime = typeof options.startTime === 'number' ? options.startTime : performance.now();
++        var triggerSource = options.triggerSource || 'direct';
++        var viewConfig = VIEWS[targetViewKey] || VIEWS['home'];
++        var previousView = currentView;
++        currentView = targetViewKey;
++
++        // 1. Update View Stage DOM
++        var stage = document.getElementById('client-view-stage');
++        var stageBadge = document.getElementById('stage-badge');
++        var stageTitle = document.getElementById('stage-title');
++        var stageBody = document.getElementById('stage-body');
++        var currentViewLabel = document.getElementById('current-view-name');
++        var heroTitle = document.getElementById('hero-title');
++        var heroSubtitle = document.getElementById('hero-subtitle');
++
++        if (stage) {
++          stage.setAttribute('data-active-view', targetViewKey);
++          stage.classList.add('view-updated');
++          setTimeout(function () {
++            stage.classList.remove('view-updated');
++          }, 350);
++        }
++        if (stageBadge) stageBadge.textContent = viewConfig.badge;
++        if (stageTitle) stageTitle.textContent = viewConfig.title;
++        if (stageBody) stageBody.innerHTML = viewConfig.html;
++        if (currentViewLabel) {
++          currentViewLabel.textContent = viewConfig.badge + ' (' + targetViewKey + ')';
++          currentViewLabel.setAttribute('data-current-view', targetViewKey);
++        }
++        if (heroTitle && viewConfig.heroTitle) heroTitle.textContent = viewConfig.heroTitle;
++        if (heroSubtitle && viewConfig.heroSubtitle) heroSubtitle.textContent = viewConfig.heroSubtitle;
++
++        // 2. Update active states on Navigation Bar links
++        var navLinks = document.querySelectorAll('nav a[data-view-target]');
++        for (var i = 0; i < navLinks.length; i++) {
++          var link = navLinks[i];
++          if (link.getAttribute('data-view-target') === targetViewKey) {
++            link.classList.add('active');
++            link.setAttribute('aria-current', 'page');
++          } else {
++            link.classList.remove('active');
++            link.removeAttribute('aria-current');
++          }
++        }
++
++        // 3. Update active states on View Switcher Tabs
++        var viewTabs = document.querySelectorAll('.view-tab[data-view-switch]');
++        for (var j = 0; j < viewTabs.length; j++) {
++          var tab = viewTabs[j];
++          if (tab.getAttribute('data-view-switch') === targetViewKey) {
++            tab.classList.add('active');
++          } else {
++            tab.classList.remove('active');
++          }
++        }
++
++        // 4. Update selected states on Seasonal Favorites cards
++        var cards = document.querySelectorAll('#seasonal-grid .card');
++        for (var k = 0; k < cards.length; k++) {
++          var card = cards[k];
++          if (card.getAttribute('data-view-target') === targetViewKey) {
++            card.classList.add('selected-card');
++          } else {
++            card.classList.remove('selected-card');
++          }
++        }
++
++        // 5. Measure client-side view switch paint time
++        recordPaintMeasurement({
++          category: 'view-switch',
++          label: previousView + ' -> ' + targetViewKey + ' (' + triggerSource + ')',
++          fromView: previousView,
++          toView: targetViewKey,
++          startTime: interactionStartTime,
++          targetElement: stage
++        });
++      }
++
++      // =========================================================================
++      // 4. Event Listeners for Navigation Bar, Order Now, Seasonal Cards & Views
++      // =========================================================================
++      document.addEventListener('click', function (event) {
++        var clickStartTime = performance.now();
++        var target = event.target;
++        if (!target || !target.closest) return;
++
++        // A. Check if click occurred in Navigation Bar (<nav>)
++        var navEl = target.closest('nav');
++        if (navEl) {
++          var navLink = target.closest('a') || target.closest('.logo');
++          if (navLink) {
++            event.preventDefault();
++            var navLabel = (navLink.textContent || 'Navigation').trim();
++            var navViewTarget = navLink.getAttribute('data-view-target') || 'home';
++
++            recordPaintMeasurement({
++              category: 'navbar',
++              label: 'Nav: ' + navLabel,
++              startTime: clickStartTime,
++              targetElement: navLink,
++              fromView: currentView,
++              toView: navViewTarget
++            });
++
++            performClientSideViewSwitch(navViewTarget, {
++              startTime: clickStartTime,
++              triggerSource: 'navbar:' + navLabel
++            });
++            return;
++          }
++        }
++
++        // B. Check if click occurred on the "Order Now" button
++        var orderNowBtn = target.closest('#order-now-btn, a[href="/order-online"], .hero .btn');
++        if (orderNowBtn) {
++          event.preventDefault();
++          var orderLabel = (orderNowBtn.textContent || 'Order Now').trim();
++
++          recordPaintMeasurement({
++            category: 'order-now',
++            label: 'Button: ' + orderLabel,
++            startTime: clickStartTime,
++            targetElement: orderNowBtn,
++            fromView: currentView,
++            toView: 'order-online'
++          });
++
++          performClientSideViewSwitch('order-online', {
++            startTime: clickStartTime,
++            triggerSource: 'order-now-btn'
++          });
++          return;
++        }
++
++        // C. Check if click occurred on any "Seasonal Favorites" card or its button
++        var seasonalCard = target.closest('#seasonal-favorites-section .card, .grid .card');
++        if (seasonalCard) {
++          event.preventDefault();
++          var headingEl = seasonalCard.querySelector('h3');
++          var cardTitle = headingEl ? headingEl.textContent.trim() : 'Seasonal Card';
++          var cardViewTarget = seasonalCard.getAttribute('data-view-target') || 'seasonal-maple-oat-latte';
++
++          recordPaintMeasurement({
++            category: 'seasonal-favorites',
++            label: 'Card: ' + cardTitle,
++            startTime: clickStartTime,
++            targetElement: seasonalCard,
++            fromView: currentView,
++            toView: cardViewTarget
++          });
++
++          performClientSideViewSwitch(cardViewTarget, {
++            startTime: clickStartTime,
++            triggerSource: 'seasonal-card:' + cardTitle
++          });
++          return;
++        }
++
++        // D. Check if click occurred on explicit client-side view switch controls or footer links
++        var viewSwitchTrigger = target.closest('[data-view-switch], footer a[data-view-target]');
++        if (viewSwitchTrigger) {
++          event.preventDefault();
++          var targetView =
++            viewSwitchTrigger.getAttribute('data-view-switch') ||
++            viewSwitchTrigger.getAttribute('data-view-target') ||
++            'home';
++          var triggerText = (viewSwitchTrigger.textContent || targetView).trim();
++
++          performClientSideViewSwitch(targetView, {
++            startTime: clickStartTime,
++            triggerSource: 'view-control:' + triggerText
++          });
++          return;
++        }
++      });
++
++      // Handle hashchange / popstate client-side view switches as well
++      window.addEventListener('popstate', function () {
++        var hashView = (window.location.hash || '').replace(/^#\/?/, '');
++        var targetView = VIEWS[hashView] ? hashView : 'home';
++        performClientSideViewSwitch(targetView, {
++          startTime: performance.now(),
++          triggerSource: 'popstate'
++        });
++      });
++
++      window.addEventListener('hashchange', function () {
++        var hashView = (window.location.hash || '').replace(/^#\/?/, '');
++        if (hashView && VIEWS[hashView]) {
++          performClientSideViewSwitch(hashView, {
++            startTime: performance.now(),
++            triggerSource: 'hashchange'
++          });
++        }
++      });
++
++      // Clear Metrics button
++      var clearBtn = document.getElementById('perf-clear-btn');
++      if (clearBtn) {
++        clearBtn.addEventListener('click', function () {
++          window.perfMonitor.clear();
++        });
++      }
++
++      // Observe browser Event Timing API entries if supported
++      if (typeof PerformanceObserver !== 'undefined') {
++        try {
++          var eventObserver = new PerformanceObserver(function (list) {
++            var entries = list.getEntries();
++            for (var i = 0; i < entries.length; i++) {
++              var ev = entries[i];
++              if (ev.name === 'click' && window.perfMonitor) {
++                window.perfMonitor.browserEventTimings.push({
++                  name: ev.name,
++                  startTime: ev.startTime,
++                  processingStart: ev.processingStart,
++                  processingEnd: ev.processingEnd,
++                  duration: ev.duration
++                });
++              }
++            }
++          });
++          eventObserver.observe({ type: 'event', durationThreshold: 0, buffered: true });
++        } catch (err) {
++          // Browser may not support Event Timing with durationThreshold: 0
++        }
++      }
++
++      // =========================================================================
++      // 5. Public Global API for Programmatic Inspection & Testing
++      // =========================================================================
++      var publicApi = {
++        metrics: metricsStore.all,
++        byCategory: metricsStore.byCategory,
++        browserEventTimings: [],
++        getCurrentView: function () {
++          return currentView;
++        },
++        getMetrics: function (category) {
++          if (category) {
++            return (metricsStore.byCategory[category] || []).slice();
++          }
++          return metricsStore.all.slice();
++        },
++        getSummary: function () {
++          return {
++            navbar: computeCategoryStats('navbar'),
++            orderNow: computeCategoryStats('order-now'),
++            seasonalFavorites: computeCategoryStats('seasonal-favorites'),
++            viewSwitch: computeCategoryStats('view-switch'),
++            totalCount: metricsStore.all.length
++          };
++        },
++        switchView: function (viewName) {
++          performClientSideViewSwitch(viewName, {
++            startTime: performance.now(),
++            triggerSource: 'api:switchView'
++          });
++        },
++        measurePaint: function (category, label, startTime) {
++          recordPaintMeasurement({
++            category: category || 'view-switch',
++            label: label || 'Custom Paint Measurement',
++            startTime: typeof startTime === 'number' ? startTime : performance.now()
++          });
++        },
++        clear: function () {
++          metricsStore.all.length = 0;
++          Object.keys(metricsStore.byCategory).forEach(function (k) {
++            metricsStore.byCategory[k].length = 0;
++          });
++          try {
++            sessionStorage.removeItem(STORAGE_KEY);
++            performance.clearMarks();
++            performance.clearMeasures();
++          } catch (e) {}
++          renderPerfDashboard(null);
++        }
++      };
++
++      window.perfMonitor = publicApi;
++      window.performanceMonitor = publicApi;
++      window.__PERF_MONITOR__ = publicApi;
++
++      // Render any restored metrics on initial load
++      if (metricsStore.all.length > 0) {
++        var tbody = document.getElementById('perf-log-tbody');
++        if (tbody) tbody.innerHTML = '';
++        for (var m = 0; m < metricsStore.all.length; m++) {
++          renderPerfDashboard(metricsStore.all[m]);
++        }
++      } else {
++        renderPerfDashboard(null);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

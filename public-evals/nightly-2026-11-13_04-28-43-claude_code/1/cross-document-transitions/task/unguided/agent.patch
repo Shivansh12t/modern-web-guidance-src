@@ -1,0 +1,221 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,9 +151,199 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      margin-top: 30px;
++    }
++
++    .pagination a {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 10px 20px;
++      border: 2px solid var(--primary);
++      border-radius: 5px;
++      color: var(--primary);
++      text-decoration: none;
++      font-weight: 600;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .pagination a:hover,
++    .pagination a:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .pagination a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .pagination a[aria-disabled="true"] {
++      opacity: 0.4;
++      pointer-events: none;
++    }
++
++    .page-indicator {
++      font-size: 0.9rem;
++      color: var(--text);
++    }
++
++    /* Cross-document view transitions (only when motion is OK) */
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++
++      nav {
++        view-transition-name: site-nav;
++      }
++
++      main.container {
++        view-transition-name: page-content;
++      }
++
++      ::view-transition-group(page-content) {
++        animation-duration: 0.4s;
++      }
++
++      ::view-transition-old(page-content),
++      ::view-transition-new(page-content) {
++        animation-duration: 0.4s;
++        animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
++        animation-fill-mode: both;
++      }
++
++      html:active-view-transition-type(forward)::view-transition-old(page-content) {
++        animation-name: slide-out-to-left;
++      }
++
++      html:active-view-transition-type(forward)::view-transition-new(page-content) {
++        animation-name: slide-in-from-right;
++      }
++
++      html:active-view-transition-type(backward)::view-transition-old(page-content) {
++        animation-name: slide-out-to-right;
++      }
++
++      html:active-view-transition-type(backward)::view-transition-new(page-content) {
++        animation-name: slide-in-from-left;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
++    @keyframes slide-out-to-left {
++      to { transform: translateX(-30%); opacity: 0; }
++    }
++
++    @keyframes slide-in-from-right {
++      from { transform: translateX(30%); opacity: 0; }
++    }
++
++    @keyframes slide-out-to-right {
++      to { transform: translateX(30%); opacity: 0; }
++    }
++
++    @keyframes slide-in-from-left {
++      from { transform: translateX(-30%); opacity: 0; }
++    }
+   </style>
++  <script>
++    (function () {
++      var MIN_PAGE = 1;
++      var MAX_PAGE = 3;
++      var DIRECTION_KEY = 'pagination-direction';
++
++      function pageFromUrl(url) {
++        try {
++          var n = parseInt(new URL(url, location.href).searchParams.get('page'), 10);
++          return isNaN(n) ? MIN_PAGE : Math.min(Math.max(n, MIN_PAGE), MAX_PAGE);
++        } catch (e) {
++          return MIN_PAGE;
++        }
++      }
++
++      // Configure the prev/next links for the current page.
++      document.addEventListener('DOMContentLoaded', function () {
++        var current = pageFromUrl(location.href);
++        var prev = document.getElementById('previous');
++        var next = document.getElementById('next');
++        document.getElementById('current-page').textContent = current + ' of ' + MAX_PAGE;
++
++        function setLink(link, page, enabled) {
++          link.href = '?page=' + page;
++          if (enabled) {
++            link.removeAttribute('aria-disabled');
++            link.removeAttribute('tabindex');
++          } else {
++            link.setAttribute('aria-disabled', 'true');
++            link.setAttribute('tabindex', '-1');
++          }
++        }
++        setLink(prev, Math.max(current - 1, MIN_PAGE), current > MIN_PAGE);
++        setLink(next, Math.min(current + 1, MAX_PAGE), current < MAX_PAGE);
++
++        // Fallback direction hint for browsers without the Navigation API.
++        prev.addEventListener('click', function () {
++          sessionStorage.setItem(DIRECTION_KEY, 'backward');
++        });
++        next.addEventListener('click', function () {
++          sessionStorage.setItem(DIRECTION_KEY, 'forward');
++        });
++      });
++
++      function directionFor(fromUrl, toUrl) {
++        if (fromUrl && toUrl) {
++          var from = pageFromUrl(fromUrl);
++          var to = pageFromUrl(toUrl);
++          if (to > from) return 'forward';
++          if (to < from) return 'backward';
++        }
++        return sessionStorage.getItem(DIRECTION_KEY);
++      }
++
++      // Outgoing page: tag the transition with its direction.
++      window.addEventListener('pageswap', function (e) {
++        if (!e.viewTransition || !e.activation) return;
++        var dir = directionFor(
++          e.activation.from && e.activation.from.url,
++          e.activation.entry && e.activation.entry.url
++        );
++        if (dir) e.viewTransition.types.add(dir);
++      });
++
++      // Incoming page: tag the transition with its direction.
++      window.addEventListener('pagereveal', function (e) {
++        if (!e.viewTransition) return;
++        var activation = window.navigation && navigation.activation;
++        var dir = directionFor(
++          activation && activation.from && activation.from.url,
++          activation && activation.entry && activation.entry.url
++        );
++        sessionStorage.removeItem(DIRECTION_KEY);
++        if (dir) {
++          e.viewTransition.types.add(dir);
++        } else {
++          e.viewTransition.skipTransition();
++        }
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -193,8 +383,17 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <nav class="pagination" aria-label="Seasonal favorites pages">
++        <a id="previous" href="?page=1" rel="prev" aria-disabled="true" tabindex="-1">
++          <span aria-hidden="true">&larr;</span> Previous
++        </a>
++        <span class="page-indicator" aria-live="polite">Page <span id="current-page">1</span></span>
++        <a id="next" href="?page=2" rel="next">
++          Next <span aria-hidden="true">&rarr;</span>
++        </a>
++      </nav>
+     </section>
+   </main>
+ 
+   <footer>

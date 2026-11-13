@@ -1,0 +1,585 @@
+diff --git a/index.html b/index.html
+index 66c9173..ba2d75b 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,196 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Equipment Connection Panel */
++    .equipment {
++      margin-top: 60px;
++    }
++
++    .equipment > h2,
++    .equipment > .lede {
++      text-align: center;
++    }
++
++    .equipment .lede {
++      max-width: 60ch;
++      margin: 0.5rem auto 0;
++      color: #6d4c41;
++    }
++
++    .notice {
++      max-width: 70ch;
++      margin: 20px auto 0;
++      padding: 12px 16px;
++      border-radius: 6px;
++      background: #fff3e0;
++      border-left: 4px solid var(--accent);
++      font-size: 0.9rem;
++    }
++
++    .device-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
++      gap: 24px;
++      margin-top: 24px;
++    }
++
++    .device-card {
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .device-card img {
++      width: 100%;
++      aspect-ratio: 16 / 7;
++      object-fit: cover;
++      display: block;
++    }
++
++    .device-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      gap: 14px;
++      flex: 1;
++    }
++
++    .device-head {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .device-head h3 {
++      color: var(--primary);
++    }
++
++    .badges {
++      display: flex;
++      gap: 6px;
++      flex-wrap: wrap;
++    }
++
++    .badge {
++      font-size: 0.75rem;
++      padding: 2px 10px;
++      border-radius: 999px;
++      background: #eee;
++      color: #424242;
++      white-space: nowrap;
++    }
++
++    .badge[data-state="granted"],
++    .badge[data-state="connected"] {
++      background: #e8f5e9;
++      color: #1b5e20;
++    }
++
++    .badge[data-state="denied"],
++    .badge[data-state="error"] {
++      background: #ffebee;
++      color: #b71c1c;
++    }
++
++    .badge[data-state="prompt"],
++    .badge[data-state="connecting"] {
++      background: #fff8e1;
++      color: #8d6e00;
++    }
++
++    .device-body form {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .device-body label {
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .field-row {
++      display: flex;
++      gap: 8px;
++      flex-wrap: wrap;
++    }
++
++    .field-row input {
++      flex: 1 1 160px;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .field-row input:user-invalid {
++      border-color: #c62828;
++      outline-color: #c62828;
++    }
++
++    .hint {
++      font-size: 0.78rem;
++      color: #757575;
++    }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    button.btn:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    button.btn.secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .remediation {
++      font-size: 0.85rem;
++      background: #ffebee;
++      border-radius: 6px;
++      padding: 10px 14px;
++    }
++
++    .remediation ol {
++      margin: 6px 0 0 1.2rem;
++    }
++
++    .device-status {
++      font-size: 0.85rem;
++      min-height: 1.4em;
++    }
++
++    .readout {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 4px 14px;
++      font-size: 0.85rem;
++      background: #fbf8f6;
++      border-radius: 6px;
++      padding: 10px 14px;
++    }
++
++    .readout dt {
++      font-weight: 600;
++      color: #6d4c41;
++    }
++
++    .readout dd {
++      overflow-wrap: anywhere;
++    }
+   </style>
+ </head>
+ 
+@@ -163,6 +353,7 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#equipment">Brew Gear</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -195,6 +386,110 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="equipment" id="equipment" aria-labelledby="equipment-title">
++      <h2 id="equipment-title">Connect Your Brew Gear</h2>
++      <p class="lede">Link this page to the shop's Wi-Fi brewer and to the Daily Grind Brewing Helper on your own
++        computer. Your browser will ask for permission the first time you connect — nothing is contacted until you
++        press a Connect button.</p>
++
++      <p class="notice" id="lna-insecure" hidden>
++        This page isn't loaded over a secure (<code>https://</code>) connection, so your browser will block access to
++        local devices. Open the secure version of this site to connect your equipment.
++      </p>
++      <p class="notice" id="lna-unsupported" hidden>
++        Your browser doesn't report local-network permissions. You can still try connecting, but if it fails, use a
++        recent version of Chrome or Edge.
++      </p>
++
++      <div class="device-grid">
++        <!-- Wi-Fi brewer on the shop LAN -->
++        <article class="device-card" data-device="brewer" aria-labelledby="brewer-title">
++          <img
++            src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=900&q=70"
++            alt="Barista operating a commercial espresso machine" loading="lazy" decoding="async" width="900"
++            height="394">
++          <div class="device-body">
++            <div class="device-head">
++              <h3 id="brewer-title">Wi-Fi Coffee Brewer</h3>
++              <div class="badges">
++                <span class="badge" data-permission-status="local-network" data-state="unknown">Permission: checking…</span>
++                <span class="badge" data-connection-status data-state="idle">Not connected</span>
++              </div>
++            </div>
++            <p>Connects to the brewer on the shop's private Wi-Fi (for example <code>192.168.1.50</code>) to show
++              its live brew status.</p>
++
++            <form data-connect-form novalidate>
++              <label for="brewer-host">Brewer address</label>
++              <div class="field-row">
++                <input id="brewer-host" name="host" type="text" inputmode="url" autocomplete="off"
++                  spellcheck="false" required placeholder="192.168.1.50:8080" value="192.168.1.50:8080"
++                  aria-describedby="brewer-host-hint">
++                <button type="submit" class="btn">Connect</button>
++              </div>
++              <span class="hint" id="brewer-host-hint">Private LAN address only: 10.x, 172.16–31.x, 192.168.x, or a
++                <code>.local</code> name, with an optional port.</span>
++            </form>
++
++            <div class="remediation" data-remediation="local-network" hidden>
++              <strong>Local network access is blocked.</strong>
++              <ol>
++                <li>Click the site-settings icon to the left of the address bar.</li>
++                <li>Set <em>Local network</em> to <em>Allow</em>.</li>
++                <li>Reload this page and press Connect again.</li>
++              </ol>
++            </div>
++
++            <p class="device-status" data-device-status role="status" aria-live="polite"></p>
++            <dl class="readout" data-readout hidden></dl>
++            <button type="button" class="btn secondary" data-disconnect hidden>Disconnect</button>
++          </div>
++        </article>
++
++        <!-- Desktop brewing helper on loopback -->
++        <article class="device-card" data-device="helper" aria-labelledby="helper-title">
++          <img
++            src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=900&q=70"
++            alt="Laptop on a desk beside a cup of coffee" loading="lazy" decoding="async" width="900" height="394">
++          <div class="device-body">
++            <div class="device-head">
++              <h3 id="helper-title">Desktop Brewing Helper</h3>
++              <div class="badges">
++                <span class="badge" data-permission-status="loopback-network" data-state="unknown">Permission: checking…</span>
++                <span class="badge" data-connection-status data-state="idle">Not connected</span>
++              </div>
++            </div>
++            <p>Connects to the Daily Grind Brewing Helper app running on this computer at
++              <code>127.0.0.1</code> to sync recipes and timers.</p>
++
++            <form data-connect-form novalidate>
++              <label for="helper-port">Helper port</label>
++              <div class="field-row">
++                <input id="helper-port" name="port" type="number" min="1024" max="65535" step="1" required
++                  value="47800" aria-describedby="helper-port-hint">
++                <button type="submit" class="btn">Connect</button>
++              </div>
++              <span class="hint" id="helper-port-hint">Shown in the helper app under Settings → Browser link
++                (default 47800).</span>
++            </form>
++
++            <div class="remediation" data-remediation="loopback-network" hidden>
++              <strong>Access to apps on this computer is blocked.</strong>
++              <ol>
++                <li>Click the site-settings icon to the left of the address bar.</li>
++                <li>Set <em>Loopback network</em> (apps on this device) to <em>Allow</em>.</li>
++                <li>Reload this page and press Connect again.</li>
++              </ol>
++            </div>
++
++            <p class="device-status" data-device-status role="status" aria-live="polite"></p>
++            <dl class="readout" data-readout hidden></dl>
++            <button type="button" class="btn secondary" data-disconnect hidden>Disconnect</button>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +502,264 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // ---- Equipment connection panel (Local Network Access) ----
++    // Assumed device APIs (JSON over HTTP, CORS-enabled for this origin):
++    //   Brewer: GET http://<lan-host>/api/status
++    //   Helper: GET http://127.0.0.1:<port>/v1/status
++
++    const POLL_MS = 5000;
++    const TIMEOUT_MS = 4000;
++    const MAX_FIELDS = 12;
++
++    const DEVICES = {
++      brewer: {
++        permission: 'local-network',
++        addressSpace: 'local',
++        storageKey: 'dg.brewer.host',
++        label: 'brewer',
++        buildUrl(form) {
++          const host = normalizeLanHost(form.elements.host.value);
++          if (!host) return null;
++          return { url: `http://${host}/api/status`, save: host };
++        },
++        invalidMessage: 'Enter a private LAN address such as 192.168.1.50:8080 or brewer.local.',
++        failHelp: 'Make sure the brewer is powered on and that you are on the shop Wi-Fi.',
++      },
++      helper: {
++        permission: 'loopback-network',
++        addressSpace: 'loopback',
++        storageKey: 'dg.helper.port',
++        label: 'brewing helper',
++        buildUrl(form) {
++          const port = Number(form.elements.port.value);
++          if (!Number.isInteger(port) || port < 1024 || port > 65535) return null;
++          return { url: `http://127.0.0.1:${port}/v1/status`, save: String(port) };
++        },
++        invalidMessage: 'Enter a port between 1024 and 65535.',
++        failHelp: 'Make sure the Daily Grind Brewing Helper is running on this computer.',
++      },
++    };
++
++    // Accept only RFC 1918 / link-local IPv4 literals or .local mDNS names, with optional port.
++    function normalizeLanHost(raw) {
++      const value = raw.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase();
++      const m = value.match(/^([a-z0-9.-]+)(?::(\d{1,5}))?$/);
++      if (!m) return null;
++      const [, host, portStr] = m;
++      if (portStr !== undefined) {
++        const port = Number(portStr);
++        if (port < 1 || port > 65535) return null;
++      }
++      const isPrivateIp = (() => {
++        const parts = host.split('.');
++        if (parts.length !== 4 || !parts.every((p) => /^\d{1,3}$/.test(p) && Number(p) <= 255)) return false;
++        const [a, b] = parts.map(Number);
++        return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254);
++      })();
++      const isMdns = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+local$/.test(host);
++      if (!isPrivateIp && !isMdns) return null;
++      return portStr !== undefined ? `${host}:${portStr}` : host;
++    }
++
++    // Never query the legacy 'local-network-access' name — it can crash older Chrome renderers.
++    async function queryPermission(name) {
++      if (!navigator.permissions?.query) return { state: 'prompt', supported: false };
++      try {
++        const status = await navigator.permissions.query({ name });
++        return { state: status.state, status, supported: true };
++      } catch {
++        return { state: 'prompt', supported: false };
++      }
++    }
++
++    function humanize(key) {
++      return String(key).replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase());
++    }
++
++    function formatValue(v) {
++      if (v === null || v === undefined) return '—';
++      if (typeof v === 'object') return JSON.stringify(v).slice(0, 120);
++      return String(v).slice(0, 120);
++    }
++
++    class DevicePanel {
++      constructor(card, config) {
++        this.card = card;
++        this.cfg = config;
++        this.form = card.querySelector('[data-connect-form]');
++        this.input = this.form.querySelector('input');
++        this.submitBtn = this.form.querySelector('button[type="submit"]');
++        this.permBadge = card.querySelector('[data-permission-status]');
++        this.connBadge = card.querySelector('[data-connection-status]');
++        this.remediation = card.querySelector('[data-remediation]');
++        this.statusEl = card.querySelector('[data-device-status]');
++        this.readout = card.querySelector('[data-readout]');
++        this.disconnectBtn = card.querySelector('[data-disconnect]');
++        this.timer = null;
++        this.target = null;
++        this.controller = null;
++
++        const saved = localStorage.getItem(config.storageKey);
++        if (saved) this.input.value = saved;
++
++        this.form.addEventListener('submit', (e) => {
++          e.preventDefault();
++          this.connect();
++        });
++        this.input.addEventListener('input', () => this.input.setCustomValidity(''));
++        this.disconnectBtn.addEventListener('click', () => this.disconnect('Disconnected.'));
++      }
++
++      async init() {
++        const { state, status, supported } = await queryPermission(this.cfg.permission);
++        this.supported = supported;
++        this.setPermission(state);
++        status?.addEventListener('change', () => {
++          this.setPermission(status.state);
++          if (status.state === 'denied') this.disconnect('Permission was revoked in browser settings.');
++        });
++        // Only auto-connect when access has already been granted; otherwise wait for a click.
++        if (state === 'granted' && localStorage.getItem(this.cfg.storageKey)) this.connect();
++        return supported;
++      }
++
++      setPermission(state) {
++        this.permState = state;
++        const text = { granted: 'Allowed', denied: 'Blocked', prompt: 'Will ask' }[state] ?? state;
++        this.permBadge.textContent = `Permission: ${text}`;
++        this.permBadge.dataset.state = state;
++        this.remediation.hidden = state !== 'denied';
++      }
++
++      setConnection(state, text) {
++        this.connBadge.dataset.state = state;
++        this.connBadge.textContent = text;
++      }
++
++      async connect() {
++        const target = this.cfg.buildUrl(this.form);
++        if (!target) {
++          this.input.setCustomValidity(this.cfg.invalidMessage);
++          this.input.reportValidity();
++          return;
++        }
++        this.stopPolling();
++        this.target = target;
++        this.submitBtn.disabled = true;
++        this.setConnection('connecting', 'Connecting…');
++        this.statusEl.textContent =
++          this.permState === 'prompt' ? 'Your browser may ask for permission — choose Allow to continue.' : '';
++
++        const ok = await this.poll();
++        this.submitBtn.disabled = false;
++        if (ok) {
++          localStorage.setItem(this.cfg.storageKey, target.save);
++          this.disconnectBtn.hidden = false;
++          this.schedule();
++        }
++      }
++
++      schedule() {
++        this.timer = setTimeout(async () => {
++          if (document.hidden) return this.schedule();
++          if (await this.poll()) this.schedule();
++        }, POLL_MS);
++      }
++
++      async poll() {
++        if (!this.target) return false;
++        this.controller?.abort();
++        this.controller = new AbortController();
++        const signal = AbortSignal.any([this.controller.signal, AbortSignal.timeout(TIMEOUT_MS)]);
++        try {
++          const res = await fetch(this.target.url, {
++            method: 'GET',
++            mode: 'cors',
++            credentials: 'omit',
++            cache: 'no-store',
++            // Declares the private target up front: exempts http:// from mixed-content blocking once
++            // permission is granted, and makes the browser abort if DNS resolves to a public IP.
++            targetAddressSpace: this.cfg.addressSpace,
++            signal,
++          });
++          if (!res.ok) throw new Error(`The ${this.cfg.label} responded with HTTP ${res.status}.`);
++          const data = await res.json();
++          this.render(data);
++          this.setConnection('connected', 'Connected');
++          this.statusEl.textContent = `Last updated ${new Date().toLocaleTimeString()}.`;
++          return true;
++        } catch (err) {
++          if (this.controller.signal.aborted) return false; // superseded or disconnected
++          await this.refreshPermission();
++          this.setConnection('error', 'Not connected');
++          this.readout.hidden = true;
++          this.disconnectBtn.hidden = true;
++          if (this.permState === 'denied') {
++            this.statusEl.textContent = 'Your browser blocked the connection. See the steps above to allow it.';
++          } else if (err.name === 'TimeoutError') {
++            this.statusEl.textContent = `The ${this.cfg.label} didn't respond in time. ${this.cfg.failHelp}`;
++          } else if (err instanceof SyntaxError) {
++            this.statusEl.textContent = `The ${this.cfg.label} sent an unexpected response.`;
++          } else if (err instanceof TypeError) {
++            this.statusEl.textContent = `Couldn't reach the ${this.cfg.label}. ${this.cfg.failHelp}`;
++          } else {
++            this.statusEl.textContent = err.message;
++          }
++          this.target = null;
++          return false;
++        }
++      }
++
++      async refreshPermission() {
++        if (!this.supported) return;
++        const { state } = await queryPermission(this.cfg.permission);
++        this.setPermission(state);
++      }
++
++      // Device data is untrusted: render with textContent only, and cap the number of fields.
++      render(data) {
++        const entries = data && typeof data === 'object' && !Array.isArray(data)
++          ? Object.entries(data).slice(0, MAX_FIELDS)
++          : [['Response', data]];
++        const frag = document.createDocumentFragment();
++        for (const [k, v] of entries) {
++          const dt = document.createElement('dt');
++          dt.textContent = humanize(k);
++          const dd = document.createElement('dd');
++          dd.textContent = formatValue(v);
++          frag.append(dt, dd);
++        }
++        this.readout.replaceChildren(frag);
++        this.readout.hidden = false;
++      }
++
++      stopPolling() {
++        clearTimeout(this.timer);
++        this.timer = null;
++        this.controller?.abort();
++      }
++
++      disconnect(message) {
++        this.stopPolling();
++        this.target = null;
++        this.setConnection('idle', 'Not connected');
++        this.readout.hidden = true;
++        this.disconnectBtn.hidden = true;
++        this.submitBtn.disabled = false;
++        if (message) this.statusEl.textContent = message;
++      }
++    }
++
++    document.getElementById('lna-insecure').hidden = window.isSecureContext;
++
++    const panels = [...document.querySelectorAll('[data-device]')].map(
++      (card) => new DevicePanel(card, DEVICES[card.dataset.device]),
++    );
++    const support = await Promise.all(panels.map((p) => p.init()));
++    document.getElementById('lna-unsupported').hidden = support.every(Boolean);
++  </script>
++
+ </body>
+ 
+ </html>

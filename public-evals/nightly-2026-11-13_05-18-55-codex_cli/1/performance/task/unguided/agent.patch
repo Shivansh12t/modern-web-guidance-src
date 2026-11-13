@@ -1,0 +1,78 @@
+diff --git a/PERFORMANCE_AUDIT.md b/PERFORMANCE_AUDIT.md
+new file mode 100644
+--- a/PERFORMANCE_AUDIT.md
++++ b/PERFORMANCE_AUDIT.md
+@@ -0,0 +1,73 @@
++# Daily Grind performance audit
++
++## Scope and findings
++
++Audited the complete supplied site: one static HTML page with inline CSS. There
++is no application JavaScript, framework, third-party script, web font, or build
++pipeline. No server or browser was started. Runtime Core Web Vitals, network
++timings, visual image quality, and production response headers were not measured.
++
++| Area | Finding | Change |
++| --- | --- | --- |
++| LCP / loading | Hero used a single external 1350px CSS background. Discovery depended on CSS parsing and loading required another origin. | Serve the same stock photograph locally as responsive WebP images, discovered directly in HTML, with eager loading and high fetch priority. |
++| Image selection | All devices requested the same image. | Provide 640, 960, 1350, and 1600px candidates. `sizes` accounts for the cover crop, the hero's 340px minimum height, and tall viewports. The browser downloads its selected candidate, not every variant. |
++| CLS / layout | Hero already reserved height, but mobile browser chrome could change its viewport-relative height. | Retain reserved space, add intrinsic image dimensions and a minimum height, and use stable viewport height where supported. The image sits outside normal flow. |
++| Mobile interactions | Navigation could overflow on narrow screens; link targets were small. | Wrap navigation, stack it below the logo on mobile, and give navigation/footer links a 44px minimum height. Mobile navigation no longer occupies sticky viewport space. |
++| Narrow screens | Grid tracks had a hard 250px minimum. | Allow tracks to shrink to the available container width. |
++| INP / main thread | No scripts, event handlers, hydration, or synchronous application tasks exist in the supplied page. No code-level slow interaction was identified. | Preserve native links and zero JavaScript. Add visible keyboard focus and respect reduced-motion preferences. |
++| Fonts / CSS | System fonts and small inline CSS already avoid extra blocking requests and font swaps. | Preserve this architecture. No library or image preload was needed; the hero is early in the HTML and has no competing asset requests. |
++
++## Measured asset sizes
++
++The original Unsplash URL returned a 157,968-byte JPEG. These are file sizes,
++not compressed HTML transfer sizes or measured load times.
++
++| Image width | Original image | Optimized WebP | Image reduction |
++| --- | ---: | ---: | ---: |
++| 640px | 157,968 B | 32,260 B | 79.6% |
++| 960px | 157,968 B | 56,230 B | 64.4% |
++| 1350px | 157,968 B | 100,138 B | 36.6% |
++| 1600px | 157,968 B | 129,216 B | 18.2% |
++
++HTML grows from 4,708 to approximately 6,100 bytes to include responsive image
++metadata and responsive layout styles. At the same 1350px image width, combined
++HTML and image payload drops from 162,676 to approximately 106,200 bytes (35%).
++Actual image selection depends on viewport size and pixel density. Very large
++screens use the capped 1600px asset; this limits transfer size at the expense of
++some sharpness on high-density displays.
++
++## Verification
++
++- Parsed HTML with Python's standard-library HTML parser.
++- Checked that every image reference resolves to a local asset.
++- Read WebP container headers to verify actual dimensions against `srcset`.
++- Checked eager loading, high fetch priority, intrinsic dimensions, decorative
++  alternative text, and the absence of remote runtime resources or scripts.
++- Checked an HTML budget of 12 KB and a per-image budget of 140 KB.
++- Ran `git diff --check`.
++
++These checks verify the delivered code and assets. They do not establish a
++Lighthouse score or prove a Core Web Vitals improvement. No browser verification
++or dev/preview server was used, as requested.
++
++## Production follow-up
++
++Deployment configuration is not supplied, so compression, caching, TTFB, and CDN
++behavior cannot be established from this repository. Serve HTML with Brotli or
++gzip and revalidation. Cache images with an appropriate lifetime; rename assets
++when replacing them before enabling year-long immutable caching. Do not apply
++immutable caching to HTML. WebP files do not need extra compression.
++
++Evaluate production field data at the 75th percentile, separately for mobile and
++desktop: LCP <= 2.5 seconds, INP <= 200 milliseconds, and CLS <= 0.1. This is a
++validation target, not an observed result. If native-link interactions remain
++slow, inspect destination response times: the linked menu, account, order, and
++other routes have no implementations in this supplied repository and could not
++be audited here.
++
++## Image provenance
++
++Preserved the existing stock photograph from Unsplash:
++`https://images.unsplash.com/photo-1495474472287-4d71bcdd2085`.
++Downloaded explicit WebP variants using `fm=webp&fit=crop&w=<width>&q=60`.
++The page now serves these files locally and makes no request to Unsplash.

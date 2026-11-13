@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+index 66c9173..d7f5678 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,100 @@
+       background: #3e2723;
+     }
+ 
++    /* Locations map */
++    .locations { margin-top: 56px; }
++    .locations-heading {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++    .locations-heading p { margin-top: 4px; }
++    .map-reset {
++      font: inherit;
++      color: var(--primary);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 9px 16px;
++      cursor: pointer;
++    }
++    .map-reset:hover { background: #f1eae6; }
++    .map-frame {
++      border: 1px solid #c9bcb0;
++      border-radius: 12px;
++      overflow: hidden;
++      background: #f1eade;
++    }
++    .map-viewport {
++      width: 100%;
++      height: 500px;
++      overflow: auto;
++      scroll-axis-lock: none;
++      overscroll-behavior: none;
++      cursor: grab;
++    }
++    .map-viewport.is-panning { cursor: grabbing; }
++    .map-viewport:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -4px;
++    }
++    .map-reset:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++    .map-surface {
++      position: relative;
++      width: 1800px;
++      height: 1200px;
++      user-select: none;
++    }
++    .map-art { display: block; width: 100%; height: 100%; }
++    .cafe-marker {
++      position: absolute;
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      padding: 10px 14px 10px 10px;
++      background: #fffdf8;
++      border: 1px solid #d0bfb0;
++      border-radius: 9px;
++      box-shadow: 0 4px 12px #4e342e24;
++      white-space: nowrap;
++      font-size: 14px;
++    }
++    .cafe-marker b { display: block; color: var(--primary); }
++    .cafe-marker small { display: block; color: #715b50; }
++    .map-pin {
++      display: grid;
++      place-items: center;
++      width: 32px;
++      height: 32px;
++      border-radius: 50% 50% 50% 4px;
++      background: var(--primary);
++      color: white;
++      font-weight: bold;
++    }
++    .map-caption {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      gap: 8px;
++      padding: 12px 16px;
++      background: #fffdf8;
++      border-top: 1px solid #d8cdc0;
++      color: #715b50;
++      font-size: 0.85rem;
++    }
++    @supports not (scroll-axis-lock: none) {
++      .map-viewport.has-pan-fallback { touch-action: pinch-zoom; }
++    }
++    @media (max-width: 600px) {
++      .map-viewport { height: 420px; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +289,87 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations" aria-labelledby="locations-title">
++      <div class="locations-heading">
++        <div>
++          <h2 id="locations-title">Find Your Daily Grind</h2>
++          <p>A cozy corner. A familiar cup. Explore our neighborhood cafés.</p>
++        </div>
++        <button class="map-reset" type="button" id="map-reset">Recenter map</button>
++      </div>
++      <div class="map-frame">
++        <div class="map-viewport" id="cafe-map" tabindex="0" role="region"
++          aria-label="Coffee shop locations map" aria-describedby="map-instructions">
++          <div class="map-surface">
++            <svg class="map-art" viewBox="0 0 1800 1200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
++              <defs>
++                <pattern id="city-blocks" width="180" height="150" patternUnits="userSpaceOnUse">
++                  <rect width="180" height="150" fill="#f0e8db"/>
++                  <rect x="16" y="16" width="148" height="118" rx="12" fill="#e4d8c6"/>
++                  <path d="M0 0H180M0 0V150" stroke="#fffdf5" stroke-width="16"/>
++                </pattern>
++              </defs>
++              <rect width="1800" height="1200" fill="url(#city-blocks)"/>
++              <path d="M1360 -80C1020 220 1580 360 1270 650S1080 960 1420 1280"
++                fill="none" stroke="#b5d5d4" stroke-width="150"/>
++              <path d="M1360 -80C1020 220 1580 360 1270 650S1080 960 1420 1280"
++                fill="none" stroke="#d0e4df" stroke-width="3" stroke-dasharray="12 14"/>
++              <rect x="550" y="340" width="330" height="230" rx="50" fill="#c8d3ad"/>
++              <path d="M590 505Q700 350 830 395M640 365L800 540" fill="none" stroke="#eef0d9" stroke-width="10"/>
++              <g fill="#a4bb8a">
++                <circle cx="600" cy="390" r="22"/><circle cx="815" cy="490" r="28"/>
++                <circle cx="730" cy="390" r="18"/><circle cx="625" cy="535" r="16"/>
++              </g>
++              <rect x="190" y="805" width="300" height="220" rx="40" fill="#c8d3ad"/>
++              <g fill="none" stroke="#fffdf5" stroke-width="30">
++                <path d="M0 660H1800M980 0V1200M0 1050L1800 180"/>
++              </g>
++              <g fill="none" stroke="#d4bc9f" stroke-width="2" stroke-dasharray="10 12">
++                <path d="M0 660H1800M980 0V1200M0 1050L1800 180"/>
++              </g>
++              <g font-family="Segoe UI, sans-serif" text-anchor="middle" fill="#796f5c" font-size="17" letter-spacing="3">
++                <text x="710" y="460" letter-spacing="1">Roastery Park</text>
++                <text x="340" y="920" letter-spacing="1">Maple Gardens</text>
++                <text x="380" y="280">OLD TOWN</text>
++                <text x="800" y="790">THE MARKET DISTRICT</text>
++                <text x="1500" y="480">EAST BANK</text>
++                <text x="620" y="1050">SOUTH VILLAGE</text>
++              </g>
++              <g font-family="Segoe UI, sans-serif" fill="#8a7965" font-size="14">
++                <text x="590" y="648">B R E W E R   S T R E E T</text>
++                <text x="1000" y="400" transform="rotate(90 1000 400)">M A I N   S T R E E T</text>
++                <text x="1310" y="855" fill="#527c7b" transform="rotate(40 1310 855)">Willow River</text>
++              </g>
++            </svg>
++            <div class="cafe-marker" style="left: 320px; top: 350px;">
++              <span class="map-pin" aria-hidden="true">1</span>
++              <span><b>Old Town</b><small>24 Oak Lane</small></span>
++            </div>
++            <div class="cafe-marker" style="left: 650px; top: 590px;">
++              <span class="map-pin" aria-hidden="true">2</span>
++              <span><b>The Roastery</b><small>86 Brewer Street</small></span>
++            </div>
++            <div class="cafe-marker" style="left: 1020px; top: 480px;">
++              <span class="map-pin" aria-hidden="true">3</span>
++              <span><b>Riverside</b><small>12 Willow Walk</small></span>
++            </div>
++            <div class="cafe-marker" style="left: 1390px; top: 730px;">
++              <span class="map-pin" aria-hidden="true">4</span>
++              <span><b>East Bank</b><small>58 Bridge Avenue</small></span>
++            </div>
++            <div class="cafe-marker" style="left: 580px; top: 960px;">
++              <span class="map-pin" aria-hidden="true">5</span>
++              <span><b>Maple Corner</b><small>7 Garden Street</small></span>
++            </div>
++          </div>
++        </div>
++        <div class="map-caption">
++          <span id="map-instructions">Drag or scroll in any direction to explore. Focus the map and use arrow keys to pan.</span>
++          <span>Illustrated neighborhood map · 5 cafés</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +382,67 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const map = document.getElementById('cafe-map');
++    const nativeFreePan = CSS.supports('scroll-axis-lock', 'none');
++    const recenterMap = () => {
++      map.scrollLeft = (map.scrollWidth - map.clientWidth) / 2;
++      map.scrollTop = (map.scrollHeight - map.clientHeight) / 2;
++    };
++    document.getElementById('map-reset').addEventListener('click', recenterMap);
++    recenterMap();
++
++    if (!nativeFreePan) {
++      map.classList.add('has-pan-fallback');
++      map.addEventListener('wheel', (event) => {
++        // Leave browser zoom gestures intact; normalize line/page wheel units.
++        if (event.ctrlKey) return;
++        event.preventDefault();
++        const unitX = event.deltaMode === 1 ? 20 : event.deltaMode === 2 ? map.clientWidth : 1;
++        const unitY = event.deltaMode === 1 ? 20 : event.deltaMode === 2 ? map.clientHeight : 1;
++        if (event.shiftKey && event.deltaX === 0) {
++          map.scrollLeft += event.deltaY * unitX;
++        } else {
++          map.scrollLeft += event.deltaX * unitX;
++          map.scrollTop += event.deltaY * unitY;
++        }
++      }, { passive: false });
++    }
++
++    // Mouse dragging complements native touch scrolling. Unsupported browsers
++    // also use these raw pointer deltas for unrestricted touch and pen panning.
++    let drag = null;
++    map.addEventListener('pointerdown', (event) => {
++      if (nativeFreePan && event.pointerType !== 'mouse') return;
++      if (!event.isPrimary || event.button !== 0 || drag) return;
++      const bounds = map.getBoundingClientRect();
++      const x = event.clientX - bounds.left - map.clientLeft;
++      const y = event.clientY - bounds.top - map.clientTop;
++      // Keep native scrollbar controls available.
++      if (x < 0 || y < 0 || x >= map.clientWidth || y >= map.clientHeight) return;
++      if (event.pointerType === 'mouse') event.preventDefault();
++      map.focus({ preventScroll: true });
++      drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
++      map.setPointerCapture(event.pointerId);
++      map.classList.add('is-panning');
++    });
++    map.addEventListener('pointermove', (event) => {
++      if (!drag || drag.id !== event.pointerId) return;
++      map.scrollLeft -= event.clientX - drag.x;
++      map.scrollTop -= event.clientY - drag.y;
++      drag.x = event.clientX;
++      drag.y = event.clientY;
++    });
++    const stopPan = (event) => {
++      if (!drag || drag.id !== event.pointerId) return;
++      drag = null;
++      map.classList.remove('is-panning');
++      if (map.hasPointerCapture(event.pointerId)) map.releasePointerCapture(event.pointerId);
++    };
++    map.addEventListener('pointerup', stopPan);
++    map.addEventListener('pointercancel', stopPan);
++    map.addEventListener('lostpointercapture', stopPan);
++  </script>
+ </body>
+ 
+ </html>

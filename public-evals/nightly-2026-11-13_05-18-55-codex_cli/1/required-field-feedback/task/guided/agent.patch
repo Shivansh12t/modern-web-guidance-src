@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,83 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .mailing-list {
++      max-width: 440px;
++      margin: 0 auto 30px;
++      text-align: start;
++    }
++
++    .mailing-list h2,
++    .mailing-list > p {
++      text-align: center;
++      margin-bottom: 12px;
++    }
++
++    .mailing-list label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .mailing-list input {
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 2px solid #76645e;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++      font-size: 1rem;
++    }
++
++    .mailing-list input:user-invalid {
++      border-color: #a12222;
++      background: #fff4f4;
++    }
++
++    .mailing-list .error-message {
++      display: none;
++      margin-top: 6px;
++      color: #8b1c1c;
++      font-size: 0.9rem;
++    }
++
++    .mailing-list input:user-invalid + .error-message {
++      display: block;
++    }
++
++    .mailing-list button {
++      width: 100%;
++      min-height: 48px;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .mailing-list :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .mailing-list .submission-status:not(:empty) {
++      margin-top: 12px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -197,8 +272,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form id="mailing-list" class="mailing-list" aria-labelledby="mailing-list-title" action="/subscribe" method="post">
++      <h2 id="mailing-list-title">Join our mailing list</h2>
++      <p>Get fresh coffee news, seasonal favorites, and special offers.</p>
++      <label for="mailing-list-email">Email address (required)</label>
++      <input id="mailing-list-email" name="email" type="email" required autocomplete="email"
++        autocapitalize="none" autocorrect="off" spellcheck="false" aria-invalid="false">
++      <p id="mailing-list-error" class="error-message">Please enter an email address in the format you@example.com.</p>
++      <button class="btn" type="submit">Subscribe</button>
++      <p id="mailing-list-status" class="submission-status" role="status"></p>
++      <div id="mailing-list-announcement" class="visually-hidden" aria-live="polite"></div>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +292,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const mailingList = document.getElementById('mailing-list');
++    const email = document.getElementById('mailing-list-email');
++    const emailError = document.getElementById('mailing-list-error');
++    const announcement = document.getElementById('mailing-list-announcement');
++    const submissionStatus = document.getElementById('mailing-list-status');
++    let announcementTimer;
++
++    function syncEmailError(announce = false) {
++      const invalid = email.matches(':user-invalid');
++      const wasInvalid = email.getAttribute('aria-invalid') === 'true';
++      email.setAttribute('aria-invalid', String(invalid));
++      if (invalid) {
++        emailError.textContent = email.validity.valueMissing
++          ? 'Please enter your email address.'
++          : 'Please enter an email address in the format you@example.com.';
++        email.setAttribute('aria-describedby', emailError.id);
++        if (announce && !wasInvalid) {
++          clearTimeout(announcementTimer);
++          announcement.textContent = '';
++          announcementTimer = setTimeout(() => {
++            announcement.textContent = emailError.textContent;
++          }, 500);
++        }
++      } else {
++        email.removeAttribute('aria-describedby');
++        clearTimeout(announcementTimer);
++        announcement.textContent = '';
++      }
++    }
++
++    email.addEventListener('blur', () => syncEmailError(true));
++    email.addEventListener('input', () => {
++      syncEmailError();
++      submissionStatus.textContent = '';
++    });
++    email.addEventListener('change', () => syncEmailError(true));
++    email.addEventListener('invalid', () => {
++      // Let native validation focus the field and announce its linked error.
++      clearTimeout(announcementTimer);
++      announcement.textContent = '';
++      syncEmailError();
++    });
++    mailingList.addEventListener('reset', () => setTimeout(() => {
++      syncEmailError();
++      submissionStatus.textContent = '';
++    }));
++    mailingList.addEventListener('submit', (event) => {
++      event.preventDefault();
++      // This static site has no mailing list service connected yet.
++      submissionStatus.textContent = 'Online sign-up is currently unavailable. Please contact us to join our mailing list.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

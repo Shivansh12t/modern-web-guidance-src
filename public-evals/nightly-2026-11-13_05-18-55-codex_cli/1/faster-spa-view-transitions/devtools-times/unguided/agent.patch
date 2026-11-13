@@ -1,0 +1,483 @@
+diff --git a/README.md b/README.md
+index 4479b53..0c3ef38 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,10 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++
++## Section navigation
++
++Top News, World, Politics, Multimedia, and Reports share a server-rendered shell. All five panels are rendered on entry; client-side navigation changes their `hidden` state without replacing or detaching DOM nodes. React islands and local UI state survive section switches. Hidden panels leave the layout and accessibility tree, and islands using `client:visible` hydrate when shown. This trades a larger initial document for section switches without network requests or remounts.
++
++Each section has a direct URL under the configured Astro base path. The controller updates the page title and active navigation link, moves focus into the selected panel, and restores per-section scroll positions, including on Back/Forward. Normal links remain usable without JavaScript. Navigation to article, category, and account pages leaves the section shell and follows the existing page routing.
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..ee6bc9d 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -64,6 +64,23 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     </div>
+   </div>
+ 
++  <nav aria-label="Main sections" class="border-t border-gray-300 flex items-center justify-center gap-6 overflow-x-auto px-4 py-3 text-sm font-semibold">
++    {[
++      ['Top News', ''],
++      ['World', 'world'],
++      ['Politics', 'politics'],
++      ['Multimedia', 'multimedia'],
++      ['Reports', 'reports'],
++    ].map(([label, path]) => (
++      <a
++        href={`${baseUrl}${path}`}
++        data-section-link
++        aria-current={Astro.url.pathname.replace(/\/$/, '') === `${baseUrl}${path}`.replace(/\/$/, '') ? 'page' : undefined}
++        class="whitespace-nowrap hover:text-amber-700"
++      >{label}</a>
++    ))}
++  </nav>
++
+   <!-- Bottom Navigation Bar -->
+   <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
+ </header>
+diff --git a/src/components/SectionViews.astro b/src/components/SectionViews.astro
+new file mode 100644
+index 0000000..fdcd1d0
+--- /dev/null
++++ b/src/components/SectionViews.astro
+@@ -0,0 +1,50 @@
++---
++import { getCollection } from 'astro:content';
++import TopNewsView from './TopNewsView.astro';
++import SimpleTeaserGrid from './SimpleTeaserGrid.astro';
++import TopStoryTeaserGrid from './TopStoryTeaserGrid.astro';
++
++interface Props {
++    active: 'top-news' | 'world' | 'politics' | 'multimedia' | 'reports';
++}
++const { active } = Astro.props;
++const articles = (await getCollection('articles')).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++const multimedia = await getCollection('multimedia');
++const reports = await getCollection('reports');
++const base = import.meta.env.BASE_URL;
++---
++
++<!-- Keep panels connected: hiding a view preserves its islands and local DOM state. -->
++<div data-section-views>
++    <div data-section-view="top-news" hidden={active !== 'top-news'} tabindex="-1" aria-label="Top News">
++        <TopNewsView />
++    </div>
++    <div data-section-view="world" hidden={active !== 'world'} tabindex="-1" aria-label="World">
++        <SimpleTeaserGrid title="World" articles={articles.slice(8, 11)} />
++    </div>
++    <div data-section-view="politics" hidden={active !== 'politics'} tabindex="-1" aria-label="Politics">
++        <TopStoryTeaserGrid title="Politics" articles={articles.slice(11, 15)} />
++    </div>
++    <div data-section-view="multimedia" hidden={active !== 'multimedia'} tabindex="-1" aria-label="Multimedia">
++        <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
++            <div class="prose max-w-none">
++                <p>Watch our latest multimedia content.</p>
++                <ul>{multimedia.map(item => <li><a href={`${base}multimedia/${item.id}`}>{item.data.title}</a></li>)}</ul>
++            </div>
++        </div>
++    </div>
++    <div data-section-view="reports" hidden={active !== 'reports'} tabindex="-1" aria-label="Reports">
++        <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
++            <div class="prose max-w-none">
++                <p>Read our latest reports.</p>
++                <ul>{reports.map(report => <li><a href={`${base}reports/${report.id}`}>{report.data.title}</a></li>)}</ul>
++            </div>
++        </div>
++    </div>
++</div>
++
++<script>
++    import '../scripts/section-navigation';
++</script>
+diff --git a/src/components/TopNewsView.astro b/src/components/TopNewsView.astro
+new file mode 100644
+index 0000000..111acbf
+--- /dev/null
++++ b/src/components/TopNewsView.astro
+@@ -0,0 +1,82 @@
++---
++import ArticleTeaser from '../components/ArticleTeaser.astro';
++import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import Ad from '../components/AdSlotBanner';
++import { getCollection } from 'astro:content';
++import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import type { RenderResult } from 'astro:content';
++
++const articles = await getCollection('articles');
++articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++
++// Slicing articles for different sections
++const topArticle = articles[0];
++const topStories = articles.slice(1, 4);
++const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
++const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
++const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++
++// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
++politicsArticles[2] = {
++    id: 'public-transit-overhaul',
++    data: {
++      title: 'What\'s new in DevTools',
++      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
++      author: 'Chrome DevTools Team',
++      date: new Date('2025-09-16T00:00:00.000Z'),
++      category: 'Web Development',
++      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image_caption: '',
++      readingTime: 3
++    },
++    body: '',
++    collection: 'articles',
++    slug: 'public-transit-overhaul',
++    render: async () => '' as unknown as RenderResult,
++  };
++---
++
++
++    <!-- Top Stories Bar -->
++    <div class="bg-white border-b border-gray-300">
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                {topStories.map(article => (
++                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++        </div>
++    </div>
++
++    <!-- Main Content Area -->
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} large={true} />
++    </div>
++
++    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Top News" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Politics" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        
++    </div>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..9d53bfd 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,9 +8,10 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  sectionShell?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, sectionShell = false } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -34,7 +35,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    {!sectionShell && <ClientRouter />}
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..57cd292 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++import SectionViews from '../components/SectionViews.astro';
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++<Layout title="The DevTools Times" sectionShell>
++    <SectionViews active="top-news" />
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..01e7753 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -1,21 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import { getCollection } from 'astro:content';
+-
+-const multimedia = await getCollection('multimedia');
++import SectionViews from '../components/SectionViews.astro';
+ ---
+-<Layout title="Multimedia">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+-        <div class="prose max-w-none">
+-            <p>Watch our latest multimedia content.</p>
+-            <ul>
+-                {multimedia.map(item => (
+-                    <li>
+-                        <a href={`/multimedia/${item.slug}`}>{item.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-        </div>
+-    </div>
+-</Layout>
+\ No newline at end of file
++<Layout title="Multimedia | The DevTools Times" sectionShell>
++    <SectionViews active="multimedia" />
++</Layout>
+diff --git a/src/pages/politics.astro b/src/pages/politics.astro
+new file mode 100644
+index 0000000..a4e566c
+--- /dev/null
++++ b/src/pages/politics.astro
+@@ -0,0 +1,7 @@
++---
++import Layout from '../layouts/Layout.astro';
++import SectionViews from '../components/SectionViews.astro';
++---
++<Layout title="Politics | The DevTools Times" sectionShell>
++    <SectionViews active="politics" />
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..5c8ee67 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -1,21 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import { getCollection } from 'astro:content';
+-
+-const reports = await getCollection('reports');
++import SectionViews from '../components/SectionViews.astro';
+ ---
+-<Layout title="Reports">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+-        <div class="prose max-w-none">
+-            <p>Read our latest reports.</p>
+-            <ul>
+-                {reports.map(report => (
+-                    <li>
+-                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-        </div>
+-    </div>
+-</Layout>
+\ No newline at end of file
++<Layout title="Reports | The DevTools Times" sectionShell>
++    <SectionViews active="reports" />
++</Layout>
+diff --git a/src/pages/world.astro b/src/pages/world.astro
+new file mode 100644
+index 0000000..a490c1b
+--- /dev/null
++++ b/src/pages/world.astro
+@@ -0,0 +1,7 @@
++---
++import Layout from '../layouts/Layout.astro';
++import SectionViews from '../components/SectionViews.astro';
++---
++<Layout title="World | The DevTools Times" sectionShell>
++    <SectionViews active="world" />
++</Layout>
+diff --git a/src/scripts/section-navigation.ts b/src/scripts/section-navigation.ts
+new file mode 100644
+index 0000000..cf5e3fe
+--- /dev/null
++++ b/src/scripts/section-navigation.ts
+@@ -0,0 +1,61 @@
++// Section routes share one mounted shell. No fetching, parsing, or remounting on navigation.
++const shell = document.querySelector<HTMLElement>('[data-section-views]');
++if (shell) {
++    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
++    const routes = new Map([
++        [base || '/', 'top-news'],
++        [`${base}/world`, 'world'],
++        [`${base}/politics`, 'politics'],
++        [`${base}/multimedia`, 'multimedia'],
++        [`${base}/reports`, 'reports'],
++    ]);
++    const normalize = (path: string) => path.replace(/\/$/, '') || '/';
++    const viewFor = (url: URL) => url.origin === location.origin && !url.search
++        ? routes.get(normalize(url.pathname)) : undefined;
++    const panels = Array.from(shell.querySelectorAll<HTMLElement>('[data-section-view]'));
++    const positions = new Map<string, { x: number; y: number }>();
++    let current = panels.find(panel => !panel.hidden)!.dataset.sectionView!;
++    let revision = 0;
++    history.scrollRestoration = 'manual';
++
++    const updateLinks = () => {
++        document.querySelectorAll<HTMLAnchorElement>('a[data-section-link]').forEach(link => {
++            if (viewFor(new URL(link.href)) === current) link.setAttribute('aria-current', 'page');
++            else link.removeAttribute('aria-current');
++        });
++    };
++
++    const activate = (url: URL, push: boolean) => {
++        const next = viewFor(url);
++        if (!next) return;
++        positions.set(current, { x: window.scrollX, y: window.scrollY });
++        if (push) history.pushState({}, '', url);
++        current = next;
++        const active = panels.find(panel => panel.dataset.sectionView === next)!;
++        for (const panel of panels) panel.hidden = panel !== active;
++        document.title = next === 'top-news' ? 'The DevTools Times' : `${active.getAttribute('aria-label')} | The DevTools Times`;
++        updateLinks();
++        active.focus({ preventScroll: true });
++        const position = positions.get(next) ?? { x: 0, y: 0 };
++        const version = ++revision;
++        requestAnimationFrame(() => {
++            if (version !== revision) return;
++            const target = url.hash ? document.getElementById(decodeURIComponent(url.hash.slice(1))) : null;
++            if (target && active.contains(target)) target.scrollIntoView();
++            else window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
++        });
++    };
++
++    document.addEventListener('click', event => {
++        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null;
++        if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self') || link.hasAttribute('data-astro-reload')) return;
++        const url = new URL(link.href);
++        if (!viewFor(url) || url.hash) return;
++        event.preventDefault();
++        if (url.pathname !== location.pathname || url.search !== location.search) activate(url, true);
++    });
++
++    window.addEventListener('popstate', () => activate(new URL(location.href), false));
++    updateLinks();
++}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..71146c7 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,15 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/* Inactive views stay mounted, but take no space and cannot receive focus. */
++[data-section-view][hidden] {
++  display: none !important;
++}
++
++[data-section-link][aria-current="page"] {
++  color: var(--color-amber-700);
++  text-decoration: underline;
++  text-underline-offset: 6px;
++}

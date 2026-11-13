@@ -1,0 +1,714 @@
+diff --git a/components/drink-card.js b/components/drink-card.js
+new file mode 100644
+index 0000000..e058632
+--- /dev/null
++++ b/components/drink-card.js
+@@ -0,0 +1,259 @@
++/**
++ * <drink-card> — a "Seasonal Favorites" card.
++ *
++ * The card is server-rendered with Declarative Shadow DOM
++ * (<template shadowrootmode="open">), so it is fully styled before any
++ * JavaScript runs. Content (image, name, description, details) lives in the
++ * light DOM and is projected through named slots; the shadow root only holds
++ * layout, styles and controls.
++ *
++ * When this module loads, the element upgrades and *hydrates in place*: it
++ * reuses the existing shadow root, wires up event listeners and restores the
++ * saved favorite state. It never replaces markup that is already there. If a
++ * browser has no Declarative Shadow DOM support (or the card was created on
++ * the client), the same `renderDrinkCardShadow()` used at build time is used as
++ * a fallback.
++ *
++ * This file is imported both by the browser and by
++ * scripts/render-drink-cards.mjs (Node), so keep DOM access inside the class.
++ */
++
++export const DRINK_CARD_STYLES = `
++:host {
++  display: block;
++  contain: content;
++  --_primary: var(--primary, #4e342e);
++  --_accent: var(--accent, #ffab40);
++  --_text: var(--text, #3e2723);
++}
++.card {
++  display: flex;
++  flex-direction: column;
++  height: 100%;
++  background: #fff;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  overflow: hidden;
++  text-align: center;
++  transition: box-shadow 0.2s;
++}
++.card:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
++.media { position: relative; aspect-ratio: 3 / 2; background: #d7ccc8; }
++::slotted([slot="media"]) {
++  display: block;
++  width: 100%;
++  height: 100%;
++  object-fit: cover;
++}
++.fav {
++  position: absolute;
++  top: 10px;
++  right: 10px;
++  display: grid;
++  place-items: center;
++  width: 40px;
++  height: 40px;
++  padding: 0;
++  border: 0;
++  border-radius: 50%;
++  background: rgba(255, 255, 255, 0.92);
++  color: var(--_primary);
++  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
++  cursor: pointer;
++  transition: transform 0.15s, color 0.15s;
++}
++.fav:hover { transform: scale(1.08); }
++.fav:focus-visible, summary:focus-visible, .btn:focus-visible {
++  outline: 3px solid var(--_accent);
++  outline-offset: 2px;
++}
++.fav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
++.fav[aria-pressed="true"] { color: #c62828; }
++.fav[aria-pressed="true"] svg { fill: currentColor; }
++.body { display: flex; flex-direction: column; flex: 1; padding: 20px; }
++::slotted([slot="title"]) { margin: 0 0 10px; color: var(--_primary); font-size: 1.17em; }
++.desc { flex: 1; }
++details { margin-top: 15px; text-align: left; }
++summary {
++  cursor: pointer;
++  color: var(--_primary);
++  font-weight: 600;
++  text-align: center;
++  list-style-position: inside;
++}
++.details-body {
++  margin-top: 10px;
++  padding: 12px;
++  border-radius: 6px;
++  background: #efebe9;
++  font-size: 0.9rem;
++}
++.btn {
++  display: inline-block;
++  align-self: center;
++  margin-top: 15px;
++  padding: 10px 20px;
++  border-radius: 5px;
++  background: var(--_primary);
++  color: #fff;
++  text-decoration: none;
++  transition: background 0.3s;
++}
++.btn:hover { background: #3e2723; }
++`;
++
++const HEART =
++  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1.1 8.4 3.2 5 6.6 5c2 0 3.4 1.1 4.4 2.5C12 6.1 13.4 5 15.4 5c3.4 0 5.5 3.4 4.1 6.8C19.5 16.4 12 21 12 21z"/></svg>';
++
++const escapeHtml = (value) =>
++  String(value).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
++
++/** Inner HTML of the card's shadow root. Shared by the server and the client fallback. */
++export function renderDrinkCardShadow({ name, href, favorite = false }) {
++  const label = escapeHtml(`Favorite ${name}`);
++  return `<style>${DRINK_CARD_STYLES}</style>
++<article class="card" part="card">
++  <div class="media">
++    <slot name="media"></slot>
++    <button class="fav" part="favorite" type="button" aria-label="${label}" aria-pressed="${favorite}">${HEART}</button>
++  </div>
++  <div class="body">
++    <slot name="title"></slot>
++    <div class="desc"><slot></slot></div>
++    <details part="details">
++      <summary>Quick details</summary>
++      <div class="details-body"><slot name="details"></slot></div>
++    </details>
++    <a class="btn" part="link" href="${escapeHtml(href)}">View Details</a>
++  </div>
++</article>`;
++}
++
++/** Light-DOM content of a card (used by the server renderer). */
++export function renderDrinkCardLight({ name, description, image, imageAlt, details = [] }) {
++  const items = details
++    .map(([term, value]) => `<li><strong>${escapeHtml(term)}:</strong> ${escapeHtml(value)}</li>`)
++    .join('');
++  return `<img slot="media" src="${escapeHtml(image)}" alt="${escapeHtml(imageAlt)}" width="600" height="400" loading="lazy" decoding="async">
++<h3 slot="title">${escapeHtml(name)}</h3>
++<p>${escapeHtml(description)}</p>
++<ul slot="details" style="list-style:none;padding:0;margin:0">${items}</ul>`;
++}
++
++/** Full server-rendered <drink-card> markup, including its declarative shadow root. */
++export function renderDrinkCard(drink) {
++  return `<drink-card drink-id="${escapeHtml(drink.id)}" name="${escapeHtml(drink.name)}" href="${escapeHtml(drink.href)}">
++<template shadowrootmode="open">${renderDrinkCardShadow(drink)}</template>
++${renderDrinkCardLight(drink)}
++</drink-card>`;
++}
++
++const STORAGE_KEY = 'daily-grind:favorites';
++
++function readFavorites() {
++  try {
++    return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'));
++  } catch {
++    return new Set();
++  }
++}
++
++function writeFavorites(set) {
++  try {
++    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
++  } catch {
++    /* storage unavailable (private mode, etc.) — keep in-memory state only */
++  }
++}
++
++if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined') {
++  class DrinkCard extends HTMLElement {
++    static observedAttributes = ['favorite'];
++
++    #favButton = null;
++    #details = null;
++
++    get drinkId() {
++      return this.getAttribute('drink-id') || this.getAttribute('name') || '';
++    }
++
++    get favorite() {
++      return this.hasAttribute('favorite');
++    }
++
++    set favorite(value) {
++      this.toggleAttribute('favorite', Boolean(value));
++    }
++
++    connectedCallback() {
++      if (this.#favButton) return; // already hydrated (e.g. element moved)
++      const root = this.shadowRoot ?? this.#createShadowFallback();
++      this.#favButton = root.querySelector('.fav');
++      this.#details = root.querySelector('details');
++
++      // Restore saved state by toggling attributes only — no re-render.
++      if (readFavorites().has(this.drinkId)) this.favorite = true;
++      this.#syncFavorite();
++
++      this.#favButton.addEventListener('click', this.#onFavoriteClick);
++      this.#details.addEventListener('toggle', this.#onDetailsToggle);
++      this.toggleAttribute('hydrated', true);
++    }
++
++    disconnectedCallback() {
++      this.#favButton?.removeEventListener('click', this.#onFavoriteClick);
++      this.#details?.removeEventListener('toggle', this.#onDetailsToggle);
++      this.#favButton = null;
++      this.#details = null;
++    }
++
++    attributeChangedCallback(name) {
++      if (name === 'favorite') this.#syncFavorite();
++    }
++
++    /**
++     * With Declarative Shadow DOM the shadow root already exists, so this only
++     * runs in browsers without DSD support (the <template> is left in the light
++     * DOM) or for cards created on the client.
++     */
++    #createShadowFallback() {
++      const template = this.querySelector(':scope > template[shadowrootmode]');
++      const root = this.attachShadow({ mode: 'open' });
++      if (template) {
++        root.appendChild(template.content);
++        template.remove();
++      } else {
++        root.innerHTML = renderDrinkCardShadow({
++          name: this.getAttribute('name') || '',
++          href: this.getAttribute('href') || '#',
++        });
++      }
++      return root;
++    }
++
++    #syncFavorite() {
++      this.#favButton?.setAttribute('aria-pressed', String(this.favorite));
++    }
++
++    #onFavoriteClick = () => {
++      this.favorite = !this.favorite;
++      const favorites = readFavorites();
++      if (this.favorite) favorites.add(this.drinkId);
++      else favorites.delete(this.drinkId);
++      writeFavorites(favorites);
++      this.dispatchEvent(
++        new CustomEvent('favorite-change', {
++          bubbles: true,
++          composed: true,
++          detail: { id: this.drinkId, favorite: this.favorite },
++        }),
++      );
++    };
++
++    #onDetailsToggle = () => {
++      this.toggleAttribute('details-open', this.#details.open);
++    };
++  }
++
++  if (!customElements.get('drink-card')) customElements.define('drink-card', DrinkCard);
++}
+diff --git a/data/seasonal-drinks.json b/data/seasonal-drinks.json
+new file mode 100644
+index 0000000..9fcb4a6
+--- /dev/null
++++ b/data/seasonal-drinks.json
+@@ -0,0 +1,29 @@
++[
++  {
++    "id": "maple-oat-latte",
++    "name": "Maple Oat Latte",
++    "description": "Creamy oat milk with a hint of Vermont maple syrup.",
++    "href": "/menu/seasonal",
++    "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&h=400&q=75",
++    "imageAlt": "Steamed milk being poured into a latte with latte art",
++    "details": [["Size", "12 oz / 16 oz"], ["Caffeine", "Medium"], ["Price", "From $5.25"]]
++  },
++  {
++    "id": "dark-roast-espresso",
++    "name": "Dark Roast Espresso",
++    "description": "Bold, smokey, and perfect for a morning boost.",
++    "href": "/menu/espresso",
++    "image": "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&h=400&q=75",
++    "imageAlt": "A cup of espresso with golden crema on a dark table",
++    "details": [["Size", "Double shot"], ["Caffeine", "High"], ["Price", "From $3.50"]]
++  },
++  {
++    "id": "cold-brew",
++    "name": "Cold Brew",
++    "description": "Steeped for 18 hours for maximum smoothness.",
++    "href": "/menu/cold-brew",
++    "image": "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&h=400&q=75",
++    "imageAlt": "Iced cold brew with a splash of cream in a tall glass",
++    "details": [["Size", "16 oz / 24 oz"], ["Caffeine", "High"], ["Price", "From $4.75"]]
++  }
++]
+diff --git a/index.html b/index.html
+index 66c9173..7877d1a 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,12 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites: <drink-card> styles itself via its declarative shadow root.
++       Light-DOM content is unstyled here so nothing leaks or flashes. */
++    drink-card {
++      display: block;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +159,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/components/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +185,320 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <!-- DRINK-CARDS:START -->
++        <drink-card drink-id="maple-oat-latte" name="Maple Oat Latte" href="/menu/seasonal">
++        <template shadowrootmode="open"><style>
++        :host {
++          display: block;
++          contain: content;
++          --_primary: var(--primary, #4e342e);
++          --_accent: var(--accent, #ffab40);
++          --_text: var(--text, #3e2723);
++        }
++        .card {
++          display: flex;
++          flex-direction: column;
++          height: 100%;
++          background: #fff;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++          overflow: hidden;
++          text-align: center;
++          transition: box-shadow 0.2s;
++        }
++        .card:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
++        .media { position: relative; aspect-ratio: 3 / 2; background: #d7ccc8; }
++        ::slotted([slot="media"]) {
++          display: block;
++          width: 100%;
++          height: 100%;
++          object-fit: cover;
++        }
++        .fav {
++          position: absolute;
++          top: 10px;
++          right: 10px;
++          display: grid;
++          place-items: center;
++          width: 40px;
++          height: 40px;
++          padding: 0;
++          border: 0;
++          border-radius: 50%;
++          background: rgba(255, 255, 255, 0.92);
++          color: var(--_primary);
++          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
++          cursor: pointer;
++          transition: transform 0.15s, color 0.15s;
++        }
++        .fav:hover { transform: scale(1.08); }
++        .fav:focus-visible, summary:focus-visible, .btn:focus-visible {
++          outline: 3px solid var(--_accent);
++          outline-offset: 2px;
++        }
++        .fav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
++        .fav[aria-pressed="true"] { color: #c62828; }
++        .fav[aria-pressed="true"] svg { fill: currentColor; }
++        .body { display: flex; flex-direction: column; flex: 1; padding: 20px; }
++        ::slotted([slot="title"]) { margin: 0 0 10px; color: var(--_primary); font-size: 1.17em; }
++        .desc { flex: 1; }
++        details { margin-top: 15px; text-align: left; }
++        summary {
++          cursor: pointer;
++          color: var(--_primary);
++          font-weight: 600;
++          text-align: center;
++          list-style-position: inside;
++        }
++        .details-body {
++          margin-top: 10px;
++          padding: 12px;
++          border-radius: 6px;
++          background: #efebe9;
++          font-size: 0.9rem;
++        }
++        .btn {
++          display: inline-block;
++          align-self: center;
++          margin-top: 15px;
++          padding: 10px 20px;
++          border-radius: 5px;
++          background: var(--_primary);
++          color: #fff;
++          text-decoration: none;
++          transition: background 0.3s;
++        }
++        .btn:hover { background: #3e2723; }
++        </style>
++        <article class="card" part="card">
++          <div class="media">
++            <slot name="media"></slot>
++            <button class="fav" part="favorite" type="button" aria-label="Favorite Maple Oat Latte" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1.1 8.4 3.2 5 6.6 5c2 0 3.4 1.1 4.4 2.5C12 6.1 13.4 5 15.4 5c3.4 0 5.5 3.4 4.1 6.8C19.5 16.4 12 21 12 21z"/></svg></button>
++          </div>
++          <div class="body">
++            <slot name="title"></slot>
++            <div class="desc"><slot></slot></div>
++            <details part="details">
++              <summary>Quick details</summary>
++              <div class="details-body"><slot name="details"></slot></div>
++            </details>
++            <a class="btn" part="link" href="/menu/seasonal">View Details</a>
++          </div>
++        </article></template>
++        <img slot="media" src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&#38;fit=crop&#38;w=600&#38;h=400&#38;q=75" alt="Steamed milk being poured into a latte with latte art" width="600" height="400" loading="lazy" decoding="async">
++        <h3 slot="title">Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <ul slot="details" style="list-style:none;padding:0;margin:0"><li><strong>Size:</strong> 12 oz / 16 oz</li><li><strong>Caffeine:</strong> Medium</li><li><strong>Price:</strong> From $5.25</li></ul>
++        </drink-card>
++        <drink-card drink-id="dark-roast-espresso" name="Dark Roast Espresso" href="/menu/espresso">
++        <template shadowrootmode="open"><style>
++        :host {
++          display: block;
++          contain: content;
++          --_primary: var(--primary, #4e342e);
++          --_accent: var(--accent, #ffab40);
++          --_text: var(--text, #3e2723);
++        }
++        .card {
++          display: flex;
++          flex-direction: column;
++          height: 100%;
++          background: #fff;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++          overflow: hidden;
++          text-align: center;
++          transition: box-shadow 0.2s;
++        }
++        .card:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
++        .media { position: relative; aspect-ratio: 3 / 2; background: #d7ccc8; }
++        ::slotted([slot="media"]) {
++          display: block;
++          width: 100%;
++          height: 100%;
++          object-fit: cover;
++        }
++        .fav {
++          position: absolute;
++          top: 10px;
++          right: 10px;
++          display: grid;
++          place-items: center;
++          width: 40px;
++          height: 40px;
++          padding: 0;
++          border: 0;
++          border-radius: 50%;
++          background: rgba(255, 255, 255, 0.92);
++          color: var(--_primary);
++          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
++          cursor: pointer;
++          transition: transform 0.15s, color 0.15s;
++        }
++        .fav:hover { transform: scale(1.08); }
++        .fav:focus-visible, summary:focus-visible, .btn:focus-visible {
++          outline: 3px solid var(--_accent);
++          outline-offset: 2px;
++        }
++        .fav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
++        .fav[aria-pressed="true"] { color: #c62828; }
++        .fav[aria-pressed="true"] svg { fill: currentColor; }
++        .body { display: flex; flex-direction: column; flex: 1; padding: 20px; }
++        ::slotted([slot="title"]) { margin: 0 0 10px; color: var(--_primary); font-size: 1.17em; }
++        .desc { flex: 1; }
++        details { margin-top: 15px; text-align: left; }
++        summary {
++          cursor: pointer;
++          color: var(--_primary);
++          font-weight: 600;
++          text-align: center;
++          list-style-position: inside;
++        }
++        .details-body {
++          margin-top: 10px;
++          padding: 12px;
++          border-radius: 6px;
++          background: #efebe9;
++          font-size: 0.9rem;
++        }
++        .btn {
++          display: inline-block;
++          align-self: center;
++          margin-top: 15px;
++          padding: 10px 20px;
++          border-radius: 5px;
++          background: var(--_primary);
++          color: #fff;
++          text-decoration: none;
++          transition: background 0.3s;
++        }
++        .btn:hover { background: #3e2723; }
++        </style>
++        <article class="card" part="card">
++          <div class="media">
++            <slot name="media"></slot>
++            <button class="fav" part="favorite" type="button" aria-label="Favorite Dark Roast Espresso" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1.1 8.4 3.2 5 6.6 5c2 0 3.4 1.1 4.4 2.5C12 6.1 13.4 5 15.4 5c3.4 0 5.5 3.4 4.1 6.8C19.5 16.4 12 21 12 21z"/></svg></button>
++          </div>
++          <div class="body">
++            <slot name="title"></slot>
++            <div class="desc"><slot></slot></div>
++            <details part="details">
++              <summary>Quick details</summary>
++              <div class="details-body"><slot name="details"></slot></div>
++            </details>
++            <a class="btn" part="link" href="/menu/espresso">View Details</a>
++          </div>
++        </article></template>
++        <img slot="media" src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&#38;fit=crop&#38;w=600&#38;h=400&#38;q=75" alt="A cup of espresso with golden crema on a dark table" width="600" height="400" loading="lazy" decoding="async">
++        <h3 slot="title">Dark Roast Espresso</h3>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++        <ul slot="details" style="list-style:none;padding:0;margin:0"><li><strong>Size:</strong> Double shot</li><li><strong>Caffeine:</strong> High</li><li><strong>Price:</strong> From $3.50</li></ul>
++        </drink-card>
++        <drink-card drink-id="cold-brew" name="Cold Brew" href="/menu/cold-brew">
++        <template shadowrootmode="open"><style>
++        :host {
++          display: block;
++          contain: content;
++          --_primary: var(--primary, #4e342e);
++          --_accent: var(--accent, #ffab40);
++          --_text: var(--text, #3e2723);
++        }
++        .card {
++          display: flex;
++          flex-direction: column;
++          height: 100%;
++          background: #fff;
++          border-radius: 8px;
++          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++          overflow: hidden;
++          text-align: center;
++          transition: box-shadow 0.2s;
++        }
++        .card:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
++        .media { position: relative; aspect-ratio: 3 / 2; background: #d7ccc8; }
++        ::slotted([slot="media"]) {
++          display: block;
++          width: 100%;
++          height: 100%;
++          object-fit: cover;
++        }
++        .fav {
++          position: absolute;
++          top: 10px;
++          right: 10px;
++          display: grid;
++          place-items: center;
++          width: 40px;
++          height: 40px;
++          padding: 0;
++          border: 0;
++          border-radius: 50%;
++          background: rgba(255, 255, 255, 0.92);
++          color: var(--_primary);
++          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
++          cursor: pointer;
++          transition: transform 0.15s, color 0.15s;
++        }
++        .fav:hover { transform: scale(1.08); }
++        .fav:focus-visible, summary:focus-visible, .btn:focus-visible {
++          outline: 3px solid var(--_accent);
++          outline-offset: 2px;
++        }
++        .fav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
++        .fav[aria-pressed="true"] { color: #c62828; }
++        .fav[aria-pressed="true"] svg { fill: currentColor; }
++        .body { display: flex; flex-direction: column; flex: 1; padding: 20px; }
++        ::slotted([slot="title"]) { margin: 0 0 10px; color: var(--_primary); font-size: 1.17em; }
++        .desc { flex: 1; }
++        details { margin-top: 15px; text-align: left; }
++        summary {
++          cursor: pointer;
++          color: var(--_primary);
++          font-weight: 600;
++          text-align: center;
++          list-style-position: inside;
++        }
++        .details-body {
++          margin-top: 10px;
++          padding: 12px;
++          border-radius: 6px;
++          background: #efebe9;
++          font-size: 0.9rem;
++        }
++        .btn {
++          display: inline-block;
++          align-self: center;
++          margin-top: 15px;
++          padding: 10px 20px;
++          border-radius: 5px;
++          background: var(--_primary);
++          color: #fff;
++          text-decoration: none;
++          transition: background 0.3s;
++        }
++        .btn:hover { background: #3e2723; }
++        </style>
++        <article class="card" part="card">
++          <div class="media">
++            <slot name="media"></slot>
++            <button class="fav" part="favorite" type="button" aria-label="Favorite Cold Brew" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1.1 8.4 3.2 5 6.6 5c2 0 3.4 1.1 4.4 2.5C12 6.1 13.4 5 15.4 5c3.4 0 5.5 3.4 4.1 6.8C19.5 16.4 12 21 12 21z"/></svg></button>
++          </div>
++          <div class="body">
++            <slot name="title"></slot>
++            <div class="desc"><slot></slot></div>
++            <details part="details">
++              <summary>Quick details</summary>
++              <div class="details-body"><slot name="details"></slot></div>
++            </details>
++            <a class="btn" part="link" href="/menu/cold-brew">View Details</a>
++          </div>
++        </article></template>
++        <img slot="media" src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&#38;fit=crop&#38;w=600&#38;h=400&#38;q=75" alt="Iced cold brew with a splash of cream in a tall glass" width="600" height="400" loading="lazy" decoding="async">
++        <h3 slot="title">Cold Brew</h3>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++        <ul slot="details" style="list-style:none;padding:0;margin:0"><li><strong>Size:</strong> 16 oz / 24 oz</li><li><strong>Caffeine:</strong> High</li><li><strong>Price:</strong> From $4.75</li></ul>
++        </drink-card>
++        <!-- DRINK-CARDS:END -->
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..1fe2c27 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,9 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
++    "build": "node scripts/render-drink-cards.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/scripts/render-drink-cards.mjs b/scripts/render-drink-cards.mjs
+new file mode 100644
+index 0000000..ce75da3
+--- /dev/null
++++ b/scripts/render-drink-cards.mjs
+@@ -0,0 +1,33 @@
++// Server-renders the Seasonal Favorites <drink-card> elements (with their
++// declarative shadow roots) into index.html between the DRINK-CARDS markers.
++// Usage: npm run build
++import { readFile, writeFile } from 'node:fs/promises';
++import { renderDrinkCard } from '../components/drink-card.js';
++
++const root = new URL('../', import.meta.url);
++const indexUrl = new URL('index.html', root);
++const drinks = JSON.parse(await readFile(new URL('data/seasonal-drinks.json', root), 'utf8'));
++
++const START = '<!-- DRINK-CARDS:START -->';
++const END = '<!-- DRINK-CARDS:END -->';
++
++const html = await readFile(indexUrl, 'utf8');
++const start = html.indexOf(START);
++const end = html.indexOf(END);
++if (start === -1 || end === -1 || end < start) {
++  throw new Error(`index.html must contain ${START} ... ${END}`);
++}
++
++const indent = '        ';
++const cards = drinks
++  .map(renderDrinkCard)
++  .join('\n')
++  .split('\n')
++  .map((line) => (line ? indent + line : line))
++  .join('\n');
++
++await writeFile(
++  indexUrl,
++  `${html.slice(0, start + START.length)}\n${cards}\n${indent}${html.slice(end)}`,
++);
++console.log(`Rendered ${drinks.length} drink cards into index.html`);

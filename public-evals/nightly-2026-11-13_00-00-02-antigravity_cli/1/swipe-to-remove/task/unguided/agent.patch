@@ -1,0 +1,364 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,8 +11,9 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --action-danger: #d32f2f;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -134,8 +135,90 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shopping Cart & SwipeableList */
++    .cart-section {
++      margin-top: 50px;
++    }
++
++    .cart-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      font-size: 0.95rem;
++      margin-top: 6px;
++      margin-bottom: 20px;
++    }
++
++    .SwipeableList {
++      list-style: none;
++      max-width: 720px;
++      margin: 20px auto 0;
++      padding: 0;
++      user-select: none;
++      -webkit-user-select: none;
++    }
++
++    .SwipeableList-item {
++      position: relative;
++      overflow: hidden;
++      background-color: var(--secondary);
++      border-radius: 8px;
++      margin-bottom: 14px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      touch-action: pan-y;
++      cursor: grab;
++    }
++
++    .SwipeableList-item:active {
++      cursor: grabbing;
++    }
++
++    .SwipeableList-item.is-past-threshold,
++    .SwipeableList-item.is-removing {
++      background-color: var(--action-danger);
++    }
++
++    .SwipeableList-track {
++      position: relative;
++      width: 100%;
++      will-change: transform;
++    }
++
++    .SwipeableList-content {
++      background-color: #ffffff;
++      padding: 18px 24px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      width: 100%;
++      will-change: transform;
++    }
++
++    .cart-item-details {
++      display: flex;
++      flex-direction: column;
++      text-align: left;
++    }
++
++    .cart-item-title {
++      font-weight: 600;
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .cart-item-meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .cart-item-price {
++      font-weight: 700;
++      font-size: 1.05rem;
++      color: var(--text);
++      margin-left: 16px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +277,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="cart-section" aria-label="Shopping Cart">
++      <h2 style="text-align: center;">Shopping Cart</h2>
++      <p class="cart-subtitle">Swipe an item to remove it from your order.</p>
++      <ul class="SwipeableList">
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div class="cart-item-details">
++                <span class="cart-item-title">Maple Oat Latte</span>
++                <span class="cart-item-meta">Creamy oat milk with Vermont maple syrup</span>
++              </div>
++              <span class="cart-item-price">$5.75</span>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div class="cart-item-details">
++                <span class="cart-item-title">Dark Roast Espresso</span>
++                <span class="cart-item-meta">Bold, smokey double shot</span>
++              </div>
++              <span class="cart-item-price">$3.50</span>
++            </div>
++          </div>
++        </li>
++        <li class="SwipeableList-item">
++          <div class="SwipeableList-track">
++            <div class="SwipeableList-content">
++              <div class="cart-item-details">
++                <span class="cart-item-title">Cold Brew</span>
++                <span class="cart-item-meta">Steeped for 18 hours for maximum smoothness</span>
++              </div>
++              <span class="cart-item-price">$4.50</span>
++            </div>
++          </div>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +329,210 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const DEFAULT_BG = '#d7ccc8';
++      const ACTION_BG = '#d32f2f';
++
++      function getClientX(event) {
++        if (event.touches && event.touches.length > 0) {
++          return event.touches[0].clientX ?? event.touches[0].pageX ?? 0;
++        }
++        if (event.changedTouches && event.changedTouches.length > 0) {
++          return event.changedTouches[0].clientX ?? event.changedTouches[0].pageX ?? 0;
++        }
++        return event.clientX ?? event.pageX ?? 0;
++      }
++
++      function initSwipeableItem(item) {
++        if (item.classList.contains('is-initialized')) {
++          return;
++        }
++
++        const track = item.querySelector('.SwipeableList-track');
++        const content = item.querySelector('.SwipeableList-content');
++        if (!track || !content) {
++          return;
++        }
++
++        item.classList.add('is-initialized');
++        item.style.backgroundColor = DEFAULT_BG;
++
++        let isDragging = false;
++        let isRemoving = false;
++        let startX = 0;
++        let deltaX = 0;
++        let autoRemoveTimer = null;
++
++        function getThreshold() {
++          const width = item.offsetWidth || 300;
++          return Math.min(80, width * 0.25);
++        }
++
++        function setTranslate(x, animate) {
++          const transitionValue = animate ? 'transform 200ms ease-out' : 'none';
++          track.style.transition = transitionValue;
++          content.style.transition = transitionValue;
++          const half = x / 2;
++          track.style.transform = `translateX(${half}px)`;
++          content.style.transform = `translateX(${half}px)`;
++        }
++
++        function setActionState(active) {
++          if (active) {
++            item.classList.add('is-past-threshold', 'is-active');
++            item.style.backgroundColor = ACTION_BG;
++          } else {
++            item.classList.remove('is-past-threshold', 'is-active');
++            item.style.backgroundColor = DEFAULT_BG;
++          }
++        }
++
++        function collapseAndRemove() {
++          if (isRemoving) {
++            return;
++          }
++          isRemoving = true;
++          isDragging = false;
++          if (autoRemoveTimer) {
++            clearTimeout(autoRemoveTimer);
++            autoRemoveTimer = null;
++          }
++
++          setActionState(true);
++          item.classList.add('is-removing');
++
++          const width = item.offsetWidth || 400;
++          const direction = deltaX < 0 ? -1 : 1;
++          setTranslate(direction * width, true);
++
++          const startHeight = item.offsetHeight;
++          item.style.height = `${startHeight}px`;
++          void item.offsetHeight;
++
++          item.style.transition = 'height 300ms ease, margin 300ms ease, padding 300ms ease, opacity 300ms ease';
++          item.style.height = '0px';
++          item.style.marginTop = '0px';
++          item.style.marginBottom = '0px';
++          item.style.paddingTop = '0px';
++          item.style.paddingBottom = '0px';
++
++          let removed = false;
++          const finalizeRemoval = () => {
++            if (removed) {
++              return;
++            }
++            removed = true;
++            if (item.parentNode) {
++              item.remove();
++            }
++          };
++
++          item.addEventListener('transitionend', (e) => {
++            if (e.propertyName === 'height') {
++              finalizeRemoval();
++            }
++          });
++          setTimeout(finalizeRemoval, 340);
++        }
++
++        function handleStart(event) {
++          if (isRemoving || isDragging) {
++            return;
++          }
++          if (event.type === 'mousedown' && event.button !== 0) {
++            return;
++          }
++          isDragging = true;
++          startX = getClientX(event);
++          deltaX = 0;
++          item.classList.add('is-dragging');
++          setTranslate(0, false);
++        }
++
++        function handleMove(event) {
++          if (!isDragging || isRemoving) {
++            return;
++          }
++          const currentX = getClientX(event);
++          deltaX = currentX - startX;
++          setTranslate(deltaX, false);
++
++          const pastThreshold = Math.abs(deltaX) >= getThreshold();
++          setActionState(pastThreshold);
++
++          if (autoRemoveTimer) {
++            clearTimeout(autoRemoveTimer);
++            autoRemoveTimer = null;
++          }
++          if (pastThreshold) {
++            autoRemoveTimer = setTimeout(() => {
++              if (isDragging && !isRemoving && Math.abs(deltaX) >= getThreshold()) {
++                collapseAndRemove();
++              }
++            }, 180);
++          }
++        }
++
++        function handleEnd(event) {
++          if (!isDragging || isRemoving) {
++            return;
++          }
++          if (autoRemoveTimer) {
++            clearTimeout(autoRemoveTimer);
++            autoRemoveTimer = null;
++          }
++          if (deltaX === 0 && event) {
++            const endX = getClientX(event);
++            if (endX !== 0 || startX !== 0) {
++              deltaX = endX - startX;
++            }
++          }
++          isDragging = false;
++          item.classList.remove('is-dragging');
++
++          if (Math.abs(deltaX) >= getThreshold()) {
++            collapseAndRemove();
++          } else {
++            setActionState(false);
++            setTranslate(0, true);
++          }
++        }
++
++        item.addEventListener('pointerdown', handleStart);
++        item.addEventListener('mousedown', handleStart);
++        item.addEventListener('touchstart', handleStart, { passive: true });
++
++        window.addEventListener('pointermove', handleMove);
++        window.addEventListener('mousemove', handleMove);
++        window.addEventListener('touchmove', handleMove, { passive: true });
++        item.addEventListener('pointermove', handleMove);
++        item.addEventListener('mousemove', handleMove);
++        item.addEventListener('touchmove', handleMove, { passive: true });
++
++        window.addEventListener('pointerup', handleEnd);
++        window.addEventListener('mouseup', handleEnd);
++        window.addEventListener('touchend', handleEnd);
++        window.addEventListener('pointercancel', handleEnd);
++        window.addEventListener('touchcancel', handleEnd);
++        item.addEventListener('pointerup', handleEnd);
++        item.addEventListener('mouseup', handleEnd);
++        item.addEventListener('touchend', handleEnd);
++      }
++
++      function initAllSwipeableLists() {
++        const items = document.querySelectorAll('.SwipeableList .SwipeableList-item');
++        items.forEach(initSwipeableItem);
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initAllSwipeableLists);
++      } else {
++        initAllSwipeableLists();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

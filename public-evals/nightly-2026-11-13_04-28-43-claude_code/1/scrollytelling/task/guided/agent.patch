@@ -1,0 +1,333 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,209 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scrollytelling: "From Bean to Cup" */
++    .story {
++      --nav-h: 4.5rem;
++      max-width: 1100px;
++      margin: 80px auto 40px;
++      padding: 0 20px;
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
++      gap: 40px;
++    }
++
++    .story-intro {
++      grid-column: 1 / -1;
++      text-align: center;
++    }
++
++    .story-intro p {
++      color: #6d4c41;
++    }
++
++    #tracked {
++      grid-column: 1;
++      grid-row: 2;
++    }
++
++    #tracked section {
++      min-height: 85vh;
++      display: flex;
++      align-items: center;
++    }
++
++    #tracked .step {
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      border-left: 4px solid var(--accent);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #tracked .step-num {
++      display: block;
++      font-size: 0.8rem;
++      font-weight: bold;
++      letter-spacing: 2px;
++      text-transform: uppercase;
++      color: var(--accent);
++    }
++
++    #tracked h3 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      margin-bottom: 8px;
++    }
++
++    #animated {
++      grid-column: 2;
++      grid-row: 2;
++      position: sticky;
++      top: calc(var(--nav-h) + 2rem);
++      align-self: start;
++      height: calc(100vh - var(--nav-h) - 4rem);
++      display: grid;
++      perspective: 1200px;
++    }
++
++    #animated section {
++      grid-area: 1 / 1;
++      position: relative;
++      overflow: hidden;
++      border-radius: 12px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      background: var(--primary);
++    }
++
++    #animated img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    #animated .label {
++      position: absolute;
++      left: 16px;
++      bottom: 16px;
++      background: rgba(62, 39, 35, 0.85);
++      color: white;
++      padding: 6px 14px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++    }
++
++    @media (max-width: 760px) {
++      .story {
++        grid-template-columns: minmax(0, 1fr);
++        gap: 20px;
++      }
++
++      #animated {
++        grid-column: 1;
++        grid-row: 2;
++        height: 40vh;
++        z-index: 1;
++      }
++
++      #tracked {
++        grid-column: 1;
++        grid-row: 3;
++      }
++
++      #tracked section {
++        min-height: 70vh;
++      }
++    }
++
++    /* Link the visuals in #animated to the text steps in #tracked (different DOM branches) */
++    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
++      .story {
++        timeline-scope: --step-1, --step-2, --step-3, --step-4, --step-5;
++      }
++
++      #tracked {
++        section:nth-child(1) { view-timeline: --step-1 block; }
++        section:nth-child(2) { view-timeline: --step-2 block; }
++        section:nth-child(3) { view-timeline: --step-3 block; }
++        section:nth-child(4) { view-timeline: --step-4 block; }
++        section:nth-child(5) { view-timeline: --step-5 block; }
++      }
++
++      #animated {
++        section {
++          animation: story-in auto linear both, story-out auto linear forwards;
++          animation-range: entry 20% cover 45%, exit 20% exit 60%;
++          backface-visibility: hidden;
++        }
++
++        /* Keep the final visual on screen once the story ends */
++        section:last-child {
++          animation: story-in auto linear both;
++          animation-range: entry 20% cover 45%;
++        }
++
++        /* animation-timeline must come after the animation shorthand */
++        section:nth-child(1) { animation-timeline: --step-1, --step-1; }
++        section:nth-child(2) { animation-timeline: --step-2, --step-2; }
++        section:nth-child(3) { animation-timeline: --step-3, --step-3; }
++        section:nth-child(4) { animation-timeline: --step-4, --step-4; }
++        section:nth-child(5) { animation-timeline: --step-5; }
++      }
++    }
++
++    @keyframes story-in {
++      from {
++        opacity: 0;
++        transform: scale(0.85) rotateY(-25deg);
++      }
++
++      to {
++        opacity: 1;
++        transform: none;
++      }
++    }
++
++    @keyframes story-out {
++      to {
++        opacity: 0;
++        translate: 0 -12%;
++      }
++    }
++
++    /* JS fallback for browsers without scroll-driven animations (class added by script) */
++    #animated.scroll-fallback section {
++      opacity: 0;
++      transform: scale(0.85) rotateY(-25deg);
++      backface-visibility: hidden;
++    }
++
++    /* Reduced motion: no scroll-linked motion; show every visual in normal flow instead */
++    @media (prefers-reduced-motion: reduce) {
++      #animated {
++        position: static;
++        height: auto;
++        gap: 20px;
++      }
++
++      #animated section {
++        grid-area: auto;
++        aspect-ratio: 4 / 3;
++        animation: none !important;
++        opacity: 1 !important;
++        transform: none !important;
++        translate: 0 0 !important;
++      }
++
++      #tracked section {
++        min-height: 0;
++        padding: 10px 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -196,8 +397,76 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section class="story" aria-labelledby="story-title">
++    <div class="story-intro">
++      <h2 id="story-title">From Bean to Cup</h2>
++      <p>Scroll through the journey behind every cup we pour.</p>
++    </div>
++
++    <div id="tracked">
++      <section>
++        <div class="step">
++          <span class="step-num">Step 1</span>
++          <h3>The Harvest</h3>
++          <p><strong>Hand-picked at origin.</strong> We partner directly with small farms in Ethiopia, Colombia and Guatemala, paying above fair-trade prices for cherries picked only at peak ripeness.</p>
++        </div>
++      </section>
++      <section>
++        <div class="step">
++          <span class="step-num">Step 2</span>
++          <h3>The Grind</h3>
++          <p><strong>Ground to order.</strong> Every bean is roasted in small batches in our own shop, then ground moments before brewing so none of the aroma is lost.</p>
++        </div>
++      </section>
++      <section>
++        <div class="step">
++          <span class="step-num">Step 3</span>
++          <h3>The Pour</h3>
++          <p><strong>Slow, patient brewing.</strong> Our baristas hand-pour each filter coffee in slow circles, letting the grounds bloom and release their full flavor.</p>
++        </div>
++      </section>
++      <section>
++        <div class="step">
++          <span class="step-num">Step 4</span>
++          <h3>The Shot</h3>
++          <p><strong>Pulled to perfection.</strong> For espresso we dial in grind, dose and time every morning, chasing a rich crema and a balanced, sweet finish.</p>
++        </div>
++      </section>
++      <section>
++        <div class="step">
++          <span class="step-num">Step 5</span>
++          <h3>The Cup</h3>
++          <p><strong>Served with care.</strong> Finished with silky steamed milk and a little latte art, your drink is ready. All that is left is to enjoy it.</p>
++        </div>
++      </section>
++    </div>
++
++    <div id="animated">
++      <section>
++        <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Freshly harvested green-to-brown coffee beans" loading="lazy" decoding="async">
++        <span class="label">Origin</span>
++      </section>
++      <section>
++        <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Whole beans, fresh grounds and a finished latte in three portafilters" loading="lazy" decoding="async">
++        <span class="label">Roast &amp; Grind</span>
++      </section>
++      <section>
++        <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Barista slowly pouring hot water over a pour-over coffee filter" loading="lazy" decoding="async">
++        <span class="label">Pour-over</span>
++      </section>
++      <section>
++        <img src="https://images.unsplash.com/photo-1610889556528-9a770e32642f?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="A glass of espresso with golden crema on a saucer" loading="lazy" decoding="async">
++        <span class="label">Espresso</span>
++      </section>
++      <section>
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Two lattes with heart-shaped latte art on a wooden table" loading="lazy" decoding="async">
++        <span class="label">Your Cup</span>
++      </section>
++    </div>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +475,42 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without CSS scroll-driven animations:
++    // drive each #animated section from its matching #tracked section via IntersectionObserver.
++    if (!CSS.supports('(animation-timeline: scroll()) and (animation-range: 0% 100%)') &&
++      !matchMedia('(prefers-reduced-motion: reduce)').matches) {
++      const animated = document.querySelector('#animated');
++      const visuals = animated.querySelectorAll('section');
++      const steps = [...document.querySelectorAll('#tracked section')];
++      animated.classList.add('scroll-fallback');
++
++      const observer = new IntersectionObserver((entries) => {
++        for (const entry of entries) {
++          const i = steps.indexOf(entry.target);
++          const visual = visuals[i];
++          if (!visual) continue;
++          // 0 → 1 as the step fills the viewport (works for steps taller than the viewport too)
++          const ratio = Math.min(1, entry.intersectionRect.height /
++            Math.min(entry.boundingClientRect.height, innerHeight));
++          const leavingTop = entry.boundingClientRect.top < 0 && i < steps.length - 1;
++
++          if (leavingTop) {
++            visual.style.opacity = ratio;
++            visual.style.transform = 'none';
++            visual.style.translate = `0 ${-(1 - ratio) * 12}%`;
++          } else if (entry.boundingClientRect.top >= 0 || i < steps.length - 1) {
++            visual.style.opacity = ratio;
++            visual.style.transform = `scale(${0.85 + ratio * 0.15}) rotateY(${-25 + ratio * 25}deg)`;
++            visual.style.translate = '0 0';
++          }
++        }
++      }, { threshold: Array.from({ length: 101 }, (_, i) => i / 100) });
++
++      steps.forEach((step) => observer.observe(step));
++    }
++  </script>
+ </body>
+ 
+ </html>

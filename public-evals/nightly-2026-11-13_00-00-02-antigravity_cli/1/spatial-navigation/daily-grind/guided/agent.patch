@@ -1,0 +1,540 @@
+diff --git a/index.html b/index.html
+index 66c9173..bf9b834 100644
+--- a/index.html
++++ b/index.html
+@@ -93,6 +93,42 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    .skip-link {
++      position: fixed;
++      top: 12px;
++      left: 12px;
++      z-index: 2000;
++      background: var(--primary);
++      color: white;
++      padding: 8px 16px;
++      border-radius: 4px;
++      text-decoration: none;
++      font-weight: 600;
++    }
++
++    :where(a:any-link, button, [tabindex]):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .card :where(a:any-link, button):focus-visible,
++    .layout-btn:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -100,6 +136,46 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++      margin-bottom: 20px;
++    }
++
++    .layout-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      align-items: center;
++    }
++
++    .layout-btn {
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      padding: 6px 14px;
++      min-block-size: 32px;
++      min-inline-size: 32px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .layout-btn[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++    }
++
++    .layout-btn:hover:not([aria-pressed="true"]) {
++      background: var(--secondary);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -107,12 +183,85 @@
+       margin-top: 20px;
+     }
+ 
++    .grid-row {
++      display: contents;
++    }
++
++    /* Featured / Bento layout mode (asymmetric column spans) */
++    .grid:is([data-layout="featured"], .grid--featured) {
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++    }
++
++    .grid:is([data-layout="featured"], .grid--featured) .card:first-child {
++      grid-column: span 2;
++    }
++
++    /* Compact 2-column layout mode */
++    .grid:is([data-layout="compact"], .grid--compact) {
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++    }
++
++    /* Single-column list layout mode */
++    .grid:is([data-layout="list"], .grid--list) {
++      grid-template-columns: 1fr;
++    }
++
++    .grid:is([data-layout="list"], .grid--list) .card {
++      flex-direction: row;
++      align-items: center;
++      text-align: left;
++      gap: 20px;
++    }
++
++    .grid:is([data-layout="list"], .grid--list) .card-body {
++      flex: 1;
++    }
++
++    .grid:is([data-layout="list"], .grid--list) .card .btn {
++      width: auto;
++      margin-top: 0;
++      flex-shrink: 0;
++    }
++
++    @media (max-width: 768px) {
++      .grid:is([data-layout="featured"], .grid--featured) {
++        grid-template-columns: repeat(2, minmax(0, 1fr));
++      }
++    }
++
++    @media (max-width: 540px) {
++      .grid:is([data-layout="featured"], .grid--featured),
++      .grid:is([data-layout="compact"], .grid--compact) {
++        grid-template-columns: 1fr;
++      }
++
++      .grid:is([data-layout="featured"], .grid--featured) .card:first-child {
++        grid-column: span 1;
++      }
++
++      .grid:is([data-layout="list"], .grid--list) .card {
++        flex-direction: column;
++        align-items: stretch;
++        text-align: center;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      border: 2px solid transparent;
++      transition: border-color 0.2s, box-shadow 0.2s;
++    }
++
++    .card:focus-within {
++      border-color: var(--primary);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.2);
+     }
+ 
+     .card h3 {
+@@ -125,12 +274,27 @@
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
++      min-block-size: 40px;
++      min-inline-size: 40px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
++    .card .btn {
++      display: block;
++      width: 100%;
++    }
++
++    @media (pointer: coarse) {
++      .btn,
++      .layout-btn {
++        min-block-size: 44px;
++        min-inline-size: 44px;
++      }
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+@@ -156,8 +320,9 @@
+ </head>
+ 
+ <body>
++  <a href="#seasonal-favorites" class="skip-link visually-hidden">Skip to main content</a>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -176,22 +341,102 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      <div class="section-header">
++        <h2 id="seasonal-favorites" tabindex="-1">Seasonal Favorites</h2>
++        <div class="layout-controls" role="group" aria-label="Card layout mode">
++          <button type="button" class="layout-btn" data-layout-mode="grid" aria-pressed="true">Grid</button>
++          <button type="button" class="layout-btn" data-layout-mode="featured" aria-pressed="false">Featured</button>
++          <button type="button" class="layout-btn" data-layout-mode="compact" aria-pressed="false">Compact</button>
++          <button type="button" class="layout-btn" data-layout-mode="list" aria-pressed="false">List</button>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++
++      <div class="grid" role="grid" aria-labelledby="seasonal-favorites" data-layout="grid">
++        <div class="grid-row" role="row">
++          <div class="card" role="gridcell">
++            <div class="card-body">
++              <h3 id="card-title-maple">Maple Oat Latte</h3>
++              <p id="card-desc-maple">Creamy oat milk with a hint of Vermont maple syrup.</p>
++            </div>
++            <a
++              href="/menu/seasonal"
++              id="card-link-maple"
++              class="btn"
++              tabindex="0"
++              aria-labelledby="card-link-maple card-title-maple"
++              aria-describedby="card-desc-maple"
++            >View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <div class="card-body">
++              <h3 id="card-title-espresso">Dark Roast Espresso</h3>
++              <p id="card-desc-espresso">Bold, smokey, and perfect for a morning boost.</p>
++            </div>
++            <a
++              href="/menu/espresso"
++              id="card-link-espresso"
++              class="btn"
++              tabindex="-1"
++              aria-labelledby="card-link-espresso card-title-espresso"
++              aria-describedby="card-desc-espresso"
++            >View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <div class="card-body">
++              <h3 id="card-title-cold-brew">Cold Brew</h3>
++              <p id="card-desc-cold-brew">Steeped for 18 hours for maximum smoothness.</p>
++            </div>
++            <a
++              href="/menu/cold-brew"
++              id="card-link-cold-brew"
++              class="btn"
++              tabindex="-1"
++              aria-labelledby="card-link-cold-brew card-title-cold-brew"
++              aria-describedby="card-desc-cold-brew"
++            >View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <div class="card-body">
++              <h3 id="card-title-cortado">Honey Cinnamon Cortado</h3>
++              <p id="card-desc-cortado">Equal parts rich espresso and steamed milk with wildflower honey.</p>
++            </div>
++            <a
++              href="/menu/cortado"
++              id="card-link-cortado"
++              class="btn"
++              tabindex="-1"
++              aria-labelledby="card-link-cortado card-title-cortado"
++              aria-describedby="card-desc-cortado"
++            >View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <div class="card-body">
++              <h3 id="card-title-pour-over">Single-Origin Pour Over</h3>
++              <p id="card-desc-pour-over">Hand-brewed Ethiopian Yirgacheffe with bright floral and citrus notes.</p>
++            </div>
++            <a
++              href="/menu/pour-over"
++              id="card-link-pour-over"
++              class="btn"
++              tabindex="-1"
++              aria-labelledby="card-link-pour-over card-title-pour-over"
++              aria-describedby="card-desc-pour-over"
++            >View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <div class="card-body">
++              <h3 id="card-title-matcha">Vanilla Bean Matcha</h3>
++              <p id="card-desc-matcha">Ceremonial-grade Uji matcha whisked with Madagascar vanilla and oat milk.</p>
++            </div>
++            <a
++              href="/menu/matcha"
++              id="card-link-matcha"
++              class="btn"
++              tabindex="-1"
++              aria-labelledby="card-link-matcha card-title-matcha"
++              aria-describedby="card-desc-matcha"
++            >View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +452,202 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const FOCUSABLE_SELECTOR = [
++        'a[href]',
++        'button:not(:disabled)',
++        'input:not(:disabled):not([type="hidden"])',
++        'select:not(:disabled)',
++        'textarea:not(:disabled)',
++        '[tabindex]:not([disabled])'
++      ].join(', ');
++
++      const DIRECTION_BY_KEY = {
++        ArrowRight: 'right',
++        ArrowLeft: 'left',
++        ArrowDown: 'down',
++        ArrowUp: 'up'
++      };
++
++      const EDGE_TOLERANCE = 2;
++      const FALLBACK_PERP_WEIGHT = 2.5;
++
++      function getVisibleCandidates(container) {
++        return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
++          if (el.matches(':disabled, [inert], [inert] *')) {
++            return false;
++          }
++          if (typeof el.checkVisibility === 'function' && !el.checkVisibility()) {
++            return false;
++          }
++          return true;
++        });
++      }
++
++      function setRovingFocus(candidates, activeItem, shouldFocus = false) {
++        for (const item of candidates) {
++          item.setAttribute('tabindex', item === activeItem ? '0' : '-1');
++        }
++        if (shouldFocus && activeItem) {
++          activeItem.focus();
++          activeItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        }
++      }
++
++      function ensureSingleTabStop(container) {
++        const candidates = getVisibleCandidates(container);
++        if (candidates.length === 0) return;
++        const currentTabStop = candidates.find((el) => el.getAttribute('tabindex') === '0') || candidates[0];
++        setRovingFocus(candidates, currentTabStop, false);
++      }
++
++      function findNextSpatialCandidate(current, candidates, direction) {
++        const currentRect = current.getBoundingClientRect();
++        const isHorizontal = direction === 'left' || direction === 'right';
++
++        const currentPerpStart = isHorizontal ? currentRect.top : currentRect.left;
++        const currentPerpEnd = isHorizontal ? currentRect.bottom : currentRect.right;
++        const currentPerpCenter = (currentPerpStart + currentPerpEnd) / 2;
++
++        const aligned = [];
++        const unaligned = [];
++
++        for (const candidate of candidates) {
++          if (candidate === current) continue;
++
++          const rect = candidate.getBoundingClientRect();
++
++          let inDirection = false;
++          let gap = 0;
++
++          if (direction === 'right') {
++            inDirection = rect.left >= currentRect.right - EDGE_TOLERANCE;
++            gap = Math.max(0, rect.left - currentRect.right);
++          } else if (direction === 'left') {
++            inDirection = rect.right <= currentRect.left + EDGE_TOLERANCE;
++            gap = Math.max(0, currentRect.left - rect.right);
++          } else if (direction === 'down') {
++            inDirection = rect.top >= currentRect.bottom - EDGE_TOLERANCE;
++            gap = Math.max(0, rect.top - currentRect.bottom);
++          } else if (direction === 'up') {
++            inDirection = rect.bottom <= currentRect.top + EDGE_TOLERANCE;
++            gap = Math.max(0, currentRect.top - rect.bottom);
++          }
++
++          if (!inDirection) continue;
++
++          const candPerpStart = isHorizontal ? rect.top : rect.left;
++          const candPerpEnd = isHorizontal ? rect.bottom : rect.right;
++          const candPerpCenter = (candPerpStart + candPerpEnd) / 2;
++
++          const overlap = Math.min(currentPerpEnd, candPerpEnd) - Math.max(currentPerpStart, candPerpStart);
++          const perpCenterOffset = Math.abs(candPerpCenter - currentPerpCenter);
++
++          const entry = {
++            candidate,
++            gap,
++            perpCenterOffset,
++            candPerpStart
++          };
++
++          if (overlap > 0) {
++            aligned.push(entry);
++          } else {
++            unaligned.push(entry);
++          }
++        }
++
++        if (aligned.length > 0) {
++          aligned.sort((a, b) => {
++            if (Math.abs(a.gap - b.gap) > EDGE_TOLERANCE) {
++              return a.gap - b.gap;
++            }
++            if (Math.abs(a.perpCenterOffset - b.perpCenterOffset) > EDGE_TOLERANCE) {
++              return a.perpCenterOffset - b.perpCenterOffset;
++            }
++            return a.candPerpStart - b.candPerpStart;
++          });
++          return aligned[0].candidate;
++        }
++
++        if (unaligned.length > 0) {
++          unaligned.sort((a, b) => {
++            const scoreA = a.gap + FALLBACK_PERP_WEIGHT * a.perpCenterOffset;
++            const scoreB = b.gap + FALLBACK_PERP_WEIGHT * b.perpCenterOffset;
++            if (Math.abs(scoreA - scoreB) > EDGE_TOLERANCE) {
++              return scoreA - scoreB;
++            }
++            return a.candPerpStart - b.candPerpStart;
++          });
++          return unaligned[0].candidate;
++        }
++
++        return null;
++      }
++
++      function initSpatialContainer(container) {
++        ensureSingleTabStop(container);
++
++        container.addEventListener('focusin', (e) => {
++          const target = e.composedPath()[0];
++          if (!(target instanceof Element)) return;
++          const candidates = getVisibleCandidates(container);
++          if (candidates.includes(target)) {
++            setRovingFocus(candidates, target, false);
++          }
++        });
++
++        container.addEventListener('keydown', (e) => {
++          const direction = DIRECTION_BY_KEY[e.key];
++          if (!direction) return;
++
++          if (e.defaultPrevented) return;
++          if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++
++          const target = e.composedPath()[0];
++          if (!(target instanceof Element)) return;
++          if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) {
++            return;
++          }
++
++          const candidates = getVisibleCandidates(container);
++          const current = document.activeElement;
++          if (!current || !candidates.includes(current)) {
++            return;
++          }
++
++          const nextCandidate = findNextSpatialCandidate(current, candidates, direction);
++          if (!nextCandidate) {
++            return;
++          }
++
++          e.preventDefault();
++          setRovingFocus(candidates, nextCandidate, true);
++        });
++      }
++
++      document.querySelectorAll('.grid[role="grid"]').forEach(initSpatialContainer);
++
++      const grid = document.querySelector('.grid[role="grid"]');
++      const layoutButtons = document.querySelectorAll('.layout-btn[data-layout-mode]');
++      layoutButtons.forEach((btn) => {
++        btn.addEventListener('click', () => {
++          const mode = btn.getAttribute('data-layout-mode');
++          if (!mode || !grid) return;
++          grid.setAttribute('data-layout', mode);
++          grid.classList.remove('grid--grid', 'grid--featured', 'grid--compact', 'grid--list');
++          if (mode !== 'grid') {
++            grid.classList.add(`grid--${mode}`);
++          }
++          layoutButtons.forEach((otherBtn) => {
++            otherBtn.setAttribute('aria-pressed', String(otherBtn === btn));
++          });
++          ensureSingleTabStop(grid);
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

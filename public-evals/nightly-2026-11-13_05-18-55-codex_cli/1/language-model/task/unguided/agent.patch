@@ -1,0 +1,116 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,53 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .ai-section {
++      margin-top: 32px;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .ai-section p { margin: 8px 0 16px; }
++    .ai-section label { display: block; font-weight: 600; margin-top: 16px; }
++    .ai-section textarea {
++      display: block;
++      width: 100%;
++      min-height: 100px;
++      padding: 12px;
++      margin-top: 8px;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      resize: vertical;
++    }
++    button.btn { border: 0; font: inherit; cursor: pointer; }
++    button:disabled { opacity: 0.55; cursor: not-allowed; }
++    :focus-visible { outline: 3px solid #bb6b00; outline-offset: 3px; }
++    .ai-actions { display: flex; flex-wrap: wrap; gap: 10px; }
++    .ai-output {
++      margin-top: 16px;
++      padding: 16px;
++      background: #f5f1ef;
++      border-radius: 5px;
++      min-height: 56px;
++      white-space: pre-wrap;
++      overflow-wrap: anywhere;
++    }
++    pre.ai-output { font-size: 0.95rem; }
++    .ai-meta { font-size: 0.9rem; }
++    #model-progress { width: 100%; margin-top: 12px; }
++    @media (max-width: 600px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .ai-section { padding: 18px; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +239,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="ai-section" aria-labelledby="barista-heading">
++      <h2 id="barista-heading">Ask the Barista</h2>
++      <p>Curious about our Maple Oat Latte or Cold Brew? Ask a question, then keep the conversation going.</p>
++      <p class="ai-meta">Answers run on your device using your browser’s built-in AI. A first-time model download may be needed. AI can make mistakes; ask our staff about allergies or dietary needs.</p>
++      <form id="barista-form">
++        <label for="barista-question">Your coffee question</label>
++        <textarea id="barista-question" maxlength="2000" required placeholder="How do the Maple Oat Latte and Cold Brew compare?"></textarea>
++        <div class="ai-actions">
++          <button type="submit" class="btn" id="ask-the-barista">Ask the Barista</button>
++          <button type="button" class="btn" id="stop-ai" disabled>Stop response</button>
++          <button type="button" class="btn" id="reset-ai">Reset conversations</button>
++        </div>
++      </form>
++      <progress id="model-progress" max="1" value="0" aria-label="AI model download progress" hidden></progress>
++      <p id="ai-status" class="ai-meta" role="status">Local AI starts when you submit a question or feedback.</p>
++      <div id="barista-answer" class="ai-output" aria-live="polite" aria-busy="false">Your barista’s answer will appear here.</div>
++      <p id="context-usage" class="ai-meta" role="status">No active conversation.</p>
++    </section>
++
++    <section class="ai-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Customer Feedback Analyzer</h2>
++      <p>Get a local sentiment analysis as JSON: a score from −1 (negative) to 1 (positive), plus a category.</p>
++      <form id="sentiment-form">
++        <label for="customer-feedback">Customer feedback</label>
++        <textarea id="customer-feedback" maxlength="4000" required placeholder="The cold brew was wonderfully smooth and the service was friendly."></textarea>
++        <button type="submit" class="btn" id="sentiment-btn">Analyze feedback</button>
++      </form>
++      <pre id="sentiment-answer" class="ai-output" aria-live="polite" aria-busy="false">Your structured feedback analysis will appear here.</pre>
++    </section>
++
++    <section class="ai-section" aria-labelledby="branch-heading">
++      <h2 id="branch-heading">Explore a Conversation Branch</h2>
++      <p>Try a different follow-up using a copy of your barista conversation. The main conversation keeps its own history; the copy is released after answering.</p>
++      <form id="branch-form">
++        <label for="branch-question">Alternative follow-up</label>
++        <textarea id="branch-question" maxlength="2000" required placeholder="Which of these would suit someone who prefers a smooth coffee?"></textarea>
++        <button type="submit" class="btn" id="clone-btn" disabled>Branch conversation</button>
++      </form>
++      <div id="branch-answer" class="ai-output" aria-live="polite" aria-busy="false">Ask the barista first to start a conversation you can branch.</div>
++      <p id="branch-usage" class="ai-meta" role="status">No branch active.</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +292,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="barista.js" defer></script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -95,8 +95,51 @@
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: 350px;
++    }
++
++    .debug-panel {
++      content-visibility: hidden;
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 0 1rem;
++    }
++
++    .debug-panel.visible,
++    .debug-panel.active,
++    .debug-panel.open,
++    .debug-panel.show {
++      content-visibility: visible;
++    }
++
++    .debug-panel-inner {
++      background: #0f172a;
++      color: #f8fafc;
++      border-radius: 1rem;
++      padding: 1.5rem;
++      border: 1px solid #334155;
++      font-family: monospace;
++    }
++
++    .debug-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
++      gap: 0.75rem;
++      margin-top: 1rem;
++    }
++
++    .debug-item {
++      background: #1e293b;
++      padding: 0.75rem;
++      border-radius: 0.5rem;
++      border: 1px solid #334155;
++      font-size: 0.85rem;
++    }
++
+     .nested-layer {
+       position: absolute;
+       inset: 0;
+       pointer-events: none;
+@@ -205,9 +248,9 @@
+     </filter>
+   </svg>
+ 
+   <div class="controls">
+-
++    <button id="toggle-debug" class="toggle-btn off">Toggle Debug Panel</button>
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+@@ -215,24 +258,45 @@
+   </div>
+ 
+   <div class="feed" id="feed">
+     <div class="info-text">
+-      <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
++      <p>This page contains 500 complex cards. Is good? <strong>yes</strong>.</p>
+     </div>
+   </div>
+ 
++  <div class="debug-panel" id="debug-panel">
++    <div class="debug-panel-inner">
++      <h3 style="margin-top: 0;">Debug Panel</h3>
++      <p style="color: #94a3b8; margin-bottom: 0.5rem;">Cached render state via <code>content-visibility: hidden</code> for instant toggling.</p>
++      <div class="debug-grid" id="debug-grid">
++        <div class="debug-item">Total Cards: <strong>500</strong></div>
++        <div class="debug-item">Card Mode: <strong>content-visibility: auto</strong></div>
++        <div class="debug-item">Panel Mode: <strong>content-visibility: hidden</strong></div>
++        <div class="debug-item">Intrinsic Size: <strong>350px</strong></div>
++      </div>
++    </div>
++  </div>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
++    const toggleDebugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
++    const debugGrid = document.getElementById('debug-grid');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
+ 
++    for (let i = 0; i < 48; i++) {
++      const item = document.createElement('div');
++      item.className = 'debug-item';
++      item.textContent = `Node Metric #${i + 1}: OK`;
++      debugGrid.appendChild(item);
++    }
+ 
+-
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -292,15 +356,19 @@
+ 
+       measureRender(startTime);
+     }
+ 
+-    window.addEventListener('load', () => {
+-      setTimeout(renderCards, 500);
+-    });
++    function toggleDebugPanel() {
++      const startTime = performance.now();
++      const isVisible = debugPanel.classList.toggle('visible');
++      toggleDebugBtn.classList.toggle('off', !isVisible);
++      measureRender(startTime);
++    }
+ 
+-    regenBtn.addEventListener('click', renderCards);
++    renderCards();
+ 
+-
++    regenBtn.addEventListener('click', renderCards);
++    toggleDebugBtn.addEventListener('click', toggleDebugPanel);
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

@@ -1,0 +1,831 @@
+diff --git a/README.md b/README.md
+index 4479b53..3d19bea 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,15 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Authentication UI
++
++Sign-in supports passkey autofill and explicit passkey authentication. Sign-up
++keeps password account creation and offers passkey registration after sign-in.
++Account settings are available at `/devtools-times/account` and support passkey
++creation, listing, renaming, deletion, and identity verification for sensitive changes.
++
++The authentication backend is external to this repository. See
++[the passkey API contract](docs/passkey-api.md) for required endpoints, session
++behavior, and server verification requirements. Configure `PUBLIC_AUTH_API_URL`
++at build time to use a compatible service; see `.env.example`.
+diff --git a/docs/passkey-api.md b/docs/passkey-api.md
+new file mode 100644
+index 0000000..a185a03
+--- /dev/null
++++ b/docs/passkey-api.md
+@@ -0,0 +1,87 @@
++# Passkey UI integration
++
++The React UI uses the existing authentication service. It does not fabricate accounts,
++credentials, verification results, or sessions in local storage. Set
++`PUBLIC_AUTH_API_URL` to override the existing remote API URL at build time.
++**The backend implementation is outside this repository. The endpoints below must
++be provided by that service before passkey flows can work end to end.**
++
++Every request uses `credentials: include` and `cache: no-store`. The service must
++issue a Secure, HttpOnly session cookie. For cross-origin hosting, configure an
++explicit allowed frontend origin, credentialed CORS (including OPTIONS), and an
++appropriate SameSite cookie policy. Deploy frontend and API on the same site where
++possible because browsers can block third-party cookies. Protect every mutation
++against CSRF with server-side Origin validation (and a CSRF token if required by
++the deployment). Do not accept wildcard CORS origins. Existing password APIs must
++establish this session on login; a JSON token alone is insufficient for this UI.
++
++Responses are JSON. Non-2xx responses use `{ "error": "Safe user-facing message" }`.
++Use 401 for an expired session, 403 for denied or expired reauthentication, and 404
++with `code: "CREDENTIAL_NOT_FOUND"` for a specifically unknown credential on
++authentication verification. Avoid account
++existence disclosures. Do not return 404 for an unimplemented verification route:
++it would incorrectly tell the browser that an existing credential is unknown.
++
++| Method | Path | Request | Successful response |
++| --- | --- | --- | --- |
++| POST | `/register` | `{username,password}` | Account created; existing password contract |
++| POST | `/login` | `{username,password}` | Establish session; existing password contract |
++| POST | `/logout` | `{}` | Revoke session |
++| GET | `/account` | — | `{name,displayName,hasPassword}` |
++| PUT | `/account` | `{name,displayName}` | Updated account plus `{rpId,userId}` |
++| GET | `/passkeys` | — | `{rpId,userId,credentials:[...]}` |
++| PUT | `/passkeys/:id` | `{name}` | Renamed record |
++| DELETE | `/passkeys/:id` | `{}` | Successful deletion |
++| POST | `/passkeys/register/options` | `{promotion:boolean}` | WebAuthn creation options JSON |
++| POST | `/passkeys/register/verify` | Native credential `.toJSON()` | Successful verified registration |
++| POST | `/passkeys/authenticate/options` | `{}` | WebAuthn request options JSON |
++| POST | `/passkeys/authenticate/verify` | Native credential `.toJSON()` | Establish session |
++| POST | `/passkeys/reauth/options` | `{}` | Account-constrained WebAuthn request options JSON |
++| POST | `/passkeys/reauth/verify` | Native credential `.toJSON()` | Mark session recently verified |
++| POST | `/reauth/password` | `{password}` | Mark session recently verified |
++
++Credential rows contain `id` (Base64URL), `name` (custom label), `aaguid`,
++`registeredAt` (epoch milliseconds), optional `lastUsedAt` (epoch milliseconds),
++`providerName` and `providerIcon` (PNG data URI). Derive provider hints from a vetted
++AAGUID registry; use “Unknown passkey provider” for zero/unknown AAGUIDs. AAGUID is
++for display only and must never influence authorization. Store public keys,
++transports, signature counters, device type and backup state server-side as well.
++Never expose public-key internals through the list endpoint. `userId` is the opaque
++WebAuthn user handle, not the account's username. All signal IDs must be unpadded
++Base64URL, never display names or human-readable database placeholders.
++
++## Required server guarantees
++
++Use a vetted WebAuthn library (e.g. SimpleWebAuthn server), durable credential storage,
++and a configured RP ID and allowed origin list. Generate high-entropy, expiring,
++one-use challenges tied to the requesting session and ceremony type. Persist the
++user verification policy alongside each challenge; enforce that policy during
++verification along with challenge, signature, origin, RP ID and presence checks.
++Consume challenges atomically and update signature counters safely.
++
++Registration requires an authenticated session with recent verification. Generate
++`excludeCredentials` from existing account credentials and require discoverable
++credentials (`residentKey: required`, `requireResidentKey: true`). Promotions use
++`authenticatorAttachment: platform`; settings registration omits attachment to allow
++security keys. Match `requireUserVerification` to the stored policy (false for
++preferred, true for required). Do not commit credentials until verified.
++
++Primary authentication uses `allowCredentials: []`. Resolve the returned credential
++to its account only after verification and rotate the authenticated session.
++Reauthentication must use a **nonempty** allow-list containing only the active
++account's registered credentials, enforce ownership during verification, and must
++never switch accounts. Require user verification for sensitive changes.
++
++Require a short-lived recent-verification session grant for registration, profile
++changes and deletion. The UI always requests fresh verification before these
++operations; server checks remain authoritative. Bind the grant to the active session,
++expire it, and reject stale grants. Enforce ownership for all credential operations
++and prevent deletion of the final sign-in method (including concurrent deletions).
++A newly established password session may permit the post-signup promotion.
++
++The UI aborts autofill before explicit actions and on unmount, handles user
++cancellation without changing account state, and feature-detects capabilities.
++`webauthn-polyfills` supplies native JSON helpers and capability checks on older
++browsers. Password manager signals are optional, nonfatal enhancements; accepted
++credential lists sync on settings load and deletion, and user detail updates sync
++after profile changes. Passkey nickname changes do not signal user detail updates.
+diff --git a/package.json b/package.json
+index bfffcf0..bf5c217 100644
+--- a/package.json
++++ b/package.json
+@@ -20,7 +20,8 @@
+     "react": "^19.3.1",
+     "react-dom": "^19.3.1",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "webauthn-polyfills": "^0.1.7"
+   },
+   "devDependencies": {
+     "@tailwindcss/typography": "^0.5.20"
+diff --git a/src/components/AccountSettings.tsx b/src/components/AccountSettings.tsx
+new file mode 100644
+index 0000000..c21dcd7
+--- /dev/null
++++ b/src/components/AccountSettings.tsx
+@@ -0,0 +1,133 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { ApiError, authRequest, type Account, type PasskeyList } from '../lib/auth-api';
++import { authenticatePasskey, authError, getPasskeyCapabilities, registerPasskey, syncPasskeys, syncUser, type PasskeyCapabilities } from '../lib/passkeys';
++
++type PendingAction = { kind: 'delete'; id: string; name: string } | { kind: 'profile'; name: string; displayName: string } | { kind: 'create' };
++export default function AccountSettings() {
++  const [account, setAccount] = useState<Account | null>(null);
++  const [list, setList] = useState<PasskeyList | null>(null);
++  const [capabilities, setCapabilities] = useState<PasskeyCapabilities | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [unauthorized, setUnauthorized] = useState(false);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [success, setSuccess] = useState('');
++  const [name, setName] = useState('');
++  const [displayName, setDisplayName] = useState('');
++  const [editing, setEditing] = useState<string | null>(null);
++  const [nickname, setNickname] = useState('');
++  const [pending, setPending] = useState<PendingAction | null>(null);
++  const [password, setPassword] = useState('');
++  const active = useRef<AbortController | null>(null);
++  const verificationPanel = useRef<HTMLDivElement>(null);
++  const base = import.meta.env.BASE_URL;
++
++  const load = async (signal: AbortSignal) => {
++    const [user, keys] = await Promise.all([
++      authRequest<Account>('/account', undefined, 'GET', signal),
++      authRequest<PasskeyList>('/passkeys', undefined, 'GET', signal),
++    ]);
++    if (signal.aborted) return;
++    setAccount(user); setName(user.name); setDisplayName(user.displayName); setList(keys);
++    await syncPasskeys(keys);
++  };
++  const reloadKeys = async (signal: AbortSignal) => {
++    const keys = await authRequest<PasskeyList>('/passkeys', undefined, 'GET', signal);
++    if (!signal.aborted) { setList(keys); await syncPasskeys(keys); }
++  };
++  const report = (error: unknown) => {
++    if (error instanceof ApiError && error.status === 401) setUnauthorized(true);
++    setError(authError(error));
++  };
++  useEffect(() => {
++    const controller = new AbortController();
++    void load(controller.signal).catch(error => { if (!controller.signal.aborted) report(error); })
++      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
++    getPasskeyCapabilities().then(c => { if (!controller.signal.aborted) setCapabilities(c); }).catch(() => {});
++    return () => { controller.abort(); active.current?.abort(); };
++  }, []);
++  useEffect(() => { if (pending) verificationPanel.current?.focus(); }, [pending]);
++
++  const run = async (action: (signal: AbortSignal) => Promise<void>) => {
++    if (active.current) return;
++    const controller = new AbortController(); active.current = controller;
++    setBusy(true); setError(''); setSuccess('');
++    try { await action(controller.signal); }
++    catch (error) { if (!controller.signal.aborted) report(error); }
++    finally { active.current = null; if (!controller.signal.aborted) setBusy(false); }
++  };
++  const perform = async (action: PendingAction, signal: AbortSignal) => {
++    if (action.kind === 'delete') {
++      await authRequest(`/passkeys/${encodeURIComponent(action.id)}`, {}, 'DELETE', signal);
++      setSuccess('Passkey deleted. You can also remove its saved copy from your password manager.');
++      await reloadKeys(signal);
++    } else if (action.kind === 'create') {
++      await registerPasskey(false, signal);
++      setSuccess('Passkey created. You can now use it to sign in.');
++      await reloadKeys(signal);
++    } else {
++      const updated = await authRequest<Account & { rpId: string; userId: string }>('/account', { name: action.name, displayName: action.displayName }, 'PUT', signal);
++      setAccount(updated); setName(updated.name); setDisplayName(updated.displayName);
++      await syncUser(updated); setSuccess('Account details saved.');
++    }
++  };
++  const verify = (method: 'passkey' | 'password') => void run(async signal => {
++    if (!pending) return;
++    if (method === 'passkey') await authenticatePasskey(signal, false, true);
++    else await authRequest('/reauth/password', { password }, 'POST', signal);
++    setPassword('');
++    const action = pending;
++    setPending(null);
++    await perform(action, signal);
++  });
++  const date = (timestamp?: number) => timestamp ? new Date(timestamp).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not used yet';
++
++  return <section className="account-settings" aria-labelledby="account-title" aria-busy={loading || busy}>
++    <p className="auth-eyebrow">Your Times account</p>
++    <h1 id="account-title">Account settings</h1>
++    <p className="auth-description">Your details, your security, your peace of mind.</p>
++    {error && <p className="auth-error" role="alert">{error}</p>}
++    {success && <p className="auth-success" role="status">{success}</p>}
++    {loading ? <p role="status">Loading your account…</p> : unauthorized ? <div className="settings-panel"><h2>Sign in to manage your account</h2><p className="auth-description">Your session may have expired.</p><a className="auth-button" href={`${base}signin`}>Sign in</a></div> : !account ? <button className="auth-button" onClick={() => void run(signal => load(signal))}>Try again</button> : <>
++      {pending && <div className="verification-panel" ref={verificationPanel} tabIndex={-1} role="region" aria-labelledby="verification-title">
++        <h2 id="verification-title">Confirm it’s you</h2>
++        <p className="auth-description">{pending.kind === 'delete' ? `Verify your identity to delete “${pending.name}”.` : pending.kind === 'create' ? 'Verify your identity before adding a new passkey.' : 'Verify your identity to save your account details.'}</p>
++        {capabilities?.supported && !!list?.credentials.length && <button className="auth-button" disabled={busy} onClick={() => verify('passkey')}>{busy ? 'Verifying…' : 'Verify with a passkey'}</button>}
++        {account.hasPassword && <form className="auth-stack mt-4" onSubmit={event => { event.preventDefault(); verify('password'); }}>
++          <div><label htmlFor="verify-password">Current password</label><input id="verify-password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></div>
++          <button className="auth-button secondary" disabled={busy}>Verify with password</button>
++        </form>}
++        {!account.hasPassword && (!capabilities?.supported || !list?.credentials.length) && <p className="auth-error">Verification is unavailable on this device. Use a device with access to your passkeys.</p>}
++        <button className="auth-text-link mt-4" disabled={busy} onClick={() => { setPending(null); setPassword(''); }}>Cancel</button>
++      </div>}
++      <fieldset disabled={busy || !!pending} className="settings-panel">
++        <legend className="sr-only">Account details</legend><h2>Account details</h2>
++        <form className="auth-stack" onSubmit={event => { event.preventDefault(); setPending({ kind: 'profile', name: name.trim(), displayName: displayName.trim() }); }}>
++          <div><label htmlFor="account-username">Username</label><input id="account-username" autoComplete="username" required maxLength={100} value={name} onChange={e => setName(e.target.value)} /></div>
++          <div><label htmlFor="display-name">Display name</label><input id="display-name" autoComplete="nickname" required maxLength={100} value={displayName} onChange={e => setDisplayName(e.target.value)} /></div>
++          <button className="auth-button secondary" disabled={!name.trim() || !displayName.trim() || (name === account.name && displayName === account.displayName)}>Save account details</button>
++        </form>
++      </fieldset>
++      <fieldset disabled={busy || !!pending} className="settings-panel">
++        <legend className="sr-only">Passkeys</legend><div className="settings-heading"><div><h2>Passkeys</h2><p className="auth-help">Sign in with your fingerprint, face, or device screen lock.</p></div>
++          {capabilities?.create && <button className="auth-button" onClick={() => setPending({ kind: 'create' })}>Create a passkey</button>}</div>
++        {capabilities && !capabilities.create && <p className="auth-help">Passkey creation is unavailable in this browser. Use a supported browser over HTTPS. Your password remains available.</p>}
++        {list?.credentials.length === 0 && <div className="passkey-empty"><h3>No passkeys yet</h3><p className="auth-help">Add a passkey for faster, safer sign-ins. You can keep using your password.</p></div>}
++        <ul className="passkey-list">{list?.credentials.map(key => <li key={key.id}>
++          <div className="passkey-row">
++            {key.providerIcon?.startsWith('data:image/png;base64,') ? <img src={key.providerIcon} alt="" width="36" height="36" /> : <span className="passkey-icon" aria-hidden="true">⚿</span>}
++            <div className="passkey-info"><h3>{key.name || key.providerName || 'Passkey'}</h3><p className="auth-help">{key.providerName || 'Unknown passkey provider'}</p><p className="auth-help">Created {date(key.registeredAt)} · Last used: {date(key.lastUsedAt)}</p></div>
++            <div className="passkey-actions"><button className="auth-text-link" onClick={() => { setEditing(key.id); setNickname(key.name); }}>Rename<span className="sr-only"> {key.name}</span></button><button className="auth-text-link danger" onClick={() => setPending({ kind: 'delete', id: key.id, name: key.name })} disabled={!account.hasPassword && list.credentials.length === 1}>Delete<span className="sr-only"> {key.name}</span></button></div>
++          </div>
++          {editing === key.id && <form className="rename-form" onSubmit={event => { event.preventDefault(); void run(async signal => {
++            await authRequest(`/passkeys/${encodeURIComponent(key.id)}`, { name: nickname.trim() }, 'PUT', signal);
++            setEditing(null); await reloadKeys(signal); setSuccess('Passkey renamed.');
++          }); }}><label className="sr-only" htmlFor="passkey-nickname">Passkey name</label><input id="passkey-nickname" value={nickname} onChange={e => setNickname(e.target.value)} required maxLength={100} autoFocus /><button className="auth-button secondary" disabled={!nickname.trim()}>Save</button><button type="button" className="auth-text-link" onClick={() => setEditing(null)}>Cancel</button></form>}
++        </li>)}</ul>
++        {!account.hasPassword && list?.credentials.length === 1 && <p className="auth-help">Add another passkey before deleting your only sign-in method.</p>}
++        <p className="auth-help mt-4">Passkeys may sync through your password manager. To stop using a passkey everywhere, delete it here and from your password manager.</p>
++      </fieldset>
++      <button className="auth-text-link" disabled={busy || !!pending} onClick={() => void run(async signal => { await authRequest('/logout', {}, 'POST', signal); window.location.assign(`${base}signin`); })}>Sign out</button>
++    </>}
++  </section>;
++}
+diff --git a/src/components/AuthForm.tsx b/src/components/AuthForm.tsx
+new file mode 100644
+index 0000000..b860bf7
+--- /dev/null
++++ b/src/components/AuthForm.tsx
+@@ -0,0 +1,116 @@
++import React, { useEffect, useRef, useState } from 'react';
++import { authRequest } from '../lib/auth-api';
++import { authenticatePasskey, authError, getPasskeyCapabilities, registerPasskey, type PasskeyCapabilities } from '../lib/passkeys';
++
++export default function AuthForm({ signup = false }: { signup?: boolean }) {
++  const [username, setUsername] = useState('');
++  const [password, setPassword] = useState('');
++  const [error, setError] = useState('');
++  const [success, setSuccess] = useState('');
++  const [busy, setBusy] = useState('');
++  const [signedIn, setSignedIn] = useState(false);
++  const [created, setCreated] = useState(false);
++  const [capabilities, setCapabilities] = useState<PasskeyCapabilities | null>(null);
++  const active = useRef<AbortController | null>(null);
++  const conditional = useRef<AbortController | null>(null);
++  const mounted = useRef(false);
++  const base = import.meta.env.BASE_URL;
++
++  const armAutofill = async () => {
++    conditional.current?.abort();
++    const controller = new AbortController();
++    conditional.current = controller;
++    try {
++      await authenticatePasskey(controller.signal, true);
++      if (controller.signal.aborted || !mounted.current) return;
++      setSignedIn(true);
++      setSuccess('You’re signed in with your passkey.');
++    } catch (error) {
++      // Background autofill must not interrupt password sign-in or show cancellation errors.
++      if (!controller.signal.aborted && error instanceof Error && error.name !== 'NotAllowedError') {
++        console.warn('Passkey autofill unavailable. Password sign-in is still available.');
++      }
++    }
++  };
++
++  useEffect(() => {
++    mounted.current = true;
++    getPasskeyCapabilities().then(c => {
++      if (!mounted.current) return;
++      setCapabilities(c);
++      if (!signup && c.conditional) void armAutofill();
++    }).catch(() => mounted.current && setCapabilities({ supported: false, create: false, conditional: false }));
++    return () => { mounted.current = false; active.current?.abort(); conditional.current?.abort(); };
++  }, []);
++
++  const run = async (kind: string, action: (signal: AbortSignal) => Promise<void>) => {
++    if (active.current) return;
++    conditional.current?.abort();
++    const controller = new AbortController();
++    active.current = controller;
++    setBusy(kind); setError(''); setSuccess('');
++    let completed = false;
++    try { await action(controller.signal); completed = true; }
++    catch (error) { if (!controller.signal.aborted && mounted.current) setError(authError(error)); }
++    finally {
++      active.current = null;
++      if (mounted.current) {
++        setBusy('');
++        if (!completed && kind === 'passkey' && capabilities?.conditional) void armAutofill();
++      }
++    }
++  };
++
++  const submit = (event: React.FormEvent) => {
++    event.preventDefault();
++    void run('password', async signal => {
++      if (signup) {
++        await authRequest('/register', { username, password }, 'POST', signal);
++        setCreated(true);
++      }
++      try { await authRequest('/login', { username, password }, 'POST', signal); }
++      catch (error) {
++        if (signup) setSuccess('Your account was created. Sign in to set up your passkey.');
++        throw error;
++      }
++      setPassword(''); setSignedIn(true);
++      setSuccess(signup ? 'Your account is ready. Add a passkey for faster, safer sign-ins.' : 'You’re signed in.');
++    });
++  };
++
++  return <section className="auth-card" aria-labelledby="auth-heading" aria-busy={!!busy}>
++    <p className="auth-eyebrow">The DevTools Times</p>
++    <h1 id="auth-heading">{signedIn ? (signup ? 'Welcome to The Times' : 'Welcome back') : signup ? 'Create your account' : 'Sign in'}</h1>
++    <p id="auth-description" className="auth-description">{signedIn ? 'Your next great read is waiting.' : signup ? 'Independent stories. A fresh perspective. An account that’s yours.' : 'Good to see you again. Pick up where you left off.'}</p>
++    {error && <p className="auth-error" role="alert">{error}</p>}
++    {success && <p className="auth-success" role="status">{success}</p>}
++    {!signedIn && !(signup && created) && <>
++      {!signup && <>
++        <button type="button" className="auth-button" disabled={!!busy || !capabilities?.supported}
++          onClick={() => void run('passkey', async signal => {
++            await authenticatePasskey(signal);
++            conditional.current?.abort();
++            setSignedIn(true); setSuccess('You’re signed in with your passkey.');
++          })}>{busy === 'passkey' ? 'Waiting for your passkey…' : 'Sign in with a passkey'}</button>
++        <p className="auth-help">Use your fingerprint, face, or device screen lock. No password needed.</p>
++        {capabilities && !capabilities.supported && <p className="auth-help">Passkeys aren’t available in this browser or connection. Sign in with your password below.</p>}
++        <div className="auth-divider"><span>or use your password</span></div>
++      </>}
++      <form onSubmit={submit} className="auth-stack">
++        <div><label htmlFor="username">Username</label><input id="username" name="username" autoFocus={!signup} aria-describedby="auth-description" autoComplete={signup ? 'username' : 'username webauthn'} required value={username} onChange={e => setUsername(e.target.value)} disabled={!!busy} /></div>
++        <div><label htmlFor="password">Password</label><input id="password" name="password" type="password" autoComplete={signup ? 'new-password' : 'current-password'} required minLength={signup ? 8 : undefined} pattern={signup ? '(?=.*[0-9]).{8,}' : undefined} aria-describedby={signup ? 'password-help' : undefined} value={password} onChange={e => setPassword(e.target.value)} disabled={!!busy} />
++          {signup && <p id="password-help" className="auth-help">Use at least 8 characters, including a number. You can add a passkey after creating your account.</p>}</div>
++        <button className={signup ? 'auth-button' : 'auth-button secondary'} disabled={!!busy} data-skip-tracking="true">{busy === 'password' ? (signup ? 'Creating account…' : 'Signing in…') : signup ? 'Create account' : 'Sign in with password'}</button>
++      </form>
++    </>}
++    {signedIn && <div className="auth-stack">
++      {capabilities?.create && <div className="passkey-promotion"><h2>Add a passkey</h2><p className="auth-help">A simpler, more secure way to sign in. Your biometric information stays on your device.</p>
++        <button className="auth-button" type="button" disabled={!!busy} onClick={() => void run('create', async signal => {
++          await registerPasskey(true, signal); setSuccess('Passkey created. You can use it the next time you sign in.');
++        })}>{busy === 'create' ? 'Creating passkey…' : 'Create a passkey'}</button></div>}
++      <a className="auth-button secondary" href={`${base}account`}>Go to account settings</a>
++      <a className="auth-text-link" href={base}>Continue reading</a>
++    </div>}
++    {!signedIn && <p className="auth-footer">{signup ? 'Already have an account? ' : 'New to The Times? '}<a href={`${base}${signup ? 'signin' : 'signup'}`}>{signup ? 'Sign in' : 'Create an account'}</a></p>}
++  </section>;
++}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..017f6d6 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -25,6 +25,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        <a href={`${baseUrl}account`} class="text-xs font-semibold text-gray-700 hover:underline">Account</a>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..54c77ab 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,99 +1,2 @@
+-import React, { useState } from 'react';
+-
+-export default function SignInForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing in...' : 'Sign In'}
+-        </button>
+-      </form>
+-    </div>
+-  );
+-}
++import AuthForm from './AuthForm';
++export default function SignInForm() { return <AuthForm />; }
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..9e1e873 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,104 +1,2 @@
+-import React, { useState } from 'react';
+-
+-export default function SignUpForm() {
+-  const [username, setUsername] = useState('');
+-  const [password, setPassword] = useState('');
+-  const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+-  const [loading, setLoading] = useState(false);
+-
+-  const handleSubmit = async (e: React.FormEvent) => {
+-    e.preventDefault();
+-    setError(null);
+-    setSuccess(null);
+-    setLoading(true);
+-
+-    try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('User registered successfully! You can now sign in.');
+-        setUsername('');
+-        setPassword('');
+-      }
+-    } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  return (
+-    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
+-      {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+-          {error}
+-        </div>
+-      )}
+-      
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+-      <form onSubmit={handleSubmit} className="space-y-4">
+-        <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
+-          <input
+-            type="text"
+-            id="username"
+-            value={username}
+-            onChange={(e) => setUsername(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-        </div>
+-        
+-        <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
+-          <input
+-            type="password"
+-            id="password"
+-            value={password}
+-            onChange={(e) => setPassword(e.target.value)}
+-            required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+-          />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
+-          </p>
+-        </div>
+-
+-        <button
+-          type="submit"
+-          disabled={loading}
+-          data-skip-tracking="true"
+-          className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+-            loading ? 'opacity-75 cursor-not-allowed' : ''
+-          }`}
+-        >
+-          {loading ? 'Signing up...' : 'Sign Up'}
+-        </button>
+-      </form>
+-    </div>
+-  );
+-}
++import AuthForm from './AuthForm';
++export default function SignUpForm() { return <AuthForm signup />; }
+diff --git a/src/lib/auth-api.ts b/src/lib/auth-api.ts
+new file mode 100644
+index 0000000..813a2a1
+--- /dev/null
++++ b/src/lib/auth-api.ts
+@@ -0,0 +1,39 @@
++// The auth service owns sessions, challenges, credential storage and verification.
++export const AUTH_API = (import.meta.env.PUBLIC_AUTH_API_URL || 'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api').replace(/\/$/, '');
++
++export class ApiError extends Error {
++  constructor(message: string, public status: number, public code?: string) { super(message); }
++}
++
++export async function authRequest<T>(path: string, body?: unknown, method = 'POST', signal?: AbortSignal): Promise<T> {
++  const response = await fetch(`${AUTH_API}${path}`, {
++    method, credentials: 'include', cache: 'no-store', signal,
++    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
++    body: body === undefined ? undefined : JSON.stringify(body),
++  });
++  const data = await response.json().catch(() => null);
++  if (!response.ok) {
++    throw new ApiError(typeof data?.error === 'string' ? data.error : 'The request could not be completed. Please try again.', response.status, typeof data?.code === 'string' ? data.code : undefined);
++  }
++  return data as T;
++}
++
++export interface PasskeyRecord {
++  id: string;
++  name: string;
++  providerName?: string;
++  providerIcon?: string;
++  aaguid: string;
++  registeredAt: number;
++  lastUsedAt?: number;
++}
++export interface Account {
++  name: string;
++  displayName: string;
++  hasPassword: boolean;
++}
++export interface PasskeyList {
++  rpId: string;
++  userId: string;
++  credentials: PasskeyRecord[];
++}
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..0fc98d1
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,85 @@
++import { ApiError, authRequest, type PasskeyList } from './auth-api';
++
++export interface PasskeyCapabilities { supported: boolean; create: boolean; conditional: boolean }
++export async function getPasskeyCapabilities(): Promise<PasskeyCapabilities> {
++  const unavailable = { supported: false, create: false, conditional: false };
++  if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) return unavailable;
++  await import('webauthn-polyfills');
++  try {
++    const capabilities = await PublicKeyCredential.getClientCapabilities();
++    return { supported: true, conditional: !!capabilities.conditionalGet,
++      create: !!capabilities.conditionalGet && !!capabilities.passkeyPlatformAuthenticator };
++  } catch { return { ...unavailable, supported: true }; }
++}
++
++export function isBase64Url(value: string) {
++  return typeof value === 'string' && value.length > 0 && value.length % 4 !== 1 && /^[A-Za-z0-9_-]+$/.test(value);
++}
++
++async function signalUnknown(rpId: string | undefined, credentialId: string) {
++  if (!rpId || !isBase64Url(credentialId) || !PublicKeyCredential.signalUnknownCredential) return;
++  try { await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId }); }
++  catch (error) { console.warn('Passkey provider synchronization unavailable.', error); }
++}
++
++export async function syncPasskeys(list: PasskeyList) {
++  if (!window.PublicKeyCredential?.signalAllAcceptedCredentials || !list.rpId ||
++      !isBase64Url(list.userId) || !list.credentials.every(c => isBase64Url(c.id))) return;
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({ rpId: list.rpId, userId: list.userId,
++      allAcceptedCredentialIds: list.credentials.map(c => c.id) });
++  } catch (error) { console.warn('Passkey provider synchronization unavailable.', error); }
++}
++
++export async function syncUser(user: { rpId: string; userId: string; name: string; displayName: string }) {
++  if (!window.PublicKeyCredential?.signalCurrentUserDetails || !user.rpId || !isBase64Url(user.userId)) return;
++  try { await PublicKeyCredential.signalCurrentUserDetails(user); }
++  catch (error) { console.warn('Passkey profile synchronization unavailable.', error); }
++}
++
++export async function registerPasskey(promotion: boolean, signal: AbortSignal) {
++  await import('webauthn-polyfills');
++  const options = await authRequest<PublicKeyCredentialCreationOptionsJSON>('/passkeys/register/options', { promotion }, 'POST', signal);
++  const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(options);
++  const credential = await navigator.credentials.create({ publicKey, signal }) as PublicKeyCredential | null;
++  if (!credential) throw new Error('No passkey was created. Please try again.');
++  const encoded = credential.toJSON();
++  // Only verification failures can leave an orphaned credential in the provider.
++  try {
++    await authRequest('/passkeys/register/verify', encoded, 'POST', signal);
++  } catch (error) {
++    await signalUnknown(publicKey.rp.id, encoded.id);
++    throw error;
++  }
++}
++
++export async function authenticatePasskey(signal: AbortSignal, conditional = false, reauthenticate = false) {
++  await import('webauthn-polyfills');
++  const path = reauthenticate ? '/passkeys/reauth' : '/passkeys/authenticate';
++  const options = await authRequest<PublicKeyCredentialRequestOptionsJSON>(`${path}/options`, {}, 'POST', signal);
++  const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(options);
++  if (reauthenticate && !publicKey.allowCredentials?.length) {
++    throw new Error('No passkeys are available for this account. Verify with your password instead.');
++  }
++  const credential = await navigator.credentials.get({ publicKey, signal,
++    ...(conditional ? { mediation: 'conditional' as const } : {}) }) as PublicKeyCredential | null;
++  if (!credential) throw new Error('No passkey was selected. Please try again.');
++  const encoded = credential.toJSON();
++  try { await authRequest(`${path}/verify`, encoded, 'POST', signal); }
++  catch (error) {
++    // Never signal a different account's credential from an authenticated session.
++    if (!reauthenticate && error instanceof ApiError && error.status === 404 && error.code === 'CREDENTIAL_NOT_FOUND') await signalUnknown(publicKey.rpId, encoded.id);
++    throw error;
++  }
++}
++
++export function authError(error: unknown): string {
++  if (error instanceof DOMException) {
++    if (error.name === 'NotAllowedError') return 'The passkey request was cancelled or timed out. Try again or use your password.';
++    if (error.name === 'InvalidStateError') return 'A passkey already exists in this password manager. Try a different device or provider.';
++    if (error.name === 'SecurityError') return 'Passkeys could not be used on this site. Check that you are using HTTPS, or use your password.';
++    if (error.name === 'AbortError') return 'The request was cancelled. Please try again.';
++  }
++  if (error instanceof TypeError) return 'Unable to reach the authentication service. Please try again.';
++  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
++}
+diff --git a/src/pages/account.astro b/src/pages/account.astro
+new file mode 100644
+index 0000000..a356290
+--- /dev/null
++++ b/src/pages/account.astro
+@@ -0,0 +1,9 @@
++---
++import Layout from '../layouts/Layout.astro';
++import AccountSettings from '../components/AccountSettings';
++---
++<Layout title="Account settings | The DevTools Times">
++  <div class="py-12 px-4 sm:px-6 lg:px-8">
++    <AccountSettings client:load />
++  </div>
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..d58d5cd 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,56 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++.auth-card, .account-settings {
++  color: #1f2937;
++  margin-inline: auto;
++  width: 100%;
++}
++.auth-card { max-width: 440px; padding: 2rem; border: 1px solid #d1d5db; border-radius: 8px; }
++.account-settings { max-width: 720px; }
++.auth-eyebrow { font-size: .7rem; letter-spacing: .13em; text-transform: uppercase; font-weight: 700; margin-bottom: .75rem; }
++.auth-card h1, .account-settings h1 { font-family: Georgia, serif; font-size: 2rem; line-height: 1.2; font-weight: 700; }
++.auth-card h2, .account-settings h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: .6rem; }
++.auth-description { color: #4b5563; font-size: .9rem; margin: .8rem 0 1.5rem; line-height: 1.6; }
++.auth-stack { display: grid; gap: 1rem; }
++.auth-card label, .account-settings label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .4rem; }
++.auth-card input, .account-settings input { display: block; width: 100%; min-height: 44px; border: 1px solid #9ca3af; border-radius: 4px; padding: .6rem .75rem; background: white; font-size: 1rem; }
++.auth-button { display: inline-flex; justify-content: center; align-items: center; gap: .5rem; min-height: 44px; padding: .65rem 1rem; background: #111827; color: white; border: 1px solid #111827; border-radius: 4px; font-size: .85rem; font-weight: 600; text-align: center; cursor: pointer; }
++.auth-card .auth-button { width: 100%; }
++.auth-button.secondary { background: white; color: #111827; border-color: #9ca3af; }
++.auth-button:hover { background: #374151; color: white; }
++.auth-button.secondary:hover { background: #f3f4f6; color: #111827; }
++.auth-button:disabled, button:disabled.auth-text-link { opacity: .5; cursor: not-allowed; }
++.auth-card :focus-visible, .account-settings :focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
++.auth-help { font-size: .8rem; line-height: 1.6; color: #4b5563; margin-top: .4rem; }
++.auth-divider { display: flex; align-items: center; gap: .75rem; margin-block: 1.5rem; color: #6b7280; font-size: .75rem; }
++.auth-divider::before, .auth-divider::after { content: ''; height: 1px; background: #d1d5db; flex: 1; }
++.auth-error, .auth-success { padding: .85rem; border-radius: 4px; font-size: .85rem; margin-block: 1rem; line-height: 1.6; }
++.auth-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
++.auth-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
++.auth-footer { border-top: 1px solid #e5e7eb; margin-top: 1.5rem; padding-top: 1.5rem; text-align: center; font-size: .85rem; }
++.auth-footer a, .auth-text-link { text-decoration: underline; text-underline-offset: 3px; font-weight: 600; cursor: pointer; font-size: .85rem; }
++button.auth-text-link { min-height: 44px; }
++.auth-text-link { text-align: center; }
++.auth-text-link.danger { color: #991b1b; }
++.passkey-promotion { background: #f9fafb; border: 1px solid #e5e7eb; padding: 1rem; border-radius: 4px; }
++.passkey-promotion .auth-button { margin-top: 1rem; }
++.settings-panel, .verification-panel { border: 1px solid #d1d5db; border-radius: 6px; padding: 1.5rem; margin-block: 1.5rem; min-width: 0; }
++.verification-panel { border-color: #6b7280; background: #f9fafb; }
++.settings-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; }
++.settings-heading .auth-button { flex-shrink: 0; }
++.passkey-empty { border-block: 1px dashed #d1d5db; padding-block: 2rem; margin-block: 1.5rem; text-align: center; }
++.passkey-empty h3, .passkey-info h3 { font-size: .9rem; font-weight: 600; overflow-wrap: anywhere; }
++.passkey-list > li { border-bottom: 1px solid #e5e7eb; padding-block: 1.25rem; }
++.passkey-row { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
++.passkey-info { flex: 1; min-width: 150px; }
++.passkey-actions { display: flex; gap: 1rem; }
++.passkey-icon { display: grid; place-items: center; width: 36px; height: 36px; font-size: 1.5rem; background: #f3f4f6; border-radius: 6px; }
++.rename-form { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; align-items: center; }
++.rename-form input { flex: 1; min-width: 150px; }
++@media (max-width: 480px) {
++  .auth-card { padding: 1.25rem; }
++  .settings-panel, .verification-panel { padding: 1rem; }
++  .passkey-actions { width: 100%; justify-content: flex-end; }
++}

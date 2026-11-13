@@ -1,0 +1,134 @@
+diff --git a/index.html b/index.html
+index 66c9173..3861cc4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,129 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ==========================================================
++       Progressive enhancements
++       Each block is gated with `@supports at-rule(...)`. Browsers
++       that don't understand the at-rule() test (or the @-rule
++       itself) treat the condition as false and skip the block,
++       keeping the baseline styles above.
++       ========================================================== */
++
++    /* Navigation: scoped styling + frosted glass bar */
++    @supports at-rule(@scope) {
++      @scope (nav) {
++        :scope {
++          background: color-mix(in srgb, var(--primary) 85%, transparent);
++          backdrop-filter: blur(10px);
++          -webkit-backdrop-filter: blur(10px);
++          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
++        }
++
++        a:not(.logout-link) {
++          position: relative;
++        }
++
++        a:not(.logout-link)::after {
++          content: "";
++          position: absolute;
++          left: 0;
++          bottom: -4px;
++          width: 100%;
++          height: 2px;
++          background: var(--accent);
++          transform: scaleX(0);
++          transform-origin: left;
++          transition: transform 0.3s ease;
++        }
++
++        a:not(.logout-link):hover::after,
++        a:not(.logout-link):focus-visible::after {
++          transform: scaleX(1);
++        }
++
++        .logout-link {
++          transition: background-color 0.3s, color 0.3s;
++        }
++
++        .logout-link:hover,
++        .logout-link:focus-visible {
++          background: var(--accent);
++          color: var(--primary);
++        }
++      }
++    }
++
++    /* Hero: fade/slide-in entrance on first render */
++    @supports at-rule(@starting-style) {
++      .hero h1,
++      .hero p,
++      .hero .btn {
++        opacity: 1;
++        transform: translateY(0);
++        transition: opacity 0.8s ease, transform 0.8s ease;
++      }
++
++      .hero p {
++        transition-delay: 0.15s;
++      }
++
++      .hero .btn {
++        transition-delay: 0.3s;
++      }
++
++      @starting-style {
++        .hero h1,
++        .hero p,
++        .hero .btn {
++          opacity: 0;
++          transform: translateY(20px);
++        }
++      }
++    }
++
++    /* Seasonal favorite cards: container-aware layout + hover lift */
++    @supports at-rule(@container) {
++      .card {
++        container: card / inline-size;
++        display: flex;
++        flex-direction: column;
++        transition: transform 0.25s ease, box-shadow 0.25s ease;
++      }
++
++      .card:hover,
++      .card:focus-within {
++        transform: translateY(-4px);
++        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
++      }
++
++      .card .btn {
++        margin-top: auto;
++        align-self: center;
++      }
++
++      .card p {
++        margin-bottom: 15px;
++      }
++
++      @container card (min-width: 320px) {
++        h3 {
++          font-size: 1.4rem;
++        }
++
++        p {
++          font-size: 1.05rem;
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      *,
++      *::before,
++      *::after {
++        transition: none !important;
++      }
++    }
+   </style>
+ </head>
+ 

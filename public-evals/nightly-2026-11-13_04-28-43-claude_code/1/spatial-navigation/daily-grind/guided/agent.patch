@@ -1,0 +1,276 @@
+diff --git a/index.html b/index.html
+index 66c9173..957f161 100644
+--- a/index.html
++++ b/index.html
+@@ -115,6 +115,71 @@
+       text-align: center;
+     }
+ 
++    /* Layout modes for the card grid */
++    .grid-toolbar {
++      display: flex;
++      justify-content: center;
++      gap: 8px;
++      margin-top: 16px;
++    }
++
++    .grid-toolbar button {
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 6px 14px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .grid-toolbar button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .grid-row {
++      display: contents;
++    }
++
++    .grid[data-layout="list"] {
++      grid-template-columns: 1fr;
++    }
++
++    .grid[data-layout="list"] .card {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      grid-template-areas: "title btn" "desc btn";
++      align-items: center;
++      column-gap: 20px;
++      text-align: start;
++    }
++
++    .grid[data-layout="list"] .card h3 { grid-area: title; margin-bottom: 0; }
++    .grid[data-layout="list"] .card p { grid-area: desc; }
++    .grid[data-layout="list"] .card .btn { grid-area: btn; margin-top: 0; }
++
++    .grid[data-layout="rail"] {
++      grid-template-columns: none;
++      grid-auto-flow: column;
++      grid-auto-columns: minmax(250px, 30%);
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scroll-snap-type: x mandatory;
++      padding-bottom: 10px;
++    }
++
++    .grid[data-layout="rail"] .card {
++      scroll-snap-align: start;
++    }
++
++    .grid .btn:focus-visible,
++    .grid-toolbar button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -176,22 +241,45 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="grid-toolbar" role="group" aria-label="Card layout">
++        <button type="button" data-layout="grid" aria-pressed="true">Grid</button>
++        <button type="button" data-layout="list" aria-pressed="false">List</button>
++        <button type="button" data-layout="rail" aria-pressed="false">Carousel</button>
++      </div>
++      <p id="grid-help" hidden>Use arrow keys to move between items, Home and End to jump to the first or last item.</p>
++      <div class="grid" data-layout="grid" role="grid" aria-labelledby="seasonal-heading" aria-describedby="grid-help">
++        <div class="grid-row" role="row">
++          <div class="card" role="gridcell">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn" tabindex="0" aria-label="View details: Maple Oat Latte">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn" tabindex="-1" aria-label="View details: Dark Roast Espresso">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn" tabindex="-1" aria-label="View details: Cold Brew">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3>Pumpkin Spice Cortado</h3>
++            <p>Velvety steamed milk, espresso, and house-made spice blend.</p>
++            <a href="/menu/pumpkin-cortado" class="btn" tabindex="-1" aria-label="View details: Pumpkin Spice Cortado">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3>Honey Lavender Latte</h3>
++            <p>Floral lavender syrup balanced with local wildflower honey.</p>
++            <a href="/menu/honey-lavender" class="btn" tabindex="-1" aria-label="View details: Honey Lavender Latte">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3>Chai Tea Latte</h3>
++            <p>Black tea simmered with cardamom, cinnamon, and ginger.</p>
++            <a href="/menu/chai" class="btn" tabindex="-1" aria-label="View details: Chai Tea Latte">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +295,137 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Spatial (arrow-key) navigation for the card grid.
++     * - Roving tabindex: the grid is a single Tab stop.
++     * - Candidates are chosen from live geometry on every keypress, so it works
++     *   in any layout mode (auto-fit grid, single-column list, horizontal rail).
++     * - If no candidate exists in the pressed direction, the event is left alone
++     *   so the browser can scroll natively.
++     */
++    (() => {
++      const grid = document.querySelector('.grid[role="grid"]');
++      if (!grid) return;
++
++      const ITEM_SELECTOR = '[role="gridcell"] .btn';
++      const TOLERANCE = 1;   // px, for sub-pixel rounding
++      const WEIGHT = 2;      // perpendicular-offset weight for fallback scoring
++
++      const DIRECTIONS = {
++        ArrowRight: 'right', ArrowLeft: 'left', ArrowDown: 'down', ArrowUp: 'up',
++      };
++
++      const getItems = () =>
++        [...grid.querySelectorAll(ITEM_SELECTOR)].filter((el) =>
++          el.checkVisibility ? el.checkVisibility({ visibilityProperty: true }) : el.getClientRects().length > 0
++        );
++
++      function setActive(item, { focus = true } = {}) {
++        for (const el of grid.querySelectorAll(ITEM_SELECTOR)) {
++          el.tabIndex = el === item ? 0 : -1;
++        }
++        if (focus) {
++          item.focus({ preventScroll: true });
++          item.closest('[role="gridcell"]').scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        }
++      }
++
++      function findCandidate(current, items, dir) {
++        const cur = current.getBoundingClientRect();
++        const horizontal = dir === 'left' || dir === 'right';
++        const curCenter = horizontal ? cur.top + cur.height / 2 : cur.left + cur.width / 2;
++
++        let bestAligned = null;
++        let bestFallback = null;
++
++        for (const el of items) {
++          if (el === current) continue;
++          const r = el.getBoundingClientRect();
++
++          // Edge-based direction filter + gap along the navigation axis.
++          let gap;
++          switch (dir) {
++            case 'right': if (r.left < cur.right - TOLERANCE) continue; gap = r.left - cur.right; break;
++            case 'left': if (r.right > cur.left + TOLERANCE) continue; gap = cur.left - r.right; break;
++            case 'down': if (r.top < cur.bottom - TOLERANCE) continue; gap = r.top - cur.bottom; break;
++            case 'up': if (r.bottom > cur.top + TOLERANCE) continue; gap = cur.top - r.bottom; break;
++          }
++          gap = Math.max(0, gap);
++
++          const center = horizontal ? r.top + r.height / 2 : r.left + r.width / 2;
++          const offset = Math.abs(center - curCenter);
++          const overlaps = horizontal
++            ? r.top < cur.bottom - TOLERANCE && r.bottom > cur.top + TOLERANCE
++            : r.left < cur.right - TOLERANCE && r.right > cur.left + TOLERANCE;
++
++          if (overlaps) {
++            if (!bestAligned || gap < bestAligned.gap || (gap === bestAligned.gap && offset < bestAligned.offset)) {
++              bestAligned = { el, gap, offset };
++            }
++          } else {
++            const score = gap + WEIGHT * offset;
++            if (!bestFallback || score < bestFallback.score) bestFallback = { el, score };
++          }
++        }
++
++        return bestAligned?.el ?? bestFallback?.el ?? null;
++      }
++
++      grid.addEventListener('keydown', (e) => {
++        if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++
++        const target = e.composedPath()[0];
++        if (!(target instanceof Element)) return;
++        if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) return;
++
++        const items = getItems();
++        if (!items.includes(target)) return;
++
++        let next = null;
++        if (e.key in DIRECTIONS) {
++          next = findCandidate(target, items, DIRECTIONS[e.key]);
++        } else if (e.key === 'Home') {
++          next = items[0];
++        } else if (e.key === 'End') {
++          next = items[items.length - 1];
++        } else {
++          return;
++        }
++
++        // No candidate: leave the event alone so native scrolling still works.
++        if (!next || next === target) return;
++
++        e.preventDefault();
++        setActive(next);
++      });
++
++      // Keep the roving tab stop in sync if focus arrives by click or programmatically.
++      grid.addEventListener('focusin', (e) => {
++        const target = e.composedPath()[0];
++        if (target instanceof Element && target.matches(ITEM_SELECTOR)) setActive(target, { focus: false });
++      });
++
++      // Layout mode switcher.
++      const toolbar = document.querySelector('.grid-toolbar');
++      toolbar?.addEventListener('click', (e) => {
++        const button = e.target.closest('button[data-layout]');
++        if (!button) return;
++        grid.dataset.layout = button.dataset.layout;
++        for (const b of toolbar.querySelectorAll('button')) {
++          b.setAttribute('aria-pressed', String(b === button));
++        }
++      });
++
++      // Ensure the single tab stop always points at a visible item.
++      const ensureTabStop = () => {
++        const items = getItems();
++        if (items.length && !items.some((el) => el.tabIndex === 0)) setActive(items[0], { focus: false });
++      };
++      new ResizeObserver(ensureTabStop).observe(grid);
++      ensureTabStop();
++    })();
++  </script>
+ </body>
+ 
+ </html>

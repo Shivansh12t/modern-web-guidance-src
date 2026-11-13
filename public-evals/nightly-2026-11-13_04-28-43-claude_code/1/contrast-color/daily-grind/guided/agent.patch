@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 1bacf96..3d70042 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,44 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* WCAG relative-luminance crossover between black and white text */
++      --wcag-y-threshold: 0.17913;
++    }
++
++    /*
++     * Auto-contrast surfaces.
++     * Each themed surface sets --surface to its background color (and
++     * --surface-text-fallback for very old browsers). The text color is then
++     * derived from --surface, so changing --primary / --secondary anywhere
++     * (on :root, a theme class, or inline via JS) keeps the text readable.
++     */
++    nav,
++    .btn,
++    footer {
++      background-color: var(--surface);
++      color: var(--surface-text-fallback);
++    }
++
++    /* Fallback: compute black/white from relative luminance (CIE XYZ y) */
++    @supports (color: color(from red xyz-d65 calc(sign(0.5 - y) * x) y z)) {
++      nav,
++      .btn,
++      footer {
++        --surface-y: max(0, sign(var(--wcag-y-threshold) - y));
++        color: color(from var(--surface) xyz-d65
++            calc(var(--surface-y) * 0.9505)
++            var(--surface-y)
++            calc(var(--surface-y) * 1.089));
++      }
++    }
++
++    /* Preferred: let the browser pick the highest-contrast text color */
++    @supports (color: contrast-color(red)) {
++      nav,
++      .btn,
++      footer {
++        color: contrast-color(var(--surface));
++      }
+     }
+ 
+     * {
+@@ -29,8 +67,8 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      --surface: var(--primary);
++      --surface-text-fallback: white;
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,14 +94,18 @@
+     }
+ 
+     nav a {
+-      color: white;
+-      text-decoration: none;
++      /* Inherit the auto-contrast color from the nav surface */
++      color: inherit;
++      text-decoration: underline 2px transparent;
++      text-underline-offset: 4px;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: text-decoration-color 0.3s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    /* Hover uses the accent as a decoration so text contrast never drops */
++    nav a:hover,
++    nav a:focus-visible {
++      text-decoration-color: var(--accent);
+     }
+ 
+     .logout-link {
+@@ -121,21 +163,26 @@
+     }
+ 
+     .btn {
++      --surface: var(--primary);
++      --surface-text-fallback: white;
+       display: inline-block;
+-      background: var(--primary);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s, color 0.3s;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    /* Darken the current primary instead of hard-coding a hover color;
++       the text color re-derives from the new surface automatically. */
++    .btn:hover,
++    .btn:focus-visible {
++      --surface: color-mix(in oklab, var(--primary), black 20%);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      --surface: var(--secondary);
++      --surface-text-fallback: var(--text);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -147,7 +194,8 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      /* Inherit the auto-contrast color from the footer surface */
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }

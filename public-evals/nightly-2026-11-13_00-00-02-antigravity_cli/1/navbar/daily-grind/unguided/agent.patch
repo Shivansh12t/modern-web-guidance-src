@@ -1,0 +1,557 @@
+diff --git a/index.html b/index.html
+index 66c9173..d6acec0 100644
+--- a/index.html
++++ b/index.html
+@@ -8,6 +8,7 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+@@ -27,49 +28,346 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Primary Navigation */
++    nav[aria-label="Primary"] {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.85rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      white-space: nowrap;
++    }
++
++    .logo:hover,
++    .logo:focus-visible {
++      color: var(--accent);
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 2px;
++    }
++
++    /* Mobile Menu Toggle Button */
++    .menu-toggle {
++      display: none;
++      align-items: center;
++      gap: 0.5rem;
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      padding: 0.45rem 0.85rem;
++      font-size: 0.95rem;
++      font-family: inherit;
++      font-weight: 600;
++      border-radius: 4px;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s, color 0.2s;
++    }
++
++    .menu-toggle:hover,
++    .menu-toggle:focus-visible {
++      background: rgba(255, 255, 255, 0.1);
++      border-color: var(--accent);
++      color: var(--accent);
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .menu-toggle-icon {
++      display: inline-flex;
++      flex-direction: column;
++      justify-content: space-between;
++      width: 18px;
++      height: 14px;
++    }
++
++    .menu-toggle-icon span {
++      display: block;
++      height: 2px;
++      width: 100%;
++      background-color: currentColor;
++      border-radius: 2px;
++      transition: transform 0.25s ease, opacity 0.25s ease;
++    }
++
++    .menu-toggle[aria-expanded="true"] .menu-toggle-icon span:nth-child(1) {
++      transform: translateY(6px) rotate(45deg);
++    }
++
++    .menu-toggle[aria-expanded="true"] .menu-toggle-icon span:nth-child(2) {
++      opacity: 0;
++    }
++
++    .menu-toggle[aria-expanded="true"] .menu-toggle-icon span:nth-child(3) {
++      transform: translateY(-6px) rotate(-45deg);
+     }
+ 
+-    nav ul {
++    /* Nav List */
++    .nav-list {
+       display: flex;
++      align-items: center;
+       list-style: none;
++      gap: 0.5rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .nav-item {
++      position: relative;
++      display: flex;
++      align-items: center;
+     }
+ 
+-    nav a {
++    .nav-link,
++    .submenu-toggle {
+       color: white;
+       text-decoration: none;
++      font-size: 0.95rem;
++      font-family: inherit;
++      padding: 0.5rem 0.75rem;
++      border-radius: 4px;
++      transition: color 0.2s, background-color 0.2s;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.35rem;
++      background: transparent;
++      border: none;
++      cursor: pointer;
++      white-space: nowrap;
++      position: relative;
++    }
++
++    .nav-link:hover,
++    .nav-link:focus-visible,
++    .submenu-toggle:hover,
++    .submenu-toggle:focus-visible {
++      color: var(--accent);
++      background: rgba(255, 255, 255, 0.08);
++      outline: none;
++    }
++
++    .nav-link:focus-visible,
++    .submenu-toggle:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Active Page Indicator */
++    .nav-link[aria-current="page"],
++    .nav-link.active,
++    .has-submenu.active > .nav-item-header > .nav-link {
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .nav-link[aria-current="page"]::after,
++    .nav-link.active::after,
++    .has-submenu.active > .nav-item-header > .nav-link::after {
++      content: "";
++      position: absolute;
++      bottom: 2px;
++      left: 0.75rem;
++      right: 0.75rem;
++      height: 2px;
++      background-color: var(--accent);
++      border-radius: 2px;
++    }
++
++    /* Split button / header for Menu + Submenu toggle */
++    .nav-item-header {
++      display: flex;
++      align-items: center;
++    }
++
++    .has-submenu .nav-item-header > .nav-link {
++      padding-right: 0.35rem;
++      border-top-right-radius: 0;
++      border-bottom-right-radius: 0;
++    }
++
++    .submenu-toggle {
++      padding: 0.5rem 0.45rem;
++      border-top-left-radius: 0;
++      border-bottom-left-radius: 0;
++    }
++
++    .chevron-icon {
++      width: 12px;
++      height: 12px;
++      transition: transform 0.2s ease;
++      fill: none;
++      stroke: currentColor;
++      stroke-width: 2.2;
++      stroke-linecap: round;
++      stroke-linejoin: round;
++    }
++
++    .has-submenu.submenu-open .chevron-icon,
++    .submenu-toggle[aria-expanded="true"] .chevron-icon {
++      transform: rotate(180deg);
++    }
++
++    /* Submenu Dropdown */
++    .submenu {
++      display: none;
++      position: absolute;
++      top: 100%;
++      left: 0;
++      min-width: 180px;
++      background: var(--primary-dark);
++      border: 1px solid rgba(255, 255, 255, 0.15);
++      border-radius: 6px;
++      padding: 0.4rem 0;
++      list-style: none;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
++      z-index: 1001;
++    }
++
++    .has-submenu.submenu-open > .submenu {
++      display: block;
++    }
++
++    @media (hover: hover) and (min-width: 769px) {
++      .has-submenu:hover > .submenu {
++        display: block;
++      }
++      .has-submenu:hover .chevron-icon {
++        transform: rotate(180deg);
++      }
++    }
++
++    .submenu li {
++      margin: 0;
++    }
++
++    .submenu .nav-link {
++      display: block;
++      width: 100%;
++      padding: 0.55rem 1rem;
++      border-radius: 0;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .submenu .nav-link:hover,
++    .submenu .nav-link:focus-visible {
++      background: rgba(255, 171, 64, 0.15);
+       color: var(--accent);
+     }
+ 
++    .submenu .nav-link[aria-current="page"]::after,
++    .submenu .nav-link.active::after {
++      left: 0;
++      right: auto;
++      top: 0.4rem;
++      bottom: 0.4rem;
++      width: 3px;
++      height: auto;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
++      padding: 0.4rem 0.85rem;
+       border-radius: 4px;
++      margin-left: 0.25rem;
++    }
++
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    /* Narrower Viewports - Collapsible Navigation */
++    @media (max-width: 768px) {
++      .menu-toggle {
++        display: inline-flex;
++      }
++
++      .nav-list {
++        display: none;
++        flex-direction: column;
++        align-items: stretch;
++        position: absolute;
++        top: 100%;
++        left: 0;
++        right: 0;
++        background: var(--primary);
++        border-top: 1px solid rgba(255, 255, 255, 0.15);
++        padding: 0.75rem 5% 1.25rem;
++        gap: 0.25rem;
++        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
++      }
++
++      .nav-list.nav-open {
++        display: flex;
++      }
++
++      .nav-item {
++        flex-direction: column;
++        align-items: stretch;
++      }
++
++      .nav-item-header {
++        display: flex;
++        justify-content: space-between;
++        width: 100%;
++      }
++
++      .has-submenu .nav-item-header > .nav-link {
++        flex: 1;
++      }
++
++      .submenu-toggle {
++        padding: 0.5rem 0.85rem;
++      }
++
++      .nav-link {
++        width: 100%;
++        padding: 0.65rem 0.75rem;
++      }
++
++      .nav-link[aria-current="page"]::after,
++      .nav-link.active::after,
++      .has-submenu.active > .nav-item-header > .nav-link::after {
++        left: 0;
++        right: auto;
++        top: 0.4rem;
++        bottom: 0.4rem;
++        width: 3px;
++        height: auto;
++      }
++
++      .submenu {
++        position: static;
++        background: rgba(0, 0, 0, 0.2);
++        border: none;
++        border-left: 2px solid rgba(255, 171, 64, 0.4);
++        border-radius: 0 4px 4px 0;
++        box-shadow: none;
++        margin: 0.2rem 0 0.4rem 1rem;
++        padding: 0.25rem 0;
++      }
++
++      .submenu .nav-link {
++        padding-left: 1rem;
++      }
++
++      .logout-link {
++        margin-left: 0;
++        margin-top: 0.5rem;
++        text-align: center;
++        justify-content: center;
++      }
+     }
+ 
+     /* Hero Section */
+@@ -157,14 +455,50 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++  <nav aria-label="Primary">
++    <a href="/" class="logo">THE DAILY GRIND</a>
++
++    <button
++      type="button"
++      class="menu-toggle"
++      aria-expanded="false"
++      aria-controls="primary-nav-list"
++      aria-label="Toggle navigation menu"
++    >
++      <span class="menu-toggle-icon" aria-hidden="true">
++        <span></span>
++        <span></span>
++        <span></span>
++      </span>
++      <span>Menu</span>
++    </button>
++
++    <ul id="primary-nav-list" class="nav-list">
++      <li class="nav-item has-submenu active">
++        <div class="nav-item-header">
++          <a href="/menu" class="nav-link active" aria-current="page">Menu</a>
++          <button
++            type="button"
++            class="submenu-toggle"
++            aria-expanded="false"
++            aria-controls="menu-submenu"
++            aria-label="Toggle Menu submenu"
++          >
++            <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true">
++              <polyline points="6 9 12 15 18 9"></polyline>
++            </svg>
++          </button>
++        </div>
++        <ul id="menu-submenu" class="submenu" aria-label="Menu">
++          <li><a href="/menu/seasonal" class="nav-link">Seasonal</a></li>
++          <li><a href="/menu/espresso" class="nav-link">Espresso</a></li>
++          <li><a href="/menu/cold-brew" class="nav-link">Cold Brew</a></li>
++        </ul>
++      </li>
++      <li class="nav-item"><a href="/locations" class="nav-link">Locations</a></li>
++      <li class="nav-item"><a href="/rewards" class="nav-link">Rewards</a></li>
++      <li class="nav-item"><a href="/account" class="nav-link">My Account</a></li>
++      <li class="nav-item"><a href="/logout" class="nav-link logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +541,128 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const nav = document.querySelector('nav[aria-label="Primary"]');
++      const menuToggle = nav.querySelector('.menu-toggle');
++      const navList = document.getElementById('primary-nav-list');
++      const submenuItem = nav.querySelector('.has-submenu');
++      const submenuToggle = nav.querySelector('.submenu-toggle');
++      const navLinks = nav.querySelectorAll('.nav-link');
++
++      // Toggle mobile navigation drawer
++      function setMobileNavOpen(isOpen) {
++        menuToggle.setAttribute('aria-expanded', String(isOpen));
++        navList.classList.toggle('nav-open', isOpen);
++        if (!isOpen) {
++          setSubmenuOpen(false);
++        }
++      }
++
++      // Toggle Menu submenu
++      function setSubmenuOpen(isOpen) {
++        submenuToggle.setAttribute('aria-expanded', String(isOpen));
++        submenuItem.classList.toggle('submenu-open', isOpen);
++      }
++
++      menuToggle.addEventListener('click', function () {
++        const isExpanded = menuToggle.getAttribute('aria-expanded') === 'true';
++        setMobileNavOpen(!isExpanded);
++      });
++
++      submenuToggle.addEventListener('click', function (e) {
++        e.stopPropagation();
++        const isExpanded = submenuToggle.getAttribute('aria-expanded') === 'true';
++        setSubmenuOpen(!isExpanded);
++      });
++
++      // Active page state management
++      function setActiveLink(targetLink) {
++        navLinks.forEach(function (link) {
++          link.classList.remove('active');
++          link.removeAttribute('aria-current');
++        });
++        submenuItem.classList.remove('active');
++
++        if (targetLink) {
++          targetLink.classList.add('active');
++          targetLink.setAttribute('aria-current', 'page');
++          if (submenuItem.contains(targetLink)) {
++            submenuItem.classList.add('active');
++          }
++        }
++      }
++
++      // Sync active link on initial load based on URL pathname or hash
++      function syncActiveFromLocation() {
++        const currentPath = window.location.pathname;
++        const currentHash = window.location.hash;
++        let matchedLink = null;
++
++        navLinks.forEach(function (link) {
++          const href = link.getAttribute('href');
++          if (href === currentPath || (currentHash && href === currentHash.replace('#', ''))) {
++            matchedLink = link;
++          }
++        });
++
++        if (matchedLink) {
++          setActiveLink(matchedLink);
++        }
++      }
++
++      syncActiveFromLocation();
++
++      // Update active indicator when clicking navigation links
++      navLinks.forEach(function (link) {
++        link.addEventListener('click', function (e) {
++          // Update active state immediately and prevent 404 navigation in single-page static setup
++          e.preventDefault();
++          const href = link.getAttribute('href');
++          if (window.history && window.history.pushState) {
++            try {
++              window.history.pushState({}, '', href);
++            } catch (_) {
++              // Ignore pushState restrictions on file:// origins
++            }
++          }
++          setActiveLink(link);
++          setSubmenuOpen(false);
++          if (window.innerWidth <= 768) {
++            setMobileNavOpen(false);
++          }
++        });
++      });
++
++      // Close menus on Escape or clicking outside
++      document.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape') {
++          if (submenuToggle.getAttribute('aria-expanded') === 'true') {
++            setSubmenuOpen(false);
++            submenuToggle.focus();
++          } else if (menuToggle.getAttribute('aria-expanded') === 'true') {
++            setMobileNavOpen(false);
++            menuToggle.focus();
++          }
++        }
++      });
++
++      document.addEventListener('click', function (e) {
++        if (!nav.contains(e.target)) {
++          setSubmenuOpen(false);
++          setMobileNavOpen(false);
++        }
++      });
++
++      // Reset mobile menu state when resizing above mobile breakpoint
++      window.addEventListener('resize', function () {
++        if (window.innerWidth > 768 && menuToggle.getAttribute('aria-expanded') === 'true') {
++          setMobileNavOpen(false);
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

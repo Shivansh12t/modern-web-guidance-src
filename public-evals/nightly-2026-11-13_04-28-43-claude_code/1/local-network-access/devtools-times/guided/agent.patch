@@ -1,0 +1,499 @@
+diff --git a/src/components/DiagnosticsConnect.tsx b/src/components/DiagnosticsConnect.tsx
+new file mode 100644
+index 0000000..353bddd
+--- /dev/null
++++ b/src/components/DiagnosticsConnect.tsx
+@@ -0,0 +1,452 @@
++import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
++
++/**
++ * Developer diagnostics connection widget.
++ *
++ * Connects from the reader's browser to:
++ *  - a hardware test device on their private LAN (RFC 1918 / link-local / .local)
++ *  - a companion CLI on their own machine (127.0.0.1 / [::1] / localhost)
++ *
++ * Uses Local Network Access (LNA): the granular `local-network` and
++ * `loopback-network` permissions plus `targetAddressSpace` on fetch().
++ * Requests are only ever started from an explicit user click unless the
++ * permission is already granted.
++ */
++
++type AddressSpace = 'local' | 'loopback';
++type LnaPermission = 'local-network' | 'loopback-network';
++type PermState = PermissionState | 'unsupported' | 'checking';
++type ConnStatus = 'idle' | 'connecting' | 'connected' | 'error';
++
++interface TargetConfig {
++  space: AddressSpace;
++  permission: LnaPermission;
++  title: string;
++  description: string;
++  defaultUrl: string;
++  storageKey: string;
++  placeholder: string;
++  hostHint: string;
++}
++
++const TARGETS: TargetConfig[] = [
++  {
++    space: 'local',
++    permission: 'local-network',
++    title: 'Hardware test device',
++    description:
++      'A diagnostics board or test rig on your Wi-Fi / LAN. The device must serve its status endpoint with CORS headers allowing this site.',
++    defaultUrl: 'http://192.168.1.100:8080/api/status',
++    storageKey: 'dtt-diag-device-url',
++    placeholder: 'http://192.168.1.100:8080/api/status',
++    hostHint: 'Private LAN address only: 10.x, 172.16–31.x, 192.168.x, 169.254.x, fc00::/7, fe80::/10, or *.local',
++  },
++  {
++    space: 'loopback',
++    permission: 'loopback-network',
++    title: 'Companion CLI',
++    description:
++      'The DevTools Times companion CLI running on this computer. Start it with `devtools-times-cli serve` and it will listen on the loopback interface.',
++    defaultUrl: 'http://127.0.0.1:45678/health',
++    storageKey: 'dtt-diag-cli-url',
++    placeholder: 'http://127.0.0.1:45678/health',
++    hostHint: 'Loopback address only: 127.x.x.x, [::1], or localhost',
++  },
++];
++
++// ---------------------------------------------------------------------------
++// Address-space validation (so the widget can't be pointed at public hosts)
++// ---------------------------------------------------------------------------
++
++function parseIPv4(host: string): number[] | null {
++  const parts = host.split('.');
++  if (parts.length !== 4) return null;
++  const nums = parts.map((p) => (/^\d{1,3}$/.test(p) ? Number(p) : NaN));
++  return nums.every((n) => n >= 0 && n <= 255) ? nums : null;
++}
++
++function classifyHost(rawHost: string): AddressSpace | 'public' | 'unknown' {
++  const host = rawHost.toLowerCase().replace(/^\[|\]$/g, '');
++
++  if (host === 'localhost' || host.endsWith('.localhost')) return 'loopback';
++  if (host.endsWith('.local')) return 'local';
++
++  const v4 = parseIPv4(host);
++  if (v4) {
++    const [a, b] = v4;
++    if (a === 127) return 'loopback';
++    if (a === 10) return 'local';
++    if (a === 172 && b >= 16 && b <= 31) return 'local';
++    if (a === 192 && b === 168) return 'local';
++    if (a === 169 && b === 254) return 'local';
++    return 'public';
++  }
++
++  if (host.includes(':')) {
++    if (host === '::1') return 'loopback';
++    if (/^f[cd][0-9a-f]{2}:/.test(host)) return 'local'; // fc00::/7
++    if (/^fe[89ab][0-9a-f]:/.test(host)) return 'local'; // fe80::/10
++    return 'public';
++  }
++
++  // Custom DNS names can't be verified client-side before resolution;
++  // the browser enforces targetAddressSpace after DNS and aborts on mismatch.
++  return 'unknown';
++}
++
++function validateUrl(value: string, space: AddressSpace): { url?: URL; error?: string } {
++  let url: URL;
++  try {
++    url = new URL(value);
++  } catch {
++    return { error: 'Enter a full URL, e.g. http://192.168.1.100:8080/api/status' };
++  }
++  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
++    return { error: 'Only http:// and https:// URLs are supported.' };
++  }
++  if (url.username || url.password) {
++    return { error: 'Credentials in the URL are not allowed.' };
++  }
++  const cls = classifyHost(url.hostname);
++  if (cls === 'unknown') {
++    // Allowed: the browser verifies the resolved IP matches targetAddressSpace.
++    return { url };
++  }
++  if (cls !== space) {
++    return {
++      error:
++        space === 'local'
++          ? 'That host is not on a private LAN address range.'
++          : 'That host is not a loopback address.',
++    };
++  }
++  return { url };
++}
++
++// ---------------------------------------------------------------------------
++// Permission helpers
++// ---------------------------------------------------------------------------
++
++/**
++ * Query a granular LNA permission. Never falls back to the legacy
++ * 'local-network-access' name (it crashes the renderer in older Chrome).
++ */
++async function queryLnaPermission(name: LnaPermission): Promise<PermissionStatus | null> {
++  if (!navigator.permissions?.query) return null;
++  try {
++    return await navigator.permissions.query({ name: name as PermissionName });
++  } catch {
++    return null; // Unrecognised permission name in this browser.
++  }
++}
++
++// ---------------------------------------------------------------------------
++// UI pieces
++// ---------------------------------------------------------------------------
++
++const PERM_BADGE: Record<PermState, { label: string; cls: string }> = {
++  checking: { label: 'Checking…', cls: 'bg-gray-100 text-gray-700' },
++  granted: { label: 'Allowed', cls: 'bg-green-100 text-green-800' },
++  prompt: { label: 'Will ask', cls: 'bg-amber-100 text-amber-800' },
++  denied: { label: 'Blocked', cls: 'bg-red-100 text-red-800' },
++  unsupported: { label: 'Not gated by this browser', cls: 'bg-gray-100 text-gray-700' },
++};
++
++const CONN_BADGE: Record<ConnStatus, { label: string; dot: string }> = {
++  idle: { label: 'Not connected', dot: 'bg-gray-400' },
++  connecting: { label: 'Connecting…', dot: 'bg-amber-500 animate-pulse' },
++  connected: { label: 'Connected', dot: 'bg-green-600' },
++  error: { label: 'Connection failed', dot: 'bg-red-600' },
++};
++
++const TIMEOUT_MS = 8000;
++
++function TargetPanel({ config }: { config: TargetConfig }) {
++  const id = useId();
++  const [url, setUrl] = useState(config.defaultUrl);
++  const [urlError, setUrlError] = useState<string | null>(null);
++  const [perm, setPerm] = useState<PermState>('checking');
++  const [status, setStatus] = useState<ConnStatus>('idle');
++  const [message, setMessage] = useState<string | null>(null);
++  const [payload, setPayload] = useState<string | null>(null);
++  const [latency, setLatency] = useState<number | null>(null);
++  const abortRef = useRef<AbortController | null>(null);
++  const autoTried = useRef(false);
++
++  const connect = useCallback(
++    async (target: string) => {
++      const { url: parsed, error } = validateUrl(target.trim(), config.space);
++      if (!parsed) {
++        setUrlError(error ?? 'Invalid URL');
++        return;
++      }
++      setUrlError(null);
++      abortRef.current?.abort();
++      const controller = new AbortController();
++      abortRef.current = controller;
++      const timer = setTimeout(() => controller.abort(new DOMException('Timed out', 'TimeoutError')), TIMEOUT_MS);
++
++      setStatus('connecting');
++      setMessage(null);
++      setPayload(null);
++      setLatency(null);
++      const started = performance.now();
++
++      try {
++        // `targetAddressSpace` exempts http:// from mixed-content blocking (once
++        // the user grants permission) and makes the browser verify the resolved
++        // IP really is in the declared address space.
++        const init: RequestInit & { targetAddressSpace?: AddressSpace } = {
++          method: 'GET',
++          mode: 'cors',
++          credentials: 'omit',
++          cache: 'no-store',
++          headers: { Accept: 'application/json' },
++          signal: controller.signal,
++          targetAddressSpace: config.space,
++        };
++        const res = await fetch(parsed.href, init);
++        const elapsed = Math.round(performance.now() - started);
++        if (!res.ok) throw new Error(`Endpoint responded with HTTP ${res.status}`);
++
++        const text = await res.text();
++        let pretty = text;
++        try {
++          pretty = JSON.stringify(JSON.parse(text), null, 2);
++        } catch {
++          /* not JSON – show raw text */
++        }
++        setPayload(pretty.slice(0, 4000));
++        setLatency(elapsed);
++        setStatus('connected');
++        try {
++          localStorage.setItem(config.storageKey, parsed.href);
++        } catch {
++          /* storage unavailable */
++        }
++      } catch (err) {
++        setStatus('error');
++        if (controller.signal.aborted) {
++          setMessage(
++            controller.signal.reason instanceof DOMException && controller.signal.reason.name === 'TimeoutError'
++              ? `No response within ${TIMEOUT_MS / 1000}s.`
++              : 'Request cancelled.',
++          );
++        } else if (err instanceof TypeError) {
++          setMessage(
++            'The browser could not reach the endpoint. It may be offline, on a different network, missing CORS headers, or access may have been blocked.',
++          );
++        } else {
++          setMessage(err instanceof Error ? err.message : String(err));
++        }
++      } finally {
++        clearTimeout(timer);
++        if (abortRef.current === controller) abortRef.current = null;
++      }
++    },
++    [config.space, config.storageKey],
++  );
++
++  // Restore last-used URL and track permission state.
++  useEffect(() => {
++    let saved: string | null = null;
++    try {
++      saved = localStorage.getItem(config.storageKey);
++    } catch {
++      /* ignore */
++    }
++    if (saved) setUrl(saved);
++
++    let statusObj: PermissionStatus | null = null;
++    let cancelled = false;
++    const onChange = () => statusObj && setPerm(statusObj.state);
++
++    queryLnaPermission(config.permission).then((s) => {
++      if (cancelled) return;
++      statusObj = s;
++      if (!s) {
++        setPerm('unsupported');
++        return;
++      }
++      setPerm(s.state);
++      s.addEventListener('change', onChange);
++      // Only auto-connect when access was already granted — never trigger a
++      // permission prompt without a user gesture.
++      if (s.state === 'granted' && saved && !autoTried.current) {
++        autoTried.current = true;
++        connect(saved);
++      }
++    });
++
++    return () => {
++      cancelled = true;
++      statusObj?.removeEventListener('change', onChange);
++      abortRef.current?.abort();
++    };
++  }, [config.permission, config.storageKey, connect]);
++
++  const onSubmit = (e: React.FormEvent) => {
++    e.preventDefault();
++    connect(url);
++  };
++
++  const permBadge = PERM_BADGE[perm];
++  const connBadge = CONN_BADGE[status];
++  const errorId = `${id}-error`;
++  const hintId = `${id}-hint`;
++
++  return (
++    <section
++      aria-labelledby={`${id}-title`}
++      className="flex flex-col border border-gray-200 rounded-lg p-5 bg-white"
++    >
++      <div className="flex items-start justify-between gap-3 mb-2">
++        <h3 id={`${id}-title`} className="text-lg font-bold text-gray-900">
++          {config.title}
++        </h3>
++        <span
++          className={`shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${permBadge.cls}`}
++          title={`${config.permission} permission`}
++        >
++          {permBadge.label}
++        </span>
++      </div>
++      <p className="text-sm text-gray-600 mb-4">{config.description}</p>
++
++      <form onSubmit={onSubmit} noValidate className="space-y-2">
++        <label htmlFor={`${id}-url`} className="block text-sm font-medium text-gray-700">
++          Endpoint URL
++        </label>
++        <div className="flex gap-2">
++          <input
++            id={`${id}-url`}
++            type="url"
++            inputMode="url"
++            autoComplete="off"
++            spellCheck={false}
++            value={url}
++            placeholder={config.placeholder}
++            onChange={(e) => {
++              setUrl(e.target.value);
++              if (urlError) setUrlError(null);
++            }}
++            aria-invalid={urlError ? true : undefined}
++            aria-describedby={urlError ? `${errorId} ${hintId}` : hintId}
++            className="flex-1 min-w-0 px-3 py-2 font-mono text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900 aria-[invalid=true]:border-red-500"
++          />
++          {status === 'connecting' ? (
++            <button
++              type="button"
++              onClick={() => abortRef.current?.abort()}
++              className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-800 hover:bg-gray-50"
++            >
++              Cancel
++            </button>
++          ) : (
++            <button
++              type="submit"
++              disabled={perm === 'denied'}
++              className="px-4 py-2 text-sm font-medium rounded-md text-white bg-gray-900 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
++            >
++              {status === 'connected' ? 'Reconnect' : 'Connect'}
++            </button>
++          )}
++        </div>
++        <p id={hintId} className="text-xs text-gray-500">
++          {config.hostHint}
++        </p>
++        {urlError && (
++          <p id={errorId} className="text-xs text-red-700">
++            {urlError}
++          </p>
++        )}
++      </form>
++
++      {perm === 'prompt' && status === 'idle' && (
++        <p className="mt-4 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded-md p-3">
++          When you click <strong>Connect</strong>, your browser will ask for permission to access{' '}
++          {config.space === 'local' ? 'devices on your local network' : 'apps running on this device'}. Nothing is
++          contacted until you click.
++        </p>
++      )}
++
++      {perm === 'denied' && (
++        <div className="mt-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded-md p-3">
++          <p className="font-semibold mb-1">
++            {config.space === 'local' ? 'Local network' : 'Loopback network'} access is blocked
++          </p>
++          <p className="text-xs">
++            Click the site-settings icon next to the address bar, set{' '}
++            <strong>{config.space === 'local' ? 'Local network' : 'Loopback network'}</strong> to{' '}
++            <strong>Allow</strong>, then reload this page.
++          </p>
++        </div>
++      )}
++
++      <div className="mt-4 pt-4 border-t border-gray-100" aria-live="polite">
++        <div className="flex items-center gap-2 text-sm">
++          <span className={`inline-block w-2.5 h-2.5 rounded-full ${connBadge.dot}`} aria-hidden="true" />
++          <span className="font-medium text-gray-800">{connBadge.label}</span>
++          {latency !== null && <span className="text-gray-500">· {latency} ms</span>}
++        </div>
++        {message && (
++          <div className="mt-2 text-xs text-red-800" role="alert">
++            <p>{message}</p>
++            <ul className="list-disc ml-4 mt-1 text-gray-600">
++              {config.space === 'local' ? (
++                <>
++                  <li>Make sure the device is powered on and on the same Wi-Fi network as this computer.</li>
++                  <li>Check the IP address shown on the device or in your router's client list.</li>
++                </>
++              ) : (
++                <>
++                  <li>Make sure the companion CLI is running and listening on the port above.</li>
++                  <li>Confirm the CLI allows this site's origin via CORS.</li>
++                </>
++              )}
++              <li>Check that local network access is allowed in this site's settings.</li>
++            </ul>
++          </div>
++        )}
++      </div>
++      {payload && (
++        <pre className="mt-3 max-h-60 overflow-auto text-xs bg-gray-900 text-green-200 rounded-md p-3 font-mono">
++          {payload}
++        </pre>
++      )}
++    </section>
++  );
++}
++
++export default function DiagnosticsConnect() {
++  const [insecure, setInsecure] = useState(false);
++  useEffect(() => {
++    setInsecure(!window.isSecureContext);
++  }, []);
++
++  return (
++    <div className="border-2 border-gray-900 rounded-xl p-5 md:p-6 bg-gray-50">
++      <div className="mb-5">
++        <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Developer tools</p>
++        <h2 className="text-2xl font-bold text-gray-900">Diagnostics connections</h2>
++        <p className="text-sm text-gray-600 mt-1">
++          Connect directly from your browser to a test device on your network and to the companion CLI on your computer.
++          Traffic goes straight from this tab to your devices — it never passes through our servers.
++        </p>
++      </div>
++
++      {insecure && (
++        <p className="mb-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded-md p-3" role="alert">
++          This page isn't loaded over HTTPS. Browsers automatically deny local network access from insecure pages —
++          open it via <code>https://</code> to use these diagnostics.
++        </p>
++      )}
++
++      <div className="grid gap-5 md:grid-cols-2">
++        {TARGETS.map((t) => (
++          <TargetPanel key={t.space} config={t} />
++        ))}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..53ffffc 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -51,6 +51,7 @@ const baseUrl = import.meta.env.BASE_URL;
+             <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
+             <ul class="space-y-2">
+                 <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
++                <li><a href=`${baseUrl}diagnostics` class="text-sm hover:underline">Developer Diagnostics</a></li>
+             </ul>
+         </div>
+ 
+diff --git a/src/pages/diagnostics.astro b/src/pages/diagnostics.astro
+new file mode 100644
+index 0000000..5f91093
+--- /dev/null
++++ b/src/pages/diagnostics.astro
+@@ -0,0 +1,23 @@
++---
++import Layout from '../layouts/Layout.astro';
++import DiagnosticsConnect from '../components/DiagnosticsConnect';
++---
++
++<Layout title="Developer Diagnostics | The DevTools Times">
++  <div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
++    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Developer Diagnostics</h1>
++    <DiagnosticsConnect client:only="react" />
++    <div class="prose prose-sm max-w-none mt-8 text-gray-600">
++      <h2>How it works</h2>
++      <p>
++        Your browser connects directly to the addresses you enter. In Chromium-based browsers, you'll be asked
++        once for <strong>Local network</strong> access (for the test device) and <strong>Loopback network</strong>
++        access (for the companion CLI). You can change either choice later in this site's settings.
++      </p>
++      <p>
++        Both endpoints must reply with an <code>Access-Control-Allow-Origin</code> header that allows this site so
++        the browser can read the response.
++      </p>
++    </div>
++  </div>
++</Layout>

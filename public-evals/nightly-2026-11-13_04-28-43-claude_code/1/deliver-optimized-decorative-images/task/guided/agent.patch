@@ -1,0 +1,69 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,8 +3,13 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Preload the hero (LCP) background: CSS image-set() isn't visible to the preload scanner -->
++  <link rel="preload" as="image" type="image/avif" fetchpriority="high" media="(max-width: 768px)"
++    imagesrcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&amp;q=80&amp;fm=avif&amp;w=800 1x, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&amp;q=80&amp;fm=avif&amp;w=1600 2x">
++  <link rel="preload" as="image" type="image/avif" fetchpriority="high" media="(min-width: 769px)"
++    imagesrcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&amp;q=80&amp;fm=avif&amp;w=1600 1x, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&amp;q=80&amp;fm=avif&amp;w=3200 2x">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -73,11 +78,23 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      --hero-overlay: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5));
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      /* Fallback for browsers without image-set() support */
++      background-image: var(--hero-overlay),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=jpg&w=1600');
++      /* Format + pixel-density negotiation (large screens) */
++      background-image: var(--hero-overlay),
++        image-set(
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=avif&w=1600') type('image/avif') 1x,
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=avif&w=3200') type('image/avif') 2x,
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=webp&w=1600') type('image/webp') 1x,
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=webp&w=3200') type('image/webp') 2x,
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=jpg&w=1600') type('image/jpeg') 1x,
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=jpg&w=3200') type('image/jpeg') 2x
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+@@ -87,8 +104,25 @@
+       text-align: center;
+       padding: 0 20px;
+     }
+ 
++    /* Smaller viewports: lighter hero images at 1x and 2x */
++    @media (max-width: 768px) {
++      .hero {
++        background-image: var(--hero-overlay),
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=jpg&w=800');
++        background-image: var(--hero-overlay),
++          image-set(
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=avif&w=800') type('image/avif') 1x,
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=avif&w=1600') type('image/avif') 2x,
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=webp&w=800') type('image/webp') 1x,
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=webp&w=1600') type('image/webp') 2x,
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=jpg&w=800') type('image/jpeg') 1x,
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fit=crop&q=80&fm=jpg&w=1600') type('image/jpeg') 2x
++          );
++      }
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }

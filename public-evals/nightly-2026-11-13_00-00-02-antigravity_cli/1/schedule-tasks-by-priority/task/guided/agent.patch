@@ -1,0 +1,684 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,276 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .simulator-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
++      border-top: 4px solid var(--primary);
++    }
++
++    .simulator-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      margin-bottom: 20px;
++    }
++
++    .simulator-header h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .simulator-subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .status-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      padding: 6px 14px;
++      border-radius: 999px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .pulse-dot {
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
++      background: #2e7d32;
++      animation: pulse 1.2s infinite ease-in-out;
++    }
++
++    @keyframes pulse {
++      0%, 100% { transform: scale(1); opacity: 1; }
++      50% { transform: scale(1.35); opacity: 0.65; }
++    }
++
++    .simulator-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 24px;
++    }
++
++    .sim-btn {
++      cursor: pointer;
++      border: none;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      padding: 10px 16px;
++      border-radius: 6px;
++      transition: transform 0.1s, opacity 0.2s, background 0.2s;
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .sim-btn:active {
++      transform: translateY(1px);
++    }
++
++    .sim-btn-urgent {
++      background: #c62828;
++      color: white;
++    }
++
++    .sim-btn-urgent:hover {
++      background: #b71c1c;
++    }
++
++    .sim-btn-standard {
++      background: var(--primary);
++      color: white;
++    }
++
++    .sim-btn-standard:hover {
++      background: #3e2723;
++    }
++
++    .sim-btn-background {
++      background: #546e7a;
++      color: white;
++    }
++
++    .sim-btn-background:hover {
++      background: #455a64;
++    }
++
++    .sim-btn-batch {
++      background: var(--accent);
++      color: #3e2723;
++    }
++
++    .sim-btn-batch:hover {
++      background: #ff9100;
++    }
++
++    .sim-btn-outline {
++      background: transparent;
++      border: 1px solid #8d6e63;
++      color: var(--primary);
++    }
++
++    .sim-btn-outline:hover {
++      background: #efebe9;
++    }
++
++    .priority-tag {
++      font-size: 0.72rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 2px 7px;
++      border-radius: 4px;
++      font-weight: 700;
++    }
++
++    .tag-user-blocking {
++      background: #ffebee;
++      color: #c62828;
++      border: 1px solid #ffcdd2;
++    }
++
++    .tag-user-visible {
++      background: #efebe9;
++      color: #4e342e;
++      border: 1px solid #d7ccc8;
++    }
++
++    .tag-background {
++      background: #eceff1;
++      color: #455a64;
++      border: 1px solid #cfd8dc;
++    }
++
++    .simulator-stats {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
++      gap: 12px;
++      margin-bottom: 20px;
++    }
++
++    .stat-box {
++      background: var(--light);
++      border: 1px solid #e0e0e0;
++      border-radius: 6px;
++      padding: 12px 15px;
++    }
++
++    .stat-label {
++      font-size: 0.78rem;
++      color: #6d4c41;
++      text-transform: uppercase;
++      letter-spacing: 0.4px;
++    }
++
++    .stat-value {
++      font-size: 1.4rem;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    .queue-log-container {
++      border: 1px solid #d7ccc8;
++      border-radius: 6px;
++      overflow: hidden;
++      background: #fdfcfb;
++    }
++
++    .queue-log-header {
++      background: #efebe9;
++      padding: 10px 15px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      border-bottom: 1px solid #d7ccc8;
++    }
++
++    .queue-list {
++      list-style: none;
++      max-height: 320px;
++      overflow-y: auto;
++      divide-y: 1px solid #eee;
++    }
++
++    .queue-item {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 10px 15px;
++      border-bottom: 1px solid #f0ebe8;
++      font-size: 0.88rem;
++      gap: 12px;
++    }
++
++    .queue-item:last-child {
++      border-bottom: none;
++    }
++
++    .queue-item-left {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .queue-item-right {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.8rem;
++      color: #5d4037;
++      white-space: nowrap;
++    }
++
++    .task-state {
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 4px;
++    }
++
++    .state-queued {
++      background: #fff8e1;
++      color: #f57f17;
++    }
++
++    .state-running {
++      background: #e3f2fd;
++      color: #1565c0;
++    }
++
++    .state-completed {
++      background: #e8f5e9;
++      color: #2e7d32;
++    }
++
++    .state-aborted {
++      background: #fafafa;
++      color: #757575;
++      text-decoration: line-through;
++    }
++
++    .empty-queue {
++      padding: 24px;
++      text-align: center;
++      color: #8d6e63;
++      font-size: 0.9rem;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +462,68 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="simulator-section" id="operations-queue-simulator" aria-labelledby="simulator-title">
++      <div class="simulator-header">
++        <div>
++          <h2 id="simulator-title">Operations Queue Simulator</h2>
++          <p class="simulator-subtitle">Prioritized task scheduling (`user-blocking`, `user-visible`, `background`) with main-thread yielding to keep UI responsive.</p>
++        </div>
++        <div class="status-pill" aria-live="polite">
++          <span class="pulse-dot" aria-hidden="true"></span>
++          <span id="scheduler-status">Main Thread Responsive</span>
++        </div>
++      </div>
++
++      <div class="simulator-controls" role="group" aria-label="Operations Queue Controls">
++        <button type="button" id="btn-urgent-checkout" class="sim-btn sim-btn-urgent">
++          Urgent Checkout Task
++        </button>
++        <button type="button" id="btn-standard-menu" class="sim-btn sim-btn-standard">
++          Standard Menu Update
++        </button>
++        <button type="button" id="btn-bg-telemetry" class="sim-btn sim-btn-background">
++          Background Telemetry Logging
++        </button>
++        <button type="button" id="btn-batch-mixed" class="sim-btn sim-btn-batch">
++          Run Mixed Batch (Priority Order)
++        </button>
++        <button type="button" id="btn-clear-queue" class="sim-btn sim-btn-outline">
++          Clear / Cancel Pending
++        </button>
++      </div>
++
++      <div class="simulator-stats">
++        <div class="stat-box">
++          <div class="stat-label">Queued Tasks</div>
++          <div class="stat-value" id="stat-queued">0</div>
++        </div>
++        <div class="stat-box">
++          <div class="stat-label">Completed Tasks</div>
++          <div class="stat-value" id="stat-completed">0</div>
++        </div>
++        <div class="stat-box">
++          <div class="stat-label">Thread Yields</div>
++          <div class="stat-value" id="stat-yields">0</div>
++        </div>
++        <div class="stat-box">
++          <div class="stat-label">Execution Order</div>
++          <div class="stat-value" id="stat-order" style="font-size: 0.95rem; margin-top: 6px; word-break: break-word;">—</div>
++        </div>
++      </div>
++
++      <div class="queue-log-container">
++        <div class="queue-log-header">
++          <span>Task Execution Log (Ordered by Execution Start / Completion)</span>
++          <span id="active-task-indicator">Idle</span>
++        </div>
++        <ul class="queue-list" id="queue-log-list" aria-live="polite">
++          <li class="empty-queue" id="empty-queue-msg">No operations scheduled yet. Use the buttons above to enqueue tasks.</li>
++        </ul>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +534,334 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Feature-detect scheduler.postTask and conditionally load scheduler-polyfill if needed
++    if (!('scheduler' in window && 'postTask' in window.scheduler)) {
++      try {
++        await import('scheduler-polyfill');
++      } catch {
++        // Fallback shim when offline/without external bundle so scheduler.postTask & TaskController work seamlessly
++        const priorityRank = { 'user-blocking': 0, 'user-visible': 1, 'background': 2 };
++        const pendingQueue = [];
++        let flushScheduled = false;
++
++        function flushQueue() {
++          flushScheduled = false;
++          pendingQueue.sort((a, b) => {
++            const pa = priorityRank[a.getPriority()] ?? 1;
++            const pb = priorityRank[b.getPriority()] ?? 1;
++            return pa !== pb ? pa - pb : a.seq - b.seq;
++          });
++          const next = pendingQueue.shift();
++          if (!next) return;
++          if (pendingQueue.length > 0) {
++            flushScheduled = true;
++            setTimeout(flushQueue, 0);
++          }
++          if (next.signal?.aborted) {
++            next.reject(new DOMException('Task aborted', 'AbortError'));
++            return;
++          }
++          Promise.resolve()
++            .then(() => next.callback())
++            .then(next.resolve, next.reject);
++        }
++
++        if (!('TaskController' in window)) {
++          window.TaskController = class TaskController extends AbortController {
++            constructor(init = {}) {
++              super();
++              this._priority = init.priority || 'user-visible';
++              this.signal.priority = this._priority;
++            }
++            setPriority(newPriority) {
++              this._priority = newPriority;
++              this.signal.priority = newPriority;
++            }
++          };
++        }
++
++        let seqCounter = 0;
++        window.scheduler = window.scheduler || {};
++        window.scheduler.postTask = function (callback, options = {}) {
++          return new Promise((resolve, reject) => {
++            if (options.signal?.aborted) {
++              reject(new DOMException('Task aborted', 'AbortError'));
++              return;
++            }
++            pendingQueue.push({
++              callback,
++              signal: options.signal,
++              seq: ++seqCounter,
++              getPriority: () => options.priority || options.signal?.priority || 'user-visible',
++              resolve,
++              reject,
++            });
++            if (!flushScheduled) {
++              flushScheduled = true;
++              setTimeout(flushQueue, 0);
++            }
++          });
++        };
++      }
++    }
++
++    // Yield helper using scheduler.yield() with setTimeout fallback
++    async function yieldToMain() {
++      if ('scheduler' in window && 'yield' in window.scheduler) {
++        await scheduler.yield();
++      } else {
++        await new Promise(resolve => setTimeout(resolve, 0));
++      }
++    }
++
++    const logList = document.getElementById('queue-log-list');
++    const emptyMsg = document.getElementById('empty-queue-msg');
++    const statQueued = document.getElementById('stat-queued');
++    const statCompleted = document.getElementById('stat-completed');
++    const statYields = document.getElementById('stat-yields');
++    const statOrder = document.getElementById('stat-order');
++    const activeIndicator = document.getElementById('active-task-indicator');
++    const schedulerStatus = document.getElementById('scheduler-status');
++
++    let taskIdCounter = 0;
++    let queuedCount = 0;
++    let completedCount = 0;
++    let totalYields = 0;
++    const executionOrder = [];
++    const activeControllers = new Map();
++
++    function updateStats() {
++      statQueued.textContent = String(queuedCount);
++      statCompleted.textContent = String(completedCount);
++      statYields.textContent = String(totalYields);
++      statOrder.textContent = executionOrder.length > 0 ? executionOrder.slice(-6).join(' → ') : '—';
++    }
++
++    // Heavy computation broken into <=50ms chunks using a deadline and scheduler.yield()
++    async function runChunkedWork(durationMs, onProgress, signal) {
++      const startTime = performance.now();
++      let elapsed = 0;
++      // Set a time-based deadline 50 milliseconds into the future (long task boundary)
++      let deadline = performance.now() + 50;
++
++      while (elapsed < durationMs) {
++        if (signal?.aborted) {
++          throw new DOMException('Task aborted', 'AbortError');
++        }
++
++        // Perform simulated synchronous unit of work (~5ms slice)
++        const sliceEnd = performance.now() + 5;
++        while (performance.now() < sliceEnd) {
++          // Simulated computation
++          Math.sqrt(Math.random() * 10000);
++        }
++
++        elapsed = performance.now() - startTime;
++        const pct = Math.min(100, Math.round((elapsed / durationMs) * 100));
++        onProgress(pct);
++
++        // MANDATORY: Yield to the main thread periodically when the 50ms deadline is exceeded
++        if (performance.now() >= deadline && elapsed < durationMs) {
++          totalYields++;
++          updateStats();
++          if ('scheduler' in window && 'yield' in window.scheduler) {
++            await scheduler.yield();
++          } else {
++            await new Promise(resolve => setTimeout(resolve, 0));
++          }
++          deadline = performance.now() + 50;
++        }
++      }
++    }
++
++    function createLogRow(task) {
++      if (emptyMsg && emptyMsg.parentNode) {
++        emptyMsg.remove();
++      }
++      const li = document.createElement('li');
++      li.className = 'queue-item';
++      li.id = `task-row-${task.id}`;
++      li.dataset.priority = task.priority;
++
++      const left = document.createElement('div');
++      left.className = 'queue-item-left';
++
++      const idSpan = document.createElement('strong');
++      idSpan.textContent = `#${task.id}`;
++
++      const badge = document.createElement('span');
++      badge.className = `priority-tag tag-${task.priority}`;
++      badge.textContent = task.priority;
++
++      const nameSpan = document.createElement('span');
++      nameSpan.textContent = task.label;
++
++      left.append(idSpan, badge, nameSpan);
++
++      const right = document.createElement('div');
++      right.className = 'queue-item-right';
++
++      const progressSpan = document.createElement('span');
++      progressSpan.className = 'task-progress';
++      progressSpan.textContent = '0%';
++
++      const stateSpan = document.createElement('span');
++      stateSpan.className = 'task-state state-queued';
++      stateSpan.textContent = 'Queued';
++
++      right.append(progressSpan, stateSpan);
++      li.append(left, right);
++      logList.prepend(li);
++
++      return { li, progressSpan, stateSpan, badge };
++    }
++
++    function enqueueOperation({ label, shortCode, priority, durationMs }) {
++      const id = ++taskIdCounter;
++      queuedCount++;
++      updateStats();
++
++      // Use TaskController so queued tasks can be dynamically reprioritized or aborted
++      const controller = new TaskController({ priority });
++      activeControllers.set(id, controller);
++
++      const taskMeta = { id, label, shortCode, priority, durationMs };
++      const ui = createLogRow(taskMeta);
++
++      // Omit `priority` option when passing `controller.signal` so controller priority is authoritative
++      const taskPromise = scheduler.postTask(async () => {
++        queuedCount = Math.max(0, queuedCount - 1);
++        executionOrder.push(`${shortCode}#${id}`);
++        ui.stateSpan.className = 'task-state state-running';
++        ui.stateSpan.textContent = 'Running';
++        activeIndicator.textContent = `Running: ${label} (#${id})`;
++        schedulerStatus.textContent = `Processing ${priority} task...`;
++        updateStats();
++
++        const t0 = performance.now();
++        await runChunkedWork(
++          durationMs,
++          (pct) => {
++            ui.progressSpan.textContent = `${pct}%`;
++          },
++          controller.signal
++        );
++        const totalMs = Math.round(performance.now() - t0);
++
++        completedCount++;
++        ui.progressSpan.textContent = `${totalMs}ms`;
++        ui.stateSpan.className = 'task-state state-completed';
++        ui.stateSpan.textContent = 'Completed';
++        activeControllers.delete(id);
++
++        if (activeControllers.size === 0) {
++          activeIndicator.textContent = 'Idle';
++          schedulerStatus.textContent = 'Main Thread Responsive';
++        }
++        updateStats();
++      }, { signal: controller.signal });
++
++      taskPromise.catch((err) => {
++        activeControllers.delete(id);
++        if (err && err.name === 'AbortError') {
++          ui.stateSpan.className = 'task-state state-aborted';
++          ui.stateSpan.textContent = 'Cancelled';
++        } else {
++          ui.stateSpan.className = 'task-state state-aborted';
++          ui.stateSpan.textContent = 'Error';
++        }
++        if (activeControllers.size === 0) {
++          activeIndicator.textContent = 'Idle';
++          schedulerStatus.textContent = 'Main Thread Responsive';
++        }
++        updateStats();
++      });
++
++      return taskPromise;
++    }
++
++    // Button handlers for individual and batch tasks
++    document.getElementById('btn-urgent-checkout').addEventListener('click', () => {
++      enqueueOperation({
++        label: 'Urgent Checkout Payment & Receipt Validation',
++        shortCode: 'URGENT',
++        priority: 'user-blocking',
++        durationMs: 120,
++      });
++    });
++
++    document.getElementById('btn-standard-menu').addEventListener('click', () => {
++      enqueueOperation({
++        label: 'Standard Seasonal Menu & Inventory Sync',
++        shortCode: 'MENU',
++        priority: 'user-visible',
++        durationMs: 140,
++      });
++    });
++
++    document.getElementById('btn-bg-telemetry').addEventListener('click', () => {
++      enqueueOperation({
++        label: 'Background Telemetry & Bean Roast Analytics Logging',
++        shortCode: 'TELEM',
++        priority: 'background',
++        durationMs: 160,
++      });
++    });
++
++    document.getElementById('btn-batch-mixed').addEventListener('click', () => {
++      // Enqueue mixed tasks in reverse urgency order within the same tick;
++      // scheduler.postTask executes them in priority order:
++      // user-blocking (Urgent Checkout) -> user-visible (Standard Menu) -> background (Telemetry)
++      enqueueOperation({
++        label: 'Batch: Background Telemetry Flush',
++        shortCode: 'TELEM',
++        priority: 'background',
++        durationMs: 150,
++      });
++      enqueueOperation({
++        label: 'Batch: Standard Menu Price Refresh',
++        shortCode: 'MENU',
++        priority: 'user-visible',
++        durationMs: 130,
++      });
++      enqueueOperation({
++        label: 'Batch: Urgent Express Checkout',
++        shortCode: 'URGENT',
++        priority: 'user-blocking',
++        durationMs: 110,
++      });
++      enqueueOperation({
++        label: 'Batch: Standard Loyalty Points Update',
++        shortCode: 'MENU',
++        priority: 'user-visible',
++        durationMs: 120,
++      });
++      enqueueOperation({
++        label: 'Batch: Urgent Barista POS Order Lock',
++        shortCode: 'URGENT',
++        priority: 'user-blocking',
++        durationMs: 100,
++      });
++    });
++
++    document.getElementById('btn-clear-queue').addEventListener('click', () => {
++      for (const [, controller] of activeControllers) {
++        controller.abort();
++      }
++      activeControllers.clear();
++      queuedCount = 0;
++      executionOrder.length = 0;
++      logList.replaceChildren();
++      if (emptyMsg) {
++        logList.appendChild(emptyMsg);
++      }
++      activeIndicator.textContent = 'Idle';
++      schedulerStatus.textContent = 'Main Thread Responsive';
++      updateStats();
++    });
++  </script>
+ </body>
+ 
+ </html>

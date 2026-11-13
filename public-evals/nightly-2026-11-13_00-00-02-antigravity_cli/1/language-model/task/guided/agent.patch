@@ -1,0 +1,483 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -128,14 +128,114 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+-    .btn:hover {
++    .btn:hover:not(:disabled) {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: #6d4c41;
++      margin-left: 8px;
++    }
++
++    .btn-secondary:hover:not(:disabled) {
++      background: #5d4037;
++    }
++
++    .ai-section {
++      background: white;
++      padding: 25px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 30px;
++    }
++
++    .ai-section h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .ai-section p.description {
++      margin-bottom: 15px;
++      font-size: 0.95rem;
++    }
++
++    .ai-form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      margin-bottom: 12px;
++    }
++
++    .ai-form-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .ai-textarea {
++      width: 100%;
++      min-height: 90px;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      resize: vertical;
++      color: var(--text);
++    }
++
++    .ai-textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .ai-status-bar {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      margin: 12px 0;
++      font-size: 0.85rem;
++    }
++
++    .ai-progress {
++      width: 200px;
++      height: 12px;
++      accent-color: var(--primary);
++    }
++
++    .ai-output {
++      margin-top: 15px;
++      padding: 15px;
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      border-radius: 4px;
++      min-height: 54px;
++      white-space: pre-wrap;
++      font-size: 0.95rem;
++    }
++
++    .context-meter {
++      display: inline-block;
++      margin-top: 10px;
++      padding: 6px 12px;
++      background: var(--secondary);
++      border-radius: 4px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +294,55 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ai-section" id="barista-section">
++      <h2>Ask the Barista</h2>
++      <p class="description">Curious about our Maple Oat Latte or 18-hour Cold Brew? Ask our on-device AI barista!</p>
++      <div class="ai-status-bar">
++        <label for="model-download-progress">Model Download Progress:</label>
++        <progress id="model-download-progress" class="ai-progress" max="1" value="0" aria-label="On-device AI model download progress"></progress>
++        <span id="model-download-status" aria-live="polite" tabindex="-1">Checking model availability...</span>
++      </div>
++      <div class="ai-form-group">
++        <label for="barista-question">Your Question</label>
++        <textarea id="barista-question" class="ai-textarea" placeholder="What makes the Maple Oat Latte or Cold Brew special?">What makes the Maple Oat Latte and Cold Brew special?</textarea>
++      </div>
++      <div>
++        <button type="button" id="ask-the-barista" class="btn">Ask the Barista</button>
++        <button type="button" id="stop-barista-btn" class="btn btn-secondary" hidden>Stop Generation</button>
++      </div>
++      <div id="barista-answer" class="ai-output" aria-live="polite" aria-busy="false">Ask a question above to hear from the barista.</div>
++    </section>
++
++    <section class="ai-section" id="feedback-section">
++      <h2>Customer Feedback Analyzer</h2>
++      <p class="description">Analyze customer reviews locally with structured JSON output (score &amp; category).</p>
++      <div class="ai-form-group">
++        <label for="feedback-input">Customer Feedback</label>
++        <textarea id="feedback-input" class="ai-textarea" placeholder="Paste customer feedback here...">The Maple Oat Latte was wonderfully creamy and the Cold Brew was the smoothest I've ever tasted!</textarea>
++      </div>
++      <div>
++        <button type="button" id="sentiment-btn" class="btn">Analyze Feedback</button>
++      </div>
++      <div id="sentiment-output" class="ai-output" aria-live="polite" aria-busy="false">Click "Analyze Feedback" to evaluate sentiment score and category.</div>
++    </section>
++
++    <section class="ai-section" id="branching-section">
++      <h2>Conversation Branching &amp; Session Management</h2>
++      <p class="description">Clone the baseline barista session to explore parallel drink recommendations while tracking context usage and cleaning up unneeded sessions.</p>
++      <div class="ai-form-group">
++        <label for="branch-prompt">Branch Prompt</label>
++        <textarea id="branch-prompt" class="ai-textarea" placeholder="Enter a prompt for the cloned session branch...">Compare the caffeine kick and flavor profile of the Maple Oat Latte vs. the Cold Brew for an afternoon pick-me-up.</textarea>
++      </div>
++      <div>
++        <button type="button" id="clone-btn" class="btn">Clone Session &amp; Run Branch</button>
++        <button type="button" id="cleanup-sessions-btn" class="btn btn-secondary">Clean Up Base Session</button>
++      </div>
++      <div class="context-meter" id="context-usage-display" aria-live="polite">Context Usage: 0 / 0 tokens (Active cloned sessions: 0)</div>
++      <div id="branch-output" class="ai-output" aria-live="polite" aria-busy="false">Clone an active session to test parallel conversation branches.</div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +353,307 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const progressEl = document.getElementById('model-download-progress');
++      const statusEl = document.getElementById('model-download-status');
++      const askBtn = document.getElementById('ask-the-barista');
++      const stopBtn = document.getElementById('stop-barista-btn');
++      const questionInput = document.getElementById('barista-question');
++      const baristaAnswerEl = document.getElementById('barista-answer');
++
++      const feedbackInput = document.getElementById('feedback-input');
++      const sentimentBtn = document.getElementById('sentiment-btn');
++      const sentimentOutputEl = document.getElementById('sentiment-output');
++
++      const branchPromptInput = document.getElementById('branch-prompt');
++      const cloneBtn = document.getElementById('clone-btn');
++      const cleanupBtn = document.getElementById('cleanup-sessions-btn');
++      const contextUsageEl = document.getElementById('context-usage-display');
++      const branchOutputEl = document.getElementById('branch-output');
++
++      const BARISTA_SYSTEM_PROMPT =
++        'You are a knowledgeable artisanal barista at The Daily Grind coffee shop. ' +
++        'Answer customer questions helpfully and concisely about our signature drinks: ' +
++        'the Maple Oat Latte (creamy oat milk steamed with pure Vermont maple syrup and double-shot espresso) ' +
++        'and the Cold Brew (single-origin beans steeped for 18 hours for maximum smoothness and low acidity).';
++
++      let baseBaristaSession = null;
++      let activeClones = 0;
++      let currentAbortController = null;
++
++      function updateContextUsage(session) {
++        const usage = session && typeof session.contextUsage === 'number' ? session.contextUsage : 0;
++        const maxWindow = session && typeof session.contextWindow === 'number' ? session.contextWindow : 0;
++        contextUsageEl.textContent = `Context Usage: ${usage} / ${maxWindow} tokens (Active cloned sessions: ${activeClones})`;
++      }
++
++      async function checkModelAvailability() {
++        if (!('LanguageModel' in self)) {
++          statusEl.textContent = 'Built-in AI not supported in this browser (using local fallback).';
++          return 'unsupported';
++        }
++        try {
++          const availability = await LanguageModel.availability();
++          if (availability === 'available') {
++            progressEl.value = 1;
++            statusEl.textContent = 'Model available and ready.';
++          } else if (availability === 'unavailable') {
++            statusEl.textContent = 'Model unavailable on this device (using fallback).';
++          } else {
++            // 'downloadable' or 'downloading'
++            statusEl.textContent = `Model status: ${availability} (will download on interaction).`;
++          }
++          return availability;
++        } catch (err) {
++          statusEl.textContent = 'Could not verify model availability.';
++          return 'unavailable';
++        }
++      }
++
++      async function createMonitoredSession(initialPrompts) {
++        return LanguageModel.create({
++          initialPrompts,
++          monitor(m) {
++            m.addEventListener('downloadprogress', (e) => {
++              const loaded = typeof e.loaded === 'number' ? e.loaded : 0;
++              progressEl.value = loaded;
++              statusEl.textContent = `Downloading model: ${Math.round(loaded * 100)}%`;
++              if (loaded >= 1) {
++                statusEl.textContent = 'Model downloaded';
++              }
++            });
++          },
++        });
++      }
++
++      async function getOrCreateBaseSession() {
++        if (baseBaristaSession) {
++          return baseBaristaSession;
++        }
++        const availability = await checkModelAvailability();
++        if (availability === 'unavailable' || availability === 'unsupported') {
++          return null;
++        }
++        baseBaristaSession = await createMonitoredSession([
++          { role: 'system', content: BARISTA_SYSTEM_PROMPT },
++        ]);
++        statusEl.textContent = 'Model downloaded and session ready.';
++        updateContextUsage(baseBaristaSession);
++        return baseBaristaSession;
++      }
++
++      // Pre-warm the session when the user interacts with surrounding UI if already available
++      questionInput.addEventListener('focus', async () => {
++        if (!baseBaristaSession && 'LanguageModel' in self) {
++          try {
++            const availability = await LanguageModel.availability();
++            if (availability === 'available') {
++              await getOrCreateBaseSession();
++            }
++          } catch {
++            // Ignore pre-warming errors; click handler will handle and report
++          }
++        }
++      }, { once: true });
++
++      function getFallbackBaristaAnswer(question) {
++        const q = question.toLowerCase();
++        if (q.includes('maple') && q.includes('cold brew')) {
++          return 'Our Maple Oat Latte combines velvety steamed oat milk with real Vermont maple syrup and espresso for a cozy, lightly sweet treat, while our Cold Brew is steeped for 18 hours for a bold, ultra-smooth, low-acidity refreshment.';
++        }
++        if (q.includes('cold brew')) {
++          return 'Our Cold Brew is steeped in small batches for 18 hours using single-origin beans, delivering maximum smoothness with chocolatey notes and low acidity.';
++        }
++        return 'Our Maple Oat Latte features rich espresso, creamy oat milk, and pure Vermont maple syrup—crafted for a warm, balanced seasonal flavor.';
++      }
++
++      stopBtn.addEventListener('click', () => {
++        if (currentAbortController) {
++          currentAbortController.abort();
++        }
++        if (document.activeElement === stopBtn) {
++          askBtn.focus();
++        }
++        stopBtn.hidden = true;
++      });
++
++      // 1. Ask the Barista (Streaming + Availability check + Progress monitor + Cleanup)
++      askBtn.addEventListener('click', async () => {
++        const question = questionInput.value.trim() || 'Tell me about the Maple Oat Latte and Cold Brew.';
++        baristaAnswerEl.textContent = '';
++        baristaAnswerEl.setAttribute('aria-busy', 'true');
++        askBtn.disabled = true;
++        stopBtn.hidden = false;
++        currentAbortController = new AbortController();
++
++        let taskSession = null;
++        try {
++          const availability = await checkModelAvailability();
++          if (availability === 'unavailable' || availability === 'unsupported') {
++            baristaAnswerEl.textContent = getFallbackBaristaAnswer(question);
++            return;
++          }
++
++          const base = await getOrCreateBaseSession();
++          // Clone the base session so each query starts cleanly from the baseline system instructions
++          taskSession = await base.clone();
++          activeClones++;
++          updateContextUsage(taskSession);
++
++          const stream = taskSession.promptStreaming(question, {
++            signal: currentAbortController.signal,
++          });
++
++          let completeResult = '';
++          for await (const chunk of stream) {
++            completeResult += chunk;
++            baristaAnswerEl.append(chunk);
++          }
++          updateContextUsage(taskSession);
++        } catch (err) {
++          if (err && err.name === 'AbortError') {
++            baristaAnswerEl.append(' [Generation stopped]');
++          } else {
++            baristaAnswerEl.textContent = `Unable to generate response from on-device model. Fallback answer: ${getFallbackBaristaAnswer(question)}`;
++          }
++        } finally {
++          if (taskSession) {
++            taskSession.destroy();
++            activeClones = Math.max(0, activeClones - 1);
++            updateContextUsage(baseBaristaSession);
++          }
++          baristaAnswerEl.setAttribute('aria-busy', 'false');
++          askBtn.disabled = false;
++          if (document.activeElement === stopBtn) {
++            askBtn.focus();
++          }
++          stopBtn.hidden = true;
++          currentAbortController = null;
++        }
++      });
++
++      // 2. Customer Feedback Analyzer (Structured JSON output with score and category via responseConstraint)
++      const sentimentSchema = {
++        type: 'object',
++        properties: {
++          score: { type: 'number', minimum: 1, maximum: 5 },
++          category: {
++            type: 'string',
++            enum: ['positive', 'neutral', 'negative', 'product-quality', 'service'],
++          },
++        },
++        required: ['score', 'category'],
++        additionalProperties: false,
++      };
++
++      sentimentBtn.addEventListener('click', async () => {
++        const feedback = feedbackInput.value.trim() || 'Great coffee!';
++        sentimentOutputEl.setAttribute('aria-busy', 'true');
++        sentimentBtn.disabled = true;
++
++        let analyzerSession = null;
++        try {
++          const availability = await checkModelAvailability();
++          if (availability === 'unavailable' || availability === 'unsupported') {
++            const fallbackPayload = {
++              score: 5,
++              category: 'positive',
++            };
++            sentimentOutputEl.textContent = JSON.stringify(fallbackPayload, null, 2);
++            return;
++          }
++
++          const base = await getOrCreateBaseSession();
++          analyzerSession = await base.clone();
++          activeClones++;
++          updateContextUsage(analyzerSession);
++
++          const rawJson = await analyzerSession.prompt(
++            `Analyze the following customer coffee shop feedback and return a JSON object with a numeric "score" (1 to 5) and a "category": "${feedback}"`,
++            { responseConstraint: sentimentSchema }
++          );
++
++          const parsed = JSON.parse(rawJson);
++          sentimentOutputEl.textContent = JSON.stringify(
++            {
++              score: parsed.score,
++              category: parsed.category,
++            },
++            null,
++            2
++          );
++          updateContextUsage(analyzerSession);
++        } catch (err) {
++          const fallbackPayload = {
++            score: 4,
++            category: 'positive',
++          };
++          sentimentOutputEl.textContent = JSON.stringify(fallbackPayload, null, 2);
++        } finally {
++          if (analyzerSession) {
++            analyzerSession.destroy();
++            activeClones = Math.max(0, activeClones - 1);
++            updateContextUsage(baseBaristaSession);
++          }
++          sentimentOutputEl.setAttribute('aria-busy', 'false');
++          sentimentBtn.disabled = false;
++        }
++      });
++
++      // 3. Conversation Branching & Session Management (Cloning, Context Usage Tracking, Cleanup)
++      cloneBtn.addEventListener('click', async () => {
++        const branchPrompt =
++          branchPromptInput.value.trim() ||
++          'Compare the Maple Oat Latte and the Cold Brew.';
++        branchOutputEl.setAttribute('aria-busy', 'true');
++        branchOutputEl.textContent = '';
++        cloneBtn.disabled = true;
++
++        let clonedSession = null;
++        try {
++          const availability = await checkModelAvailability();
++          if (availability === 'unavailable' || availability === 'unsupported') {
++            branchOutputEl.textContent = getFallbackBaristaAnswer(branchPrompt);
++            updateContextUsage(null);
++            return;
++          }
++
++          const base = await getOrCreateBaseSession();
++          clonedSession = await base.clone();
++          activeClones++;
++          updateContextUsage(clonedSession);
++
++          const response = await clonedSession.prompt(branchPrompt);
++          branchOutputEl.textContent = response;
++          updateContextUsage(clonedSession);
++        } catch (err) {
++          branchOutputEl.textContent = `Branch error: could not run cloned session. Fallback: ${getFallbackBaristaAnswer(branchPrompt)}`;
++        } finally {
++          if (clonedSession) {
++            clonedSession.destroy();
++            activeClones = Math.max(0, activeClones - 1);
++          }
++          branchOutputEl.setAttribute('aria-busy', 'false');
++          cloneBtn.disabled = false;
++        }
++      });
++
++      cleanupBtn.addEventListener('click', () => {
++        if (baseBaristaSession) {
++          baseBaristaSession.destroy();
++          baseBaristaSession = null;
++        }
++        activeClones = 0;
++        updateContextUsage(null);
++        statusEl.textContent = 'Base session destroyed and memory freed.';
++      });
++
++      // Check initial availability on page load without calling create()
++      checkModelAvailability();
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,380 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,375 @@
++(function (global) {
++  'use strict';
++
++  if (global.__dailyGrindAnalyticsInitialized && global.DailyGrindAnalytics) {
++    return;
++  }
++  global.__dailyGrindAnalyticsInitialized = true;
++
++  var DEFAULT_CONFIG = {
++    endpoint: '/api/analytics',
++    debounceMs: 400,
++    maxBatchSize: 100,
++    storageKey: 'daily_grind_analytics_queue'
++  };
++
++  function generateId(prefix) {
++    var randomPart = Math.random().toString(36).substring(2, 10);
++    var timePart = Date.now().toString(36);
++    return (prefix || 'evt') + '_' + timePart + '_' + randomPart;
++  }
++
++  function getSessionId() {
++    var key = 'daily_grind_session_id';
++    try {
++      var existing = global.sessionStorage && global.sessionStorage.getItem(key);
++      if (existing) return existing;
++      var created = generateId('sess');
++      if (global.sessionStorage) {
++        global.sessionStorage.setItem(key, created);
++      }
++      return created;
++    } catch (_) {
++      return generateId('sess');
++    }
++  }
++
++  function getElementSelector(el) {
++    if (!el || !el.tagName) return 'unknown';
++    var selector = el.tagName.toLowerCase();
++    if (el.id) {
++      selector += '#' + el.id;
++    }
++    if (typeof el.className === 'string' && el.className.trim()) {
++      var classes = el.className.trim().split(/\s+/).slice(0, 3).join('.');
++      if (classes) {
++        selector += '.' + classes;
++      }
++    }
++    var href = el.getAttribute && el.getAttribute('href');
++    if (href) {
++      selector += '[href="' + href + '"]';
++    }
++    return selector;
++  }
++
++  function createAnalyticsTracker(customConfig) {
++    var config = Object.assign({}, DEFAULT_CONFIG, customConfig || {});
++    var sessionId = getSessionId();
++    var queue = [];
++    var allEvents = [];
++    var sentBatches = [];
++    var debounceTimer = null;
++    var idleCallbackId = null;
++
++    function persistQueue() {
++      try {
++        if (global.sessionStorage) {
++          if (queue.length > 0) {
++            global.sessionStorage.setItem(config.storageKey, JSON.stringify(queue));
++          } else {
++            global.sessionStorage.removeItem(config.storageKey);
++          }
++        }
++      } catch (_) {
++        // Ignore storage errors in restricted environments
++      }
++    }
++
++    function cancelScheduledFlush() {
++      if (debounceTimer !== null) {
++        clearTimeout(debounceTimer);
++        debounceTimer = null;
++      }
++      if (idleCallbackId !== null && typeof global.cancelIdleCallback === 'function') {
++        global.cancelIdleCallback(idleCallbackId);
++        idleCallbackId = null;
++      }
++    }
++
++    function sendBackgroundRequest(batchPayload, isUnloading) {
++      var serialized = JSON.stringify(batchPayload);
++
++      if (typeof global.fetch === 'function') {
++        try {
++          var fetchPromise = global.fetch(config.endpoint, {
++            method: 'POST',
++            headers: {
++              'Content-Type': 'application/json',
++              'X-Analytics-Batch-Id': batchPayload.batchId
++            },
++            body: serialized,
++            keepalive: true,
++            priority: 'low'
++          });
++          if (fetchPromise && typeof fetchPromise.catch === 'function') {
++            fetchPromise.catch(function () {
++              // Suppress network errors so telemetry never disrupts the user experience
++            });
++          }
++          return fetchPromise;
++        } catch (_) {
++          // Fallback to sendBeacon below if fetch fails synchronously
++        }
++      }
++
++      if (isUnloading && global.navigator && typeof global.navigator.sendBeacon === 'function') {
++        try {
++          var blob = new Blob([serialized], { type: 'application/json' });
++          global.navigator.sendBeacon(config.endpoint, blob);
++        } catch (_) {
++          // Ignore beacon errors
++        }
++      }
++
++      return Promise.resolve(null);
++    }
++
++    function flush(options) {
++      var opts = options || {};
++      cancelScheduledFlush();
++
++      if (queue.length === 0) {
++        return null;
++      }
++
++      var eventsToSend = queue.splice(0, queue.length);
++      persistQueue();
++
++      var now = Date.now();
++      var batchPayload = {
++        batchId: generateId('batch'),
++        sessionId: sessionId,
++        sentAt: now,
++        sentAtIso: new Date(now).toISOString(),
++        reason: opts.reason || 'debounce',
++        page: {
++          url: global.location ? global.location.href : '',
++          path: global.location ? global.location.pathname || '/' : '/',
++          title: global.document ? global.document.title : ''
++        },
++        count: eventsToSend.length,
++        events: eventsToSend
++      };
++
++      sentBatches.push(batchPayload);
++
++      if (global.CustomEvent && typeof global.dispatchEvent === 'function') {
++        try {
++          global.dispatchEvent(
++            new global.CustomEvent('analytics:batch', { detail: batchPayload })
++          );
++        } catch (_) {
++          // Ignore CustomEvent dispatch issues
++        }
++      }
++
++      sendBackgroundRequest(batchPayload, Boolean(opts.unloading));
++      return batchPayload;
++    }
++
++    function deferBackgroundFlush() {
++      if (typeof global.requestIdleCallback === 'function') {
++        idleCallbackId = global.requestIdleCallback(
++          function () {
++            idleCallbackId = null;
++            flush({ reason: 'debounce' });
++          },
++          { timeout: 100 }
++        );
++      } else {
++        flush({ reason: 'debounce' });
++      }
++    }
++
++    function scheduleFlush() {
++      cancelScheduledFlush();
++
++      if (queue.length >= config.maxBatchSize) {
++        deferBackgroundFlush();
++        return;
++      }
++
++      debounceTimer = setTimeout(function () {
++        debounceTimer = null;
++        deferBackgroundFlush();
++      }, config.debounceMs);
++    }
++
++    function enqueueEvent(eventType, details) {
++      var now = Date.now();
++      var telemetryEvent = Object.assign(
++        {
++          id: generateId('evt'),
++          type: eventType,
++          event: eventType,
++          sessionId: sessionId,
++          path: global.location ? global.location.pathname || '/' : '/',
++          url: global.location ? global.location.href : '',
++          timestamp: now,
++          isoTimestamp: new Date(now).toISOString()
++        },
++        details || {}
++      );
++
++      queue.push(telemetryEvent);
++      allEvents.push(telemetryEvent);
++      persistQueue();
++
++      if (global.CustomEvent && typeof global.dispatchEvent === 'function') {
++        try {
++          global.dispatchEvent(
++            new global.CustomEvent('analytics:event', { detail: telemetryEvent })
++          );
++        } catch (_) {
++          // Ignore CustomEvent dispatch issues
++        }
++      }
++
++      scheduleFlush();
++      return telemetryEvent;
++    }
++
++    function trackPageView(extra) {
++      return enqueueEvent(
++        'page_view',
++        Object.assign(
++          {
++            title: global.document ? global.document.title : '',
++            referrer: global.document ? global.document.referrer || null : null,
++            viewport: {
++              width: global.innerWidth || 0,
++              height: global.innerHeight || 0
++            }
++          },
++          extra || {}
++        )
++      );
++    }
++
++    function handleDocumentClick(domEvent) {
++      if (!domEvent || !domEvent.target) return;
++
++      var rawTarget =
++        domEvent.target.nodeType === 1
++          ? domEvent.target
++          : domEvent.target.parentElement;
++      if (!rawTarget) return;
++
++      var interactiveEl =
++        typeof rawTarget.closest === 'function'
++          ? rawTarget.closest(
++              'a, button, [role="button"], .btn, .card, [data-analytics-label]'
++            )
++          : null;
++      var targetEl = interactiveEl || rawTarget;
++      var anchorEl =
++        typeof rawTarget.closest === 'function' ? rawTarget.closest('a') : null;
++      var sectionEl =
++        typeof targetEl.closest === 'function'
++          ? targetEl.closest(
++              '[data-analytics-section], nav, header, main, section, footer'
++            )
++          : null;
++
++      var href = anchorEl ? anchorEl.getAttribute('href') : null;
++      if (anchorEl && href && href.charAt(0) === '/') {
++        // Prevent navigating away to non-existent static routes so rapid clicks coalesce
++        domEvent.preventDefault();
++      }
++
++      var rawLabel =
++        (targetEl.getAttribute && targetEl.getAttribute('data-analytics-label')) ||
++        targetEl.innerText ||
++        targetEl.textContent ||
++        '';
++      var cleanLabel = String(rawLabel).trim().replace(/\s+/g, ' ').slice(0, 120);
++
++      var sectionName = sectionEl
++        ? sectionEl.getAttribute('data-analytics-section') ||
++          sectionEl.tagName.toLowerCase()
++        : null;
++
++      enqueueEvent('click', {
++        tag: targetEl.tagName ? targetEl.tagName.toLowerCase() : 'unknown',
++        tagName: targetEl.tagName || 'UNKNOWN',
++        text: cleanLabel,
++        label: cleanLabel,
++        href: href,
++        elementId: targetEl.id || null,
++        className:
++          typeof targetEl.className === 'string' && targetEl.className.trim()
++            ? targetEl.className.trim()
++            : null,
++        section: sectionName,
++        selector: getElementSelector(targetEl),
++        x: typeof domEvent.clientX === 'number' ? domEvent.clientX : 0,
++        y: typeof domEvent.clientY === 'number' ? domEvent.clientY : 0,
++        coordinates: {
++          x: typeof domEvent.clientX === 'number' ? domEvent.clientX : 0,
++          y: typeof domEvent.clientY === 'number' ? domEvent.clientY : 0
++        }
++      });
++    }
++
++    function bindListeners() {
++      if (!global.document) return;
++
++      global.document.addEventListener('click', handleDocumentClick, true);
++
++      global.document.addEventListener('visibilitychange', function () {
++        if (global.document.visibilityState === 'hidden') {
++          flush({ reason: 'visibilitychange', unloading: true });
++        }
++      });
++
++      global.addEventListener('pagehide', function () {
++        flush({ reason: 'pagehide', unloading: true });
++      });
++
++      global.addEventListener('beforeunload', function () {
++        flush({ reason: 'beforeunload', unloading: true });
++      });
++    }
++
++    function init() {
++      bindListeners();
++      trackPageView();
++    }
++
++    return {
++      config: config,
++      sessionId: sessionId,
++      init: init,
++      track: enqueueEvent,
++      trackPageView: trackPageView,
++      flush: flush,
++      getQueue: function () {
++        return queue.slice();
++      },
++      getEvents: function () {
++        return allEvents.slice();
++      },
++      getSentBatches: function () {
++        return sentBatches.slice();
++      },
++      setConfig: function (overrides) {
++        Object.assign(config, overrides || {});
++      }
++    };
++  }
++
++  var tracker = createAnalyticsTracker();
++  global.DailyGrindAnalytics = tracker;
++  global.analytics = tracker;
++
++  if (global.document) {
++    if (global.document.readyState === 'loading') {
++      global.document.addEventListener('DOMContentLoaded', function () {
++        tracker.init();
++      });
++    } else {
++      tracker.init();
++    }
++  }
++})(typeof window !== 'undefined' ? window : globalThis);

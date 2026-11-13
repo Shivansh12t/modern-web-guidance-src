@@ -1,0 +1,730 @@
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..89ec883 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import FlyoutMenu from './FlyoutMenu';
+ 
+ interface BottomNavProps {
+@@ -8,8 +8,20 @@ interface BottomNavProps {
+     multimedia: any[];
+ }
+ 
++export const MAIN_SECTIONS = [
++    { id: 'all', label: 'All Sections', href: '#all' },
++    { id: 'top-news', label: 'Top News', href: '#top-news' },
++    { id: 'world', label: 'World', href: '#world' },
++    { id: 'politics', label: 'Politics', href: '#politics' },
++    { id: 'multimedia', label: 'Multimedia', href: '#multimedia' },
++    { id: 'reports', label: 'Reports', href: '#reports' },
++] as const;
++
++export type SectionId = (typeof MAIN_SECTIONS)[number]['id'];
++
+ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
+     const [activeCategory, setActiveCategory] = useState<string | null>(null);
++    const [activeSection, setActiveSection] = useState<SectionId>('all');
+ 
+     const groupedCategories = {
+         'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
+@@ -18,19 +30,103 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+         'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
+     };
+ 
++    useEffect(() => {
++        const syncFromLocation = () => {
++            const hash = window.location.hash.replace(/^#/, '');
++            const params = new URLSearchParams(window.location.search);
++            const sectionParam = params.get('section') || params.get('view') || hash;
++            const matched = MAIN_SECTIONS.find(s => s.id === sectionParam);
++            if (matched) {
++                setActiveSection(matched.id);
++            } else if (window.location.pathname.endsWith('/multimedia')) {
++                setActiveSection('multimedia');
++            } else if (window.location.pathname.endsWith('/reports')) {
++                setActiveSection('reports');
++            }
++        };
++
++        syncFromLocation();
++
++        const handleSectionChanged = (e: Event) => {
++            const customEvent = e as CustomEvent<{ viewId: SectionId }>;
++            if (customEvent.detail?.viewId) {
++                setActiveSection(customEvent.detail.viewId);
++            }
++        };
++
++        window.addEventListener('popstate', syncFromLocation);
++        window.addEventListener('hashchange', syncFromLocation);
++        window.addEventListener('spa-view-changed', handleSectionChanged);
++        return () => {
++            window.removeEventListener('popstate', syncFromLocation);
++            window.removeEventListener('hashchange', syncFromLocation);
++            window.removeEventListener('spa-view-changed', handleSectionChanged);
++        };
++    }, []);
++
+     const handleMouseLeave = () => {
+         setActiveCategory(null);
+     };
+ 
++    const handleSectionClick = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: SectionId) => {
++        // Dispatch SPA navigation event if SPA views exist on the current page
++        const spaContainer = document.getElementById('spa-views-root');
++        if (spaContainer) {
++            e.preventDefault();
++            setActiveSection(sectionId);
++            setActiveCategory(null);
++            window.dispatchEvent(new CustomEvent('spa-navigate', { detail: { viewId: sectionId } }));
++        }
++    };
++
++    const baseUrl = import.meta.env.BASE_URL || '/';
++
+     const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
+     const filteredReports = activeCategory ? reports.filter(r => r.data.category === activeCategory) : [];
+     const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
+ 
+     return (
+         <div onMouseLeave={handleMouseLeave}>
+-            <div className="border-t border-b border-gray-900">
+-                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
+-                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
++            {/* Primary Section SPA Navigation Bar */}
++            <div className="border-t border-b border-gray-900 bg-white">
++                <nav
++                    aria-label="Main sections"
++                    className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-2 sm:space-x-6 h-11 overflow-x-auto"
++                >
++                    {MAIN_SECTIONS.map((section) => {
++                        const isCurrent = activeSection === section.id;
++                        const fallbackHref =
++                            section.id === 'all'
++                                ? baseUrl
++                                : `${baseUrl}?section=${section.id}#${section.id}`;
++                        return (
++                            <a
++                                key={section.id}
++                                href={fallbackHref}
++                                data-spa-section={section.id}
++                                data-spa-view-trigger={section.id}
++                                aria-current={isCurrent ? 'page' : undefined}
++                                onClick={(e) => handleSectionClick(e, section.id)}
++                                className={`px-3 py-1.5 rounded transition-colors whitespace-nowrap cursor-pointer ${
++                                    isCurrent
++                                        ? 'bg-gray-900 text-amber-400 font-bold'
++                                        : 'text-gray-800 hover:text-amber-600 hover:bg-gray-100'
++                                }`}
++                            >
++                                {section.label}
++                            </a>
++                        );
++                    })}
++                </nav>
++            </div>
++
++            {/* Secondary Topic / Category Flyout Bar */}
++            <div className="border-b border-gray-200 bg-gray-50">
++                <nav
++                    aria-label="Topic categories"
++                    className="container mx-auto px-4 flex justify-center items-center text-xs font-semibold space-x-6 h-8 overflow-x-auto text-gray-600"
++                >
++                    {Object.entries(groupedCategories).map(([groupName]) => {
+                         return (
+                             <div 
+                                 key={groupName}
+@@ -38,8 +134,12 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                                 className="h-full flex items-center"
+                             >
+                                 <a 
+-                                    href="#" 
+-                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
++                                    href="#"
++                                    onClick={(e) => {
++                                        e.preventDefault();
++                                        setActiveCategory(activeCategory === groupName ? null : groupName);
++                                    }}
++                                    className="flex items-center space-x-1 hover:text-gray-900 whitespace-nowrap"
+                                 >
+                                     <span>{groupName}</span>
+                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3 h-3 text-gray-500">
+@@ -57,6 +157,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+                 articles={articles}
+                 reports={filteredReports}
+                 multimedia={filteredMultimedia}
++                onNavigateSection={(sectionId) => {
++                    const spaContainer = document.getElementById('spa-views-root');
++                    if (spaContainer) {
++                        setActiveSection(sectionId);
++                        setActiveCategory(null);
++                        window.dispatchEvent(new CustomEvent('spa-navigate', { detail: { viewId: sectionId } }));
++                        return true;
++                    }
++                    return false;
++                }}
+             />
+         </div>
+     );
+diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
+index 37cf4bf..40c7a16 100644
+--- a/src/components/FlyoutMenu.tsx
++++ b/src/components/FlyoutMenu.tsx
+@@ -1,4 +1,5 @@
+ import React from 'react';
++import type { SectionId } from './BottomNav';
+ 
+ interface FlyoutMenuProps {
+   isOpen: boolean;
+@@ -6,9 +7,11 @@ interface FlyoutMenuProps {
+   articles: any[];
+   reports: any[];
+   multimedia: any[];
++  onClose?: () => void;
++  onNavigateSection?: (sectionId: SectionId) => boolean;
+ }
+ 
+-const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
++const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia, onNavigateSection }) => {
+   if (!isOpen) {
+     return null;
+   }
+@@ -19,12 +22,18 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+     return getScore();
+   };
+ 
+-  const topStories = articles.sort(() => 0.5 - Math.random()).slice(0, 3);
++  const topStories = [...articles].sort(() => 0.5 - Math.random()).slice(0, 3);
+ 
+   if (topStories.length > 0) {
+     setTimeout(() => calculateTrendingScore(topStories[0]), 100);
+   }
+ 
++  const handleSectionLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: SectionId) => {
++    if (onNavigateSection && onNavigateSection(sectionId)) {
++      e.preventDefault();
++    }
++  };
++
+   return (
+     <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
+       <div className="container mx-auto px-4 py-6">
+@@ -60,21 +69,34 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+           <div>
+               <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
+               <ul className="space-y-4 text-sm">
+-                  {reports.map(report => (
+-                      <li key={report.slug}>
+-                          <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} className="flex items-start space-x-2 group/item">
+-                              <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
+-                                  <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
+-                              </div>
+-                              <div>
+-                                  <p className="font-semibold group-hover/item:underline">{report.data.title}</p>
+-                                  <p className="text-xs text-gray-600">{report.data.description}</p>
+-                              </div>
+-                          </a>
+-                      </li>
+-                  ))}
++                  {reports.map((report, idx) => {
++                      const slug = report.slug || report.id || idx;
++                      return (
++                          <li key={slug}>
++                              <a
++                                  href={`${import.meta.env.BASE_URL}?section=reports#reports`}
++                                  onClick={(e) => handleSectionLinkClick(e, 'reports')}
++                                  className="flex items-start space-x-2 group/item"
++                              >
++                                  <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
++                                      <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
++                                  </div>
++                                  <div>
++                                      <p className="font-semibold group-hover/item:underline">{report.data.title}</p>
++                                      <p className="text-xs text-gray-600">{report.data.description}</p>
++                                  </div>
++                              </a>
++                          </li>
++                      );
++                  })}
+                   <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}reports`} className="text-xs font-semibold hover:underline">See all reports</a>
++                      <a
++                          href={`${import.meta.env.BASE_URL}?section=reports#reports`}
++                          onClick={(e) => handleSectionLinkClick(e, 'reports')}
++                          className="text-xs font-semibold hover:underline"
++                      >
++                          See all reports
++                      </a>
+                   </li>
+               </ul>
+           </div>
+@@ -83,21 +105,34 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+           <div>
+               <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
+               <ul className="space-y-4 text-sm">
+-                    {multimedia.map(item => (
+-                        <li key={item.slug}>
+-                            <a href={`/multimedia/${item.slug}`} className="flex items-start space-x-2 group/item">
+-                                <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+-                                    <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
+-                                </div>
+-                                <div>
+-                                    <p className="font-semibold group-hover/item:underline">{item.data.title}</p>
+-                                    <p className="text-xs text-gray-600">{item.data.description}</p>
+-                                </div>
+-                            </a>
+-                        </li>
+-                    ))}
++                    {multimedia.map((item, idx) => {
++                        const slug = item.slug || item.id || idx;
++                        return (
++                            <li key={slug}>
++                                <a
++                                    href={`${import.meta.env.BASE_URL}?section=multimedia#multimedia`}
++                                    onClick={(e) => handleSectionLinkClick(e, 'multimedia')}
++                                    className="flex items-start space-x-2 group/item"
++                                >
++                                    <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
++                                        <span className="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
++                                    </div>
++                                    <div>
++                                        <p className="font-semibold group-hover/item:underline">{item.data.title}</p>
++                                        <p className="text-xs text-gray-600">{item.data.description}</p>
++                                    </div>
++                                </a>
++                            </li>
++                        );
++                    })}
+                   <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}multimedia`} className="text-xs font-semibold hover:underline">See all multimedia</a>
++                      <a
++                          href={`${import.meta.env.BASE_URL}?section=multimedia#multimedia`}
++                          onClick={(e) => handleSectionLinkClick(e, 'multimedia')}
++                          className="text-xs font-semibold hover:underline"
++                      >
++                          See all multimedia
++                      </a>
+                   </li>
+               </ul>
+           </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..7b6f2c4 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -10,6 +10,9 @@ import type { RenderResult } from 'astro:content';
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+ 
++const multimedia = await getCollection('multimedia');
++const reports = await getCollection('reports');
++
+ // Slicing articles for different sections
+ const topArticle = articles[0];
+ const topStories = articles.slice(1, 4);
+@@ -35,6 +38,10 @@ politicsArticles[2] = {
+     slug: 'public-transit-overhaul',
+     render: async () => '' as unknown as RenderResult,
+   };
++
++const moreTopNews = articles.filter(a => !topNewsArticles.some(t => t.id === a.id)).slice(0, 6);
++const moreWorldNews = articles.filter(a => !worldNewsArticles.some(w => w.id === a.id)).slice(3, 9);
++const morePoliticsNews = articles.filter(a => a.data.category.toLowerCase() === 'politics' || a.data.category.toLowerCase() === 'national' || a.data.category.toLowerCase() === 'labor').slice(0, 6);
+ ---
+ 
+ <Layout title="The DevTools Times">
+@@ -54,31 +61,333 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    <!-- SPA View Switcher Container: preserves offscreen DOM state with content-visibility: hidden -->
++    <div id="spa-views-root" class="relative max-w-6xl mx-auto">
++        <!-- View 1: All Sections (Overview) -->
++        <div
++            id="view-all"
++            data-spa-view="all"
++            class="spa-view focus:outline-none"
++            tabindex="-1"
++            role="region"
++            aria-label="All Sections Overview"
++            aria-hidden="false"
++        >
++            <div class="px-4 sm:px-6 lg:px-6 mt-6">
++                <ArticleTeaser article={topArticle} large={true} />
++            </div>
++
++            <div class="divide-y divide-gray-200">
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
++
++                <!-- "Top News" section with the new grid variant -->
++                <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
++
++                <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++
++                <section class="p-4 md:p-6 text-center">
++                    <Ad client:visible />
++                </section>
++
++                <!-- "Politics" section with the new grid variant -->
++                <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++            </div>
++        </div>
++
++        <!-- View 2: Top News SPA View -->
++        <div
++            id="view-top-news"
++            data-spa-view="top-news"
++            class="spa-view inactive focus:outline-none"
++            tabindex="-1"
++            role="region"
++            aria-label="Top News Section"
++            aria-hidden="true"
++            inert
++        >
++            <div class="divide-y divide-gray-200">
++                <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+ 
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++                <section class="p-4 md:p-6">
++                    <h3 class="text-xl font-bold text-gray-900 mb-4">Latest Headlines</h3>
++                    <div class="grid md:grid-cols-3 gap-6">
++                        {moreTopNews.map(article => <ArticleTeaser article={article} />)}
++                    </div>
++                </section>
++            </div>
++        </div>
+ 
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <!-- View 3: World SPA View -->
++        <div
++            id="view-world"
++            data-spa-view="world"
++            class="spa-view inactive focus:outline-none"
++            tabindex="-1"
++            role="region"
++            aria-label="World Section"
++            aria-hidden="true"
++            inert
++        >
++            <div class="divide-y divide-gray-200">
++                <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++                <section class="p-4 md:p-6">
++                    <h3 class="text-xl font-bold text-gray-900 mb-4">Global Dispatches</h3>
++                    <div class="grid md:grid-cols-3 gap-6">
++                        {moreWorldNews.map(article => <ArticleTeaser article={article} />)}
++                    </div>
++                </section>
++            </div>
++        </div>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <!-- View 4: Politics SPA View -->
++        <div
++            id="view-politics"
++            data-spa-view="politics"
++            class="spa-view inactive focus:outline-none"
++            tabindex="-1"
++            role="region"
++            aria-label="Politics Section"
++            aria-hidden="true"
++            inert
++        >
++            <div class="divide-y divide-gray-200">
++                <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
++                <section class="p-4 md:p-6">
++                    <h3 class="text-xl font-bold text-gray-900 mb-4">Policy & Governance</h3>
++                    <div class="grid md:grid-cols-3 gap-6">
++                        {morePoliticsNews.map(article => <ArticleTeaser article={article} />)}
++                    </div>
++                </section>
++            </div>
++        </div>
+ 
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
++        <!-- View 5: Multimedia SPA View -->
++        <div
++            id="view-multimedia"
++            data-spa-view="multimedia"
++            class="spa-view inactive focus:outline-none"
++            tabindex="-1"
++            role="region"
++            aria-label="Multimedia Section"
++            aria-hidden="true"
++            inert
++        >
++            <div class="p-4 md:p-6">
++                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8 gap-4">
++                    <div>
++                        <h2 class="text-3xl font-bold text-gray-900">Multimedia</h2>
++                        <p class="text-sm text-gray-600 mt-1">Watch and filter our latest video briefings, roundtables, and behind-the-scenes features.</p>
++                    </div>
++                    <input
++                        type="search"
++                        data-view-filter="multimedia"
++                        placeholder="Filter multimedia..."
++                        aria-label="Filter multimedia items"
++                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent"
++                    />
++                </div>
++
++                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-filter-list="multimedia">
++                    {multimedia.map((item) => {
++                        const slug = item.id || item.slug;
++                        return (
++                            <article
++                                class="border border-gray-200 rounded-lg p-5 shadow-xs hover:shadow-md transition-shadow bg-white flex flex-col justify-between"
++                                data-filter-item
++                                data-title={item.data.title.toLowerCase()}
++                                data-category={item.data.category.toLowerCase()}
++                            >
++                                <div>
++                                    <div class="flex items-center justify-between text-xs font-semibold text-blue-800 uppercase tracking-wider mb-2">
++                                        <span class="bg-blue-100 px-2.5 py-0.5 rounded">{item.data.category}</span>
++                                        <span class="text-gray-500">{item.data.publishDate}</span>
++                                    </div>
++                                    <h3 class="text-xl font-brand font-bold text-gray-900 mb-2">
++                                        {item.data.title}
++                                    </h3>
++                                    <p class="text-sm text-gray-600 mb-4">
++                                        {item.data.description}
++                                    </p>
++                                </div>
++                                <details class="mt-2 pt-3 border-t border-gray-100 text-xs text-gray-700">
++                                    <summary class="font-semibold text-amber-700 cursor-pointer hover:underline select-none">
++                                        Preview Episode Notes
++                                    </summary>
++                                    <p class="mt-2 text-gray-600 leading-relaxed">
++                                        Stream "{item.data.title}" ({item.data.category}) — published {item.data.publishDate}. {item.body || item.data.description}
++                                    </p>
++                                </details>
++                            </article>
++                        );
++                    })}
++                </div>
++            </div>
++        </div>
++
++        <!-- View 6: Reports SPA View -->
++        <div
++            id="view-reports"
++            data-spa-view="reports"
++            class="spa-view inactive focus:outline-none"
++            tabindex="-1"
++            role="region"
++            aria-label="Reports Section"
++            aria-hidden="true"
++            inert
++        >
++            <div class="p-4 md:p-6">
++                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8 gap-4">
++                    <div>
++                        <h2 class="text-3xl font-bold text-gray-900">Reports</h2>
++                        <p class="text-sm text-gray-600 mt-1">In-depth quarterly research, sector reviews, and industry outlook reports.</p>
++                    </div>
++                    <input
++                        type="search"
++                        data-view-filter="reports"
++                        placeholder="Filter reports..."
++                        aria-label="Filter reports"
++                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent"
++                    />
++                </div>
++
++                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-filter-list="reports">
++                    {reports.map((report) => {
++                        return (
++                            <article
++                                class="border border-gray-200 rounded-lg p-5 shadow-xs hover:shadow-md transition-shadow bg-white flex flex-col justify-between"
++                                data-filter-item
++                                data-title={report.data.title.toLowerCase()}
++                                data-category={report.data.category.toLowerCase()}
++                            >
++                                <div>
++                                    <div class="flex items-center justify-between text-xs font-semibold text-yellow-800 uppercase tracking-wider mb-2">
++                                        <span class="bg-yellow-100 px-2.5 py-0.5 rounded">{report.data.category}</span>
++                                        <span class="text-gray-500">{report.data.publishDate}</span>
++                                    </div>
++                                    <h3 class="text-xl font-brand font-bold text-gray-900 mb-2">
++                                        {report.data.title}
++                                    </h3>
++                                    <p class="text-sm text-gray-600 mb-4">
++                                        {report.data.description}
++                                    </p>
++                                </div>
++                                <details class="mt-2 pt-3 border-t border-gray-100 text-xs text-gray-700">
++                                    <summary class="font-semibold text-amber-700 cursor-pointer hover:underline select-none">
++                                        Read Executive Summary
++                                    </summary>
++                                    <p class="mt-2 text-gray-600 leading-relaxed">
++                                        {report.body || report.data.description} (Published {report.data.publishDate} in {report.data.category}).
++                                    </p>
++                                </details>
++                            </article>
++                        );
++                    })}
++                </div>
++            </div>
++        </div>
+     </div>
+-</Layout>
+\ No newline at end of file
++
++    <script>
++        const VALID_VIEWS = ['all', 'top-news', 'world', 'politics', 'multimedia', 'reports'];
++
++        function switchToView(viewId: string, options: { updateHistory?: boolean; focusView?: boolean } = {}) {
++            const { updateHistory = true, focusView = true } = options;
++            const normalizedId = VALID_VIEWS.includes(viewId) ? viewId : 'all';
++            const targetElementId = `view-${normalizedId}`;
++            const activeView = document.getElementById(targetElementId);
++            if (!activeView) return;
++
++            const performDomSwitch = () => {
++                // Hide all views while preserving their rendered DOM state via content-visibility: hidden
++                document.querySelectorAll<HTMLElement>('.spa-view').forEach((view) => {
++                    if (view.id !== targetElementId) {
++                        view.classList.add('inactive');
++                        view.setAttribute('aria-hidden', 'true');
++                        view.setAttribute('inert', 'inert');
++                    }
++                });
++
++                // Show the target view
++                activeView.classList.remove('inactive');
++                activeView.setAttribute('aria-hidden', 'false');
++                activeView.removeAttribute('inert');
++            };
++
++            performDomSwitch();
++
++            if (focusView) {
++                activeView.focus({ preventScroll: true });
++            }
++
++            if (updateHistory) {
++                const url = new URL(window.location.href);
++                if (normalizedId === 'all') {
++                    url.searchParams.delete('section');
++                    url.hash = '';
++                } else {
++                    url.searchParams.set('section', normalizedId);
++                    url.hash = normalizedId;
++                }
++                window.history.pushState({ viewId: normalizedId }, '', url.toString());
++            }
++
++            window.dispatchEvent(new CustomEvent('spa-view-changed', { detail: { viewId: normalizedId } }));
++        }
++
++        function setupSpaNavigation() {
++            // Setup client-side filter inputs inside Multimedia and Reports views (demonstrating preserved DOM state across switches)
++            document.querySelectorAll<HTMLInputElement>('[data-view-filter]').forEach((input) => {
++                if (input.dataset.bound === 'true') return;
++                input.dataset.bound = 'true';
++                input.addEventListener('input', () => {
++                    const listName = input.getAttribute('data-view-filter');
++                    const query = input.value.trim().toLowerCase();
++                    const list = document.querySelector(`[data-filter-list="${listName}"]`);
++                    if (!list) return;
++                    list.querySelectorAll<HTMLElement>('[data-filter-item]').forEach((item) => {
++                        const title = item.getAttribute('data-title') || '';
++                        const category = item.getAttribute('data-category') || '';
++                        const matches = !query || title.includes(query) || category.includes(query);
++                        item.style.display = matches ? '' : 'none';
++                    });
++                });
++            });
++
++            // Check initial URL state
++            const hash = window.location.hash.replace(/^#/, '');
++            const params = new URLSearchParams(window.location.search);
++            const initialView = params.get('section') || params.get('view') || hash;
++            if (initialView && VALID_VIEWS.includes(initialView)) {
++                switchToView(initialView, { updateHistory: false, focusView: false });
++            }
++        }
++
++        window.addEventListener('spa-navigate', ((e: CustomEvent<{ viewId: string }>) => {
++            if (e.detail?.viewId) {
++                switchToView(e.detail.viewId, { updateHistory: true, focusView: true });
++            }
++        }) as EventListener);
++
++        window.addEventListener('popstate', () => {
++            const hash = window.location.hash.replace(/^#/, '');
++            const params = new URLSearchParams(window.location.search);
++            const targetView = params.get('section') || params.get('view') || hash || 'all';
++            switchToView(targetView, { updateHistory: false, focusView: true });
++        });
++
++        document.addEventListener('astro:page-load', setupSpaNavigation);
++        if (document.readyState !== 'loading') {
++            setupSpaNavigation();
++        } else {
++            document.addEventListener('DOMContentLoaded', setupSpaNavigation);
++        }
++    </script>
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..6fcc902 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,31 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++.spa-view.inactive {
++  /* MANDATORY: Use hidden to cache the rendering state of inactive views */
++  content-visibility: hidden;
++
++  /* Prevent hidden views from taking up physical space in layout flow */
++  position: absolute;
++  inset-inline: 0;
++  inset-block-start: 0;
++  height: 0;
++  overflow: hidden;
++  pointer-events: none;
++}
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive {
++    display: none;
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation: none !important;
++  }
++}

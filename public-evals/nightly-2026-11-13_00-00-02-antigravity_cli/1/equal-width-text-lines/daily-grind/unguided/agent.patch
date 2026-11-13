@@ -1,0 +1,114 @@
+diff --git a/index.html b/index.html
+index 66c9173..14f800d 100644
+--- a/index.html
++++ b/index.html
+@@ -74,8 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,12 +85,40 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      width: min(85vw, 400px);
++      container-type: inline-size;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      margin-bottom: 1.25rem;
++      font-weight: 900;
++      text-transform: uppercase;
++      line-height: 0.88;
++      letter-spacing: 0.02em;
++      text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
++    }
++
++    .hero h1 .hero-line {
++      display: inline-block;
++      white-space: nowrap;
++      width: max-content;
++      line-height: 0.88;
++    }
++
++    .hero h1 .hero-line-1 {
++      font-size: 20.5cqw;
++    }
++
++    .hero h1 .hero-line-2 {
++      font-size: 36cqw;
++    }
++
++    .hero h1 .hero-line-3 {
++      font-size: 25.5cqw;
+     }
+ 
+     /* Content Sections */
+@@ -169,11 +197,53 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 id="hero-lockup">
++      <span class="hero-line hero-line-1">Wake Up</span>
++      <span class="hero-line hero-line-2">Your</span>
++      <span class="hero-line hero-line-3">Senses</span>
++    </h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <script>
++    (function () {
++      const lockup = document.getElementById('hero-lockup');
++      if (!lockup) return;
++      const lines = Array.from(lockup.querySelectorAll('.hero-line'));
++
++      function fitHeroLines() {
++        const targetWidth = lockup.clientWidth;
++        if (!targetWidth) return;
++
++        lines.forEach((line) => {
++          const baseSize = 100;
++          line.style.fontSize = baseSize + 'px';
++          const initialWidth = line.getBoundingClientRect().width;
++          if (!initialWidth) return;
++
++          let fittedSize = (baseSize * targetWidth) / initialWidth;
++          line.style.fontSize = fittedSize + 'px';
++
++          const refinedWidth = line.getBoundingClientRect().width;
++          if (refinedWidth > 0) {
++            fittedSize = (fittedSize * targetWidth) / refinedWidth;
++            line.style.fontSize = fittedSize.toFixed(3) + 'px';
++          }
++        });
++      }
++
++      fitHeroLines();
++      window.addEventListener('resize', fitHeroLines);
++      if (typeof ResizeObserver !== 'undefined') {
++        new ResizeObserver(fitHeroLines).observe(lockup);
++      }
++      if (document.fonts && document.fonts.ready) {
++        document.fonts.ready.then(fitHeroLines);
++      }
++    })();
++  </script>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>

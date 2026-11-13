@@ -1,0 +1,130 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,14 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    // Hide only the fallback's first layout until its scroll position is set.
++    if (!CSS.supports('scroll-initial-target', 'nearest') && !location.hash) {
++      document.documentElement.classList.add('scroll-pending');
++    }
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -19,15 +25,73 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    html,
+     body {
++      height: 100%;
++      overflow: hidden;
++    }
++
++    body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .page-scroll {
++      height: 100vh;
++      height: 100dvh;
++      overflow: auto;
++      overscroll-behavior-y: contain;
++    }
++
++    .scroll-pending .page-scroll {
++      visibility: hidden;
++    }
++
++    .page-content {
++      min-height: 100%;
++      scroll-initial-target: nearest;
++    }
++
++    /* Scroll upward from the navigation to reveal search. */
++    .site-search {
++      padding: 1rem 5%;
++      background: var(--secondary);
++    }
++
++    .search-fields {
++      display: flex;
++      gap: 0.5rem;
++      max-width: 1100px;
++      margin: auto;
++    }
++
++    .site-search input {
++      flex: 1;
++      min-width: 0;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      padding: 0.75rem 1rem;
++      font: inherit;
++      color: var(--text);
++      background: white;
++    }
++
++    .site-search button {
++      border: 0;
++      margin: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .site-search :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +220,17 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="page-scroll">
++  <form class="site-search" role="search" action="/menu" method="get">
++    <div class="search-fields">
++      <input type="search" name="q" aria-label="Search the menu" placeholder="Search coffee, drinks, and more…">
++      <button type="submit" class="btn">Search</button>
++    </div>
++  </form>
++
++  <div class="page-content">
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -205,8 +278,19 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </div>
++  </div>
+ 
++  <script>
++    if (document.documentElement.classList.contains('scroll-pending')) {
++      const scroller = document.querySelector('.page-scroll');
++      const search = document.querySelector('.site-search');
++      scroller.scrollTop = search.offsetHeight;
++      document.documentElement.classList.remove('scroll-pending');
++    }
++  </script>
++
+ </body>
+ 
+ </html>

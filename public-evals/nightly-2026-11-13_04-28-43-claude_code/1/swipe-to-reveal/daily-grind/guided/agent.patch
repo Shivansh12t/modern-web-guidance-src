@@ -1,0 +1,284 @@
+diff --git a/index.html b/index.html
+index 66c9173..95a7a10 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,125 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Swipe-to-reveal drink cards */
++    .swipe-hint {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 4px;
++    }
++
++    .SwipeReveal {
++      /* Column 1: full-width card content. Column 2: auto-sized action strip. */
++      display: grid;
++      grid-template-columns: 100% max-content;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scrollbar-width: none;
++      /* Chain excess scroll to the page without the action strip bouncing. */
++      overscroll-behavior: auto;
++      overscroll-behavior: chain;
++      padding: 0;
++      background: var(--primary);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .SwipeReveal {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .SwipeReveal-content {
++      position: relative;
++      scroll-snap-align: start;
++      scroll-initial-target: nearest;
++      background: white;
++      padding: 20px;
++    }
++
++    .SwipeReveal-trigger {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      min-width: 32px;
++      min-height: 32px;
++      border: none;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font-size: 1.25rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .SwipeReveal-trigger:hover,
++    .SwipeReveal-trigger[aria-expanded="true"] {
++      background: var(--secondary);
++    }
++
++    .SwipeReveal-panel {
++      scroll-snap-align: end;
++      display: flex;
++    }
++
++    .SwipeReveal-action {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 4px;
++      min-width: 76px;
++      padding: 0 12px;
++      border: none;
++      background: var(--primary);
++      color: white;
++      font: inherit;
++      font-size: 0.8rem;
++      text-decoration: none;
++      cursor: pointer;
++    }
++
++    .SwipeReveal-action + .SwipeReveal-action {
++      border-left: 1px solid rgba(255, 255, 255, 0.15);
++    }
++
++    .SwipeReveal-action:hover {
++      background: #3e2723;
++    }
++
++    .SwipeReveal-action--order {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .SwipeReveal-action--order:hover {
++      background: #ff9100;
++    }
++
++    .SwipeReveal-action:focus-visible,
++    .SwipeReveal-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -4px;
++    }
++
++    .SwipeReveal-action[aria-pressed="true"] .icon {
++      color: #ff8a80;
++    }
++
++    .SwipeReveal-action .icon {
++      font-size: 1.25rem;
++      line-height: 1;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+@@ -177,21 +296,46 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <p class="swipe-hint">Swipe a drink left (or tap &hellip;) for quick actions.</p>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card SwipeReveal" data-drink="Maple Oat Latte">
++          <div class="SwipeReveal-content">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Maple Oat Latte actions" aria-expanded="false"><span aria-hidden="true">&hellip;</span></button>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Maple Oat Latte actions">
++            <a href="/order-online?drink=maple-oat-latte" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1"><span class="icon" aria-hidden="true">&#9749;</span>Order<span class="visually-hidden"> Maple Oat Latte</span></a>
++            <button type="button" class="SwipeReveal-action" data-action="favorite" aria-pressed="false" tabindex="-1"><span class="icon" aria-hidden="true">&#9829;</span>Favorite<span class="visually-hidden"> Maple Oat Latte</span></button>
++            <button type="button" class="SwipeReveal-action" data-action="share" data-url="/menu/seasonal" tabindex="-1"><span class="icon" aria-hidden="true">&#8599;</span>Share<span class="visually-hidden"> Maple Oat Latte</span></button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card SwipeReveal" data-drink="Dark Roast Espresso">
++          <div class="SwipeReveal-content">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Dark Roast Espresso actions" aria-expanded="false"><span aria-hidden="true">&hellip;</span></button>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Dark Roast Espresso actions">
++            <a href="/order-online?drink=dark-roast-espresso" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1"><span class="icon" aria-hidden="true">&#9749;</span>Order<span class="visually-hidden"> Dark Roast Espresso</span></a>
++            <button type="button" class="SwipeReveal-action" data-action="favorite" aria-pressed="false" tabindex="-1"><span class="icon" aria-hidden="true">&#9829;</span>Favorite<span class="visually-hidden"> Dark Roast Espresso</span></button>
++            <button type="button" class="SwipeReveal-action" data-action="share" data-url="/menu/espresso" tabindex="-1"><span class="icon" aria-hidden="true">&#8599;</span>Share<span class="visually-hidden"> Dark Roast Espresso</span></button>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card SwipeReveal" data-drink="Cold Brew">
++          <div class="SwipeReveal-content">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Cold Brew actions" aria-expanded="false"><span aria-hidden="true">&hellip;</span></button>
++          </div>
++          <div class="SwipeReveal-panel" role="group" aria-label="Cold Brew actions">
++            <a href="/order-online?drink=cold-brew" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1"><span class="icon" aria-hidden="true">&#9749;</span>Order<span class="visually-hidden"> Cold Brew</span></a>
++            <button type="button" class="SwipeReveal-action" data-action="favorite" aria-pressed="false" tabindex="-1"><span class="icon" aria-hidden="true">&#9829;</span>Favorite<span class="visually-hidden"> Cold Brew</span></button>
++            <button type="button" class="SwipeReveal-action" data-action="share" data-url="/menu/cold-brew" tabindex="-1"><span class="icon" aria-hidden="true">&#8599;</span>Share<span class="visually-hidden"> Cold Brew</span></button>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +351,94 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Swipe-to-reveal: native scroll snap handles the gesture; JS only keeps
++    // accessibility state (aria-expanded, tabindex) in sync and wires the buttons.
++    // No action is ever performed by the swipe itself.
++    for (const reveal of document.querySelectorAll('.SwipeReveal')) {
++      const content = reveal.querySelector('.SwipeReveal-content');
++      const panel = reveal.querySelector('.SwipeReveal-panel');
++      const trigger = reveal.querySelector('.SwipeReveal-trigger');
++      const actions = panel.querySelectorAll('.SwipeReveal-action');
++
++      const setOpen = (open) => {
++        trigger.setAttribute('aria-expanded', String(open));
++        for (const action of actions) action.tabIndex = open ? 0 : -1;
++      };
++
++      const isPanelVisible = () =>
++        Math.abs(reveal.scrollLeft) > panel.offsetWidth / 2;
++
++      const open = () => {
++        reveal.scrollTo({ left: reveal.scrollWidth });
++        setOpen(true);
++      };
++
++      const close = () => {
++        reveal.scrollTo({ left: 0 });
++        setOpen(false);
++      };
++
++      trigger.addEventListener('click', () => {
++        trigger.getAttribute('aria-expanded') === 'true' ? close() : open();
++      });
++
++      // Keep state in sync when the user swipes instead of using the trigger.
++      if ('onscrollsnapchange' in Element.prototype) {
++        reveal.addEventListener('scrollsnapchange', (event) => {
++          setOpen(event.snapTargetInline === panel);
++        });
++      } else {
++        let timeout;
++        const sync = () => {
++          clearTimeout(timeout);
++          setOpen(isPanelVisible());
++        };
++        reveal.addEventListener('scroll', () => {
++          clearTimeout(timeout);
++          timeout = setTimeout(sync, 100);
++        }, { passive: true });
++        reveal.addEventListener('scrollend', sync);
++      }
++
++      // Keyboard users tabbing back into the card content close the strip.
++      content.addEventListener('focusin', (event) => {
++        if (event.target !== trigger && event.target.matches(':focus-visible')) {
++          content.scrollIntoView({ block: 'nearest', inline: 'start' });
++        }
++      });
++
++      // Escape closes the revealed actions and returns focus to the trigger.
++      reveal.addEventListener('keydown', (event) => {
++        if (event.key === 'Escape' && trigger.getAttribute('aria-expanded') === 'true') {
++          close();
++          trigger.focus();
++        }
++      });
++
++      for (const action of actions) {
++        action.addEventListener('click', async () => {
++          const drink = reveal.dataset.drink;
++          if (action.dataset.action === 'favorite') {
++            const pressed = action.getAttribute('aria-pressed') === 'true';
++            action.setAttribute('aria-pressed', String(!pressed));
++          } else if (action.dataset.action === 'share') {
++            const url = new URL(action.dataset.url, location.href).href;
++            try {
++              if (navigator.share) {
++                await navigator.share({ title: drink, url });
++              } else {
++                await navigator.clipboard.writeText(url);
++              }
++            } catch {
++              /* Share dismissed or clipboard unavailable. */
++            }
++          }
++        });
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,56 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Media scroller */
++    .media-scroller {
++      height: 480px;
++      overflow-y: auto;
++      scroll-behavior: auto; /* never animate programmatic scrolling */
++      overscroll-behavior: contain;
++      margin-top: 20px;
++      padding: 16px;
++      background: var(--secondary);
++      border-radius: 8px;
++      display: flex;
++      flex-direction: column;
++      gap: 16px;
++    }
++
++    .media-card {
++      display: flex;
++      gap: 16px;
++      align-items: center;
++      flex-shrink: 0;
++      background: white;
++      border-radius: 8px;
++      padding: 12px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .media-card img {
++      display: block;
++      width: 160px;
++      height: 120px;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++      flex-shrink: 0;
++      background: var(--secondary);
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .media-card.target {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +242,91 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 60px;">
++      <h2 style="text-align: center;">From the Coffee Bar</h2>
++      <div class="media-scroller" id="media-scroller" tabindex="0" aria-label="Coffee bar highlights">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=320&h=240&q=80"
++            alt="Morning Pour" width="160" height="120" loading="lazy" decoding="async">
++          <div>
++            <h3>Morning Pour</h3>
++            <p>A simple, honest cup to start the day.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=320&h=240&q=80"
++            alt="Velvet Latte" width="160" height="120" loading="lazy" decoding="async">
++          <div>
++            <h3>Velvet Latte</h3>
++            <p>Silky microfoam over a double shot.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=320&h=240&q=80"
++            alt="Roaster's Choice" width="160" height="120" loading="lazy" decoding="async">
++          <div>
++            <h3>Roaster's Choice</h3>
++            <p>This week's single-origin pick.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=320&h=240&q=80"
++            alt="Fresh Beans" width="160" height="120" loading="lazy" decoding="async">
++          <div>
++            <h3>Fresh Beans</h3>
++            <p>Roasted in small batches every morning.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=320&h=240&q=80"
++            alt="Latte Art Friday" width="160" height="120" loading="eager" fetchpriority="high" decoding="async">
++          <div>
++            <h3>Latte Art Friday</h3>
++            <p>Our baristas' featured creation this week.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=320&h=240&q=80"
++            alt="Afternoon Pick-Me-Up" width="160" height="120" loading="lazy" decoding="async">
++          <div>
++            <h3>Afternoon Pick-Me-Up</h3>
++            <p>Smooth medium roast with chocolate notes.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=320&h=240&q=80"
++            alt="Cozy Corners" width="160" height="120" loading="lazy" decoding="async">
++          <div>
++            <h3>Cozy Corners</h3>
++            <p>Find your favorite seat at any location.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1453614512568-c4024d13c247?auto=format&fit=crop&w=320&h=240&q=80"
++            alt="Coffee & Community" width="160" height="120" loading="lazy" decoding="async">
++          <div>
++            <h3>Coffee & Community</h3>
++            <p>Events, tastings, and live music nights.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        // Runs synchronously right after the scroller is parsed, before first paint,
++        // so the target is already in view with no visible scroll animation.
++        // Images have explicit dimensions, so layout is stable before they load.
++        (function () {
++          var scroller = document.getElementById('media-scroller');
++          var target = scroller && scroller.querySelector('.target');
++          if (!target) return;
++          var offset = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
++          var padTop = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
++          scroller.scrollTop += offset - padTop; // direct assignment never animates
++        })();
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

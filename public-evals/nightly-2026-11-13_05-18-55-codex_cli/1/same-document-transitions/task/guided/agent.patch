@@ -1,0 +1,248 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,13 +114,115 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+-    .card h3 {
++    .card h2 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    [hidden] { display: none !important; }
++
++    main { scroll-margin-top: 90px; }
++
++    #list-heading { text-align: center; }
++
++    .thumbnail {
++      position: relative;
++      padding: 0 0 24px;
++      overflow: hidden;
++    }
++
++    .thumbnail img {
++      display: block;
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      margin-bottom: 20px;
++    }
++
++    .thumbnail .title {
++      margin: 0 auto 10px;
++      max-width: calc(100% - 32px);
++      font-size: 1.25rem;
++    }
++
++    .thumbnail p { padding: 0 20px; }
++
++    button { font: inherit; cursor: pointer; border: 0; }
++
++    .thumbnail button::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      border-radius: 8px;
++    }
++
++    .thumbnail:has(button:focus-visible) {
++      outline: 3px solid var(--primary);
++      outline-offset: 5px;
++    }
++
++    :focus-visible { outline: 3px solid #865000; outline-offset: 4px; }
++
++    #detail-page .detail-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
++      gap: 36px;
++      align-items: center;
++      margin-top: 24px;
++    }
++
++    #hero {
++      display: block;
++      width: 100%;
++      height: 390px;
++      border-radius: 8px;
++      object-fit: cover;
++      view-transition-name: favorite-photo;
++    }
++
++    .title, #title { width: fit-content; }
++    #title { font-size: 2rem; line-height: 1.2; margin-bottom: 20px; view-transition-name: favorite-title; }
++    .thumbnail.selected img { view-transition-name: favorite-photo; }
++    .thumbnail.selected .title { view-transition-name: favorite-title; }
++    .detail-note { margin-top: 20px; font-size: .9rem; }
++
++    ::view-transition-group(favorite-photo),
++    ::view-transition-group(favorite-title) {
++      animation-duration: 450ms;
++      animation-timing-function: cubic-bezier(.2, .7, .2, 1);
++    }
++
++    ::view-transition-old(favorite-photo),
++    ::view-transition-new(favorite-photo) {
++      height: 100%;
++      width: 100%;
++      object-fit: cover;
++      object-position: center;
++    }
++
++    ::view-transition-image-pair(favorite-photo) {
++      overflow: clip;
++      border-radius: 8px;
++    }
++
++    @media (max-width: 640px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.25rem; }
++      #detail-page .detail-layout { grid-template-columns: 1fr; gap: 24px; }
++      #hero { height: 300px; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) { animation: none !important; }
++      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -174,25 +276,39 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="list-page" aria-labelledby="list-heading">
++      <h2 id="list-heading" tabindex="-1">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <article class="card thumbnail" data-favorite="maple">
++          <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=1200&amp;q=80" alt="Latte with delicate foam art in a ceramic cup" width="1200" height="800">
++          <h2 class="title" id="maple-title">Maple Oat Latte</h2>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <button type="button" class="btn" aria-labelledby="maple-action maple-title"><span id="maple-action">View Details</span></button>
++        </article>
++        <article class="card thumbnail" data-favorite="espresso">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=1200&amp;q=80" alt="A freshly poured espresso with golden crema" width="1200" height="800">
++          <h2 class="title" id="espresso-title">Dark Roast Espresso</h2>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <button type="button" class="btn" aria-labelledby="espresso-action espresso-title"><span id="espresso-action">View Details</span></button>
++        </article>
++        <article class="card thumbnail" data-favorite="cold-brew">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=1200&amp;q=80" alt="Cold coffee served over ice in a glass" width="1200" height="800">
++          <h2 class="title" id="cold-brew-title">Cold Brew</h2>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" aria-labelledby="cold-brew-action cold-brew-title"><span id="cold-brew-action">View Details</span></button>
++        </article>
++      </div>
++    </section>
++    <section id="detail-page" aria-labelledby="title" hidden>
++      <button type="button" id="back" class="btn">← Back</button>
++      <div class="detail-layout">
++        <img id="hero" alt="" width="1200" height="800">
++        <div>
++          <h2 id="title" tabindex="-1"></h2>
++          <p id="description"></p>
++          <p class="detail-note">Ethically sourced. Locally roasted. Made just for you.</p>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +322,74 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    const listPage = document.getElementById('list-page');
++    const detailPage = document.getElementById('detail-page');
++    const hero = document.getElementById('hero');
++    const title = document.getElementById('title');
++    const descriptions = {
++      maple: 'Our seasonal favorite pairs rich espresso with creamy oat milk and a hint of Vermont maple syrup. A little sweetness, a smooth finish, and all the comfort of a crisp autumn morning.',
++      espresso: 'Deeply roasted beans bring a bold, smoky character to this concentrated classic. Freshly pulled for a rich crema and a full-bodied finish. Perfect for your morning boost or an afternoon pause.',
++      'cold-brew': 'Slowly steeped for 18 hours, our cold brew brings out the mellow sweetness of the beans. Served over ice for a smooth, refreshing coffee with a clean finish.'
++    };
++    let selectedCard = null;
++    let busy = false;
++    let listScroll = 0;
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++
++    async function changeView(showDetail) {
++      const update = () => {
++        listPage.hidden = showDetail;
++        detailPage.hidden = !showDetail;
++        if (showDetail) {
++          document.querySelector('main').scrollIntoView({ block: 'start', behavior: 'instant' });
++        } else {
++          window.scrollTo({ top: listScroll, behavior: 'instant' });
++        }
++      };
++      try {
++        if (document.startViewTransition && !reducedMotion.matches) {
++          const transition = document.startViewTransition(update);
++          // A skipped animation still commits the DOM update.
++          await transition.finished.catch(() => {});
++        } else {
++          update();
++        }
++      } finally {
++        const heading = document.getElementById(showDetail ? 'title' : 'list-heading');
++        heading.focus({ preventScroll: true });
++        // Keep names only for the selected pair during forward/reverse snapshots.
++        selectedCard?.classList.remove('selected');
++        busy = false;
++      }
++    }
++
++    document.querySelectorAll('.thumbnail').forEach(card => {
++      card.querySelector('button').addEventListener('click', async () => {
++        if (busy) return;
++        busy = true;
++        selectedCard = card;
++        listScroll = window.scrollY;
++        const image = card.querySelector('img');
++        hero.src = image.currentSrc || image.src;
++        hero.alt = image.alt;
++        title.textContent = card.querySelector('.title').textContent;
++        document.getElementById('description').textContent = descriptions[card.dataset.favorite];
++        // Prepare the full-size image before taking the destination snapshot.
++        await hero.decode().catch(() => {});
++        card.classList.add('selected');
++        await changeView(true);
++      });
++    });
++
++    document.getElementById('back').addEventListener('click', () => {
++      if (busy || !selectedCard) return;
++      busy = true;
++      selectedCard.classList.add('selected');
++      changeView(false);
++    });
++  </script>
+ </body>
+ 
+ </html>

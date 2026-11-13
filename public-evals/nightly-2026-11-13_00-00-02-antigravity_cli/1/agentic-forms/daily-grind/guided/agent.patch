@@ -1,0 +1,692 @@
+diff --git a/index.html b/index.html
+index 66c9173..944039e 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,202 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee Finder Form & WebMCP Styling */
++    .finder-section {
++      margin-top: 50px;
++      background: white;
++      padding: 35px;
++      border-radius: 8px;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
++    }
++
++    .finder-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .finder-subtitle {
++      text-align: center;
++      margin-bottom: 1.5rem;
++      color: #5d4037;
++    }
++
++    .finder-form {
++      max-width: 680px;
++      margin: 0 auto;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 0.35rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group > label,
++    .finder-fieldset legend {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .finder-fieldset {
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      padding: 1rem 1.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .finder-fieldset legend {
++      padding: 0 0.5rem;
++    }
++
++    .radio-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 1.25rem;
++      margin-top: 0.35rem;
++    }
++
++    .choice-option {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      min-height: 48px;
++    }
++
++    .choice-option label {
++      cursor: pointer;
++      padding: 10px 0;
++      margin: -10px 0;
++    }
++
++    .choice-option input[type="radio"],
++    .choice-option input[type="checkbox"] {
++      width: 1.25rem;
++      height: 1.25rem;
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .text-input,
++    .select-input {
++      width: 100%;
++      font: inherit;
++      font-size: max(1rem, 1em);
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1.5px solid #767676;
++      border-radius: 5px;
++      background-color: #fff;
++      color: var(--text);
++    }
++
++    @media (pointer: coarse) {
++      .text-input,
++      .select-input,
++      .submit-btn {
++        min-height: 52px;
++      }
++    }
++
++    .text-input:focus-visible,
++    .select-input:focus-visible,
++    .choice-option input:focus-visible,
++    .submit-btn:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .text-input:user-invalid,
++    .select-input:user-invalid {
++      border-color: #b71c1c;
++      background-color: #fff8f8;
++    }
++
++    .field-hint {
++      font-size: 0.875rem;
++      color: #5d4037;
++    }
++
++    .field-error {
++      font-size: 0.875rem;
++      color: #b71c1c;
++      font-weight: 600;
++    }
++
++    .submit-btn {
++      font: inherit;
++      font-size: max(1rem, 1em);
++      font-weight: 600;
++      min-height: 48px;
++      padding: 0.75rem 1.75rem;
++      border: none;
++      cursor: pointer;
++      width: 100%;
++    }
++
++    /* WebMCP Agentic Visual Feedback */
++    @keyframes tool-pulse {
++      0%, 100% { transform: scale(1); }
++      50% { transform: scale(1.02); }
++    }
++
++    form:tool-form-active {
++      outline: 2px dashed #0b57d0;
++      outline-offset: 6px;
++      background-color: rgba(11, 87, 208, 0.04);
++      border-radius: 6px;
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed #d32f2f;
++      outline-offset: 3px;
++      animation: tool-pulse 2s infinite;
++    }
++
++    .finder-results {
++      margin-top: 2rem;
++    }
++
++    .finder-status-banner {
++      margin-top: 1rem;
++      padding: 0.75rem 1rem;
++      border-radius: 6px;
++      background: #efebe9;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .result-card {
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      text-align: left;
++      border: 1px solid #e0e0e0;
++    }
++
++    .result-card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++    }
++
++    .result-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--primary);
++      font-size: 0.78rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 4px;
++      margin-right: 6px;
++      margin-bottom: 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +391,132 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="finder-section" aria-labelledby="coffee-finder-heading">
++      <h2 id="coffee-finder-heading">Interactive Coffee Finder &amp; Quick Order</h2>
++      <p class="finder-subtitle">Find your ideal artisanal brew or let your AI assistant discover and prepare your drink order.</p>
++
++      <search>
++        <form id="coffee-finder-form"
++              class="finder-form"
++              action="/menu/search"
++              method="GET"
++              aria-labelledby="coffee-finder-heading"
++              toolname="find-coffee"
++              tooldescription="Find matching coffee drinks on The Daily Grind menu and prepare a customized quick-order preview based on the user's flavor, roast, temperature, and dietary preferences."
++              toolautosubmit>
++
++          <div class="form-group">
++            <label for="flavor-notes">Flavor Notes or Drink Keyword</label>
++            <input type="search"
++                   id="flavor-notes"
++                   name="query"
++                   class="text-input"
++                   autocorrect="off"
++                   autocapitalize="none"
++                   spellcheck="false"
++                   enterkeyhint="search"
++                   aria-describedby="flavor-notes-hint flavor-notes-error"
++                   toolparamdescription="Flavor profile or drink keyword desired by the user, e.g., maple, caramel, smoky, citrus, oat, or espresso.">
++            <span id="flavor-notes-hint" class="field-hint">Optional: filter by tasting notes or drink name (2–50 characters if provided).</span>
++            <span id="flavor-notes-error" class="field-error" hidden></span>
++          </div>
++
++          <fieldset class="finder-fieldset"
++                    toolparamdescription="Preferred coffee roast intensity characterizing body and acidity.">
++            <legend>Roast Level <span aria-hidden="true">*</span></legend>
++            <div class="radio-group">
++              <div class="choice-option">
++                <input type="radio" id="roast-any" name="roast" value="any" checked required>
++                <label for="roast-any">Any Roast</label>
++              </div>
++              <div class="choice-option">
++                <input type="radio" id="roast-light" name="roast" value="light" required>
++                <label for="roast-light">Light &amp; Bright</label>
++              </div>
++              <div class="choice-option">
++                <input type="radio" id="roast-medium" name="roast" value="medium" required>
++                <label for="roast-medium">Medium &amp; Balanced</label>
++              </div>
++              <div class="choice-option">
++                <input type="radio" id="roast-dark" name="roast" value="dark" required>
++                <label for="roast-dark">Dark &amp; Bold</label>
++              </div>
++            </div>
++          </fieldset>
++
++          <fieldset class="finder-fieldset"
++                    toolparamdescription="Serving temperature preference for the beverage.">
++            <legend>Serving Temperature <span aria-hidden="true">*</span></legend>
++            <div class="radio-group">
++              <div class="choice-option">
++                <input type="radio" id="temp-any" name="temperature" value="any" checked required>
++                <label for="temp-any">Either Hot or Iced</label>
++              </div>
++              <div class="choice-option">
++                <input type="radio" id="temp-hot" name="temperature" value="hot" required>
++                <label for="temp-hot">Hot</label>
++              </div>
++              <div class="choice-option">
++                <input type="radio" id="temp-iced" name="temperature" value="iced" required>
++                <label for="temp-iced">Iced / Cold</label>
++              </div>
++            </div>
++          </fieldset>
++
++          <div class="form-group">
++            <label for="milk-choice">Milk or Base Preference</label>
++            <select id="milk-choice"
++                    name="milk"
++                    class="select-input"
++                    toolparamdescription="Dairy or plant-based milk base to pair with the coffee.">
++              <option value="any">Any / Barista's Default</option>
++              <option value="black">No Milk (Black)</option>
++              <option value="whole">Whole Dairy Milk</option>
++              <option value="skim">Skim Milk</option>
++              <option value="oat">Creamy Oat Milk</option>
++              <option value="almond">Roasted Almond Milk</option>
++              <option value="coconut">Coconut Milk</option>
++            </select>
++          </div>
++
++          <fieldset class="finder-fieldset"
++                    toolparamdescription="Cup size for quick-order preparation.">
++            <legend>Cup Size <span aria-hidden="true">*</span></legend>
++            <div class="radio-group">
++              <div class="choice-option">
++                <input type="radio" id="size-small" name="size" value="small" required>
++                <label for="size-small">Small (8 oz)</label>
++              </div>
++              <div class="choice-option">
++                <input type="radio" id="size-medium" name="size" value="medium" checked required>
++                <label for="size-medium">Medium (12 oz)</label>
++              </div>
++              <div class="choice-option">
++                <input type="radio" id="size-large" name="size" value="large" required>
++                <label for="size-large">Large (16 oz)</label>
++              </div>
++            </div>
++          </fieldset>
++
++          <div class="form-group">
++            <div class="choice-option">
++              <input type="checkbox"
++                     id="decaf-only"
++                     name="decaf"
++                     value="true"
++                     toolparamdescription="Set to true when the user wants Swiss Water Process decaffeinated coffee.">
++              <label for="decaf-only">Swiss Water Decaf Only</label>
++            </div>
++          </div>
++
++          <button type="submit" id="finder-submit-btn" class="btn submit-btn">Find My Coffee</button>
++        </form>
++      </search>
++
++      <div id="agent-tool-status" class="finder-status-banner" role="status" aria-live="polite" hidden></div>
++      <div id="finder-results" class="finder-results" role="region" aria-live="polite" aria-label="Coffee recommendations"></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +529,351 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const COFFEE_CATALOG = [
++        {
++          id: 'maple-oat-latte',
++          name: 'Maple Oat Latte',
++          roast: 'medium',
++          temperature: 'hot',
++          defaultMilk: 'oat',
++          allowBlack: false,
++          decafAvailable: true,
++          basePrice: 5.50,
++          notes: ['maple', 'oat', 'creamy', 'sweet', 'cinnamon', 'latte', 'autumn', 'seasonal'],
++          description: 'Creamy steamed oat milk blended with rich espresso and pure Vermont maple syrup.',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'dark-roast-espresso',
++          name: 'Dark Roast Espresso',
++          roast: 'dark',
++          temperature: 'hot',
++          defaultMilk: 'black',
++          allowBlack: true,
++          decafAvailable: true,
++          basePrice: 3.75,
++          notes: ['dark', 'bold', 'smoky', 'smokey', 'chocolate', 'espresso', 'strong', 'intense'],
++          description: 'Bold, smoky double-shot pulled from single-origin Sumatra beans for an unmistakable morning boost.',
++          image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: '18-hour-cold-brew',
++          name: '18-Hour Artisanal Cold Brew',
++          roast: 'medium',
++          temperature: 'iced',
++          defaultMilk: 'black',
++          allowBlack: true,
++          decafAvailable: false,
++          basePrice: 4.75,
++          notes: ['cold brew', 'smooth', 'cocoa', 'caramel', 'iced', 'refreshing', 'low acid'],
++          description: 'Steeped slow for 18 hours in cold filtered water for velvety chocolate notes and zero bitterness.',
++          image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'ethiopian-yirgacheffe-pour-over',
++          name: 'Ethiopian Yirgacheffe Pour-Over',
++          roast: 'light',
++          temperature: 'hot',
++          defaultMilk: 'black',
++          allowBlack: true,
++          decafAvailable: false,
++          basePrice: 4.95,
++          notes: ['light', 'bright', 'citrus', 'floral', 'bergamot', 'jasmine', 'tea-like', 'pour-over'],
++          description: 'Hand-poured single-origin light roast bursting with bright bergamot, jasmine, and lemon zest notes.',
++          image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'iced-brown-sugar-almond-shaken-espresso',
++          name: 'Iced Brown Sugar Almond Shaken Espresso',
++          roast: 'dark',
++          temperature: 'iced',
++          defaultMilk: 'almond',
++          allowBlack: false,
++          decafAvailable: true,
++          basePrice: 5.75,
++          notes: ['iced', 'brown sugar', 'almond', 'caramel', 'molasses', 'shaken', 'espresso', 'sweet'],
++          description: 'Dark espresso shaken vigorously with caramelized brown sugar and topped with roasted almond milk.',
++          image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80'
++        },
++        {
++          id: 'swiss-water-decaf-cortado',
++          name: 'Velvet Decaf Cortado',
++          roast: 'medium',
++          temperature: 'hot',
++          defaultMilk: 'whole',
++          allowBlack: false,
++          decafAvailable: true,
++          basePrice: 4.50,
++          notes: ['decaf', 'cortado', 'nutty', 'hazelnut', 'balanced', 'smooth', 'milk'],
++          description: 'Equal parts Swiss Water Process decaf espresso and silky micro-foamed milk with toasted hazelnut undertones.',
++          image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80'
++        }
++      ];
++
++      const SIZE_UPCHARGE = { small: -0.50, medium: 0, large: 0.75 };
++
++      const form = document.getElementById('coffee-finder-form');
++      const queryInput = document.getElementById('flavor-notes');
++      const queryError = document.getElementById('flavor-notes-error');
++      const resultsContainer = document.getElementById('finder-results');
++      const statusBanner = document.getElementById('agent-tool-status');
++
++      function validateFormFields() {
++        const errors = [];
++        const rawQuery = queryInput.value.trim();
++
++        if (rawQuery.length === 1 || rawQuery.length > 50) {
++          const message = 'Please enter between 2 and 50 characters for flavor notes, or leave blank.';
++          queryInput.setCustomValidity(message);
++          queryInput.setAttribute('aria-invalid', 'true');
++          queryError.textContent = message;
++          queryError.hidden = false;
++          errors.push({ field: 'query', message, element: queryInput });
++        } else {
++          queryInput.setCustomValidity('');
++          queryInput.removeAttribute('aria-invalid');
++          queryError.textContent = '';
++          queryError.hidden = true;
++        }
++
++        return errors;
++      }
++
++      queryInput.addEventListener('blur', () => {
++        if (queryInput.value.length > 0) {
++          validateFormFields();
++        }
++      });
++
++      queryInput.addEventListener('input', () => {
++        if (queryInput.getAttribute('aria-invalid') === 'true') {
++          queryInput.setCustomValidity('');
++          queryInput.removeAttribute('aria-invalid');
++          queryError.textContent = '';
++          queryError.hidden = true;
++        }
++      });
++
++      function matchCoffees(formData) {
++        const query = (formData.get('query') || '').toString().trim().toLowerCase();
++        const roast = (formData.get('roast') || 'any').toString();
++        const temperature = (formData.get('temperature') || 'any').toString();
++        const milk = (formData.get('milk') || 'any').toString();
++        const size = (formData.get('size') || 'medium').toString();
++        const decafOnly = formData.get('decaf') === 'true';
++
++        const scored = COFFEE_CATALOG.map((item) => {
++          if (decafOnly && !item.decafAvailable) {
++            return null;
++          }
++          if (milk === 'black' && !item.allowBlack) {
++            return null;
++          }
++
++          let score = 10;
++          if (roast !== 'any') {
++            if (item.roast === roast) {
++              score += 5;
++            } else {
++              return null;
++            }
++          }
++          if (temperature !== 'any') {
++            if (item.temperature === temperature) {
++              score += 5;
++            } else {
++              return null;
++            }
++          }
++          if (milk !== 'any' && item.defaultMilk === milk) {
++            score += 3;
++          }
++          if (query) {
++            const haystack = `${item.name} ${item.description} ${item.notes.join(' ')}`.toLowerCase();
++            const terms = query.split(/\s+/).filter(Boolean);
++            const matchedTerms = terms.filter((t) => haystack.includes(t));
++            if (matchedTerms.length === 0) {
++              return null;
++            }
++            score += matchedTerms.length * 4;
++          }
++
++          const upcharge = SIZE_UPCHARGE[size] ?? 0;
++          const configuredPrice = (item.basePrice + upcharge).toFixed(2);
++          const selectedMilkLabel = milk === 'any' ? item.defaultMilk : milk;
++
++          return {
++            ...item,
++            score,
++            configuredSize: size,
++            configuredMilk: selectedMilkLabel,
++            configuredDecaf: decafOnly,
++            configuredPrice
++          };
++        }).filter(Boolean);
++
++        scored.sort((a, b) => b.score - a.score);
++        return scored;
++      }
++
++      function renderMatches(matches, formData) {
++        resultsContainer.replaceChildren();
++
++        const heading = document.createElement('h3');
++        heading.style.textAlign = 'center';
++        heading.style.color = 'var(--primary)';
++        heading.style.marginBottom = '1rem';
++
++        if (matches.length === 0) {
++          heading.textContent = 'No exact matches found — try broadening your roast or flavor filters.';
++          resultsContainer.appendChild(heading);
++          return;
++        }
++
++        heading.textContent = `Recommended Brews (${matches.length} ${matches.length === 1 ? 'Match' : 'Matches'})`;
++        resultsContainer.appendChild(heading);
++
++        const grid = document.createElement('div');
++        grid.className = 'grid';
++
++        for (const item of matches) {
++          const card = document.createElement('article');
++          card.className = 'card result-card';
++
++          const topDiv = document.createElement('div');
++
++          const img = document.createElement('img');
++          img.src = item.image;
++          img.alt = item.name;
++          img.loading = 'lazy';
++          topDiv.appendChild(img);
++
++          const title = document.createElement('h3');
++          title.textContent = item.name;
++          topDiv.appendChild(title);
++
++          const badgesDiv = document.createElement('div');
++          const badges = [
++            `${item.roast.charAt(0).toUpperCase() + item.roast.slice(1)} Roast`,
++            item.temperature === 'iced' ? 'Iced' : 'Hot',
++            `Milk: ${item.configuredMilk}`,
++            `Size: ${item.configuredSize}`
++          ];
++          if (item.configuredDecaf) {
++            badges.push('Swiss Water Decaf');
++          }
++          for (const badgeText of badges) {
++            const span = document.createElement('span');
++            span.className = 'result-badge';
++            span.textContent = badgeText;
++            badgesDiv.appendChild(span);
++          }
++          topDiv.appendChild(badgesDiv);
++
++          const desc = document.createElement('p');
++          desc.textContent = item.description;
++          topDiv.appendChild(desc);
++
++          const bottomDiv = document.createElement('div');
++          bottomDiv.style.marginTop = '12px';
++
++          const priceEl = document.createElement('p');
++          priceEl.style.fontWeight = 'bold';
++          priceEl.style.color = 'var(--primary)';
++          priceEl.textContent = `$${item.configuredPrice}`;
++          bottomDiv.appendChild(priceEl);
++
++          const orderBtn = document.createElement('a');
++          orderBtn.className = 'btn';
++          const params = new URLSearchParams({
++            drink: item.id,
++            size: item.configuredSize,
++            milk: item.configuredMilk,
++            decaf: String(item.configuredDecaf)
++          });
++          orderBtn.href = `/order-online?${params.toString()}`;
++          orderBtn.textContent = `Quick Order (${item.configuredSize})`;
++          bottomDiv.appendChild(orderBtn);
++
++          card.appendChild(topDiv);
++          card.appendChild(bottomDiv);
++          grid.appendChild(card);
++        }
++
++        resultsContainer.appendChild(grid);
++      }
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++
++        const validationErrors = validateFormFields();
++        if (validationErrors.length > 0) {
++          validationErrors[0].element.focus();
++          if (event.agentInvoked && typeof event.respondWith === 'function') {
++            const errorString =
++              'Validation failed: ' +
++              validationErrors.map((err) => `${err.field} (${err.message})`).join(', ');
++            event.respondWith(Promise.resolve(errorString));
++          }
++          return;
++        }
++
++        const formData = new FormData(form);
++        const matches = matchCoffees(formData);
++        renderMatches(matches, formData);
++
++        if (event.agentInvoked && typeof event.respondWith === 'function') {
++          const responsePayload =
++            matches.length > 0
++              ? {
++                  status: 'success',
++                  matchCount: matches.length,
++                  recommendations: matches.map((m) => ({
++                    id: m.id,
++                    name: m.name,
++                    roast: m.roast,
++                    temperature: m.temperature,
++                    milk: m.configuredMilk,
++                    size: m.configuredSize,
++                    decaf: m.configuredDecaf,
++                    price: `$${m.configuredPrice}`,
++                    description: m.description,
++                    quickOrderUrl: `/order-online?drink=${encodeURIComponent(m.id)}&size=${encodeURIComponent(m.configuredSize)}&milk=${encodeURIComponent(m.configuredMilk)}&decaf=${m.configuredDecaf}`
++                  }))
++                }
++              : {
++                  status: 'no_matches',
++                  matchCount: 0,
++                  message: 'No coffee drinks matched all criteria. Try setting roast or temperature to "any" or clearing the flavor query.'
++                };
++
++          event.respondWith(Promise.resolve(JSON.stringify(responsePayload)));
++        }
++      });
++
++      // WebMCP Lifecycle Event Listeners (with Chrome 156+ document.modelContext and window fallback)
++      const targetFor = (type, listener, options) =>
++        (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++          .addEventListener(type, listener, options);
++
++      targetFor('toolactivated', ({ toolName }) => {
++        if (toolName === 'find-coffee') {
++          statusBanner.textContent = 'AI Assistant is searching for your ideal coffee configuration...';
++          statusBanner.hidden = false;
++        }
++      });
++
++      targetFor('toolcancel', ({ toolName }) => {
++        if (toolName === 'find-coffee') {
++          statusBanner.textContent = 'AI Assistant coffee search was cancelled.';
++          statusBanner.hidden = false;
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,79 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .newsletter {
++      max-width: 440px;
++      margin: 0 auto 28px;
++      text-align: left;
++    }
++
++    .newsletter h2 {
++      font-size: 1.25rem;
++    }
++
++    .newsletter label {
++      display: block;
++      margin-block: 12px 4px;
++      font-weight: 600;
++    }
++
++    .newsletter-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .newsletter input,
++    .newsletter button {
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      font: inherit;
++    }
++
++    .newsletter input {
++      flex: 1 1 220px;
++      min-width: 0;
++      width: 100%;
++      background: white;
++      color: var(--text);
++    }
++
++    .newsletter button {
++      background: var(--primary);
++      color: white;
++      cursor: pointer;
++    }
++
++    .newsletter button:hover {
++      background: var(--text);
++    }
++
++    .newsletter :is(input, button):focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    /* Never display an error while the email field is being edited. */
++    .newsletter input:is(:user-invalid, [aria-invalid="true"]):not(:focus) {
++      border-color: #9b2020;
++      background: #fff3f3;
++    }
++
++    .newsletter-error {
++      color: #9b2020;
++      font-size: 0.9rem;
++      margin-top: 6px;
++    }
++
++    .newsletter-status {
++      margin-top: 6px;
++      font-size: 0.9rem;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +268,22 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <form class="newsletter" method="post" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Fresh news, straight to your inbox</h2>
++      <p>Coffee news and seasonal favorites from The Daily Grind.</p>
++      <label for="newsletter-email">Email address (required)</label>
++      <div class="newsletter-controls">
++        <input id="newsletter-email" name="email" type="email" required
++          autocomplete="email" autocorrect="off" autocapitalize="none" spellcheck="false"
++          placeholder="you@example.com" aria-invalid="false">
++        <button type="submit">Subscribe</button>
++      </div>
++      <p id="newsletter-error" class="newsletter-error" hidden>Please enter a valid email address, such as you@example.com.</p>
++      <p class="newsletter-status" role="status"></p>
++      <noscript><p>Newsletter signup requires JavaScript.</p></noscript>
++    </form>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +291,56 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const newsletter = document.querySelector('.newsletter');
++    const email = document.getElementById('newsletter-email');
++    const emailError = document.getElementById('newsletter-error');
++    const signupStatus = newsletter.querySelector('[role="status"]');
++
++    // Keep native email constraints, but control when feedback appears.
++    newsletter.noValidate = true;
++
++    function setEmailError(show) {
++      email.setAttribute('aria-invalid', String(show));
++      emailError.hidden = !show;
++      if (show) {
++        email.setAttribute('aria-describedby', emailError.id);
++      } else {
++        email.removeAttribute('aria-describedby');
++      }
++    }
++
++    email.addEventListener('blur', () => {
++      const invalid = !email.validity.valid;
++      setEmailError(invalid);
++      signupStatus.textContent = invalid ? emailError.textContent : '';
++    });
++
++    email.addEventListener('focus', () => {
++      setEmailError(false);
++      signupStatus.textContent = '';
++    });
++
++    email.addEventListener('input', () => {
++      setEmailError(false);
++      signupStatus.textContent = '';
++    });
++
++    newsletter.addEventListener('submit', (event) => {
++      event.preventDefault();
++      if (!email.validity.valid) {
++        email.focus();
++        setEmailError(true);
++        return;
++      }
++
++      setEmailError(false);
++      // Replace with a newsletter provider request when one is configured.
++      signupStatus.textContent = 'Newsletter signup is not available yet. Please check back soon.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

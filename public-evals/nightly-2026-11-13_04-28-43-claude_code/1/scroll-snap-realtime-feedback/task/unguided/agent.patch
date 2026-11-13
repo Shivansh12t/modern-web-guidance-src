@@ -1,0 +1,325 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,130 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Gallery Carousel */
++    .gallery-section {
++      margin-bottom: 48px;
++    }
++
++    .gallery-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    #gallery {
++      position: relative;
++      display: flex;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-behavior: smooth;
++      overscroll-behavior-x: contain;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
++      scrollbar-width: none;
++      outline-offset: 4px;
++    }
++
++    #gallery::-webkit-scrollbar {
++      display: none;
++    }
++
++    #gallery:focus-visible {
++      outline: 3px solid var(--accent);
++    }
++
++    .gallery-item {
++      position: relative;
++      flex: 0 0 100%;
++      scroll-snap-align: center;
++      scroll-snap-stop: always;
++      aspect-ratio: 16 / 9;
++      max-height: 520px;
++      margin: 0;
++      background: var(--secondary);
++    }
++
++    .gallery-item img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .gallery-item figcaption {
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: 0;
++      padding: 14px 20px;
++      color: white;
++      background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
++      font-size: 1rem;
++    }
++
++    .gallery-thumbs {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 14px;
++      list-style: none;
++    }
++
++    .gallery-thumb {
++      width: 72px;
++      height: 48px;
++      padding: 0;
++      border: 3px solid transparent;
++      border-radius: 6px;
++      overflow: hidden;
++      cursor: pointer;
++      background: var(--secondary);
++      opacity: 0.6;
++      transition: opacity 0.2s, border-color 0.2s, transform 0.2s;
++    }
++
++    .gallery-thumb img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .gallery-thumb:hover,
++    .gallery-thumb:focus-visible {
++      opacity: 0.9;
++    }
++
++    .gallery-thumb:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .gallery-thumb.pending {
++      opacity: 0.85;
++      border-color: var(--accent);
++      border-style: dashed;
++      transform: translateY(-2px);
++    }
++
++    .gallery-thumb.active {
++      opacity: 1;
++      border-color: var(--primary);
++      border-style: solid;
++      transform: none;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      #gallery {
++        scroll-behavior: auto;
++      }
++
++      .gallery-thumb {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +296,51 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="gallery-section" aria-labelledby="gallery-heading">
++      <h2 id="gallery-heading">Inside The Daily Grind</h2>
++      <div id="gallery" tabindex="0" aria-roledescription="carousel" aria-label="Photo gallery">
++        <figure class="gallery-item" id="gallery-item-1" role="group" aria-roledescription="slide" aria-label="1 of 5">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80" alt="A freshly poured cup of coffee on a wooden table" width="1200" height="675">
++          <figcaption>Freshly poured, every morning</figcaption>
++        </figure>
++        <figure class="gallery-item" id="gallery-item-2" role="group" aria-roledescription="slide" aria-label="2 of 5">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1200&q=80" alt="Close-up of roasted coffee beans" loading="lazy" width="1200" height="675">
++          <figcaption>Small-batch roasted beans</figcaption>
++        </figure>
++        <figure class="gallery-item" id="gallery-item-3" role="group" aria-roledescription="slide" aria-label="3 of 5">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=1200&q=80" alt="Latte with leaf-shaped foam art" loading="lazy" width="1200" height="675">
++          <figcaption>Handcrafted latte art</figcaption>
++        </figure>
++        <figure class="gallery-item" id="gallery-item-4" role="group" aria-roledescription="slide" aria-label="4 of 5">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1200&q=80" alt="Barista pouring hot water over a coffee filter" loading="lazy" width="1200" height="675">
++          <figcaption>Slow pour-over brewing</figcaption>
++        </figure>
++        <figure class="gallery-item" id="gallery-item-5" role="group" aria-roledescription="slide" aria-label="5 of 5">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80" alt="Warm, sunlit café interior with seating" loading="lazy" width="1200" height="675">
++          <figcaption>A cozy spot to unwind</figcaption>
++        </figure>
++      </div>
++      <ul class="gallery-thumbs" aria-label="Choose a photo">
++        <li><button type="button" class="gallery-thumb active" data-index="0" aria-controls="gallery-item-1" aria-label="Show slide 1: Freshly poured, every morning" aria-current="true">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=160&h=110&q=60" alt="" loading="lazy">
++        </button></li>
++        <li><button type="button" class="gallery-thumb" data-index="1" aria-controls="gallery-item-2" aria-label="Show slide 2: Small-batch roasted beans">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=160&h=110&q=60" alt="" loading="lazy">
++        </button></li>
++        <li><button type="button" class="gallery-thumb" data-index="2" aria-controls="gallery-item-3" aria-label="Show slide 3: Handcrafted latte art">
++          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=160&h=110&q=60" alt="" loading="lazy">
++        </button></li>
++        <li><button type="button" class="gallery-thumb" data-index="3" aria-controls="gallery-item-4" aria-label="Show slide 4: Slow pour-over brewing">
++          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=160&h=110&q=60" alt="" loading="lazy">
++        </button></li>
++        <li><button type="button" class="gallery-thumb" data-index="4" aria-controls="gallery-item-5" aria-label="Show slide 5: A cozy spot to unwind">
++          <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=160&h=110&q=60" alt="" loading="lazy">
++        </button></li>
++      </ul>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +371,138 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const track = document.getElementById('gallery');
++      if (!track) return;
++      const slides = Array.from(track.querySelectorAll('.gallery-item'));
++      const thumbs = Array.from(document.querySelectorAll('.gallery-thumb'));
++      if (!slides.length) return;
++
++      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const nativeSnapEvents = 'onscrollsnapchanging' in window && 'onscrollsnapchange' in window;
++      const hasScrollEnd = 'onscrollend' in window;
++      track.dataset.snapMode = nativeSnapEvents ? 'native' : 'fallback';
++
++      let activeIndex = 0;
++      let pendingIndex = -1;
++      let settleTimer = 0;
++
++      function clamp(i) {
++        return Math.max(0, Math.min(slides.length - 1, i));
++      }
++
++      // Index of the slide whose center is closest to the scroller's center.
++      function nearestIndex() {
++        const center = track.scrollLeft + track.clientWidth / 2;
++        let best = 0;
++        let bestDist = Infinity;
++        slides.forEach(function (slide, i) {
++          const d = Math.abs(slide.offsetLeft + slide.offsetWidth / 2 - center);
++          if (d < bestDist) { bestDist = d; best = i; }
++        });
++        return best;
++      }
++
++      function setPending(i) {
++        i = i < 0 ? -1 : clamp(i);
++        // A pending marker on the already-active slide adds no information.
++        if (i === activeIndex) i = -1;
++        if (i === pendingIndex) return;
++        pendingIndex = i;
++        thumbs.forEach(function (t, n) { t.classList.toggle('pending', n === i); });
++      }
++
++      function setActive(i) {
++        i = clamp(i);
++        activeIndex = i;
++        setPending(-1);
++        thumbs.forEach(function (t, n) {
++          const on = n === i;
++          t.classList.toggle('active', on);
++          if (on) t.setAttribute('aria-current', 'true');
++          else t.removeAttribute('aria-current');
++        });
++        slides.forEach(function (s, n) { s.classList.toggle('active', n === i); });
++      }
++
++      function goTo(i) {
++        i = clamp(i);
++        const slide = slides[i];
++        const left = slide.offsetLeft - (track.clientWidth - slide.offsetWidth) / 2;
++        setPending(i);
++        track.scrollTo({ left: left, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
++        // If no scroll is needed (already in place), settle immediately.
++        if (Math.abs(track.scrollLeft - left) < 1) settle();
++      }
++
++      function settle() {
++        clearTimeout(settleTimer);
++        setActive(nearestIndex());
++      }
++
++      if (nativeSnapEvents) {
++        // Native: preview target while scrolling, promote when the snap is committed.
++        track.addEventListener('scrollsnapchanging', function (e) {
++          const idx = slides.indexOf(e.snapTargetInline);
++          if (idx !== -1) setPending(idx);
++        });
++        track.addEventListener('scrollsnapchange', function (e) {
++          const idx = slides.indexOf(e.snapTargetInline);
++          setActive(idx !== -1 ? idx : nearestIndex());
++        });
++        // Safety net: if a scroll ends without a snapchange (e.g. snapped back to the
++        // same slide), make sure no stale pending marker is left behind.
++        if (hasScrollEnd) {
++          track.addEventListener('scrollend', function () {
++            if (pendingIndex !== -1) settle();
++          });
++        }
++      } else {
++        // Fallback: derive the likely snap target from scroll position mid-scroll,
++        // then promote once scrolling settles (scrollend, or a debounce timer).
++        track.addEventListener('scroll', function () {
++          setPending(nearestIndex());
++          if (!hasScrollEnd) {
++            clearTimeout(settleTimer);
++            settleTimer = setTimeout(settle, 150);
++          }
++        }, { passive: true });
++        if (hasScrollEnd) track.addEventListener('scrollend', settle);
++      }
++
++      thumbs.forEach(function (thumb) {
++        thumb.addEventListener('click', function () {
++          goTo(Number(thumb.dataset.index));
++        });
++      });
++
++      track.addEventListener('keydown', function (e) {
++        let target = null;
++        if (e.key === 'ArrowRight') target = activeIndex + 1;
++        else if (e.key === 'ArrowLeft') target = activeIndex - 1;
++        else if (e.key === 'Home') target = 0;
++        else if (e.key === 'End') target = slides.length - 1;
++        if (target === null) return;
++        e.preventDefault();
++        goTo(target);
++      });
++
++      // Keep the active slide aligned when the layout width changes.
++      let resizeTimer = 0;
++      window.addEventListener('resize', function () {
++        clearTimeout(resizeTimer);
++        resizeTimer = setTimeout(function () {
++          const slide = slides[activeIndex];
++          track.scrollTo({ left: slide.offsetLeft - (track.clientWidth - slide.offsetWidth) / 2, behavior: 'auto' });
++        }, 100);
++      });
++
++      setActive(nearestIndex());
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

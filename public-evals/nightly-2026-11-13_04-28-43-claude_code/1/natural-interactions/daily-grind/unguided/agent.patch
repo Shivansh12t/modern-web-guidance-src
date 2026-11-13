@@ -1,0 +1,992 @@
+diff --git a/index.html b/index.html
+index 4737a55..2af7553 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,16 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #e68a00;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* Focus ring colours: dark ring on light surfaces, amber ring on dark surfaces */
++      --focus-on-light: #4e342e;
++      --focus-on-dark: #ffab40;
++      --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+     }
+ 
+     * {
+@@ -27,12 +33,43 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* ---------- Global focus treatment ----------
++       Visible keyboard focus everywhere; mouse clicks don't leave rings behind. */
++    :focus-visible {
++      outline: 3px solid var(--focus-on-light);
++      outline-offset: 3px;
++    }
++
++    :focus:not(:focus-visible) {
++      outline: none;
++    }
++
++    .skip-link {
++      position: absolute;
++      left: 1rem;
++      top: -100px;
++      z-index: 2000;
++      background: var(--accent);
++      color: var(--primary-dark);
++      padding: 0.5rem 1rem;
++      border-radius: 4px;
++      font-weight: 600;
++      text-decoration: none;
++      transition: top 0.2s var(--ease-out);
++    }
++
++    .skip-link:focus {
++      top: 0.75rem;
++    }
++
++    /* ---------- Navigation ---------- */
+     nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -44,26 +81,62 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      color: white;
++      text-decoration: none;
++      border-radius: 4px;
+     }
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.25rem 0.5rem;
+       list-style: none;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+     nav a {
++      position: relative;
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      padding: 6px 10px;
++      border-radius: 4px;
++      transition: color 0.2s, background-color 0.2s, transform 0.1s;
++    }
++
++    /* Animated underline for regular nav links */
++    nav ul a:not(.logout-link)::after {
++      content: "";
++      position: absolute;
++      left: 10px;
++      right: 10px;
++      bottom: 2px;
++      height: 2px;
++      background: currentColor;
++      transform: scaleX(0);
++      transform-origin: left;
++      transition: transform 0.25s var(--ease-out);
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
++      background-color: rgba(255, 255, 255, 0.08);
++    }
++
++    nav ul a:not(.logout-link):hover::after,
++    nav ul a:not(.logout-link):focus-visible::after,
++    nav a[aria-current="page"]::after {
++      transform: scaleX(1);
++    }
++
++    nav a:active {
++      transform: translateY(1px);
++      background-color: rgba(255, 255, 255, 0.16);
++    }
++
++    nav :focus-visible {
++      outline-color: var(--focus-on-dark);
+     }
+ 
+     .logout-link {
+@@ -72,7 +145,18 @@
+       border-radius: 4px;
+     }
+ 
+-    /* Hero Section */
++    nav .logout-link:hover,
++    nav .logout-link:focus-visible {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
++    nav .logout-link:active {
++      background: var(--accent-dark);
++      border-color: var(--accent-dark);
++    }
++
++    /* ---------- Hero ---------- */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -93,26 +177,214 @@
+       margin-bottom: 1rem;
+     }
+ 
+-    /* Content Sections */
++    .hero .btn:focus-visible {
++      outline-color: var(--focus-on-dark);
++    }
++
++    .hero .btn {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 600;
++    }
++
++    .hero .btn:hover,
++    .hero .btn:focus-visible {
++      background: #ffc272;
++    }
++
++    .hero .btn:active {
++      background: var(--accent-dark);
++    }
++
++    /* ---------- Content ---------- */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
++    /* ---------- Buttons ---------- */
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border: 0;
++      border-radius: 5px;
++      margin-top: 15px;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
++    }
++
++    .btn:hover,
++    .btn:focus-visible {
++      background: var(--primary-dark);
++      box-shadow: 0 4px 12px rgba(62, 39, 35, 0.3);
++    }
++
++    .btn:active {
++      transform: scale(0.96);
++      box-shadow: 0 1px 3px rgba(62, 39, 35, 0.3);
++    }
++
++    .btn-ghost {
++      background: transparent;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 2px var(--primary);
++    }
++
++    .btn-ghost:hover,
++    .btn-ghost:focus-visible {
++      background: var(--secondary);
++      box-shadow: inset 0 0 0 2px var(--primary);
++    }
++
++    /* ---------- Seasonal carousel ---------- */
++    .section-head {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 1rem;
++      flex-wrap: wrap;
++    }
++
++    .carousel-controls {
++      display: flex;
++      gap: 0.5rem;
++    }
++
++    .carousel-btn {
++      width: 44px;
++      height: 44px;
++      border-radius: 50%;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font-size: 1.25rem;
++      line-height: 1;
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      place-items: center;
++      cursor: pointer;
++      transition: background-color 0.2s, color 0.2s, transform 0.1s, opacity 0.2s;
++    }
++
++    .carousel-btn:hover:not(:disabled),
++    .carousel-btn:focus-visible:not(:disabled) {
++      background: var(--primary);
++      color: white;
++    }
++
++    .carousel-btn:active:not(:disabled) {
++      transform: scale(0.9);
++      background: var(--primary-dark);
++      color: white;
++    }
++
++    .carousel-btn:disabled {
++      opacity: 0.35;
++      cursor: not-allowed;
++    }
++
++    .carousel-hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 0.25rem;
++    }
++
++    .carousel-track {
++      display: flex;
+       gap: 20px;
+-      margin-top: 20px;
++      list-style: none;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-padding-inline: 4px;
++      overscroll-behavior-x: contain;
++      -webkit-overflow-scrolling: touch;
++      padding: 12px 4px 20px;
++      margin-top: 12px;
++      border-radius: 8px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++      cursor: grab;
++    }
++
++    .carousel-track.is-dragging {
++      cursor: grabbing;
++      scroll-snap-type: none;
++      user-select: none;
++    }
++
++    .carousel-track.is-dragging * {
++      pointer-events: none;
++    }
++
++    .carousel-track:focus-visible {
++      outline-offset: 0;
++    }
++
++    .carousel-track>li {
++      flex: 0 0 calc((100% - 40px) / 3);
++      min-width: 240px;
++      scroll-snap-align: start;
++      display: flex;
++    }
++
++    @media (max-width: 800px) {
++      .carousel-track>li {
++        flex-basis: 70%;
++      }
+     }
+ 
+     .card {
++      position: relative;
+       background: white;
+-      padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      overflow: hidden;
++      width: 100%;
++      transition: transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
++    }
++
++    .card:hover,
++    .card:focus-within {
++      transform: translateY(-4px);
++      box-shadow: 0 10px 24px rgba(62, 39, 35, 0.18);
++    }
++
++    .card-media {
++      aspect-ratio: 4 / 3;
++      background: linear-gradient(135deg, var(--secondary), #a1887f);
++      overflow: hidden;
++    }
++
++    .card-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.4s var(--ease-out);
++    }
++
++    .card:hover .card-media img,
++    .card:focus-within .card-media img {
++      transform: scale(1.05);
++    }
++
++    .card-body {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .card-body p {
++      flex: 1;
+     }
+ 
+     .card h3 {
+@@ -120,27 +392,121 @@
+       color: var(--primary);
+     }
+ 
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++    .card .price {
++      font-weight: 700;
++      color: #6d4c41;
++      margin-top: 8px;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .card .btn {
++      align-self: center;
+     }
+ 
+-    :where(a, button):focus,
+-    :where(a, button):focus-visible {
+-      outline: none;
+-      box-shadow: none;
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* ---------- Drink detail dialog ---------- */
++    .drink-detail {
++      border: 0;
++      padding: 0;
++      margin: auto;
++      width: min(560px, calc(100vw - 32px));
++      max-height: calc(100vh - 32px);
++      border-radius: 14px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
++      overflow: hidden;
+     }
+ 
++    .drink-detail::backdrop {
++      background: rgba(30, 18, 15, 0.55);
++      backdrop-filter: blur(2px);
++    }
++
++    .drink-detail-inner {
++      max-height: calc(100vh - 32px);
++      overflow-y: auto;
++    }
++
++    .drink-detail-media {
++      aspect-ratio: 16 / 9;
++      background: linear-gradient(135deg, var(--secondary), #a1887f);
++    }
++
++    .drink-detail-media img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .drink-detail-content {
++      padding: 24px;
++    }
++
++    .drink-detail h2 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++      padding-right: 48px;
++    }
++
++    .drink-detail dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 6px 16px;
++      margin: 16px 0;
++      font-size: 0.95rem;
++    }
++
++    .drink-detail dt {
++      font-weight: 700;
++      color: #6d4c41;
++    }
++
++    .drink-detail-actions {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .dialog-close {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      width: 40px;
++      height: 40px;
++      border-radius: 50%;
++      border: 0;
++      background: rgba(255, 255, 255, 0.92);
++      color: var(--primary);
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
++      transition: background-color 0.2s, color 0.2s, transform 0.1s;
++    }
++
++    .dialog-close:hover,
++    .dialog-close:focus-visible {
++      background: var(--primary);
++      color: white;
++    }
++
++    .dialog-close:active {
++      transform: scale(0.9);
++    }
++
++    /* ---------- Footer ---------- */
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,18 +519,51 @@
+     }
+ 
+     .footer-links a {
+-      margin: 0 10px;
++      display: inline-block;
++      margin: 0 6px;
++      padding: 2px 4px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      border-radius: 3px;
++      transition: color 0.2s, background-color 0.2s;
++    }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--primary-dark);
++      text-decoration: underline;
++      text-underline-offset: 3px;
++      background-color: rgba(255, 255, 255, 0.5);
++    }
++
++    .footer-links a:active {
++      background-color: rgba(255, 255, 255, 0.85);
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++
++      *,
++      *::before,
++      *::after {
++        transition-duration: 0.01ms !important;
++        animation-duration: 0.01ms !important;
++        scroll-behavior: auto !important;
++      }
++
++      .card:hover,
++      .card:focus-within {
++        transform: none;
++      }
+     }
+   </style>
+ </head>
+ 
+ <body>
++  <a class="skip-link" href="#main">Skip to main content</a>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++  <nav aria-label="Primary">
++    <a href="/" class="logo">THE DAILY GRIND</a>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -180,26 +579,110 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++  <main class="container" id="main" tabindex="-1">
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-head">
++        <div>
++          <h2 id="seasonal-heading">Seasonal Favorites</h2>
++          <p class="carousel-hint" id="carousel-hint">Swipe, drag, or use the arrow buttons to browse. When the list is
++            focused, the Left and Right arrow keys scroll it.</p>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-controls">
++          <button type="button" class="carousel-btn" data-carousel-prev aria-controls="seasonal-track"
++            aria-label="Previous drinks">&#8592;</button>
++          <button type="button" class="carousel-btn" data-carousel-next aria-controls="seasonal-track"
++            aria-label="Next drinks">&#8594;</button>
+         </div>
+       </div>
++
++      <ul class="carousel-track" id="seasonal-track" tabindex="0" aria-label="Seasonal drinks"
++        aria-describedby="carousel-hint">
++        <li>
++          <article class="card" data-drink data-detail-url="/menu/seasonal" data-price="$5.75"
++            data-size="12, 16, 20 oz" data-caffeine="Medium" data-notes="Maple, toasted oat, caramel"
++            data-long="Our house espresso pulled over steamed oat milk and finished with pure Vermont maple syrup and a dusting of cinnamon. Naturally dairy-free and sweetened only with maple.">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=800&q=70"
++                alt="Latte with foam art in a ceramic cup" loading="lazy" onerror="this.remove()">
++            </div>
++            <div class="card-body">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <p class="price">$5.75</p>
++              <button type="button" class="btn" data-open-detail aria-haspopup="dialog">View Details<span
++                  class="sr-only"> for Maple Oat Latte</span></button>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card" data-drink data-detail-url="/menu/espresso" data-price="$3.25"
++            data-size="Single, double" data-caffeine="High" data-notes="Dark chocolate, smoke, molasses"
++            data-long="A double shot of our darkest roast — beans roasted just past second crack for a bold, syrupy body with low acidity. Served straight or as a base for any milk drink.">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=800&q=70"
++                alt="Shot of espresso in a small glass" loading="lazy" onerror="this.remove()">
++            </div>
++            <div class="card-body">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <p class="price">$3.25</p>
++              <button type="button" class="btn" data-open-detail aria-haspopup="dialog">View Details<span
++                  class="sr-only"> for Dark Roast Espresso</span></button>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card" data-drink data-detail-url="/menu/cold-brew" data-price="$4.50"
++            data-size="16, 24 oz" data-caffeine="High" data-notes="Cocoa, cherry, brown sugar"
++            data-long="Coarse-ground single-origin beans steeped in cold filtered water for 18 hours, then filtered twice for a silky, low-acid cup. Served over ice with an optional splash of cream.">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=70"
++                alt="Iced coffee in a tall glass" loading="lazy" onerror="this.remove()">
++            </div>
++            <div class="card-body">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <p class="price">$4.50</p>
++              <button type="button" class="btn" data-open-detail aria-haspopup="dialog">View Details<span
++                  class="sr-only"> for Cold Brew</span></button>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card" data-drink data-detail-url="/menu/pumpkin-chai" data-price="$5.50"
++            data-size="12, 16, 20 oz" data-caffeine="Low" data-notes="Pumpkin, cardamom, clove, ginger"
++            data-long="House-brewed black tea chai simmered with real pumpkin purée and warming spices, steamed with your choice of milk and topped with nutmeg.">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=70"
++                alt="Spiced latte in a mug on a wooden table" loading="lazy" onerror="this.remove()">
++            </div>
++            <div class="card-body">
++              <h3>Pumpkin Chai</h3>
++              <p>Spiced black tea and real pumpkin, steamed to cozy perfection.</p>
++              <p class="price">$5.50</p>
++              <button type="button" class="btn" data-open-detail aria-haspopup="dialog">View Details<span
++                  class="sr-only"> for Pumpkin Chai</span></button>
++            </div>
++          </article>
++        </li>
++        <li>
++          <article class="card" data-drink data-detail-url="/menu/cinnamon-mocha" data-price="$5.95"
++            data-size="12, 16, 20 oz" data-caffeine="Medium" data-notes="Cinnamon, dark cocoa, vanilla"
++            data-long="Espresso and house-made dark chocolate sauce with a swirl of Ceylon cinnamon, finished with whipped cream and cocoa nibs.">
++            <div class="card-media">
++              <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=800&q=70"
++                alt="Cup of coffee with a dark rich surface" loading="lazy" onerror="this.remove()">
++            </div>
++            <div class="card-body">
++              <h3>Cinnamon Mocha</h3>
++              <p>Rich dark chocolate and espresso with a warm cinnamon kick.</p>
++              <p class="price">$5.95</p>
++              <button type="button" class="btn" data-open-detail aria-haspopup="dialog">View Details<span
++                  class="sr-only"> for Cinnamon Mocha</span></button>
++            </div>
++          </article>
++        </li>
++      </ul>
+     </section>
+   </main>
+ 
+@@ -213,6 +696,296 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog class="drink-detail" id="drink-detail" aria-labelledby="drink-detail-title">
++    <div class="drink-detail-inner">
++      <button type="button" class="dialog-close" data-close-detail aria-label="Close details">&times;</button>
++      <div class="drink-detail-media" data-detail-media></div>
++      <div class="drink-detail-content">
++        <h2 id="drink-detail-title" data-detail-title></h2>
++        <p data-detail-long></p>
++        <dl>
++          <dt>Price</dt>
++          <dd data-detail-price></dd>
++          <dt>Sizes</dt>
++          <dd data-detail-size></dd>
++          <dt>Caffeine</dt>
++          <dd data-detail-caffeine></dd>
++          <dt>Tasting notes</dt>
++          <dd data-detail-notes></dd>
++        </dl>
++        <div class="drink-detail-actions">
++          <a class="btn" href="/order-online" data-detail-order>Order this drink</a>
++          <a class="btn btn-ghost" href="#" data-detail-link>Full menu page</a>
++        </div>
++      </div>
++    </div>
++  </dialog>
++
++  <script>
++    (function () {
++      'use strict';
++
++      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++      /* ================= Carousel ================= */
++      var track = document.getElementById('seasonal-track');
++      var prevBtn = document.querySelector('[data-carousel-prev]');
++      var nextBtn = document.querySelector('[data-carousel-next]');
++
++      function scrollBehavior() {
++        return reduceMotion.matches ? 'auto' : 'smooth';
++      }
++
++      function stepSize() {
++        var item = track.querySelector('li');
++        if (!item) return track.clientWidth;
++        var gap = parseFloat(getComputedStyle(track).columnGap) || 0;
++        return item.getBoundingClientRect().width + gap;
++      }
++
++      function updateControls() {
++        var max = track.scrollWidth - track.clientWidth - 1;
++        prevBtn.disabled = track.scrollLeft <= 1;
++        nextBtn.disabled = track.scrollLeft >= max;
++      }
++
++      // Keep focus on a usable control if the one just pressed becomes disabled.
++      function moveFocusIfDisabled(btn, other) {
++        if (btn.disabled && document.activeElement === btn) other.focus();
++      }
++
++      prevBtn.addEventListener('click', function () {
++        track.scrollBy({ left: -stepSize(), behavior: scrollBehavior() });
++      });
++      nextBtn.addEventListener('click', function () {
++        track.scrollBy({ left: stepSize(), behavior: scrollBehavior() });
++      });
++
++      var scrollTimer;
++      track.addEventListener('scroll', function () {
++        clearTimeout(scrollTimer);
++        scrollTimer = setTimeout(function () {
++          updateControls();
++          moveFocusIfDisabled(prevBtn, nextBtn);
++          moveFocusIfDisabled(nextBtn, prevBtn);
++        }, 60);
++      }, { passive: true });
++      window.addEventListener('resize', updateControls);
++      updateControls();
++
++      // Arrow / Home / End keys when the track itself is focused.
++      track.addEventListener('keydown', function (e) {
++        if (e.target !== track) return;
++        var delta = null;
++        if (e.key === 'ArrowRight') delta = stepSize();
++        else if (e.key === 'ArrowLeft') delta = -stepSize();
++        if (delta !== null) {
++          e.preventDefault();
++          track.scrollBy({ left: delta, behavior: scrollBehavior() });
++        } else if (e.key === 'Home' || e.key === 'End') {
++          e.preventDefault();
++          track.scrollTo({ left: e.key === 'Home' ? 0 : track.scrollWidth, behavior: scrollBehavior() });
++        }
++      });
++
++      // Mouse drag-to-swipe (touch and trackpads use native scrolling).
++      var drag = null;
++      var suppressClick = false;
++
++      track.addEventListener('pointerdown', function (e) {
++        if (e.pointerType !== 'mouse' || e.button !== 0) return;
++        drag = { x: e.clientX, left: track.scrollLeft, moved: false, id: e.pointerId };
++      });
++
++      track.addEventListener('pointermove', function (e) {
++        if (!drag || e.pointerId !== drag.id) return;
++        var dx = e.clientX - drag.x;
++        if (!drag.moved && Math.abs(dx) > 5) {
++          drag.moved = true;
++          track.classList.add('is-dragging');
++          track.setPointerCapture(e.pointerId);
++        }
++        if (drag.moved) track.scrollLeft = drag.left - dx;
++      });
++
++      function endDrag(e) {
++        if (!drag || (e && e.pointerId !== drag.id)) return;
++        if (drag.moved) {
++          suppressClick = true;
++          track.classList.remove('is-dragging');
++          // Re-enable snapping and settle on the nearest card.
++          var step = stepSize();
++          var target = Math.round(track.scrollLeft / step) * step;
++          track.scrollTo({ left: target, behavior: scrollBehavior() });
++          setTimeout(function () { suppressClick = false; }, 0);
++        }
++        drag = null;
++      }
++
++      track.addEventListener('pointerup', endDrag);
++      track.addEventListener('pointercancel', endDrag);
++      track.addEventListener('click', function (e) {
++        if (suppressClick) {
++          e.preventDefault();
++          e.stopPropagation();
++        }
++      }, true);
++      track.addEventListener('dragstart', function (e) { e.preventDefault(); });
++
++      /* ================= Detail dialog ================= */
++      var dialog = document.getElementById('drink-detail');
++      var fields = {
++        title: dialog.querySelector('[data-detail-title]'),
++        long: dialog.querySelector('[data-detail-long]'),
++        price: dialog.querySelector('[data-detail-price]'),
++        size: dialog.querySelector('[data-detail-size]'),
++        caffeine: dialog.querySelector('[data-detail-caffeine]'),
++        notes: dialog.querySelector('[data-detail-notes]'),
++        media: dialog.querySelector('[data-detail-media]'),
++        link: dialog.querySelector('[data-detail-link]'),
++        order: dialog.querySelector('[data-detail-order]')
++      };
++      var supportsDialog = typeof dialog.showModal === 'function';
++      var trigger = null;
++      var currentAnim = null;
++      var DURATION = 420;
++      var EASING = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
++
++      function populate(card) {
++        var title = card.querySelector('h3').textContent;
++        fields.title.textContent = title;
++        fields.long.textContent = card.dataset.long || '';
++        fields.price.textContent = card.dataset.price || '';
++        fields.size.textContent = card.dataset.size || '';
++        fields.caffeine.textContent = card.dataset.caffeine || '';
++        fields.notes.textContent = card.dataset.notes || '';
++        fields.link.href = card.dataset.detailUrl || '/menu';
++        fields.order.href = '/order-online?item=' + encodeURIComponent(title);
++
++        fields.media.textContent = '';
++        var img = card.querySelector('.card-media img');
++        if (img) {
++          var clone = img.cloneNode();
++          clone.loading = 'eager';
++          clone.onerror = function () { this.remove(); };
++          fields.media.appendChild(clone);
++        }
++      }
++
++      // Transform that maps the dialog's final box onto the trigger button's box.
++      function originTransform(btnRect, dlgRect) {
++        var sx = btnRect.width / dlgRect.width;
++        var sy = btnRect.height / dlgRect.height;
++        var dx = (btnRect.left + btnRect.width / 2) - (dlgRect.left + dlgRect.width / 2);
++        var dy = (btnRect.top + btnRect.height / 2) - (dlgRect.top + dlgRect.height / 2);
++        return 'translate(' + dx + 'px, ' + dy + 'px) scale(' + sx + ', ' + sy + ')';
++      }
++
++      function animateFromButton(reverse) {
++        var inner = dialog.querySelector('.drink-detail-inner');
++        if (reduceMotion.matches || !dialog.animate || !trigger || !trigger.isConnected) {
++          return Promise.resolve();
++        }
++        var btnRect = trigger.getBoundingClientRect();
++        var dlgRect = dialog.getBoundingClientRect();
++        if (!btnRect.width || !dlgRect.width) return Promise.resolve();
++
++        var btnStyle = getComputedStyle(trigger);
++        var from = {
++          transform: originTransform(btnRect, dlgRect),
++          borderRadius: btnStyle.borderRadius,
++          backgroundColor: btnStyle.backgroundColor,
++          boxShadow: '0 4px 12px rgba(62, 39, 35, 0.3)'
++        };
++        var to = {
++          transform: 'none',
++          borderRadius: '14px',
++          backgroundColor: '#ffffff',
++          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.35)'
++        };
++        var opts = { duration: DURATION, easing: EASING, fill: 'both' };
++        var shell = dialog.animate(reverse ? [to, from] : [from, to], opts);
++
++        // Content fades in once the shape has mostly grown (and out first when closing).
++        var contentFrames = reverse
++          ? [{ opacity: 1 }, { opacity: 0, offset: 0.35 }, { opacity: 0 }]
++          : [{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1 }];
++        var content = inner.animate(contentFrames, opts);
++
++        var backdrop = dialog.animate(
++          reverse ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1 }],
++          { duration: DURATION, easing: 'ease', fill: 'both', pseudoElement: '::backdrop' }
++        );
++
++        currentAnim = [shell, content, backdrop];
++        return shell.finished.then(function () {
++          currentAnim.forEach(function (a) { a.cancel(); });
++          currentAnim = null;
++        }, function () { /* cancelled */ });
++      }
++
++      function cancelRunning() {
++        if (currentAnim) {
++          currentAnim.forEach(function (a) { a.cancel(); });
++          currentAnim = null;
++        }
++      }
++
++      function openDetail(btn) {
++        var card = btn.closest('[data-drink]');
++        if (!card) return;
++        if (!supportsDialog) {
++          window.location.href = card.dataset.detailUrl || '/menu';
++          return;
++        }
++        cancelRunning();
++        trigger = btn;
++        populate(card);
++        dialog.showModal();
++        dialog.querySelector('[data-close-detail]').focus();
++        animateFromButton(false);
++      }
++
++      var closing = false;
++      function closeDetail() {
++        if (!dialog.open || closing) return;
++        closing = true;
++        cancelRunning();
++        animateFromButton(true).then(function () {
++          dialog.close();
++          closing = false;
++        });
++      }
++
++      dialog.addEventListener('close', function () {
++        closing = false;
++        cancelRunning();
++        if (trigger && trigger.isConnected) {
++          trigger.focus({ preventScroll: true });
++        }
++      });
++
++      // Escape key: run the collapse animation instead of closing instantly.
++      dialog.addEventListener('cancel', function (e) {
++        e.preventDefault();
++        closeDetail();
++      });
++
++      // Click on the backdrop (outside the dialog box) closes it.
++      dialog.addEventListener('click', function (e) {
++        if (e.target !== dialog) return;
++        var r = dialog.getBoundingClientRect();
++        var inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
++        if (!inside) closeDetail();
++      });
++
++      dialog.querySelector('[data-close-detail]').addEventListener('click', closeDetail);
++
++      document.querySelectorAll('[data-open-detail]').forEach(function (btn) {
++        btn.addEventListener('click', function () { openDetail(btn); });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

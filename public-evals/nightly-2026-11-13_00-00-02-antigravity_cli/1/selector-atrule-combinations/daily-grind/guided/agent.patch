@@ -1,0 +1,276 @@
+diff --git a/index.html b/index.html
+index 66c9173..7dad0ab 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,131 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --color-scheme: light;
++
++      --primary-light: #4e342e;
++      --primary-dark: #8d6e63;
++      --primary-hover-light: #3e2723;
++      --primary-hover-dark: #a1887f;
++      --secondary-light: #d7ccc8;
++      --secondary-dark: #2c201d;
++      --accent-light: #ffab40;
++      --accent-dark: #ffd180;
++      --text-light: #3e2723;
++      --text-dark: #f5ebe6;
++      --bg-light: #fafafa;
++      --bg-dark: #181210;
++      --surface-light: #ffffff;
++      --surface-dark: #261c19;
++      --nav-bg-light: #4e342e;
++      --nav-bg-dark: #221714;
++      --nav-text-light: #ffffff;
++      --nav-text-dark: #f5ebe6;
++      --card-heading-light: #4e342e;
++      --card-heading-dark: #ffcc80;
++      --hero-overlay-light: rgba(0, 0, 0, 0.45);
++      --hero-overlay-dark: rgba(15, 10, 8, 0.72);
++
++      --primary: var(--primary-light);
++      --primary-hover: var(--primary-hover-light);
++      --secondary: var(--secondary-light);
++      --accent: var(--accent-light);
++      --text: var(--text-light);
++      --light: var(--bg-light);
++      --surface: var(--surface-light);
++      --nav-bg: var(--nav-bg-light);
++      --nav-text: var(--nav-text-light);
++      --card-heading: var(--card-heading-light);
++      --hero-overlay: var(--hero-overlay-light);
++
++      --light-type: ;
++      --dark-type: type("image/do-not-use");
++
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++        --primary: var(--primary-dark);
++        --primary-hover: var(--primary-hover-dark);
++        --secondary: var(--secondary-dark);
++        --accent: var(--accent-dark);
++        --text: var(--text-dark);
++        --light: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --nav-bg: var(--nav-bg-dark);
++        --nav-text: var(--nav-text-dark);
++        --card-heading: var(--card-heading-dark);
++        --hero-overlay: var(--hero-overlay-dark);
++        --light-type: type("image/do-not-use");
++        --dark-type: ;
++      }
++
++      &:where(
++        .dark,
++        .theme-dark,
++        [data-theme="dark"],
++        [data-color-scheme="dark"],
++        [theme="dark"],
++        :has(> head > meta[name="color-scheme"][content="dark"])
++      ) {
++        color-scheme: dark;
++        --color-scheme: dark;
++        --primary: var(--primary-dark);
++        --primary-hover: var(--primary-hover-dark);
++        --secondary: var(--secondary-dark);
++        --accent: var(--accent-dark);
++        --text: var(--text-dark);
++        --light: var(--bg-dark);
++        --surface: var(--surface-dark);
++        --nav-bg: var(--nav-bg-dark);
++        --nav-text: var(--nav-text-dark);
++        --card-heading: var(--card-heading-dark);
++        --hero-overlay: var(--hero-overlay-dark);
++        --light-type: type("image/do-not-use");
++        --dark-type: ;
++      }
++
++      &:where(
++        .light,
++        .theme-light,
++        [data-theme="light"],
++        [data-color-scheme="light"],
++        [theme="light"],
++        :has(> head > meta[name="color-scheme"][content="light"])
++      ) {
++        color-scheme: light;
++        --color-scheme: light;
++        --primary: var(--primary-light);
++        --primary-hover: var(--primary-hover-light);
++        --secondary: var(--secondary-light);
++        --accent: var(--accent-light);
++        --text: var(--text-light);
++        --light: var(--bg-light);
++        --surface: var(--surface-light);
++        --nav-bg: var(--nav-bg-light);
++        --nav-text: var(--nav-text-light);
++        --card-heading: var(--card-heading-light);
++        --hero-overlay: var(--hero-overlay-light);
++        --light-type: ;
++        --dark-type: type("image/do-not-use");
++      }
++
++      @supports (color: light-dark(white, black)) {
++        --primary: light-dark(var(--primary-light), var(--primary-dark));
++        --primary-hover: light-dark(var(--primary-hover-light), var(--primary-hover-dark));
++        --secondary: light-dark(var(--secondary-light), var(--secondary-dark));
++        --accent: light-dark(var(--accent-light), var(--accent-dark));
++        --text: light-dark(var(--text-light), var(--text-dark));
++        --light: light-dark(var(--bg-light), var(--bg-dark));
++        --surface: light-dark(var(--surface-light), var(--surface-dark));
++        --nav-bg: light-dark(var(--nav-bg-light), var(--nav-bg-dark));
++        --nav-text: light-dark(var(--nav-text-light), var(--nav-text-dark));
++        --card-heading: light-dark(var(--card-heading-light), var(--card-heading-dark));
++        --hero-overlay: light-dark(var(--hero-overlay-light), var(--hero-overlay-dark));
++      }
+     }
+ 
+     * {
+@@ -29,8 +146,8 @@
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -38,6 +155,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      border-bottom: 1px solid transparent;
+     }
+ 
+     .logo {
+@@ -56,7 +174,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,17 +193,30 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-image:
++        linear-gradient(var(--hero-overlay), var(--hero-overlay)),
++        image-set(
++          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') var(--light-type),
++          url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80') var(--dark-type)
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: #ffffff;
+       text-align: center;
+       padding: 0 20px;
++
++      @supports (background-image: light-dark(url("a"), url("b"))) {
++        background-image:
++          linear-gradient(var(--hero-overlay), var(--hero-overlay)),
++          light-dark(
++            url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'),
++            url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1350&q=80')
++          );
++      }
+     }
+ 
+     .hero h1 {
+@@ -108,22 +239,60 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
++      color: var(--text);
+       padding: 20px;
+       border-radius: 8px;
++      border: 1px solid rgba(78, 52, 46, 0.12);
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
++    }
++
++    @container not style(--color-scheme: dark) {
++      nav {
++        box-shadow: 0 2px 8px rgba(78, 52, 46, 0.15);
++      }
++
++      .hero h1 {
++        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
++      }
++
++      .card {
++        border-color: rgba(78, 52, 46, 0.12);
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      }
++    }
++
++    @container style(--color-scheme: dark) {
++      nav {
++        border-bottom-color: rgba(255, 209, 128, 0.2);
++        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
++      }
++
++      .hero {
++        border-bottom: 1px solid rgba(255, 209, 128, 0.15);
++      }
++
++      .hero h1 {
++        font-weight: 600;
++        text-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
++      }
++
++      .card {
++        border-color: rgba(255, 209, 128, 0.18);
++        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
++      }
+     }
+ 
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
++      color: #ffffff;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,7 +301,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-hover);
+     }
+ 
+     footer {

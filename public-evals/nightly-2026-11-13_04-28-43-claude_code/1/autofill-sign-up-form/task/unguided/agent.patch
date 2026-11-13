@@ -1,0 +1,194 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,104 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Sign-up Form */
++    .signup {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 30px;
++      margin: 60px auto 0;
++      max-width: 520px;
++    }
++
++    .signup h2 {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    .signup .subtitle {
++      text-align: center;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    .form-row {
++      display: flex;
++      gap: 15px;
++    }
++
++    .form-row .form-group {
++      flex: 1;
++    }
++
++    .form-group {
++      margin-bottom: 15px;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 5px;
++    }
++
++    .form-group input {
++      width: 100%;
++      padding: 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      font-family: inherit;
++    }
++
++    .form-group input:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.3);
++    }
++
++    .form-check {
++      display: flex;
++      align-items: flex-start;
++      gap: 8px;
++      font-size: 0.85rem;
++      margin-bottom: 10px;
++    }
++
++    .form-check input {
++      margin-top: 4px;
++    }
++
++    .signup button.btn {
++      width: 100%;
++      border: none;
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    .form-message {
++      margin-top: 15px;
++      text-align: center;
++      font-size: 0.9rem;
++      min-height: 1.2em;
++    }
++
++    .form-message.error {
++      color: #c62828;
++    }
++
++    .form-message.success {
++      color: #2e7d32;
++    }
++
++    @media (max-width: 500px) {
++      .form-row {
++        flex-direction: column;
++        gap: 0;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +290,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="signup" id="signup">
++      <h2>Join The Daily Grind</h2>
++      <p class="subtitle">Sign up to earn rewards, get a free drink on your birthday, and hear about new seasonal blends first.</p>
++      <form id="signup-form" action="/signup" method="post" novalidate>
++        <div class="form-row">
++          <div class="form-group">
++            <label for="first-name">First name</label>
++            <input type="text" id="first-name" name="firstName" autocomplete="given-name" required>
++          </div>
++          <div class="form-group">
++            <label for="last-name">Last name</label>
++            <input type="text" id="last-name" name="lastName" autocomplete="family-name" required>
++          </div>
++        </div>
++        <div class="form-group">
++          <label for="email">Email</label>
++          <input type="email" id="email" name="email" autocomplete="email" required>
++        </div>
++        <div class="form-group">
++          <label for="password">Password</label>
++          <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required>
++        </div>
++        <div class="form-group">
++          <label for="confirm-password">Confirm password</label>
++          <input type="password" id="confirm-password" name="confirmPassword" autocomplete="new-password" minlength="8" required>
++        </div>
++        <label class="form-check">
++          <input type="checkbox" name="newsletter" checked>
++          <span>Send me offers and news about seasonal drinks.</span>
++        </label>
++        <label class="form-check">
++          <input type="checkbox" id="terms" name="terms" required>
++          <span>I agree to the <a href="/terms">Terms of Service</a> and <a href="/privacy-policy">Privacy Policy</a>.</span>
++        </label>
++        <button type="submit" class="btn">Create Account</button>
++        <p class="form-message" id="form-message" role="status" aria-live="polite"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +341,37 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.getElementById('signup-form').addEventListener('submit', function (e) {
++      const form = e.target;
++      const msg = document.getElementById('form-message');
++      const password = form.password.value;
++      let error = '';
++
++      if (!form.firstName.value.trim() || !form.lastName.value.trim()) {
++        error = 'Please enter your first and last name.';
++      } else if (!form.email.checkValidity()) {
++        error = 'Please enter a valid email address.';
++      } else if (password.length < 8) {
++        error = 'Password must be at least 8 characters.';
++      } else if (password !== form.confirmPassword.value) {
++        error = 'Passwords do not match.';
++      } else if (!form.terms.checked) {
++        error = 'Please agree to the Terms of Service.';
++      }
++
++      if (error) {
++        e.preventDefault();
++        msg.textContent = error;
++        msg.className = 'form-message error';
++      } else {
++        msg.textContent = 'Creating your account...';
++        msg.className = 'form-message success';
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

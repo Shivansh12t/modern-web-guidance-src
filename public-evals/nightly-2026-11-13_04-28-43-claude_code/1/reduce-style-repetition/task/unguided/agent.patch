@@ -1,0 +1,95 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -23,11 +23,27 @@
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
++      min-height: 100vh;
++      /* Fallback for browsers without gradient support */
+       background-color: var(--light);
++      background-image: -webkit-linear-gradient(top, var(--light) 0%, var(--secondary) 100%);
++      background-image: linear-gradient(to bottom, var(--light) 0%, var(--secondary) 100%);
++      background-repeat: no-repeat;
+     }
+ 
++    /* Section headings */
++    h2 {
++      color: white;
++      padding: 0.5rem 1rem;
++      border-radius: 6px;
++      /* Fallback for browsers without gradient support */
++      background-color: var(--primary);
++      background-image: -webkit-linear-gradient(left, var(--primary) 0%, #8d6e63 100%);
++      background-image: linear-gradient(to right, var(--primary) 0%, #8d6e63 100%);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -99,15 +115,60 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    /* Main layout: single column on small screens, two equal columns on wider screens */
+     .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      /* Flexbox fallback for browsers without CSS Grid support */
++      display: -webkit-box;
++      display: -ms-flexbox;
++      display: flex;
++      -ms-flex-wrap: wrap;
++      flex-wrap: wrap;
+       margin-top: 20px;
+     }
+ 
++    .grid > * {
++      width: 100%;
++      margin-bottom: 20px;
++    }
++
++    @media (min-width: 700px) {
++      .grid > * {
++        width: calc(50% - 10px);
++        margin-right: 20px;
++      }
++
++      .grid > *:nth-child(2n) {
++        margin-right: 0;
++      }
++    }
++
++    @supports (display: grid) {
++      .grid {
++        display: grid;
++        grid-template-columns: 1fr;
++        gap: 20px;
++      }
++
++      .grid > * {
++        width: auto;
++        margin: 0;
++      }
++
++      @media (min-width: 700px) {
++        .grid {
++          grid-template-columns: repeat(2, minmax(0, 1fr));
++        }
++
++        .grid > *,
++        .grid > *:nth-child(2n) {
++          width: auto;
++          margin: 0;
++        }
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;

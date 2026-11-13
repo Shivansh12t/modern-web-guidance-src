@@ -1,0 +1,152 @@
+diff --git a/index.html b/index.html
+index 66c9173..9d80989 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      view-transition-name: none;
+     }
+ 
+     * {
+@@ -120,6 +121,63 @@
+       color: var(--primary);
+     }
+ 
++    .sort-controls {
++      display: flex;
++      justify-content: flex-end;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 16px;
++    }
++
++    .sort-controls[hidden] {
++      display: none;
++    }
++
++    .sort-controls select {
++      font: inherit;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 8px 12px;
++    }
++
++    .sort-controls select:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    #seasonal-favorites .card {
++      view-transition-class: seasonal-card;
++    }
++
++    ::view-transition-group(.seasonal-card) {
++      animation-duration: 400ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    ::view-transition {
++      pointer-events: none;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,7 +235,16 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="sort-controls" hidden>
++        <label for="seasonal-sort">Sort by</label>
++        <select id="seasonal-sort" aria-controls="seasonal-favorites">
++          <option value="featured">Featured</option>
++          <option value="name-asc">Name (A–Z)</option>
++          <option value="name-desc">Name (Z–A)</option>
++        </select>
++      </div>
++      <p id="sort-status" class="visually-hidden" role="status"></p>
++      <div class="grid" id="seasonal-favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -207,6 +274,57 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const favorites = document.querySelector('#seasonal-favorites');
++    const sortControl = document.querySelector('#seasonal-sort');
++    const sortStatus = document.querySelector('#sort-status');
++    const featuredCards = Array.from(favorites.children);
++    const collator = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let activeTransition;
++
++    featuredCards.forEach((card, index) => {
++      card.style.viewTransitionName = `seasonal-card-${index}`;
++    });
++
++    function applySort() {
++      // Read the latest choice here so rapid changes always settle on that order.
++      const order = sortControl.value;
++      const sortedCards = [...featuredCards];
++      if (order !== 'featured') {
++        const direction = order === 'name-asc' ? 1 : -1;
++        sortedCards.sort((a, b) => direction * collator.compare(
++          a.querySelector('h3').textContent.trim(),
++          b.querySelector('h3').textContent.trim()
++        ));
++      }
++
++      for (const card of sortedCards) {
++        if (typeof favorites.moveBefore === 'function') {
++          favorites.moveBefore(card, null);
++        } else {
++          favorites.append(card);
++        }
++      }
++      sortStatus.textContent = `Sorted by ${sortControl.selectedOptions[0].textContent}, ${sortedCards.length} favorites.`;
++    }
++
++    sortControl.addEventListener('change', () => {
++      activeTransition?.skipTransition();
++      if (reducedMotion.matches) {
++        applySort();
++      } else if (typeof favorites.startViewTransition === 'function') {
++        activeTransition = favorites.startViewTransition(applySort);
++      } else if (typeof document.startViewTransition === 'function') {
++        activeTransition = document.startViewTransition(applySort);
++      } else {
++        applySort();
++      }
++    });
++
++    document.querySelector('.sort-controls').hidden = false;
++  </script>
++
+ </body>
+ 
+ </html>

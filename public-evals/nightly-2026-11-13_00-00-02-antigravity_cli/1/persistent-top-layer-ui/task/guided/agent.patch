@@ -1,0 +1,300 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,150 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .nav-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 5px 12px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: filter 0.2s;
++    }
++
++    .nav-btn:hover {
++      filter: brightness(0.95);
++    }
++
++    /* MANDATORY (both rules): without them, scrolling over the backdrop or inside the dialog scrolls the page behind it */
++    dialog:modal {
++      overscroll-behavior: contain; /* stops scroll gestures in the dialog chaining to the page */
++      margin: auto;
++      border: none;
++      border-radius: 12px;
++      padding: 24px;
++      max-width: 480px;
++      width: calc(100% - 32px);
++      background: white;
++      color: var(--text);
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++    }
++
++    dialog::backdrop {
++      overflow: hidden; /* ::backdrop is not a scroll container by default, so it would ignore overscroll-behavior */
++      overscroll-behavior: contain;
++      background: rgba(62, 39, 35, 0.6);
++      backdrop-filter: blur(2px);
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 12px;
++    }
++
++    .dialog-header h2 {
++      font-size: 1.4rem;
++      color: var(--primary);
++    }
++
++    .parent-badge {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      margin-bottom: 16px;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 4px;
++    }
++
++    .form-group select,
++    .form-group textarea {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      margin-top: 20px;
++      flex-wrap: wrap;
++    }
++
++    .dialog-actions-right {
++      display: flex;
++      gap: 8px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      padding: 9px 16px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 8px 14px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .btn-outline:hover {
++      background: var(--light);
++    }
++
++    .btn-primary {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 9px 18px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .btn-primary:hover {
++      background: #3e2723;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,20 +305,21 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><button type="button" class="nav-btn" command="show-modal" commandfor="feedback-modal">Feedback</button></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero-section" data-section-name="Hero Header">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="favorites-section" data-section-name="Seasonal Favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -193,20 +336,119 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <!-- MANDATORY: no role="dialog" or aria-modal; the native modal already provides them -->
++      <dialog id="feedback-modal" aria-labelledby="feedback-modal-title" closedby="any">
++        <div class="dialog-header">
++          <h2 id="feedback-modal-title">Share Your Feedback</h2>
++        </div>
++        <p id="modal-location-status" class="parent-badge" aria-live="polite">
++          DOM Parent: Seasonal Favorites (#favorites-section)
++        </p>
++        <form method="dialog" id="feedback-form">
++          <div class="form-group">
++            <label for="feedback-rating">How was your experience today?</label>
++            <select id="feedback-rating" name="rating" autofocus>
++              <option value="5">5 - Excellent</option>
++              <option value="4">4 - Good</option>
++              <option value="3">3 - Average</option>
++              <option value="2">2 - Below Average</option>
++              <option value="1">1 - Poor</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="feedback-comment">Comments or suggestions</label>
++            <textarea id="feedback-comment" name="comment" rows="3" placeholder="Tell us about your favorite roast or visit..."></textarea>
++          </div>
++          <div class="dialog-actions">
++            <button type="button" id="move-modal-btn" class="btn-outline">
++              Move
++            </button>
++            <div class="dialog-actions-right">
++              <button value="cancel" class="btn-secondary">Cancel</button>
++              <button value="submit" class="btn-primary">Submit Feedback</button>
++            </div>
++          </div>
++        </form>
++      </dialog>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="footer-section" data-section-name="Footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="/privacy-policy">Privacy</a> |
++      <button type="button" class="nav-btn" command="show-modal" commandfor="feedback-modal">Give Feedback</button>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // MANDATORY: Feature detect 'commandForElement' on HTMLButtonElement.prototype.
++    // Conditionally load the invokers-polyfill from a CDN only in browsers lacking native support.
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill');
++    }
++
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      const outside = (e, dialog) => {
++        const r = dialog.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      };
++      for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
++        let pressedOutside = false;
++        dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
++        dialog.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, dialog)) dialog.close(); });
++      }
++    }
++
++    const feedbackDialog = document.getElementById('feedback-modal');
++    const moveModalBtn = document.getElementById('move-modal-btn');
++    const locationStatus = document.getElementById('modal-location-status');
++
++    const sections = [
++      document.getElementById('favorites-section'),
++      document.getElementById('footer-section'),
++      document.getElementById('hero-section')
++    ];
++
++    moveModalBtn.addEventListener('click', () => {
++      const currentParent = feedbackDialog.parentElement;
++      const currentIndex = sections.indexOf(currentParent);
++      const targetParent = sections[(currentIndex + 1) % sections.length];
++
++      // Check if moveBefore is supported
++      if ('moveBefore' in Element.prototype) {
++        targetParent.moveBefore(feedbackDialog, null);
++      } else {
++        // Fallback: traditional move.
++        // Note: This WILL close <dialog>, popover, and fullscreen elements.
++        const wasOpen = feedbackDialog.hasAttribute('open') || feedbackDialog.matches(':popover-open');
++        targetParent.insertBefore(feedbackDialog, null);
++
++        // Manually restore state if possible
++        if (wasOpen && typeof feedbackDialog.showModal === 'function') {
++          feedbackDialog.showModal();
++        } else if (wasOpen && typeof feedbackDialog.showPopover === 'function') {
++          feedbackDialog.showPopover();
++        }
++      }
++
++      const sectionName = targetParent.dataset.sectionName || targetParent.tagName.toLowerCase();
++      locationStatus.textContent = `DOM Parent: ${sectionName} (#${targetParent.id})`;
++    });
++
++    feedbackDialog.addEventListener('close', () => {
++      const choice = feedbackDialog.returnValue;
++      feedbackDialog.returnValue = '';
++      if (choice === 'submit') {
++        document.getElementById('feedback-form').reset();
++      }
++    });
++  </script>
+ </body>
+ 
+ </html>

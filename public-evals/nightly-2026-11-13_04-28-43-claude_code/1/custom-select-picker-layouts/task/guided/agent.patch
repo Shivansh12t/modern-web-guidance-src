@@ -1,0 +1,261 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,199 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Roast picker (customizable select, 3-column grid picker) */
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      margin-top: 1.25rem;
++    }
++
++    .roast-label {
++      font-size: 0.9rem;
++      font-weight: 600;
++      letter-spacing: 0.5px;
++      margin-bottom: 0.4rem;
++    }
++
++    .roast-picker {
++      width: 16rem;
++      padding: 0.6rem 1rem;
++      border: 2px solid var(--accent);
++      border-radius: 6px;
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--text);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .roast-picker:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    @supports (appearance: base-select) {
++      .roast-picker,
++      .roast-picker::picker(select) {
++        appearance: base-select;
++      }
++
++      .roast-picker {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++      }
++
++      .roast-picker::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.2s;
++      }
++
++      .roast-picker:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      /* Closed button: show only the roast name */
++      .roast-picker selectedcontent {
++        font-weight: 600;
++      }
++
++      .roast-picker selectedcontent .roast-img,
++      .roast-picker selectedcontent .roast-desc {
++        display: none;
++      }
++
++      .roast-picker::picker(select) {
++        position-area: bottom;
++        margin-top: 0.5rem;
++        width: min(36rem, calc(100vw - 2rem));
++        padding: 0.75rem;
++        border: 1px solid var(--secondary);
++        border-radius: 10px;
++        background: white;
++        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
++      }
++
++      /* :open is required — styling display on the closed picker would show it */
++      .roast-picker:open::picker(select) {
++        display: grid;
++        grid-template-columns: repeat(3, 1fr);
++        gap: 0.75rem;
++      }
++
++      .roast-picker option {
++        position: relative;
++        display: flex;
++        flex-direction: column;
++        align-items: stretch;
++        gap: 0.5rem;
++        padding: 0.5rem;
++        border: 2px solid transparent;
++        border-radius: 8px;
++        background: #f5f0ee;
++        color: var(--text);
++        text-align: center;
++        cursor: pointer;
++        transition: background 0.2s, border-color 0.2s;
++      }
++
++      .roast-picker option:hover {
++        background: var(--secondary);
++      }
++
++      .roast-picker option:focus-visible {
++        outline: 3px solid var(--accent);
++        outline-offset: 2px;
++      }
++
++      .roast-picker option:checked {
++        border-color: var(--primary);
++        background: #efe3dc;
++      }
++
++      .roast-picker option:checked .roast-name {
++        font-weight: 800;
++      }
++
++      /* Checkmark badge in the top-right corner of the selected card */
++      .roast-picker option::checkmark {
++        display: none;
++      }
++
++      .roast-picker option:checked::checkmark {
++        position: absolute;
++        z-index: 1;
++        inset-block-start: -0.5em;
++        inset-inline-end: -0.5em;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        min-inline-size: 1.6em;
++        aspect-ratio: 1;
++        padding-right: 0.12em;
++        padding-left: 0.05em;
++        border-radius: 50%;
++        background: var(--primary);
++        color: white;
++        font-size: 0.8rem;
++        font-weight: bold;
++      }
++
++      .roast-img {
++        display: block;
++        width: 100%;
++        height: auto;
++        aspect-ratio: 3 / 2;
++        object-fit: cover;
++        border-radius: 5px;
++      }
++
++      /* One stock bean photo, tinted to suggest each roast level */
++      .roast-img--light {
++        filter: brightness(1.45) saturate(0.75) sepia(0.25);
++      }
++
++      .roast-img--dark {
++        filter: brightness(0.5) contrast(1.2) saturate(0.8);
++      }
++
++      .roast-text {
++        display: flex;
++        flex-direction: column;
++        line-height: 1.3;
++      }
++
++      .roast-name {
++        font-weight: 600;
++        color: var(--primary);
++      }
++
++      .roast-desc {
++        font-size: 0.75rem;
++        color: #5d4037;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,11 +361,56 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="order-form" action="/order-online" method="get">
++      <label for="roast-picker" class="roast-label">Choose your roast</label>
++      <select class="roast-picker" name="roast" id="roast-picker">
++        <button type="button">
++          <selectedcontent></selectedcontent>
++        </button>
++        <option value="light">
++          <img class="roast-img roast-img--light" src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=240&h=160&q=70" alt="" width="120" height="80" loading="lazy">
++          <span class="roast-text">
++            <span class="roast-name">Light Roast<span class="visually-hidden">.</span></span>
++            <span class="roast-desc"><span class="visually-hidden">Tasting notes: </span>Bright, fruity, floral</span>
++          </span>
++        </option>
++        <option value="medium" selected>
++          <img class="roast-img roast-img--medium" src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=240&h=160&q=70" alt="" width="120" height="80" loading="lazy">
++          <span class="roast-text">
++            <span class="roast-name">Medium Roast<span class="visually-hidden">.</span></span>
++            <span class="roast-desc"><span class="visually-hidden">Tasting notes: </span>Balanced, caramel, nutty</span>
++          </span>
++        </option>
++        <option value="dark">
++          <img class="roast-img roast-img--dark" src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=240&h=160&q=70" alt="" width="120" height="80" loading="lazy">
++          <span class="roast-text">
++            <span class="roast-name">Dark Roast<span class="visually-hidden">.</span></span>
++            <span class="roast-desc"><span class="visually-hidden">Tasting notes: </span>Bold, smoky, chocolate</span>
++          </span>
++        </option>
++      </select>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
++  <script>
++    // The native select only navigates with Up/Down. In the 3-column grid
++    // picker all options sit on one row, so map Left/Right to prev/next.
++    document.getElementById('roast-picker').addEventListener('keydown', (e) => {
++      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
++      const current = document.activeElement;
++      if (!(current instanceof HTMLOptionElement)) return; // picker closed
++      const forward = (e.key === 'ArrowRight') !== (getComputedStyle(current).direction === 'rtl');
++      const target = forward ? current.nextElementSibling : current.previousElementSibling;
++      if (target instanceof HTMLOptionElement) {
++        e.preventDefault();
++        target.focus();
++      }
++    });
++  </script>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

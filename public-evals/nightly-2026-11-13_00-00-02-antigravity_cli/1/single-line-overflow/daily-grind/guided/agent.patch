@@ -1,0 +1,145 @@
+diff --git a/index.html b/index.html
+index 66c9173..62a497d 100644
+--- a/index.html
++++ b/index.html
+@@ -28,6 +28,18 @@
+     }
+ 
+     /* Navigation */
++    @property --truncated {
++      syntax: "<integer>";
++      inherits: false;
++      initial-value: 0;
++    }
++
++    @property --fade-size {
++      syntax: "<length>";
++      inherits: false;
++      initial-value: 0px;
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -35,6 +47,7 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      gap: 1rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -44,28 +57,78 @@
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
++      flex-shrink: 0;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      min-inline-size: 0;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
++      min-inline-size: 0;
+     }
+ 
+     nav a {
++      display: block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++      animation: truncated linear both;
++      animation-timeline: scroll(self inline);
++    }
++
++    nav a.truncated {
++      --truncated: 1;
++    }
++
++    @keyframes truncated {
++      from, to {
++        --truncated: 1;
++      }
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      nav a:is(:hover, :focus-visible) {
++        text-overflow: clip;
++      }
++
++      @container style(--truncated: 1) {
++        nav a:is(:hover, :focus-visible) > span {
++          display: inline-block;
++          margin-inline-start: 100%;
++          translate: calc(1px - 100%);
++          transition: margin-inline-start 2s ease-in, translate 2s ease-in;
++        }
++
++        nav a:is(:hover, :focus-visible):dir(rtl) > span {
++          translate: calc(100% - 1px);
++        }
++      }
++
++      nav a.truncated:is(:hover, :focus-visible) > span {
++        display: inline-block;
++        margin-inline-start: 100%;
++        translate: calc(1px - 100%);
++        transition: margin-inline-start 2s ease-in, translate 2s ease-in;
++      }
++
++      nav a.truncated:is(:hover, :focus-visible):dir(rtl) > span {
++        translate: calc(100% - 1px);
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -160,11 +223,11 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span>Menu</span></a></li>
++      <li><a href="/locations"><span>Locations</span></a></li>
++      <li><a href="/rewards"><span>Rewards</span></a></li>
++      <li><a href="/account"><span>My Account</span></a></li>
++      <li><a href="/logout" class="logout-link"><span>Logout</span></a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +270,17 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const observer = new ResizeObserver(entries => {
++      for (const { target } of entries) {
++        target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
++      }
++    });
++
++    for (const label of document.querySelectorAll('nav a')) {
++      observer.observe(label);
++    }
++  </script>
+ </body>
+ 
+ </html>

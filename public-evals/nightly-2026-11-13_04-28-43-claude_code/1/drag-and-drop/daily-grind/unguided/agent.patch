@@ -1,0 +1,275 @@
+diff --git a/index.html b/index.html
+index 66c9173..1b889ce 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,57 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Reorderable cards */
++    .sortable .card {
++      position: relative;
++      cursor: grab;
++      touch-action: pan-y;
++      user-select: none;
++      -webkit-user-select: none;
++      transition: box-shadow 0.2s, transform 0.2s ease;
++    }
++
++    .sortable .card::before {
++      content: "\2194";
++      position: absolute;
++      top: 8px;
++      right: 12px;
++      font-size: 1rem;
++      color: var(--secondary);
++      transition: color 0.2s;
++    }
++
++    .sortable .card:hover::before,
++    .sortable .card:focus-visible::before {
++      color: var(--primary);
++    }
++
++    .sortable .card:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .sortable .card.dragging {
++      cursor: grabbing;
++      z-index: 10;
++      transition: box-shadow 0.2s;
++      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
++    }
++
++    .sortable-hint {
++      text-align: center;
++      font-size: 0.85rem;
++      color: #8d6e63;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+@@ -177,23 +228,25 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <p class="sortable-hint" id="sortable-hint">Drag cards left or right to rearrange them (or focus a card and use the arrow keys).</p>
++      <div class="grid sortable" id="seasonal-grid" aria-describedby="sortable-hint">
++        <div class="card" data-id="maple-oat-latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-id="dark-roast-espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-id="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="visually-hidden" aria-live="polite" id="sortable-status"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +260,182 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var grid = document.getElementById('seasonal-grid');
++      var status = document.getElementById('sortable-status');
++      var STORAGE_KEY = 'dailyGrind.seasonalOrder';
++      var DRAG_THRESHOLD = 5;
++
++      function cards() {
++        return Array.prototype.slice.call(grid.querySelectorAll(':scope > .card'));
++      }
++
++      // Cards sharing the same vertical position as `card` (i.e. its visual row).
++      function rowOf(card) {
++        var top = card.offsetTop;
++        return cards().filter(function (c) { return Math.abs(c.offsetTop - top) < 2; });
++      }
++
++      function saveOrder() {
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(cards().map(function (c) { return c.dataset.id; })));
++        } catch (e) { /* storage unavailable */ }
++      }
++
++      function restoreOrder() {
++        var order;
++        try { order = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { order = null; }
++        if (!Array.isArray(order)) return;
++        var byId = {};
++        cards().forEach(function (c) { byId[c.dataset.id] = c; });
++        order.forEach(function (id) { if (byId[id]) grid.appendChild(byId[id]); });
++        // Any cards not in the saved order stay at the end in their original sequence.
++      }
++
++      // FLIP animation for siblings that shift when the DOM order changes.
++      function animateSiblings(exclude, mutate) {
++        var others = cards().filter(function (c) { return c !== exclude; });
++        var before = others.map(function (c) { return c.getBoundingClientRect().left; });
++        mutate();
++        others.forEach(function (c, i) {
++          var dx = before[i] - c.getBoundingClientRect().left;
++          if (!dx) return;
++          c.style.transition = 'none';
++          c.style.transform = 'translateX(' + dx + 'px)';
++          c.getBoundingClientRect(); // force reflow
++          c.style.transition = '';
++          c.style.transform = '';
++        });
++      }
++
++      function label(card) {
++        var h = card.querySelector('h3');
++        return h ? h.textContent : 'Card';
++      }
++
++      function announce(card) {
++        var row = rowOf(card);
++        status.textContent = label(card) + ' moved to position ' + (row.indexOf(card) + 1) + ' of ' + row.length + '.';
++      }
++
++      // ---- Pointer dragging ----
++      var drag = null;
++      var suppressClick = false;
++
++      grid.addEventListener('pointerdown', function (e) {
++        if (e.button !== 0) return;
++        var card = e.target.closest('.card');
++        if (!card || card.parentNode !== grid) return;
++        drag = { card: card, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, active: false };
++      });
++
++      grid.addEventListener('pointermove', function (e) {
++        if (!drag || e.pointerId !== drag.pointerId) return;
++        var card = drag.card;
++        var dx = e.clientX - drag.startX;
++
++        if (!drag.active) {
++          var dy = e.clientY - drag.startY;
++          if (Math.abs(dx) < DRAG_THRESHOLD) {
++            if (Math.abs(dy) >= DRAG_THRESHOLD) drag = null; // vertical gesture: not a drag
++            return;
++          }
++          drag.active = true;
++          card.setPointerCapture(e.pointerId);
++          card.classList.add('dragging');
++        }
++        e.preventDefault();
++
++        // Use layout offsets (unaffected by transforms/animations) for all geometry.
++        var row = rowOf(card);
++        var others = row.filter(function (c) { return c !== card; });
++        var natural = card.offsetLeft;
++        var width = card.offsetWidth;
++        var minLeft = row[0].offsetLeft;
++        var maxLeft = row[row.length - 1].offsetLeft + row[row.length - 1].offsetWidth - width;
++
++        // Clamp movement to the bounds of the row.
++        dx = Math.max(minLeft - natural, Math.min(maxLeft - natural, dx));
++
++        // Find the first sibling whose center lies right of the dragged card's center.
++        var center = natural + dx + width / 2;
++        var target = null;
++        for (var i = 0; i < others.length; i++) {
++          if (center < others[i].offsetLeft + others[i].offsetWidth / 2) { target = others[i]; break; }
++        }
++        var lastOther = others[others.length - 1];
++        var changed = others.length > 0 &&
++          (target ? card.nextElementSibling !== target : card.previousElementSibling !== lastOther);
++
++        if (changed) {
++          animateSiblings(card, function () {
++            grid.insertBefore(card, target || lastOther.nextElementSibling);
++          });
++          // Re-base so the card stays under the pointer after its natural slot moved.
++          var shift = card.offsetLeft - natural;
++          drag.startX += shift;
++          dx -= shift;
++        }
++
++        card.style.transform = 'translateX(' + dx + 'px)';
++      });
++
++      function endDrag(e) {
++        if (!drag || (e && e.pointerId !== drag.pointerId)) return;
++        var d = drag;
++        drag = null;
++        if (!d.active) return;
++        var card = d.card;
++        suppressClick = true;
++        card.classList.remove('dragging');
++        card.style.transform = '';
++        saveOrder();
++        announce(card);
++        setTimeout(function () { suppressClick = false; }, 0);
++      }
++
++      grid.addEventListener('pointerup', endDrag);
++      grid.addEventListener('pointercancel', endDrag);
++      grid.addEventListener('lostpointercapture', endDrag);
++
++      // Don't follow a "View Details" link when the gesture was a drag.
++      grid.addEventListener('click', function (e) {
++        if (suppressClick) { e.preventDefault(); e.stopPropagation(); suppressClick = false; }
++      }, true);
++
++      // Prevent native link/image drag from hijacking the gesture.
++      grid.addEventListener('dragstart', function (e) { e.preventDefault(); });
++
++      // ---- Keyboard reordering ----
++      grid.addEventListener('keydown', function (e) {
++        var card = e.target;
++        if (!card.classList || !card.classList.contains('card') || card.parentNode !== grid) return;
++        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
++        var row = rowOf(card);
++        var idx = row.indexOf(card);
++        var swapWith = e.key === 'ArrowLeft' ? row[idx - 1] : row[idx + 1];
++        if (!swapWith) return;
++        e.preventDefault();
++        animateSiblings(card, function () {
++          grid.insertBefore(card, e.key === 'ArrowLeft' ? swapWith : swapWith.nextElementSibling);
++        });
++        card.focus();
++        saveOrder();
++        announce(card);
++      });
++
++      cards().forEach(function (c) {
++        c.tabIndex = 0;
++        c.setAttribute('role', 'group');
++        c.setAttribute('aria-roledescription', 'reorderable card');
++        c.setAttribute('aria-label', label(c));
++        c.querySelectorAll('a, img').forEach(function (el) { el.setAttribute('draggable', 'false'); });
++      });
++
++      restoreOrder();
++    })();
++  </script>
+ </body>
+ 
+ </html>

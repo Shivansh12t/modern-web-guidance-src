@@ -1,0 +1,239 @@
+diff --git a/index.html b/index.html
+index 66c9173..2548429 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,62 @@
+       color: var(--primary);
+     }
+ 
++    .seasonal-row {
++      --drop-marker-color: var(--primary);
++      --drop-line-size: 3px;
++      --drag-shadow: 0 8px 24px #4e342e40;
++      display: flex;
++      position: relative;
++      overflow-x: auto;
++      gap: 20px;
++      padding: 16px;
++    }
++
++    .seasonal-row .card {
++      flex: 1 0 250px;
++      min-width: 0;
++      position: relative;
++      scroll-margin: 16px;
++    }
++
++    .seasonal-row .card:last-child { margin-inline-end: 16px; }
++    .card:has(.drag-handle:focus-visible) { outline: 3px solid var(--primary); outline-offset: 2px; }
++    .drag-handle {
++      display: block;
++      margin: -10px auto 8px;
++      min-width: 44px;
++      min-height: 44px;
++      border: 0;
++      border-radius: 5px;
++      background: transparent;
++      color: var(--primary);
++      font: inherit;
++      font-size: 1.4rem;
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++    .drag-handle:is(:hover, :focus-visible) { background: var(--secondary); outline: none; }
++    .reorder-hint { text-align: center; font-size: 0.85rem; }
++    .card.is-dragging { z-index: 2; scale: 1.02; box-shadow: var(--drag-shadow); pointer-events: none; }
++    .is-reordering, .is-reordering * { cursor: grabbing !important; }
++    .seasonal-row[data-drop]::after {
++      content: '';
++      position: fixed;
++      left: var(--drop-x);
++      top: var(--drop-y);
++      width: var(--drop-line-size);
++      height: var(--drop-h);
++      background: var(--drop-marker-color);
++      pointer-events: none;
++      z-index: 3;
++    }
++    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
++    @media (forced-colors: active) {
++      .seasonal-row { --drop-marker-color: Highlight; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,7 +233,8 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <p class="reorder-hint" id="reorder-help" hidden>Drag a handle left or right to rearrange. Keyboard: Alt + Left or Right.</p>
++      <div class="grid seasonal-row" aria-label="Seasonal Favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,6 +251,7 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <p id="reorder-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +265,153 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const row = document.querySelector('.seasonal-row');
++    const status = document.querySelector('#reorder-status');
++    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++    let drag = null;
++    let announcement;
++
++    function announce(message) {
++      clearTimeout(announcement);
++      status.textContent = '';
++      announcement = setTimeout(() => { status.textContent = message; }, 500);
++    }
++
++    function animateFrom(positions) {
++      if (reducedMotion.matches) return;
++      for (const [card, before] of positions) {
++        const after = card.getBoundingClientRect();
++        card.animate([
++          { translate: `${before.left - after.left}px ${before.top - after.top}px` },
++          { translate: '0 0' }
++        ], { duration: 180, easing: 'ease-out' });
++      }
++    }
++
++    function moveCard(card, reference, positions) {
++      if (row.moveBefore) row.moveBefore(card, reference);
++      else row.insertBefore(card, reference);
++      card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      card.querySelector('.drag-handle').focus({ preventScroll: true });
++      animateFrom(positions);
++      announce(`${card.querySelector('h3').textContent}, position ${[...row.children].indexOf(card) + 1} of ${row.children.length}.`);
++    }
++
++    function positions() {
++      return new Map([...row.children].map(card => [card, card.getBoundingClientRect()]));
++    }
++
++    function updateDrag() {
++      if (!drag) return;
++      const bounds = row.getBoundingClientRect();
++      const x = Math.max(bounds.left, Math.min(drag.x, bounds.right)) - bounds.left - row.clientLeft + row.scrollLeft;
++      const others = [...row.children].filter(card => card !== drag.card);
++      drag.reference = others.find(card => x < card.offsetLeft + card.offsetWidth / 2) || null;
++      drag.card.style.translate = `${drag.x - drag.startX + row.scrollLeft - drag.startScroll}px 0`;
++      if (drag.reference === drag.card.nextElementSibling) {
++        delete row.dataset.drop;
++        return;
++      }
++      const next = drag.reference?.getBoundingClientRect();
++      const previous = (drag.reference ? others[others.indexOf(drag.reference) - 1] : others.at(-1))?.getBoundingClientRect();
++      const markerX = next && previous ? (next.left + previous.right) / 2 : next ? next.left - 10 : previous.right + 10;
++      row.dataset.drop = '';
++      row.style.setProperty('--drop-x', `${markerX - 1.5}px`);
++      row.style.setProperty('--drop-y', `${bounds.top + row.clientTop + 16}px`);
++      row.style.setProperty('--drop-h', `${drag.card.offsetHeight}px`);
++    }
++
++    function scrollDrag(time) {
++      if (!drag) return;
++      const bounds = row.getBoundingClientRect();
++      const zone = Math.min(drag.card.offsetWidth, row.clientWidth / 3);
++      const speed = drag.x < bounds.left + zone ? -Math.min(1, (bounds.left + zone - drag.x) / zone)
++        : drag.x > bounds.right - zone ? Math.min(1, (drag.x - bounds.right + zone) / zone) : 0;
++      row.scrollLeft += speed * Math.min(time - drag.lastTime, 32) * 0.7;
++      drag.lastTime = time;
++      updateDrag();
++      drag.frame = requestAnimationFrame(scrollDrag);
++    }
++
++    function finishDrag(cancelled = false) {
++      if (!drag) return;
++      const current = drag;
++      drag = null;
++      cancelAnimationFrame(current.frame);
++      const before = positions();
++      current.card.style.translate = '';
++      current.card.classList.remove('is-dragging');
++      document.documentElement.classList.remove('is-reordering');
++      delete row.dataset.drop;
++      for (const property of ['--drop-x', '--drop-y', '--drop-h']) row.style.removeProperty(property);
++      if (current.handle.hasPointerCapture(current.id)) current.handle.releasePointerCapture(current.id);
++      if (!cancelled && current.reference !== current.card.nextElementSibling) {
++        moveCard(current.card, current.reference, before);
++      } else {
++        current.card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        animateFrom(before);
++      }
++      if (cancelled) announce('Reordering cancelled.');
++    }
++
++    for (const card of row.children) {
++      const handle = document.createElement('button');
++      handle.type = 'button';
++      handle.className = 'drag-handle';
++      handle.textContent = '↔';
++      handle.setAttribute('aria-label', `Reorder ${card.querySelector('h3').textContent}`);
++      handle.setAttribute('aria-describedby', 'reorder-help');
++      card.prepend(handle);
++
++      handle.addEventListener('pointerdown', event => {
++        if (drag || !event.isPrimary || event.button !== 0) return;
++        card.getAnimations().forEach(animation => animation.finish());
++        handle.focus({ preventScroll: true });
++        drag = { card, handle, id: event.pointerId, startX: event.clientX, x: event.clientX,
++          startScroll: row.scrollLeft, reference: card.nextElementSibling, lastTime: performance.now() };
++        handle.setPointerCapture(event.pointerId);
++        card.classList.add('is-dragging');
++        document.documentElement.classList.add('is-reordering');
++        drag.frame = requestAnimationFrame(scrollDrag);
++      });
++      handle.addEventListener('lostpointercapture', event => {
++        if (drag?.id === event.pointerId) finishDrag(true);
++      });
++      handle.addEventListener('keydown', event => {
++        if (drag || !event.altKey || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
++        event.preventDefault();
++        const reference = event.key === 'ArrowLeft' ? card.previousElementSibling : card.nextElementSibling?.nextElementSibling;
++        if (event.key === 'ArrowLeft' ? !reference : !card.nextElementSibling) return;
++        for (const item of row.children) item.getAnimations().forEach(animation => animation.finish());
++        moveCard(card, reference || null, positions());
++      });
++      card.addEventListener('focusin', event => {
++        if (!drag && event.target.matches(':focus-visible') && !card.getAnimations().length) {
++          card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        }
++      });
++    }
++    document.querySelector('#reorder-help').hidden = false;
++    document.addEventListener('pointermove', event => {
++      if (drag?.id !== event.pointerId) return;
++      drag.x = event.clientX;
++      updateDrag();
++    });
++    document.addEventListener('pointerup', event => {
++      if (drag?.id !== event.pointerId) return;
++      drag.x = event.clientX;
++      updateDrag();
++      finishDrag();
++    });
++    document.addEventListener('pointercancel', event => {
++      if (drag?.id === event.pointerId) finishDrag(true);
++    });
++    document.addEventListener('keydown', event => {
++      if (drag && event.key === 'Escape') { event.preventDefault(); finishDrag(true); }
++    });
++    window.addEventListener('blur', () => finishDrag(true));
++  </script>
+ </body>
+ 
+ </html>

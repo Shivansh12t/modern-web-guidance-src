@@ -1,0 +1,208 @@
+diff --git a/index.html b/index.html
+index 66c9173..0be87cf 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,121 @@
+       background: #3e2723;
+     }
+ 
++    /* Binary On/Off Preference Toggle Section */
++    .preference-section {
++      margin-top: 40px;
++    }
++
++    .preference-card {
++      background: white;
++      padding: 24px 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 24px;
++      flex-wrap: wrap;
++      border-left: 4px solid var(--primary);
++    }
++
++    .preference-info {
++      flex: 1 1 300px;
++    }
++
++    .preference-info h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .preference-info p {
++      font-size: 0.95rem;
++      color: var(--text);
++      margin-bottom: 4px;
++    }
++
++    .preference-Feedback {
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-top: 6px;
++    }
++
++    .toggle-control {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      cursor: pointer;
++      user-select: none;
++    }
++
++    .toggle-state-text {
++      font-weight: 700;
++      font-size: 0.95rem;
++      min-width: 36px;
++      text-align: right;
++      color: var(--text);
++    }
++
++    .toggle-state-text[data-state="on"] {
++      color: var(--primary);
++    }
++
++    .switch-wrapper {
++      position: relative;
++      display: inline-block;
++      width: 56px;
++      height: 30px;
++    }
++
++    .switch-input {
++      opacity: 0;
++      width: 100%;
++      height: 100%;
++      position: absolute;
++      top: 0;
++      left: 0;
++      margin: 0;
++      cursor: pointer;
++      z-index: 2;
++    }
++
++    .switch-track {
++      position: absolute;
++      inset: 0;
++      background-color: #8d6e63;
++      border: 2px solid #5d4037;
++      border-radius: 30px;
++      transition: background-color 0.25s ease, border-color 0.25s ease;
++    }
++
++    .switch-thumb {
++      position: absolute;
++      height: 22px;
++      width: 22px;
++      left: 2px;
++      top: 2px;
++      background-color: #ffffff;
++      border-radius: 50%;
++      transition: transform 0.25s ease;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
++    }
++
++    .switch-input:checked + .switch-track {
++      background-color: var(--primary);
++      border-color: var(--primary);
++    }
++
++    .switch-input:checked + .switch-track .switch-thumb {
++      transform: translateX(26px);
++      background-color: var(--accent);
++    }
++
++    .switch-input:focus-visible + .switch-track {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +310,35 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preference-section" aria-labelledby="preference-heading">
++      <div class="preference-card">
++        <div class="preference-info">
++          <h2 id="preference-heading">Order &amp; Brew Notifications</h2>
++          <p id="preference-description">Receive real-time order ready alerts and seasonal small-batch roast updates. You can turn this preference on or off at any time.</p>
++          <p id="preference-feedback" class="preference-Feedback" aria-live="polite">Current setting: Notifications are Off.</p>
++        </div>
++
++        <label class="toggle-control" for="preference-toggle">
++          <span id="preference-state-label" class="toggle-state-text" data-state="off" aria-live="polite">Off</span>
++          <span class="switch-wrapper">
++            <input
++              type="checkbox"
++              role="switch"
++              id="preference-toggle"
++              name="brew_notifications_preference"
++              class="switch-input"
++              aria-checked="false"
++              aria-labelledby="preference-heading"
++              aria-describedby="preference-description"
++            >
++            <span class="switch-track" aria-hidden="true">
++              <span class="switch-thumb"></span>
++            </span>
++          </span>
++        </label>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +351,45 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const STORAGE_KEY = 'daily_grind_brew_notifications';
++      const toggleInput = document.getElementById('preference-toggle');
++      const stateLabel = document.getElementById('preference-state-label');
++      const feedbackText = document.getElementById('preference-feedback');
++
++      function applyPreferenceState(isEnabled) {
++        toggleInput.checked = isEnabled;
++        toggleInput.setAttribute('aria-checked', String(isEnabled));
++        const stateText = isEnabled ? 'On' : 'Off';
++        stateLabel.textContent = stateText;
++        stateLabel.setAttribute('data-state', isEnabled ? 'on' : 'off');
++        feedbackText.textContent = 'Current setting: Notifications are ' + stateText + '.';
++      }
++
++      try {
++        const savedValue = localStorage.getItem(STORAGE_KEY);
++        if (savedValue !== null) {
++          applyPreferenceState(savedValue === 'true');
++        } else {
++          applyPreferenceState(false);
++        }
++      } catch (e) {
++        applyPreferenceState(false);
++      }
++
++      toggleInput.addEventListener('change', function (event) {
++        const isEnabled = Boolean(event.target.checked);
++        applyPreferenceState(isEnabled);
++        try {
++          localStorage.setItem(STORAGE_KEY, String(isEnabled));
++        } catch (e) {
++          // Ignore storage errors in restricted environments
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

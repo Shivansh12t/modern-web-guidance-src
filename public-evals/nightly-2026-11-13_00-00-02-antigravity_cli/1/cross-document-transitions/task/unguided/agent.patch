@@ -1,0 +1,384 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1,6 +1,6 @@
+ <!DOCTYPE html>
+-<html lang="en">
++<html lang="en" data-page="1">
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+@@ -13,8 +13,12 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    @view-transition {
++      navigation: auto;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -24,8 +28,9 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-x: hidden;
+     }
+ 
+     /* Navigation */
+     nav {
+@@ -99,8 +104,12 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .seasonal-favorites {
++      view-transition-name: seasonal-favorites;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -134,8 +143,47 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Pagination */
++    .pagination {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 24px;
++      margin-top: 32px;
++      padding-top: 12px;
++    }
++
++    .pagination-link {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      background: var(--primary);
++      color: white;
++      padding: 10px 22px;
++      text-decoration: none;
++      border-radius: 6px;
++      font-weight: 600;
++      transition: background-color 0.25s ease, transform 0.2s ease;
++    }
++
++    .pagination-link:hover {
++      background: #3e2723;
++      transform: translateY(-1px);
++    }
++
++    .pagination-link:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .pagination-status {
++      font-size: 0.95rem;
++      font-weight: 500;
++      color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -151,9 +199,263 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Directional View Transition Keyframes */
++    @keyframes slide-out-left {
++      from {
++        transform: translateX(0);
++        opacity: 1;
++      }
++      to {
++        transform: translateX(-100%);
++        opacity: 0;
++      }
++    }
++
++    @keyframes slide-in-right {
++      from {
++        transform: translateX(100%);
++        opacity: 0;
++      }
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    @keyframes slide-out-right {
++      from {
++        transform: translateX(0);
++        opacity: 1;
++      }
++      to {
++        transform: translateX(100%);
++        opacity: 0;
++      }
++    }
++
++    @keyframes slide-in-left {
++      from {
++        transform: translateX(-100%);
++        opacity: 0;
++      }
++      to {
++        transform: translateX(0);
++        opacity: 1;
++      }
++    }
++
++    ::view-transition-old(root),
++    ::view-transition-new(root),
++    ::view-transition-old(seasonal-favorites),
++    ::view-transition-new(seasonal-favorites) {
++      animation-duration: 0.4s;
++      animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
++      animation-fill-mode: both;
++    }
++
++    /* Next (Forward) Direction */
++    html[data-direction="next"]::view-transition-old(root),
++    html[data-direction="next"]::view-transition-old(seasonal-favorites) {
++      animation-name: slide-out-left;
++    }
++
++    html[data-direction="next"]::view-transition-new(root),
++    html[data-direction="next"]::view-transition-new(seasonal-favorites) {
++      animation-name: slide-in-right;
++    }
++
++    /* Previous (Backward) Direction */
++    html[data-direction="previous"]::view-transition-old(root),
++    html[data-direction="previous"]::view-transition-old(seasonal-favorites) {
++      animation-name: slide-out-right;
++    }
++
++    html[data-direction="previous"]::view-transition-new(root),
++    html[data-direction="previous"]::view-transition-new(seasonal-favorites) {
++      animation-name: slide-in-left;
++    }
++
++    /* Active View Transition Type Selectors */
++    html:active-view-transition-type(next)::view-transition-old(root),
++    html:active-view-transition-type(next)::view-transition-old(seasonal-favorites),
++    html:active-view-transition-type(forwards)::view-transition-old(root),
++    html:active-view-transition-type(forwards)::view-transition-old(seasonal-favorites) {
++      animation-name: slide-out-left;
++    }
++
++    html:active-view-transition-type(next)::view-transition-new(root),
++    html:active-view-transition-type(next)::view-transition-new(seasonal-favorites),
++    html:active-view-transition-type(forwards)::view-transition-new(root),
++    html:active-view-transition-type(forwards)::view-transition-new(seasonal-favorites) {
++      animation-name: slide-in-right;
++    }
++
++    html:active-view-transition-type(previous)::view-transition-old(root),
++    html:active-view-transition-type(previous)::view-transition-old(seasonal-favorites),
++    html:active-view-transition-type(backwards)::view-transition-old(root),
++    html:active-view-transition-type(backwards)::view-transition-old(seasonal-favorites) {
++      animation-name: slide-out-right;
++    }
++
++    html:active-view-transition-type(previous)::view-transition-new(root),
++    html:active-view-transition-type(previous)::view-transition-new(seasonal-favorites),
++    html:active-view-transition-type(backwards)::view-transition-new(root),
++    html:active-view-transition-type(backwards)::view-transition-new(seasonal-favorites) {
++      animation-name: slide-in-left;
++    }
++
++    /* Respect Reduced Motion Preferences */
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++
++      *,
++      *::before,
++      *::after,
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation-duration: 0.001ms !important;
++        animation-delay: 0s !important;
++        animation-iteration-count: 1 !important;
++        transition-duration: 0.001ms !important;
++        animation: none !important;
++      }
++    }
+   </style>
++  <script>
++    (function () {
++      const PAGE_ORDER = {
++        '/': 1,
++        '/index.html': 1,
++        '/page2.html': 2,
++        '/page3.html': 3
++      };
++
++      function getPageIndex(urlStr) {
++        try {
++          const url = new URL(urlStr, window.location.origin);
++          const pageParam = url.searchParams.get('page');
++          if (pageParam) {
++            const parsed = parseInt(pageParam, 10);
++            if (!isNaN(parsed)) return parsed;
++          }
++          return PAGE_ORDER[url.pathname] || 1;
++        } catch (err) {
++          return 1;
++        }
++      }
++
++      function inferDirection(fromUrl, toUrl) {
++        if (!fromUrl || !toUrl) return null;
++        const fromIdx = getPageIndex(fromUrl);
++        const toIdx = getPageIndex(toUrl);
++        if (fromIdx === toIdx) return null;
++        const diff = (toIdx - fromIdx + 3) % 3;
++        return diff === 1 ? 'next' : 'previous';
++      }
++
++      function applyDirection(direction, viewTransition) {
++        const dir = direction === 'previous' ? 'previous' : 'next';
++        document.documentElement.dataset.direction = dir;
++        document.documentElement.setAttribute('data-transition', dir);
++
++        if (viewTransition && viewTransition.types) {
++          if (typeof viewTransition.types.clear === 'function') {
++            viewTransition.types.clear();
++          }
++          if (dir === 'next') {
++            viewTransition.types.add('next');
++            viewTransition.types.add('forward');
++            viewTransition.types.add('forwards');
++            viewTransition.types.add('slide-left');
++          } else {
++            viewTransition.types.add('previous');
++            viewTransition.types.add('prev');
++            viewTransition.types.add('back');
++            viewTransition.types.add('backward');
++            viewTransition.types.add('backwards');
++            viewTransition.types.add('slide-right');
++          }
++        }
++      }
++
++      try {
++        const savedDir = sessionStorage.getItem('transitionDirection');
++        if (savedDir) {
++          applyDirection(savedDir, null);
++        }
++      } catch (err) {}
++
++      document.addEventListener('click', function (e) {
++        const link = e.target && e.target.closest ? e.target.closest('a#previous, a#next') : null;
++        if (!link) return;
++        const dir = link.id === 'previous' ? 'previous' : 'next';
++        try {
++          sessionStorage.setItem('transitionDirection', dir);
++        } catch (err) {}
++        applyDirection(dir, null);
++      }, true);
++
++      window.addEventListener('pageswap', function (e) {
++        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++          if (e.viewTransition && typeof e.viewTransition.skipTransition === 'function') {
++            e.viewTransition.skipTransition();
++          }
++          return;
++        }
++
++        let dir = null;
++        try {
++          dir = sessionStorage.getItem('transitionDirection');
++        } catch (err) {}
++
++        if (!dir && e.activation) {
++          const fromUrl = e.activation.from && e.activation.from.url;
++          const toUrl = e.activation.entry && e.activation.entry.url;
++          dir = inferDirection(fromUrl, toUrl);
++        }
++
++        dir = dir || document.documentElement.dataset.direction || 'next';
++        try {
++          sessionStorage.setItem('transitionDirection', dir);
++        } catch (err) {}
++        applyDirection(dir, e.viewTransition);
++      });
++
++      window.addEventListener('pagereveal', function (e) {
++        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++          if (e.viewTransition && typeof e.viewTransition.skipTransition === 'function') {
++            e.viewTransition.skipTransition();
++          }
++          return;
++        }
++
++        let dir = null;
++        try {
++          dir = sessionStorage.getItem('transitionDirection');
++          sessionStorage.removeItem('transitionDirection');
++        } catch (err) {}
++
++        if (!dir && window.navigation && window.navigation.activation) {
++          const fromUrl = window.navigation.activation.from && window.navigation.activation.from.url;
++          const toUrl = window.navigation.activation.entry && window.navigation.activation.entry.url;
++          dir = inferDirection(fromUrl, toUrl);
++        }
++
++        if (!dir && document.referrer) {
++          dir = inferDirection(document.referrer, window.location.href);
++        }
++
++        dir = dir || document.documentElement.dataset.direction || 'next';
++        applyDirection(dir, e.viewTransition);
++      });
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -174,9 +476,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -193,8 +495,13 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <div class="pagination" role="navigation" aria-label="Seasonal Favorites Pagination">
++        <a href="page3.html" id="previous" class="pagination-link" rel="prev">&larr; Previous</a>
++        <span class="pagination-status" aria-current="page">Page 1 of 3</span>
++        <a href="page2.html" id="next" class="pagination-link" rel="next">Next &rarr;</a>
++      </div>
+     </section>
+   </main>
+ 
+   <footer>

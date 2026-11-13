@@ -1,0 +1,111 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,92 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Featured promo badge (Seasonal Favorites)
++       Spin, slide and hover-scale each drive a separate individual transform
++       property (rotate / translate / scale). They compose instead of
++       overriding one another, so the hover transition never interrupts or
++       restarts the two running animations. */
++    .promo-lane {
++      display: flex;
++      justify-content: center;
++      padding: 16px 0 8px;
++      overflow: hidden; /* keep the sliding badge from causing horizontal scroll */
++    }
++
++    .promo-badge {
++      /* Stable stacking context in every state: it exists before, during and
++         after hover, so hovering only changes stacking order (z-index), never
++         creates or tears down a context. No will-change needed. */
++      position: relative;
++      z-index: 1;
++      isolation: isolate;
++
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      width: 96px;
++      height: 96px;
++      margin: 12px; /* room to scale up inside the lane */
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
++      text-align: center;
++      text-decoration: none;
++      font-weight: bold;
++      line-height: 1.1;
++      text-transform: uppercase;
++      cursor: pointer;
++
++      rotate: 0deg;
++      translate: 0 0;
++      scale: 1;
++      animation:
++        promo-spin 6s linear infinite,
++        promo-slide 3s ease-in-out infinite alternate;
++      transition: scale 0.3s ease, box-shadow 0.3s ease;
++    }
++
++    .promo-badge .promo-badge__small {
++      font-size: 0.6rem;
++      letter-spacing: 1px;
++    }
++
++    .promo-badge .promo-badge__big {
++      font-size: 0.95rem;
++    }
++
++    .promo-badge:hover,
++    .promo-badge:focus-visible {
++      z-index: 2;
++      scale: 1.25;
++      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
++    }
++
++    @keyframes promo-spin {
++      to {
++        rotate: 360deg;
++      }
++    }
++
++    @keyframes promo-slide {
++      from {
++        translate: -60px 0;
++      }
++      to {
++        translate: 60px 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .promo-badge {
++        animation: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,8 +260,14 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-lane">
++        <a href="/menu/seasonal" class="promo-badge target" aria-label="Featured seasonal promo: Maple Oat Latte">
++          <span class="promo-badge__small">Featured</span>
++          <span class="promo-badge__big">Fall Pick</span>
++        </a>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>

@@ -1,0 +1,225 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,101 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .info-button {
++      display: inline-grid;
++      place-items: center;
++      width: 32px;
++      height: 32px;
++      margin-left: 4px;
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font: italic bold 1rem Georgia, serif;
++      vertical-align: middle;
++      cursor: pointer;
++      anchor-name: --latte-info;
++    }
++
++    .info-button:hover {
++      background: #f4eeeb;
++    }
++
++    .info-button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    #latte-tooltip {
++      position: fixed;
++      inset: auto;
++      margin: 12px;
++      padding: 0;
++      width: 280px;
++      max-width: calc(100vw - 32px);
++      border: 0;
++      background: transparent;
++      color: white;
++      overflow: visible;
++      text-align: left;
++      font-size: 0.9rem;
++      line-height: 1.5;
++      z-index: 1001;
++    }
++
++    #latte-tooltip[hidden] {
++      display: none;
++    }
++
++    .tooltip-content {
++      position: relative;
++      padding: 14px 16px;
++      border-radius: 8px;
++      background: var(--primary);
++      box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
++    }
++
++    .tooltip-content::before {
++      content: "";
++      position: absolute;
++      width: 12px;
++      height: 12px;
++      left: calc(var(--arrow-x, 50%) - 6px);
++      bottom: -6px;
++      background: var(--primary);
++      transform: rotate(45deg);
++    }
++
++    @supports (container-type: anchored) and (position-area: block-start) {
++      #latte-tooltip {
++        position-anchor: --latte-info;
++        position-area: block-start;
++        position-try-fallbacks: flip-block;
++        container-type: anchored;
++      }
++
++      @container anchored(fallback: flip-block) {
++        .tooltip-content::before {
++          top: -6px;
++          bottom: auto;
++        }
++      }
++    }
++
++    #latte-tooltip[data-placement] {
++      position-area: none;
++      position-try-fallbacks: none;
++      container-type: normal;
++      margin: 0;
++    }
++
++    #latte-tooltip[data-placement="bottom"] .tooltip-content::before {
++      top: -6px;
++      bottom: auto;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -178,9 +271,15 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3>Maple Oat Latte <button type="button" id="anchor" class="info-button"
++              popovertarget="latte-tooltip" aria-label="About Maple Oat Latte"
++              aria-describedby="latte-tooltip">i</button></h3>
++          <div id="latte-tooltip" popover role="tooltip" hidden>
++            <div class="tooltip-content">A cozy blend of espresso, creamy oat milk, and Vermont maple syrup.
++              Ask your barista about ingredients and customization.</div>
++          </div>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+@@ -206,7 +305,102 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const infoButton = document.getElementById('anchor');
++    const tooltip = document.getElementById('latte-tooltip');
++    const nativePopover = 'popover' in HTMLElement.prototype;
++    const nativePositioning = CSS.supports('container-type: anchored') &&
++      CSS.supports('position-area: block-start');
++    let tooltipOpen = false;
++    let positionFrame;
++
++    function positionTooltip() {
++      if (!tooltipOpen) return;
++      delete tooltip.dataset.placement;
++      tooltip.style.removeProperty('left');
++      tooltip.style.removeProperty('top');
++      tooltip.style.removeProperty('--arrow-x');
++
++      const anchor = infoButton.getBoundingClientRect();
++      const bounds = tooltip.getBoundingClientRect();
++      const viewport = window.visualViewport;
++      const edge = 16;
++      const gap = 12;
++      const viewportLeft = viewport?.offsetLeft ?? 0;
++      const viewportTop = viewport?.offsetTop ?? 0;
++      const viewportRight = viewportLeft + (viewport?.width ?? window.innerWidth);
++      const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
++
++      if (nativePositioning && bounds.left >= viewportLeft + edge &&
++          bounds.right <= viewportRight - edge && bounds.top >= viewportTop + edge &&
++          bounds.bottom <= viewportBottom - edge) return;
++
++      const above = anchor.top - gap - bounds.height;
++      const below = anchor.bottom + gap;
++      const placement = above >= viewportTop + edge ||
++        anchor.top - viewportTop >= viewportBottom - anchor.bottom ? 'top' : 'bottom';
++      const center = anchor.left + anchor.width / 2;
++      const left = Math.max(viewportLeft + edge,
++        Math.min(center - bounds.width / 2, viewportRight - bounds.width - edge));
++      const top = Math.max(viewportTop + edge, Math.min(
++        placement === 'top' ? above : below, viewportBottom - bounds.height - edge));
++
++      tooltip.dataset.placement = placement;
++      tooltip.style.left = `${left}px`;
++      tooltip.style.top = `${top}px`;
++      tooltip.style.setProperty('--arrow-x', `${Math.max(14,
++        Math.min(center - left, bounds.width - 14))}px`);
++    }
++
++    function schedulePosition() {
++      cancelAnimationFrame(positionFrame);
++      positionFrame = requestAnimationFrame(positionTooltip);
++    }
++
++    function closeTooltip() {
++      if (nativePopover) {
++        if (tooltipOpen) tooltip.hidePopover();
++      } else {
++        tooltipOpen = false;
++        tooltip.hidden = true;
++        infoButton.setAttribute('aria-expanded', 'false');
++      }
++    }
++
++    if (nativePopover) {
++      tooltip.hidden = false;
++      tooltip.addEventListener('beforetoggle', (event) => {
++        tooltipOpen = event.newState === 'open';
++        if (tooltipOpen) schedulePosition();
++      });
++    } else {
++      infoButton.setAttribute('aria-expanded', 'false');
++      infoButton.addEventListener('click', () => {
++        tooltipOpen = !tooltipOpen;
++        tooltip.hidden = !tooltipOpen;
++        infoButton.setAttribute('aria-expanded', String(tooltipOpen));
++        positionTooltip();
++      });
++      document.addEventListener('pointerdown', (event) => {
++        if (!infoButton.contains(event.target) && !tooltip.contains(event.target)) closeTooltip();
++      });
++      document.addEventListener('keydown', (event) => {
++        if (event.key === 'Escape') closeTooltip();
++      });
++    }
++
++    // Dismiss before another keyboard-focused control can be covered.
++    document.addEventListener('focusin', (event) => {
++      if (event.target !== infoButton && !tooltip.contains(event.target)) closeTooltip();
++    });
++    window.addEventListener('scroll', schedulePosition, { capture: true, passive: true });
++    window.addEventListener('resize', schedulePosition);
++    window.visualViewport?.addEventListener('resize', schedulePosition);
++    window.visualViewport?.addEventListener('scroll', schedulePosition);
++    new ResizeObserver(schedulePosition).observe(tooltip);
++  </script>
++
+ </body>
+ 
+ </html>

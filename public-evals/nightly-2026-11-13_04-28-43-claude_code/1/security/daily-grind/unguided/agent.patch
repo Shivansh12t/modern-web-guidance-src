@@ -1,0 +1,684 @@
+diff --git a/index.html b/index.html
+index 66c9173..3104554 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <link rel="stylesheet" href="/styles.css">
+ </head>
+ 
+ <body>
+@@ -164,7 +18,12 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <!-- Logout is a state-changing action: POST only, never a GET link (prevents logout CSRF via <img src>, prefetching, etc.) -->
++        <form class="logout-form" method="post" action="/logout">
++          <button type="submit" class="logout-link">Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -176,7 +35,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/public/styles.css b/public/styles.css
+new file mode 100644
+index 0000000..014000d
+--- /dev/null
++++ b/public/styles.css
+@@ -0,0 +1,171 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++.section-title {
++  text-align: center;
++}
++
++.logout-form {
++  display: inline;
++}
++
++.logout-link {
++  background: none;
++  color: white;
++  font: inherit;
++  font-size: 0.9rem;
++  cursor: pointer;
++  transition: color 0.3s;
++}
++
++.logout-link:hover,
++.logout-link:focus-visible {
++  color: var(--accent);
++}
++
++.notice {
++  text-align: center;
++}
+diff --git a/server.js b/server.js
+index 52c2fd5..331f91c 100644
+--- a/server.js
++++ b/server.js
+@@ -1,32 +1,303 @@
++'use strict';
++
++/**
++ * The Daily Grind – minimal Node server (no dependencies).
++ *
++ *  - Serves the site (index.html + an allowlisted set of static assets).
++ *  - POST /logout signs the visitor out (expires cookies + Clear-Site-Data).
++ *    GET /logout only renders a confirmation form, so a cross-site
++ *    <img src="/logout"> or link prefetch can't sign anyone out.
++ *  - Sends a strict, nonce-based Content Security Policy with Trusted Types,
++ *    plus the usual hardening headers, and collects violation reports at
++ *    /csp-report so policies can be rolled out safely.
++ *
++ * Env:
++ *   PORT             listen port (default 11222)
++ *   CSP_REPORT_ONLY  "1" => send the CSP as Content-Security-Policy-Report-Only
++ *                    (staged rollout: observe reports first, then enforce)
++ *   SESSION_COOKIE   name of the session cookie (default "session")
++ */
++
+ const http = require('node:http');
+ const fs = require('node:fs');
+ const path = require('node:path');
++const crypto = require('node:crypto');
+ 
+ const PORT = parseInt(process.env.PORT || '11222', 10);
+-const WORK_DIR = __dirname;
++const CSP_REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1';
++const SESSION_COOKIE = process.env.SESSION_COOKIE || 'session';
++const ROOT = __dirname;
++const MAX_REPORT_BYTES = 16 * 1024;
+ 
+-const server = http.createServer((req, res) => {
+-  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+-  const pathname = parsedUrl.pathname;
++// Explicit allowlist of static files: no filesystem path is ever derived from
++// the request URL, so path traversal is impossible.
++const STATIC_FILES = {
++  '/styles.css': { file: path.join(ROOT, 'public', 'styles.css'), type: 'text/css; charset=utf-8' },
++};
++
++const INDEX_TEMPLATE = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
++
++// ---------------------------------------------------------------------------
++// Security headers
++// ---------------------------------------------------------------------------
++
++function buildCsp(nonce) {
++  return [
++    "default-src 'none'",
++    // Nonce + strict-dynamic: only scripts the server explicitly marks run.
++    // (The site currently ships no JavaScript at all.)
++    `script-src 'nonce-${nonce}' 'strict-dynamic'`,
++    "style-src 'self'",
++    "img-src 'self' https://images.unsplash.com",
++    "font-src 'self'",
++    "connect-src 'self'",
++    "manifest-src 'self'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "form-action 'self'",
++    "frame-ancestors 'none'",
++    // DOM-XSS prevention: string-to-script sinks (innerHTML, eval, …) throw
++    // unless the value comes from a Trusted Types policy. None are allowed.
++    "require-trusted-types-for 'script'",
++    "trusted-types 'none'",
++    'upgrade-insecure-requests',
++    'report-uri /csp-report',
++    'report-to csp-endpoint',
++  ].join('; ');
++}
++
++function securityHeaders(nonce) {
++  const headers = {
++    'Reporting-Endpoints': 'csp-endpoint="/csp-report"',
++    'X-Content-Type-Options': 'nosniff',
++    'X-Frame-Options': 'DENY',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Permissions-Policy':
++      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
++    'Cross-Origin-Opener-Policy': 'same-origin',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'Origin-Agent-Cluster': '?1',
++    // Ignored by browsers over plain HTTP; takes effect behind TLS.
++    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
++  };
++  if (nonce) {
++    headers[CSP_REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'] =
++      buildCsp(nonce);
++  }
++  return headers;
++}
++
++function send(res, status, body, headers = {}, method = 'GET') {
++  const buf = Buffer.isBuffer(body) ? body : Buffer.from(body, 'utf8');
++  res.writeHead(status, { 'Content-Length': buf.length, ...headers });
++  res.end(method === 'HEAD' ? undefined : buf);
++}
++
++function sendHtml(res, status, html, extraHeaders = {}, method = 'GET') {
++  const nonce = crypto.randomBytes(16).toString('base64');
++  send(
++    res,
++    status,
++    html.replaceAll('{{CSP_NONCE}}', nonce),
++    {
++      ...securityHeaders(nonce),
++      'Content-Type': 'text/html; charset=utf-8',
++      'Cache-Control': 'no-store',
++      ...extraHeaders,
++    },
++    method,
++  );
++}
++
++// ---------------------------------------------------------------------------
++// Logout
++// ---------------------------------------------------------------------------
+ 
+-  if (pathname === '/logout' || pathname === '/logout/') {
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end('Logged out');
++function parseCookieNames(header) {
++  if (!header) return [];
++  return header
++    .split(';')
++    .map((c) => c.split('=')[0].trim())
++    .filter((name) => /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(name));
++}
++
++/** Same-origin check for state-changing requests (CSRF defence). */
++function isSameOriginRequest(req) {
++  const site = req.headers['sec-fetch-site'];
++  if (site && site !== 'same-origin' && site !== 'none') return false;
++  const origin = req.headers.origin;
++  if (origin && origin !== 'null') {
++    try {
++      return new URL(origin).host === req.headers.host;
++    } catch {
++      return false;
++    }
++  }
++  // Opaque ("null") origin from a cross-site context is rejected.
++  if (origin === 'null') return false;
++  return true;
++}
++
++function page(title, bodyHtml) {
++  return `<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <title>${title} | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css">
++</head>
++<body>
++  <main class="container notice">
++${bodyHtml}
++  </main>
++</body>
++</html>
++`;
++}
++
++const LOGOUT_CONFIRM_PAGE = page(
++  'Sign out',
++  `    <h1>Sign out?</h1>
++    <p>You will be signed out of your Daily Grind account on this device.</p>
++    <form method="post" action="/logout">
++      <button type="submit" class="btn">Sign out</button>
++    </form>
++    <p><a href="/">Back to home</a></p>`,
++);
++
++const LOGGED_OUT_PAGE = page(
++  'Signed out',
++  `    <h1>You've been signed out</h1>
++    <p>See you for your next cup.</p>
++    <a href="/" class="btn">Return home</a>`,
++);
++
++function handleLogout(req, res) {
++  if (req.method === 'GET' || req.method === 'HEAD') {
++    sendHtml(res, 200, LOGOUT_CONFIRM_PAGE, {}, req.method);
++    return;
++  }
++  if (req.method !== 'POST') {
++    sendHtml(res, 405, page('Method not allowed', '    <h1>Method not allowed</h1>'), {
++      Allow: 'GET, HEAD, POST',
++    });
++    return;
++  }
++  if (!isSameOriginRequest(req)) {
++    sendHtml(res, 403, page('Forbidden', '    <h1>Forbidden</h1><p>Cross-site request rejected.</p>'));
+     return;
+   }
++  // Drain any request body (form posts have an empty one).
++  req.resume();
+ 
+-  const filePath = path.join(WORK_DIR, 'index.html');
+-  fs.readFile(filePath, (err, data) => {
+-    if (err) {
+-      res.writeHead(500);
+-      res.end('Server error');
++  // Expire the session cookie and every other cookie the browser sent.
++  const names = new Set([SESSION_COOKIE, ...parseCookieNames(req.headers.cookie)]);
++  const expired = [...names].map(
++    (name) => `${name}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
++  );
++
++  sendHtml(res, 200, LOGGED_OUT_PAGE, {
++    'Set-Cookie': expired,
++    // Wipe cookies, storage and cached authenticated pages for this origin
++    // (honoured on secure contexts: HTTPS or localhost).
++    'Clear-Site-Data': '"cache", "cookies", "storage"',
++  });
++}
++
++// ---------------------------------------------------------------------------
++// CSP violation reports
++// ---------------------------------------------------------------------------
++
++function handleCspReport(req, res) {
++  if (req.method !== 'POST') {
++    send(res, 405, '', { Allow: 'POST', ...securityHeaders() });
++    return;
++  }
++  let size = 0;
++  const chunks = [];
++  req.on('data', (chunk) => {
++    size += chunk.length;
++    if (size > MAX_REPORT_BYTES) {
++      send(res, 413, '', securityHeaders());
++      req.destroy();
+       return;
+     }
+-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+-    res.end(data);
++    chunks.push(chunk);
+   });
++  req.on('end', () => {
++    if (res.writableEnded) return;
++    try {
++      const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
++      const reports = Array.isArray(data) ? data : [data];
++      for (const r of reports) {
++        const body = r['csp-report'] || r.body || r;
++        console.warn(
++          '[csp-violation]',
++          JSON.stringify({
++            directive: body['effective-directive'] || body.effectiveDirective || body['violated-directive'],
++            blocked: body['blocked-uri'] || body.blockedURL,
++            document: body['document-uri'] || body.documentURL,
++            sample: body['script-sample'] || body.sample,
++            disposition: body.disposition,
++          }),
++        );
++      }
++    } catch {
++      // Ignore malformed reports.
++    }
++    send(res, 204, '', securityHeaders());
++  });
++}
++
++// ---------------------------------------------------------------------------
++// Router
++// ---------------------------------------------------------------------------
++
++const server = http.createServer((req, res) => {
++  let pathname;
++  try {
++    pathname = new URL(req.url, 'http://localhost').pathname;
++  } catch {
++    send(res, 400, 'Bad request', { 'Content-Type': 'text/plain; charset=utf-8', ...securityHeaders() });
++    return;
++  }
++
++  if (pathname === '/logout' || pathname === '/logout/') return handleLogout(req, res);
++  if (pathname === '/csp-report') return handleCspReport(req, res);
++
++  if (req.method !== 'GET' && req.method !== 'HEAD') {
++    send(res, 405, 'Method not allowed', {
++      Allow: 'GET, HEAD',
++      'Content-Type': 'text/plain; charset=utf-8',
++      ...securityHeaders(),
++    });
++    return;
++  }
++
++  const asset = STATIC_FILES[pathname];
++  if (asset) {
++    fs.readFile(asset.file, (err, data) => {
++      if (err) {
++        send(res, 500, 'Server error', { 'Content-Type': 'text/plain; charset=utf-8', ...securityHeaders() });
++        return;
++      }
++      send(
++        res,
++        200,
++        data,
++        { ...securityHeaders(), 'Content-Type': asset.type, 'Cache-Control': 'public, max-age=3600' },
++        req.method,
++      );
++    });
++    return;
++  }
++
++  // All other GET routes render the home page (as the previous server did).
++  sendHtml(res, 200, INDEX_TEMPLATE, {}, req.method);
+ });
+ 
+ server.listen(PORT, () => {
+-  console.log(`Server running on port ${PORT}`);
++  console.log(`Server running on port ${PORT}${CSP_REPORT_ONLY ? ' (CSP report-only)' : ''}`);
+ });

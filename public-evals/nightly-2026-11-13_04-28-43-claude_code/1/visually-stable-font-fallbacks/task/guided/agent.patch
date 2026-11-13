@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,15 +4,67 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Web fonts: connect early, and only request the weights actually used. -->
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link rel="stylesheet"
++    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@700&display=swap">
+   <style>
++    /*
++     * Metric-matched fallback faces.
++     * While the web fonts load (font-display: swap) the browser renders with these
++     * local fonts, rescaled so their average glyph width and line metrics match the
++     * web font. When the swap happens, text keeps (nearly) the same width and line
++     * box height, so nothing reflows. Values were computed from the actual
++     * Inter / Playfair Display font files against Arial / Times New Roman metrics.
++     * Liberation Sans/Serif are metric-compatible clones found on Linux/ChromeOS.
++     */
++    @font-face {
++      font-family: "Inter Fallback";
++      src: local("Arial"), local("ArialMT"), local("Liberation Sans");
++      font-weight: 400;
++      size-adjust: 107.27%;
++      ascent-override: 90.31%;
++      descent-override: 22.49%;
++      line-gap-override: 0%;
++    }
++
++    /* Separate bold face so the browser uses real Arial Bold, not faux-bold. */
++    @font-face {
++      font-family: "Inter Fallback";
++      src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold");
++      font-weight: 700;
++      size-adjust: 107.27%;
++      ascent-override: 90.31%;
++      descent-override: 22.49%;
++      line-gap-override: 0%;
++    }
++
++    @font-face {
++      font-family: "Playfair Display Fallback";
++      src: local("Times New Roman Bold"), local("TimesNewRomanPS-BoldMT"), local("Liberation Serif Bold");
++      font-weight: 700;
++      size-adjust: 114.58%;
++      ascent-override: 94.43%;
++      descent-override: 21.91%;
++      line-gap-override: 0%;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      --font-body: "Inter", "Inter Fallback", system-ui, sans-serif;
++      --font-display: "Playfair Display", "Playfair Display Fallback", Georgia, serif;
++      /* x-height / cap-height aspect values of the web fonts (from their OS/2 tables). */
++      --font-body-ex: 0.546;
++      --font-display-ex: 0.514;
++      --font-display-cap: 0.708;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -20,9 +72,15 @@
+       padding: 0;
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: var(--font-body);
++      /* Scale whichever font is currently rendering (web font or any fallback)
++         to the web font's x-height, so lowercase text stays equally legible
++         and similarly sized before and after the swap. A fixed value is used
++         rather than from-font, because from-font resolves against the first
++         *available* font, i.e. the fallback itself while the web font loads. */
++      font-size-adjust: ex-height var(--font-body-ex);
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+@@ -40,10 +98,13 @@
+       z-index: 1000;
+     }
+ 
+     .logo {
++      font-family: var(--font-display);
++      /* All-caps wordmark: normalise on cap height instead of x-height. */
++      font-size-adjust: cap-height var(--font-display-cap);
+       font-size: 1.5rem;
+-      font-weight: bold;
++      font-weight: 700;
+       letter-spacing: 1px;
+     }
+ 
+     nav ul {
+@@ -141,8 +202,20 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    h1,
++    h2,
++    h3 {
++      font-family: var(--font-display);
++      font-size-adjust: ex-height var(--font-display-ex);
++      font-weight: 700;
++      line-height: 1.2;
++      /* Balanced wrapping keeps headings from leaving a lone word behind,
++         which is also where a swap is most likely to change the line count. */
++      text-wrap: balance;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 

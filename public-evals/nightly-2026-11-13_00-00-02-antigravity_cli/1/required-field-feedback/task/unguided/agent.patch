@@ -1,0 +1,260 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -141,8 +141,114 @@
+       padding: 40px 20px;
+       margin-top: 40px;
+     }
+ 
++    .mailing-list {
++      max-width: 480px;
++      margin: 0 auto 30px;
++      padding: 24px;
++      background: var(--light);
++      border-radius: 8px;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++    }
++
++    .mailing-list h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1.25rem;
++    }
++
++    .mailing-list p.mailing-list-desc {
++      font-size: 0.9rem;
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .mailing-list-form {
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      text-align: left;
++    }
++
++    .mailing-list-form label {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .mailing-list-input-group {
++      display: flex;
++      gap: 10px;
++      align-items: stretch;
++    }
++
++    .mailing-list-form input[type="email"] {
++      flex: 1;
++      padding: 10px 12px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      color: var(--text);
++      background-color: #ffffff;
++      border: 1.5px solid #bcaaa4;
++      border-radius: 5px;
++      outline: none;
++      box-shadow: none;
++      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
++    }
++
++    /* Keep empty/untouched required inputs neutral even when :invalid matches natively */
++    .mailing-list-form input[type="email"]:invalid:not(.is-invalid) {
++      border-color: #bcaaa4;
++      background-color: #ffffff;
++      box-shadow: none;
++    }
++
++    .mailing-list-form input[type="email"]:focus:not(.is-invalid) {
++      border-color: var(--primary);
++      box-shadow: 0 0 0 3px rgba(78, 52, 46, 0.15);
++    }
++
++    .mailing-list-form input[type="email"].is-invalid,
++    .mailing-list-form input[type="email"][aria-invalid="true"] {
++      border-color: #c62828;
++      background-color: #fff5f5;
++      box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.15);
++    }
++
++    .mailing-list-form .btn-submit {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-weight: 600;
++      white-space: nowrap;
++    }
++
++    .error-message {
++      display: none;
++      color: #c62828;
++      font-size: 0.85rem;
++      font-weight: 500;
++      margin-top: 4px;
++    }
++
++    .error-message.visible {
++      display: block;
++    }
++
++    .success-message {
++      display: none;
++      color: #2e7d32;
++      font-size: 0.85rem;
++      font-weight: 500;
++      margin-top: 4px;
++    }
++
++    .success-message.visible {
++      display: block;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
+@@ -197,8 +303,35 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <div class="mailing-list">
++      <h3>Join Our Mailing List</h3>
++      <p class="mailing-list-desc">Subscribe for seasonal releases, brewing tips, and exclusive rewards.</p>
++      <form id="mailing-list-form" class="mailing-list-form" action="/subscribe" method="post" novalidate>
++        <label for="mailing-list-email">Email Address <span aria-hidden="true">*</span></label>
++        <div class="mailing-list-input-group">
++          <input
++            type="email"
++            id="mailing-list-email"
++            name="email"
++            placeholder="you@example.com"
++            autocomplete="email"
++            required
++            aria-required="true"
++            aria-invalid="false"
++            aria-describedby="mailing-list-error"
++          >
++          <button type="submit" class="btn btn-submit">Subscribe</button>
++        </div>
++        <p id="mailing-list-error" class="error-message" role="alert" aria-live="polite" hidden>
++          Please enter a valid email address.
++        </p>
++        <p id="mailing-list-success" class="success-message" role="status" aria-live="polite" hidden>
++          Thanks for subscribing! Check your inbox for a welcome offer.
++        </p>
++      </form>
++    </div>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +339,105 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('mailing-list-form');
++      const emailInput = document.getElementById('mailing-list-email');
++      const errorMsg = document.getElementById('mailing-list-error');
++      const successMsg = document.getElementById('mailing-list-success');
++
++      if (!form || !emailInput || !errorMsg) return;
++
++      let hasInteracted = false;
++      let hasTyped = false;
++
++      function getValidationError() {
++        const value = emailInput.value.trim();
++        if (value === '' || emailInput.validity.valueMissing) {
++          return 'Email address is required. Please enter your email.';
++        }
++        if (emailInput.validity.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
++          return 'Please enter a valid email address.';
++        }
++        return '';
++      }
++
++      function showError(message) {
++        emailInput.classList.add('is-invalid', 'error');
++        emailInput.setAttribute('aria-invalid', 'true');
++        errorMsg.textContent = message;
++        errorMsg.hidden = false;
++        errorMsg.classList.add('visible');
++        if (successMsg) {
++          successMsg.hidden = true;
++          successMsg.classList.remove('visible');
++        }
++      }
++
++      function clearError() {
++        emailInput.classList.remove('is-invalid', 'error');
++        emailInput.setAttribute('aria-invalid', 'false');
++        errorMsg.hidden = true;
++        errorMsg.classList.remove('visible');
++      }
++
++      function validateField() {
++        const errorText = getValidationError();
++        if (errorText) {
++          showError(errorText);
++          return false;
++        }
++        clearError();
++        return true;
++      }
++
++      emailInput.addEventListener('blur', function () {
++        hasInteracted = true;
++        validateField();
++      });
++
++      emailInput.addEventListener('input', function () {
++        if (successMsg) {
++          successMsg.hidden = true;
++          successMsg.classList.remove('visible');
++        }
++        if (emailInput.value.trim() !== '') {
++          hasTyped = true;
++        }
++        const errorText = getValidationError();
++        if (!errorText) {
++          clearError();
++        } else if (hasInteracted || (hasTyped && emailInput.value.trim() === '')) {
++          showError(errorText);
++        }
++      });
++
++      emailInput.addEventListener('invalid', function (event) {
++        event.preventDefault();
++        hasInteracted = true;
++        validateField();
++      });
++
++      form.addEventListener('submit', function (event) {
++        event.preventDefault();
++        hasInteracted = true;
++        if (validateField()) {
++          emailInput.value = '';
++          hasInteracted = false;
++          hasTyped = false;
++          clearError();
++          if (successMsg) {
++            successMsg.hidden = false;
++            successMsg.classList.add('visible');
++          }
++        } else {
++          emailInput.focus();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

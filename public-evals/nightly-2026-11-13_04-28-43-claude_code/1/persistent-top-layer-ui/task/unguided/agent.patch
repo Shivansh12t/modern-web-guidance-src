@@ -1,0 +1,403 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,192 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Feedback trigger + section hosts */
++    .feedback-fab {
++      position: fixed;
++      right: 24px;
++      bottom: 24px;
++      z-index: 900;
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      border-radius: 999px;
++      padding: 12px 20px;
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++    }
++
++    .feedback-fab:hover,
++    .feedback-fab:focus-visible {
++      background: #ff9100;
++    }
++
++    .modal-host {
++      position: relative;
++      transition: box-shadow 0.3s, outline-color 0.3s;
++      outline: 3px dashed transparent;
++      outline-offset: -3px;
++    }
++
++    .modal-host.is-hosting {
++      outline-color: var(--accent);
++    }
++
++    .modal-host.is-hosting::before {
++      content: "Feedback modal lives here";
++      position: absolute;
++      top: 8px;
++      left: 8px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 600;
++      padding: 2px 8px;
++      border-radius: 4px;
++      z-index: 1;
++    }
++
++    .story {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 30px;
++      align-items: center;
++      margin-top: 60px;
++      padding: 20px;
++    }
++
++    .story img {
++      width: 100%;
++      border-radius: 8px;
++      object-fit: cover;
++      aspect-ratio: 4 / 3;
++    }
++
++    .story h2 {
++      margin-bottom: 10px;
++    }
++
++    @media (max-width: 700px) {
++      .story {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* Feedback modal */
++    .feedback-modal {
++      border: none;
++      border-radius: 12px;
++      padding: 0;
++      width: min(480px, calc(100vw - 32px));
++      color: var(--text);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      margin: auto;
++    }
++
++    .feedback-modal::backdrop {
++      background: rgba(30, 20, 15, 0.6);
++      backdrop-filter: blur(2px);
++    }
++
++    .feedback-modal header {
++      background: var(--primary);
++      color: white;
++      padding: 16px 20px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .feedback-modal header h2 {
++      font-size: 1.2rem;
++    }
++
++    .feedback-modal .icon-btn {
++      background: transparent;
++      border: none;
++      color: white;
++      font-size: 1.5rem;
++      line-height: 1;
++      cursor: pointer;
++      padding: 0 4px;
++    }
++
++    .feedback-modal .location {
++      font-size: 0.8rem;
++      background: var(--secondary);
++      padding: 8px 20px;
++    }
++
++    .feedback-modal form {
++      padding: 20px;
++      display: grid;
++      gap: 14px;
++    }
++
++    .feedback-modal label {
++      display: grid;
++      gap: 4px;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .feedback-modal input,
++    .feedback-modal select,
++    .feedback-modal textarea {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-weight: normal;
++    }
++
++    .feedback-modal textarea {
++      min-height: 100px;
++      resize: vertical;
++    }
++
++    .feedback-modal .actions {
++      display: flex;
++      justify-content: space-between;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    .feedback-modal button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    .feedback-modal button.btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .feedback-modal button.btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .feedback-modal .status {
++      font-size: 0.85rem;
++      min-height: 1.2em;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,16 +351,16 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero modal-host" id="host-hero" data-host-label="Hero banner">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="modal-host" id="host-favorites" data-host-label="Seasonal Favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -194,11 +378,21 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="story modal-host" id="host-story" data-host-label="Our Story">
++      <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80"
++        alt="Barista pouring latte art into a ceramic cup">
++      <div>
++        <h2>Roasted With Care</h2>
++        <p>Every bean we serve is roasted in small batches just down the street. We'd love to hear how we're doing
++          &mdash; tap <strong>Give Feedback</strong> any time.</p>
++      </div>
++    </section>
+   </main>
+ 
+-  <footer>
++  <footer class="modal-host" id="host-footer" data-host-label="Footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +400,164 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="feedback-fab" id="feedback-open" aria-haspopup="dialog"
++    aria-controls="feedback-modal">Give Feedback</button>
++
++  <dialog class="feedback-modal" id="feedback-modal" aria-labelledby="feedback-title">
++    <header>
++      <h2 id="feedback-title">Share Your Feedback</h2>
++      <button type="button" class="icon-btn" data-action="close" aria-label="Close feedback">&times;</button>
++    </header>
++    <p class="location">Mounted in: <strong data-role="host-name">&mdash;</strong></p>
++    <form method="dialog" id="feedback-form">
++      <label>Your name
++        <input type="text" name="name" autocomplete="name" placeholder="Jane Doe">
++      </label>
++      <label>How was your visit?
++        <select name="rating">
++          <option value="5">Excellent</option>
++          <option value="4">Good</option>
++          <option value="3" selected>Okay</option>
++          <option value="2">Not great</option>
++          <option value="1">Poor</option>
++        </select>
++      </label>
++      <label>Comments
++        <textarea name="comments" placeholder="Tell us what you loved or what we can improve..."></textarea>
++      </label>
++      <p class="status" data-role="status" aria-live="polite"></p>
++      <div class="actions">
++        <button type="button" class="btn btn-secondary" data-action="move">Move &rarr; next section</button>
++        <button type="submit" class="btn" value="submit">Send Feedback</button>
++      </div>
++    </form>
++  </dialog>
++  <p class="sr-only" id="feedback-announcer" aria-live="polite"></p>
++
++  <script>
++    (() => {
++      const dialog = document.getElementById('feedback-modal');
++      const openBtn = document.getElementById('feedback-open');
++      const form = document.getElementById('feedback-form');
++      const hostName = dialog.querySelector('[data-role="host-name"]');
++      const status = dialog.querySelector('[data-role="status"]');
++      const announcer = document.getElementById('feedback-announcer');
++      const hosts = Array.from(document.querySelectorAll('.modal-host'));
++      const supportsMoveBefore = typeof Element.prototype.moveBefore === 'function';
++
++      let hostIndex = 0;
++
++      function updateHostUI() {
++        hosts.forEach((h, i) => h.classList.toggle('is-hosting', i === hostIndex && dialog.open));
++        hostName.textContent = hosts[hostIndex].dataset.hostLabel || hosts[hostIndex].id;
++      }
++
++      // Snapshot state that a plain remove/insert would lose.
++      function captureState() {
++        const active = document.activeElement;
++        const focused = dialog.contains(active) ? active : null;
++        const selection = focused && typeof focused.selectionStart === 'number'
++          ? { start: focused.selectionStart, end: focused.selectionEnd, dir: focused.selectionDirection }
++          : null;
++        const scrolls = Array.from(dialog.querySelectorAll('textarea')).map(el => [el, el.scrollTop]);
++        return { wasOpen: dialog.open, wasModal: dialog.matches(':modal'), focused, selection, scrolls };
++      }
++
++      function restoreState(state) {
++        if (state.wasOpen) {
++          if (state.wasModal && !dialog.matches(':modal')) {
++            // Lost top-layer status during the move: re-promote without
++            // tearing down the user's session (the close event is ignored
++            // below because the dialog is open again when it is dispatched).
++            if (dialog.open) dialog.close();
++            dialog.showModal();
++          } else if (!dialog.open) {
++            dialog.show();
++          }
++        }
++        state.scrolls.forEach(([el, top]) => { el.scrollTop = top; });
++        const target = state.focused && dialog.contains(state.focused) ? state.focused : dialog.querySelector('[data-action="move"]');
++        if (target && document.activeElement !== target) {
++          target.focus({ preventScroll: true });
++        }
++        if (state.selection && target === state.focused) {
++          try {
++            target.setSelectionRange(state.selection.start, state.selection.end, state.selection.dir);
++          } catch (_) { /* not all inputs support selection */ }
++        }
++      }
++
++      function mountIn(host) {
++        if (dialog.parentNode === host) return;
++        const state = captureState();
++        if (supportsMoveBefore) {
++          // Atomic, state-preserving move: keeps top layer, focus and form state.
++          try {
++            host.moveBefore(dialog, null);
++          } catch (_) {
++            host.appendChild(dialog);
++          }
++        } else {
++          host.appendChild(dialog);
++        }
++        restoreState(state);
++      }
++
++      function moveToNext() {
++        hostIndex = (hostIndex + 1) % hosts.length;
++        mountIn(hosts[hostIndex]);
++        updateHostUI();
++        const label = hostName.textContent;
++        status.textContent = `Moved to "${label}". Your draft is still here.`;
++        announcer.textContent = `Feedback dialog moved to ${label} section.`;
++        hosts[hostIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
++      }
++
++      function openModal() {
++        mountIn(hosts[hostIndex]);
++        status.textContent = '';
++        if (!dialog.open) dialog.showModal();
++        updateHostUI();
++      }
++
++      openBtn.addEventListener('click', openModal);
++
++      dialog.addEventListener('click', (e) => {
++        const action = e.target.closest('[data-action]')?.dataset.action;
++        if (action === 'move') moveToNext();
++        else if (action === 'close') dialog.close('cancel');
++        else if (e.target === dialog) dialog.close('cancel'); // backdrop click
++      });
++
++      form.addEventListener('submit', (e) => {
++        const comments = form.elements.comments.value.trim();
++        if (!comments) {
++          e.preventDefault();
++          status.textContent = 'Please add a comment before sending.';
++          form.elements.comments.focus();
++          return;
++        }
++        // method="dialog" closes with returnValue "submit".
++      });
++
++      dialog.addEventListener('close', () => {
++        // A close fired as part of re-promoting after a move: the dialog is
++        // already open again, so this is not a real dismissal.
++        if (dialog.open) return;
++        if (dialog.returnValue === 'submit') {
++          form.reset();
++          announcer.textContent = 'Thanks! Your feedback was sent.';
++        }
++        dialog.returnValue = '';
++        updateHostUI();
++        openBtn.focus();
++      });
++
++      updateHostUI();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

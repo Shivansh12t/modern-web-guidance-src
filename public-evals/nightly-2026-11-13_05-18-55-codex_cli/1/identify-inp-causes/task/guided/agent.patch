@@ -1,0 +1,64 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,59 @@
++# The Daily Grind INP monitoring
++
++The homepage loads the self-hosted `assets/inp-monitor.js` ES module. It uses
++`web-vitals/attribution` to measure real-user INP throughout the page lifecycle,
++including backgrounding and back/forward cache restores. No interactions means
++no INP report; unsupported Event Timing browsers do not emit a synthetic score.
++
++## Collector setup
++
++**This static repository has no analytics backend.** Provision a POST collector
++at `/analytics`, or change the `inp-endpoint` meta tag in `index.html` to your
++existing collector URL. Until that endpoint exists, reports cannot be retained.
++The collector must accept JSON encoded as a `text/plain` request body and return
++a successful response. A cross-origin collector must also permit the site's
++origin for the native `fetchLater`/fetch paths. An empty meta value disables
++collection. No credentials, collector keys, or user identifiers are required.
++
++Store/upsert records by `(id, name)`, accepting only increasing `sequence`
++values: callbacks and lifecycle sends are updates to a visit's INP, not separate
++visits. Use the latest `value`, rather than adding values or counting every
++update as a new sample. A bfcache restore gets a new metric ID from web-vitals.
++Calculate homepage p75 from the latest value for each metric ID; retain good
++visits too so slow visits do not bias the distribution.
++
++Reports include input delay, event processing duration, presentation delay,
++interaction label/type, navigation/load state, and capability flags. For values
++over 200 ms, reports also include up to five overlapping Long Animation Frames,
++with the five longest scripts in each. Counts and truncation flags identify
++omitted details. The longest intersecting script is separately included with its
++URL, function, character offset, invocation type, overlapping duration, and INP
++subpart. Use source maps from the corresponding release to resolve bundle offsets.
++
++Separate forced style/layout and rendering style/layout timings are included
++where supported. Missing timing fields are `null`, not zero. The combined
++`totalStyleAndLayoutDuration` remains available on older LoAF implementations;
++it includes both forced work inside scripts and rendering work. Aggregate totals
++cover all library-attributed frames even if frame details are truncated.
++`totalPaintDuration` is the library's estimate of off-main-thread presentation
++time, not a direct measurement of paint CPU time. Without LoAF support, INP and
++its three subparts still work, but script/rendering attribution is unavailable.
++LoAF only exposes long frames and scripts over its reporting threshold; missing
++script information does not prove that no script caused a delay.
++
++Requests use `fetchLater` when available, replacing pending snapshots as INP
++changes. The fallback sends the latest snapshot when the page becomes hidden,
++on `pagehide`, or after 60 seconds, using beacon then fetch with keepalive.
++Delivery is best effort; transport failures never block customer interactions.
++There are no unload handlers, polling loops, DOM profiling, or console logging.
++Targets are allowlisted static `data-inp-target` labels; script URL queries and
++fragments are stripped. No DOM text, form values, page queries, or account IDs
++are collected.
++
++## Build and automated checks
++
++Run `pnpm install --frozen-lockfile`, `pnpm build`, and `pnpm test` after changes.
++The generated bundle and dependency license are committed so the existing static
++hosting command can serve the instrumented homepage without a build step.
++Tests exercise report attribution and transport with mocked lifecycle events;
++they do not launch a browser or server.

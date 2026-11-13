@@ -1,0 +1,400 @@
+diff --git a/index.html b/index.html
+index 66c9173..97f288a 100644
+--- a/index.html
++++ b/index.html
+@@ -46,24 +46,134 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .nav-controls,
++    .account-links,
++    .application-menu {
+       display: flex;
+-      list-style: none;
++      align-items: center;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
+-    }
++    .nav-controls { gap: 24px; }
++    .account-links { gap: 20px; }
+ 
+-    nav a {
++    nav a,
++    .menu-trigger {
+       color: white;
+       text-decoration: none;
++      font: inherit;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    .application-menu {
++      background: rgba(0, 0, 0, 0.12);
++      border-radius: 6px;
++    }
++
++    .menu-trigger {
++      border: 0;
++      background: transparent;
++      padding: 10px 14px;
++      min-height: 44px;
++      cursor: pointer;
++    }
++
++    .menu-trigger::after {
++      content: "";
++      display: inline-block;
++      width: 6px;
++      height: 6px;
++      margin: 0 0 3px 9px;
++      border-right: 1.5px solid currentColor;
++      border-bottom: 1.5px solid currentColor;
++      transform: rotate(45deg);
++    }
++
++    .menu-trigger:hover,
++    .menu-trigger[aria-expanded="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .menu-trigger:first-child { border-radius: 6px 0 0 6px; }
++    .menu-trigger:nth-last-child(2) { border-radius: 0 6px 6px 0; }
++    .menu-trigger[aria-expanded="true"]::after { transform: rotate(225deg); }
++
++    nav :focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .menu-popup {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: 230px;
++      max-width: calc(100vw - 16px);
++      max-height: calc(100dvh - 16px);
++      overflow-y: auto;
++      padding: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--light);
++      color: var(--text);
++      box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
++    }
++
++    .menu-popup a {
++      display: block;
++      padding: 10px 12px;
++      border-radius: 3px;
++      color: var(--text);
++    }
++
++    .menu-popup a:hover,
++    .menu-popup a:focus {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .menu-popup a:focus-visible {
++      outline-color: var(--primary);
++      outline-offset: -2px;
++    }
++
++    .menu-popup hr {
++      border: 0;
++      border-top: 1px solid var(--secondary);
++      margin: 5px 6px;
++    }
++
++    .account-links a:hover { color: var(--accent); }
++
++    @supports (position-area: block-end) {
++      .menu-popup {
++        position-area: block-end span-inline-end;
++        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      }
++    }
++
++    @supports not (position-area: block-end) {
++      .menu-popup {
++        left: var(--menu-left, 8px);
++        top: var(--menu-top, 8px);
++      }
++    }
++
++    /* The manual Popover fallback uses the same viewport-relative positioning. */
++    .menu-popup[data-fallback] {
++      display: none;
++      position-area: none;
++      left: var(--menu-left, 8px);
++      top: var(--menu-top, 8px);
++      z-index: 1001;
++    }
++
++    .menu-popup[data-fallback][data-open] { display: block; }
++
++    @media (max-width: 800px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      .nav-controls { flex-wrap: wrap; gap: 12px 20px; }
++      .menu-trigger { padding-inline: 12px; }
+     }
+ 
+     .logout-link {
+@@ -157,15 +267,46 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-controls">
++      <div class="application-menu" role="menubar" aria-label="Coffee shop menus">
++        <button class="menu-trigger" id="menu-trigger" type="button" role="menuitem"
++          aria-haspopup="menu" aria-expanded="false" aria-controls="coffee-menu"
++          commandfor="coffee-menu" command="toggle-popover" tabindex="0">Menu</button>
++        <div class="menu-popup" id="coffee-menu" popover="auto">
++          <div focusgroup="menu nomemory" aria-labelledby="menu-trigger">
++            <a href="/menu" tabindex="-1">Full menu</a>
++            <hr>
++            <a href="/menu/seasonal" tabindex="-1">Seasonal favorites</a>
++            <a href="/menu/espresso" tabindex="-1">Espresso</a>
++            <a href="/menu/cold-brew" tabindex="-1">Cold brew</a>
++          </div>
++        </div>
++        <button class="menu-trigger" id="locations-trigger" type="button" role="menuitem"
++          aria-haspopup="menu" aria-expanded="false" aria-controls="locations-menu"
++          commandfor="locations-menu" command="toggle-popover" tabindex="-1">Locations</button>
++        <div class="menu-popup" id="locations-menu" popover="auto">
++          <div focusgroup="menu nomemory" aria-labelledby="locations-trigger">
++            <a href="/locations" tabindex="-1">Find a café</a>
++            <a href="/order-online" tabindex="-1">Order for pickup</a>
++          </div>
++        </div>
++        <button class="menu-trigger" id="rewards-trigger" type="button" role="menuitem"
++          aria-haspopup="menu" aria-expanded="false" aria-controls="rewards-menu"
++          commandfor="rewards-menu" command="toggle-popover" tabindex="-1">Rewards</button>
++        <div class="menu-popup" id="rewards-menu" popover="auto">
++          <div focusgroup="menu nomemory" aria-labelledby="rewards-trigger">
++            <a href="/rewards" tabindex="-1">Explore rewards</a>
++            <a href="/account" tabindex="-1">My rewards account</a>
++          </div>
++        </div>
++      </div>
++      <div class="account-links">
++        <a href="/account">My Account</a>
++        <a href="/logout" class="logout-link">Logout</a>
++      </div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -207,6 +348,196 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const bar = document.querySelector('[role="menubar"]');
++      const triggers = [...bar.querySelectorAll('.menu-trigger')];
++      const menus = triggers.map(trigger => document.getElementById(trigger.getAttribute('commandfor')));
++      const nativePopover = Object.hasOwn(HTMLElement.prototype, 'popover');
++      const nativeInvoker = 'commandForElement' in HTMLButtonElement.prototype;
++      const nativeFocusgroup = 'focusGroup' in HTMLElement.prototype;
++      const anchored = CSS.supports('position-area: block-end');
++      let suppressPreview = false;
++      let returningToWindow = false;
++
++      const isOpen = menu => nativePopover ? menu.matches(':popover-open') : menu.hasAttribute('data-open');
++      const itemsFor = menu => [...menu.querySelectorAll('a[href]')];
++
++      function positionMenu(menu, trigger) {
++        if (nativePopover && anchored) return;
++        const rect = trigger.getBoundingClientRect();
++        const gutter = 8;
++        const left = Math.max(gutter, Math.min(rect.left, innerWidth - menu.offsetWidth - gutter));
++        const below = rect.bottom;
++        const top = below + menu.offsetHeight <= innerHeight - gutter
++          ? below : Math.max(gutter, rect.top - menu.offsetHeight);
++        menu.style.setProperty('--menu-left', `${left}px`);
++        menu.style.setProperty('--menu-top', `${top}px`);
++      }
++
++      function hide(menu) {
++        if (!isOpen(menu)) return;
++        if (nativePopover) menu.hidePopover();
++        else {
++          menu.removeAttribute('data-open');
++          triggers[menus.indexOf(menu)].setAttribute('aria-expanded', 'false');
++        }
++      }
++
++      function closeAll() {
++        const previous = suppressPreview;
++        suppressPreview = true;
++        menus.forEach(hide);
++        suppressPreview = previous;
++      }
++
++      function show(menu, trigger) {
++        if (isOpen(menu)) return;
++        closeAll();
++        if (nativePopover) menu.showPopover({ source: trigger });
++        else {
++          menu.setAttribute('data-open', '');
++          trigger.setAttribute('aria-expanded', 'true');
++        }
++        positionMenu(menu, trigger);
++      }
++
++      function restore(trigger, fromPointer = false) {
++        suppressPreview = true;
++        trigger.focus({ focusVisible: !fromPointer });
++        closeAll();
++        suppressPreview = false;
++      }
++
++      function moveTo(trigger, direction) {
++        const next = triggers[(triggers.indexOf(trigger) + direction + triggers.length) % triggers.length];
++        closeAll();
++        triggers.forEach(item => { item.tabIndex = item === next ? 0 : -1; });
++        next.focus();
++      }
++
++      triggers.forEach((trigger, index) => {
++        const menu = menus[index];
++        const group = menu.firstElementChild;
++        const items = itemsFor(menu);
++
++        if (!nativePopover) menu.setAttribute('data-fallback', '');
++        // Older Popover implementations do not create an implicit source anchor.
++        if (nativePopover && anchored && !('source' in ToggleEvent.prototype)) {
++          trigger.style.setProperty('anchor-name', `--${trigger.id}`);
++          menu.style.setProperty('position-anchor', `--${trigger.id}`);
++        }
++        if (!nativeFocusgroup) {
++          group.setAttribute('role', 'menu');
++          items.forEach(item => item.setAttribute('role', 'menuitem'));
++        }
++
++        trigger.addEventListener('focus', event => {
++          if (!suppressPreview && !returningToWindow && !menu.contains(event.relatedTarget)) show(menu, trigger);
++        });
++        trigger.addEventListener('blur', event => {
++          if (!menu.contains(event.relatedTarget)) hide(menu);
++        });
++        // Keep pointer focus from opening a preview before the click can toggle it.
++        trigger.addEventListener('pointerdown', event => event.preventDefault());
++        trigger.addEventListener('pointerenter', event => {
++          if (event.pointerType === 'touch' || !menus.some(isOpen) || isOpen(menu)) return;
++          closeAll();
++          suppressPreview = true;
++          trigger.focus({ focusVisible: false });
++          suppressPreview = false;
++          show(menu, trigger);
++        });
++        trigger.addEventListener('click', event => {
++          if (!nativeInvoker || !nativePopover) {
++            event.preventDefault();
++            if (isOpen(menu)) restore(trigger, event.detail > 0);
++            else {
++              suppressPreview = true;
++              trigger.focus({ focusVisible: event.detail === 0 });
++              suppressPreview = false;
++              show(menu, trigger);
++            }
++          } else if (!isOpen(menu)) {
++            suppressPreview = true;
++            trigger.focus({ focusVisible: event.detail === 0 });
++            suppressPreview = false;
++          }
++        });
++        menu.addEventListener('toggle', () => {
++          trigger.setAttribute('aria-expanded', String(isOpen(menu)));
++          if (isOpen(menu)) positionMenu(menu, trigger);
++        });
++
++        trigger.addEventListener('keydown', event => {
++          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
++            event.preventDefault();
++            moveTo(trigger, event.key === 'ArrowLeft' ? -1 : 1);
++          } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
++            event.preventDefault();
++            show(menu, trigger);
++            (event.key === 'End' || event.key === 'ArrowUp' ? items.at(-1) : items[0]).focus();
++          }
++        });
++        menu.addEventListener('keydown', event => {
++          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
++            event.preventDefault();
++            moveTo(trigger, event.key === 'ArrowLeft' ? -1 : 1);
++          } else if (!nativeFocusgroup && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
++            event.preventDefault();
++            const current = items.indexOf(document.activeElement);
++            const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
++              : (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
++            items[next].focus();
++          } else if (event.key === ' ' && items.includes(event.target)) {
++            event.preventDefault();
++            event.target.click();
++          }
++        });
++        items.forEach(item => {
++          item.addEventListener('pointermove', event => {
++            if (event.pointerType !== 'touch') item.focus({ focusVisible: false });
++          });
++          item.addEventListener('click', event => restore(trigger, event.detail > 0));
++        });
++      });
++
++      bar.addEventListener('keydown', event => {
++        const index = menus.findIndex(menu => menu.contains(event.target));
++        const trigger = index >= 0 ? triggers[index] : event.target.closest('.menu-trigger');
++        if (event.key === 'Escape') {
++          event.preventDefault();
++          event.stopPropagation();
++          if (trigger) restore(trigger);
++        } else if (event.key === 'Tab') {
++          // Return to the bar's single stop, then let Tab leave in either direction.
++          if (trigger) {
++            triggers.forEach(item => { item.tabIndex = item === trigger ? 0 : -1; });
++            restore(trigger);
++          }
++        }
++      });
++      document.addEventListener('focusin', event => {
++        if (!bar.contains(event.target)) closeAll();
++      });
++      document.addEventListener('pointerdown', event => {
++        if (!bar.contains(event.target)) closeAll();
++      });
++      window.addEventListener('blur', () => {
++        returningToWindow = true;
++        closeAll();
++      });
++      window.addEventListener('focus', () => {
++        setTimeout(() => { returningToWindow = false; }, 0);
++      });
++      const reposition = () => menus.forEach((menu, index) => {
++        if (isOpen(menu)) positionMenu(menu, triggers[index]);
++      });
++      window.addEventListener('resize', reposition);
++      document.addEventListener('scroll', reposition, true);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

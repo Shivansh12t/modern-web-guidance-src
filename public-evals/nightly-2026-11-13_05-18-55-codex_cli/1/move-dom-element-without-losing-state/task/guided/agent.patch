@@ -1,0 +1,198 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,93 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    .hero.is-theater {
++      height: auto;
++      min-height: 60vh;
++      padding-block: 36px;
++    }
++
++    #hero-video-slot {
++      width: 100%;
++      max-width: 1100px;
++      margin-top: 24px;
++    }
++
++    .video-section {
++      margin-top: 48px;
++    }
++
++    .video-section > p {
++      margin: 8px 0 20px;
++    }
++
++    .video-player {
++      width: 100%;
++      max-width: 800px;
++      margin-inline: auto;
++      background: var(--primary);
++      color: white;
++      border-radius: 8px;
++      overflow: hidden;
++      text-align: left;
++      scroll-margin-top: 100px;
++    }
++
++    .is-theater .video-player,
++    .video-player.is-positioned {
++      max-width: none;
++    }
++
++    .video-player.is-positioned {
++      position: absolute;
++      z-index: 1;
++      margin: 0;
++    }
++
++    .video-player iframe {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      height: auto;
++      border: 0;
++      background: #000;
++    }
++
++    .video-toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      padding: 16px;
++    }
++
++    .video-toolbar a {
++      color: white;
++    }
++
++    .theater-toggle {
++      border: 1px solid var(--accent);
++      border-radius: 5px;
++      padding: 10px 16px;
++      background: var(--accent);
++      color: var(--text);
++      font: inherit;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .theater-toggle:focus-visible {
++      outline: 3px solid white;
++      outline-offset: 3px;
++    }
++
++    #video-status {
++      margin-top: 12px;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -171,8 +256,9 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div id="hero-video-slot" hidden></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +280,28 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="video-section">
++      <h2>From Green Bean to Perfect Roast</h2>
++      <p>Discover how roasting brings out the flavor in every cup.</p>
++      <div id="video-home">
++        <div id="coffee-player" class="video-player">
++          <iframe src="https://www.youtube-nocookie.com/embed/N6BJVM5tvnw?cc_load_policy=1"
++            title="Coffee Roasting Explained by James Hoffmann"
++            width="800" height="450"
++            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++          <div class="video-toolbar">
++            <a href="https://www.youtube.com/watch?v=N6BJVM5tvnw" target="_blank" rel="noopener noreferrer">Watch on YouTube · James Hoffmann</a>
++            <button id="theater-toggle" class="theater-toggle" type="button"
++              aria-pressed="false" aria-controls="coffee-player" hidden>Theater mode</button>
++          </div>
++        </div>
++      </div>
++      <p id="video-status" role="status"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +312,61 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hero = document.querySelector('.hero');
++    const heroSlot = document.getElementById('hero-video-slot');
++    const home = document.getElementById('video-home');
++    const player = document.getElementById('coffee-player');
++    const toggle = document.getElementById('theater-toggle');
++    const status = document.getElementById('video-status');
++    const canMove = typeof heroSlot.moveBefore === 'function';
++    let theater = false;
++
++    // Keep the iframe connected on browsers without atomic DOM moves.
++    // Position it over a reserved hero slot instead of reparenting and reloading it.
++    function positionFallback() {
++      if (canMove || !theater) return;
++      const bounds = heroSlot.getBoundingClientRect();
++      player.style.width = `${bounds.width}px`;
++      heroSlot.style.height = `${player.offsetHeight}px`;
++      player.style.left = `${bounds.left + window.scrollX}px`;
++      player.style.top = `${bounds.top + window.scrollY}px`;
++    }
++
++    toggle.hidden = false;
++    toggle.addEventListener('click', () => {
++      theater = !theater;
++      hero.classList.toggle('is-theater', theater);
++      heroSlot.hidden = !theater;
++      if (canMove) {
++        // Moving the existing wrapper atomically preserves the iframe's browsing context.
++        (theater ? heroSlot : home).moveBefore(player, null);
++      } else {
++        player.classList.toggle('is-positioned', theater);
++        if (theater) {
++          positionFallback();
++        } else {
++          for (const property of ['width', 'left', 'top']) player.style.removeProperty(property);
++          heroSlot.style.removeProperty('height');
++        }
++      }
++      toggle.setAttribute('aria-pressed', String(theater));
++      status.textContent = theater ? 'The video is now in the hero. Turn off Theater mode to bring it back.' : 'The video is back in this section.';
++      toggle.focus({ preventScroll: true });
++      player.scrollIntoView({ block: 'center', behavior: 'instant' });
++    });
++
++    if (!canMove) {
++      window.addEventListener('resize', positionFallback);
++      if ('ResizeObserver' in window) {
++        const observer = new ResizeObserver(positionFallback);
++        observer.observe(heroSlot);
++        observer.observe(player);
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

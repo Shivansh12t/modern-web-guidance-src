@@ -1,0 +1,241 @@
+diff --git a/index.html b/index.html
+index 66c9173..8a4a7db 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,46 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .language-panel {
++      background: #f1ebe7;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 24px;
++      margin-bottom: 36px;
++    }
++
++    .language-panel h2 { font-size: 1.25rem; }
++    .language-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: end;
++      gap: 12px;
++      margin: 16px 0 12px;
++    }
++    .language-field { display: grid; gap: 4px; }
++    .language-controls select, .language-controls button {
++      font: inherit;
++      min-height: 44px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      padding: 8px 14px;
++    }
++    .language-controls select { background: white; color: var(--text); max-width: 100%; }
++    .language-controls button { background: var(--primary); color: white; cursor: pointer; }
++    .language-controls .restore-button { background: transparent; color: var(--primary); }
++    .language-controls :disabled { opacity: 0.6; cursor: not-allowed; }
++    .language-controls :focus-visible { outline: 3px solid #a34e00; outline-offset: 3px; }
++    .translation-status { font-size: 0.9rem; min-height: 1.6em; }
++    .story { margin-top: 40px; max-width: 720px; }
++    .story h2 { margin-bottom: 12px; }
++    @media (max-width: 650px) {
++      nav { position: static; flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .hero h1 { font-size: 2.25rem; }
++      .language-panel { padding: 20px; }
++    }
+   </style>
+ </head>
+ 
+@@ -175,26 +215,57 @@
+   </header>
+ 
+   <main class="container">
++    <section class="language-panel" aria-labelledby="language-heading">
++      <h2 id="language-heading">A little coffee. Your language.</h2>
++      <p>Translate our menu descriptions and story privately on your device.</p>
++      <div class="language-controls">
++        <div class="language-field">
++          <label for="language-select">Reading language</label>
++          <select id="language-select" aria-describedby="translation-note" disabled>
++            <option value="en" lang="en">English — original</option>
++            <option value="es" lang="es">Español</option>
++            <option value="fr" lang="fr">Français</option>
++            <option value="de" lang="de">Deutsch</option>
++            <option value="it" lang="it">Italiano</option>
++            <option value="pt" lang="pt">Português</option>
++            <option value="ja" lang="ja">日本語</option>
++            <option value="ko" lang="ko">한국어</option>
++            <option value="zh" lang="zh">中文（简体）</option>
++            <option value="ar" lang="ar">العربية</option>
++            <option value="hi" lang="hi">हिन्दी</option>
++          </select>
++        </div>
++        <button id="translate-button" type="button" disabled>Translate</button>
++        <button id="restore-button" class="restore-button" type="button" hidden>Show original English</button>
++      </div>
++      <p id="translation-note" class="translation-status">AI translation runs in your browser. A language pack may need to download the first time.</p>
++      <p id="translation-status" class="translation-status" role="status" aria-live="polite" aria-atomic="true">Checking on-device translation support…</p>
++      <noscript><p>Enable JavaScript to use on-device translation. You can still read the original English below.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p data-translate lang="en" dir="auto">Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p data-translate lang="en" dir="auto">Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p data-translate lang="en" dir="auto">Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="story" aria-labelledby="story-heading">
++      <h2 id="story-heading">Our Story</h2>
++      <p data-translate lang="en" dir="auto">At The Daily Grind, good coffee starts with care. We bring ethically sourced, locally roasted coffee to your cup, from a bold morning espresso to a smooth, slow-steeped cold brew. Find your favorite and make a little time for your daily grind.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +278,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="./translation.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/translation.js b/translation.js
+new file mode 100644
+index 0000000..6269925
+--- /dev/null
++++ b/translation.js
+@@ -0,0 +1,115 @@
++(() => {
++  const select = document.querySelector('#language-select');
++  const button = document.querySelector('#translate-button');
++  const restore = document.querySelector('#restore-button');
++  const status = document.querySelector('#translation-status');
++  const passages = [...document.querySelectorAll('[data-translate]')];
++  const originals = passages.map((element) => element.textContent);
++  const cache = new Map([['en', originals]]);
++  let revision = 0;
++  let readyOptions = null;
++  let activeTranslator = null;
++
++  function display(texts, language) {
++    passages.forEach((element, index) => {
++      element.textContent = texts[index];
++      element.lang = language;
++    });
++    restore.hidden = language === 'en';
++  }
++
++  async function prepare() {
++    const request = ++revision;
++    const language = select.value;
++    readyOptions = null;
++    button.disabled = true;
++    // Invalidate in-flight work before releasing its model resources.
++    activeTranslator?.destroy();
++    activeTranslator = null;
++    if (language === 'en') {
++      display(originals, 'en');
++      restore.hidden = true;
++      status.textContent = 'Showing original English. Choose a language to translate.';
++      return;
++    }
++    if (cache.has(language)) {
++      display(cache.get(language), language);
++      status.textContent = 'Showing your on-device translation. AI translations may contain mistakes.';
++      return;
++    }
++    status.textContent = 'Checking this language on your device…';
++    const options = { sourceLanguage: 'en', targetLanguage: language };
++    try {
++      const availability = await window.Translator.availability(options);
++      if (request !== revision) return;
++      if (availability === 'unavailable') {
++        status.textContent = 'This language is unavailable on your device. Choose another language or show original English.';
++        return;
++      }
++      readyOptions = options;
++      button.disabled = false;
++      button.textContent = availability === 'available' ? 'Translate' : 'Download & translate';
++      status.textContent = availability === 'available'
++        ? 'Ready to translate on your device.'
++        : 'A language pack is needed. Select Download & translate to continue; an internet connection may be required.';
++    } catch {
++      if (request !== revision) return;
++      status.textContent = 'Could not check this language. Choose another language or try again.';
++    }
++  }
++
++  button.addEventListener('click', async () => {
++    if (!readyOptions || button.disabled) return;
++    const options = readyOptions;
++    const request = ++revision;
++    let translator;
++    button.disabled = true;
++    restore.hidden = false;
++    status.textContent = 'Preparing on-device translation…';
++    try {
++      // Call create directly from the click, before awaiting, to retain user activation.
++      translator = await window.Translator.create({
++        ...options,
++        monitor(monitor) {
++          monitor.addEventListener('downloadprogress', (event) => {
++            if (request !== revision) return;
++            status.textContent = `Downloading language pack: ${Math.round(event.loaded * 100)}%. Translation stays on your device.`;
++          });
++        },
++      });
++      if (request !== revision) return;
++      activeTranslator = translator;
++      status.textContent = 'Translating menu descriptions and our story…';
++      const translated = [];
++      for (const original of originals) {
++        const result = await translator.translate(original);
++        if (request !== revision) return;
++        translated.push(result);
++      }
++      cache.set(options.targetLanguage, translated);
++      display(translated, options.targetLanguage);
++      status.textContent = 'Translated on your device. AI translations may contain mistakes.';
++    } catch {
++      if (request !== revision) return;
++      status.textContent = 'Translation could not finish. Your current text is unchanged. Try again or show original English.';
++      button.disabled = false;
++      button.textContent = 'Try translation again';
++    } finally {
++      translator?.destroy();
++      if (activeTranslator === translator) activeTranslator = null;
++    }
++  });
++
++  select.addEventListener('change', prepare);
++  restore.addEventListener('click', () => {
++    select.value = 'en';
++    prepare();
++  });
++
++  if (!window.isSecureContext || !('Translator' in window)) {
++    status.textContent = 'On-device translation is unavailable in this browser. The original English is shown. Try a supported desktop browser, such as Chrome, over HTTPS.';
++    return;
++  }
++  select.disabled = false;
++  prepare();
++})();

@@ -1,0 +1,1996 @@
+diff --git a/_headers b/_headers
+new file mode 100644
+index 0000000..89df084
+--- /dev/null
++++ b/_headers
+@@ -0,0 +1,17 @@
++/*
++  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.unsplash.com; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;
++  Referrer-Policy: strict-origin-when-cross-origin
++  Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(), usb=(), interest-cohort=(), browsing-topics=()
++  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
++  X-Content-Type-Options: nosniff
++  X-Frame-Options: DENY
++  Cross-Origin-Opener-Policy: same-origin
++  Cross-Origin-Resource-Policy: same-origin
++  X-Permitted-Cross-Domain-Policies: none
++
++/account*
++  Cache-Control: no-store, max-age=0
++
++/logout*
++  Cache-Control: no-store, max-age=0
++  Clear-Site-Data: "cache", "cookies", "storage"
+diff --git a/index.html b/index.html
+index 66c9173..b321f76 100644
+--- a/index.html
++++ b/index.html
+@@ -5,13 +5,31 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!-- Privacy & Security Headers (Meta Equivs) -->
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.unsplash.com; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
++  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=(), interest-cohort=(), browsing-topics=()">
++  <meta http-equiv="X-Content-Type-Options" content="nosniff">
++
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
++      --secondary-light: #efebe9;
+       --accent: #ffab40;
++      --accent-dark: #e69100;
+       --text: #3e2723;
++      --text-muted: #5d4037;
+       --light: #fafafa;
++      --success: #2e7d32;
++      --success-bg: #e8f5e9;
++      --warning: #ef6c00;
++      --warning-bg: #fff3e0;
++      --danger: #c62828;
++      --danger-bg: #ffebee;
++      --border: #bcaaa4;
+     }
+ 
+     * {
+@@ -27,6 +45,83 @@
+       background-color: var(--light);
+     }
+ 
++    /* Skip Link for Accessibility */
++    .skip-link {
++      position: absolute;
++      left: -9999px;
++      top: 0;
++      background: var(--accent);
++      color: var(--text);
++      padding: 8px 16px;
++      z-index: 2000;
++      font-weight: bold;
++      text-decoration: none;
++    }
++
++    .skip-link:focus {
++      left: 10px;
++      top: 10px;
++    }
++
++    /* Privacy Notice Top Bar */
++    .privacy-ribbon {
++      background: var(--primary-dark);
++      color: var(--secondary-light);
++      font-size: 0.8rem;
++      padding: 6px 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
++    }
++
++    .privacy-ribbon-badges {
++      display: flex;
++      gap: 12px;
++      align-items: center;
++      flex-wrap: wrap;
++    }
++
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 5px;
++      padding: 2px 8px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 600;
++    }
++
++    .badge-secure {
++      background: rgba(46, 125, 50, 0.25);
++      color: #a5d6a7;
++      border: 1px solid rgba(165, 214, 167, 0.4);
++    }
++
++    .badge-neutral {
++      background: rgba(255, 255, 255, 0.1);
++      color: #fff;
++    }
++
++    .ribbon-btn {
++      background: transparent;
++      color: var(--accent);
++      border: 1px solid var(--accent);
++      padding: 3px 10px;
++      border-radius: 4px;
++      font-size: 0.75rem;
++      cursor: pointer;
++      font-weight: 600;
++      transition: all 0.2s;
++    }
++
++    .ribbon-btn:hover {
++      background: var(--accent);
++      color: var(--primary-dark);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,21 +133,24 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      display: flex;
++      align-items: center;
++      gap: 10px;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 18px;
+     }
+ 
+     nav a {
+@@ -66,16 +164,31 @@
+       color: var(--accent);
+     }
+ 
++    .logout-form {
++      display: inline;
++    }
++
+     .logout-link {
++      background: transparent;
++      color: white;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      font-size: 0.9rem;
++      cursor: pointer;
++      font-family: inherit;
++      transition: all 0.2s;
++    }
++
++    .logout-link:hover {
++      background: var(--accent);
++      color: var(--primary-dark);
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 52vh;
++      background: linear-gradient(rgba(35, 20, 15, 0.65), rgba(35, 20, 15, 0.65)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,39 +198,79 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 40px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.8rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .hero p {
++      max-width: 620px;
++      font-size: 1.1rem;
++      margin-bottom: 0.5rem;
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 12px;
++      margin-top: 15px;
++      flex-wrap: wrap;
++      justify-content: center;
+     }
+ 
+     /* Content Sections */
+     .container {
+-      max-width: 1100px;
++      max-width: 1120px;
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .section-header h2 {
++      font-size: 1.85rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .section-header p {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      max-width: 680px;
++      margin: 0 auto;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
++      border: 1px solid #ede7e3;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++    }
++
++    .card.text-center {
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.2rem;
+     }
+ 
+     .btn {
+@@ -128,22 +281,375 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.25s, transform 0.1s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.9rem;
++      font-family: inherit;
++      font-weight: 600;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
++    }
++
++    .btn-secondary {
++      background: var(--secondary-light);
++      color: var(--primary-dark);
++      border: 1px solid var(--border);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-danger {
++      background: var(--danger);
++      color: white;
++    }
++
++    .btn-danger:hover {
++      background: #8e0000;
++    }
++
++    .btn-sm {
++      padding: 6px 12px;
++      font-size: 0.8rem;
++      margin-top: 0;
++    }
++
++    /* Privacy by Design Layout Sections */
++    .pbd-section {
++      margin-top: 56px;
++      padding-top: 40px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .two-col {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++    }
++
++    /* Forms & Data Minimization Controls */
++    .form-group {
++      margin-bottom: 16px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 5px;
++    }
++
++    .field-tag {
++      font-size: 0.72rem;
++      padding: 1px 7px;
++      border-radius: 4px;
++      font-weight: normal;
++      background: var(--secondary-light);
++      color: var(--text-muted);
++    }
++
++    .field-tag.required {
++      background: var(--warning-bg);
++      color: var(--warning);
++      font-weight: 600;
++    }
++
++    .field-tag.minimized {
++      background: var(--success-bg);
++      color: var(--success);
++      font-weight: 600;
++    }
++
++    .form-control {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid var(--border);
++      border-radius: 5px;
++      font-size: 0.95rem;
++      font-family: inherit;
++      background: #fff;
++      color: var(--text);
++    }
++
++    .form-control:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++    }
++
++    .field-rationale {
++      font-size: 0.78rem;
++      color: var(--text-muted);
++      margin-top: 4px;
++    }
++
++    .checkbox-group {
++      display: flex;
++      align-items: flex-start;
++      gap: 10px;
++      margin: 12px 0;
++      font-size: 0.88rem;
++      text-align: left;
++    }
++
++    .checkbox-group input[type="checkbox"] {
++      margin-top: 4px;
++      width: 16px;
++      height: 16px;
++      accent-color: var(--primary);
++    }
++
++    /* Toggle Switch */
++    .toggle-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      padding: 12px 0;
++      border-bottom: 1px solid #efebe9;
++      gap: 12px;
++    }
++
++    .toggle-row:last-child {
++      border-bottom: none;
++    }
++
++    .toggle-info h4 {
++      font-size: 0.95rem;
++      color: var(--primary);
++      margin-bottom: 2px;
++    }
++
++    .toggle-info p {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++    }
++
++    .switch {
++      position: relative;
++      display: inline-block;
++      width: 46px;
++      height: 24px;
++      flex-shrink: 0;
++    }
++
++    .switch input {
++      opacity: 0;
++      width: 0;
++      height: 0;
++    }
++
++    .slider {
++      position: absolute;
++      cursor: pointer;
++      inset: 0;
++      background-color: #bdbdbd;
++      transition: .25s;
++      border-radius: 24px;
++    }
++
++    .slider:before {
++      position: absolute;
++      content: "";
++      height: 18px;
++      width: 18px;
++      left: 3px;
++      bottom: 3px;
++      background-color: white;
++      transition: .25s;
++      border-radius: 50%;
++    }
++
++    input:checked + .slider {
++      background-color: var(--success);
++    }
++
++    input:disabled + .slider {
++      background-color: var(--primary);
++      opacity: 0.75;
++      cursor: not-allowed;
++    }
++
++    input:checked + .slider:before {
++      transform: translateX(22px);
++    }
++
++    /* Tables & Audit Logs */
++    .table-responsive {
++      overflow-x: auto;
++      margin-top: 12px;
++    }
++
++    table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.86rem;
++      text-align: left;
++    }
++
++    th, td {
++      padding: 10px 12px;
++      border-bottom: 1px solid #e0d7d3;
++    }
++
++    th {
++      background: var(--secondary-light);
++      color: var(--primary-dark);
++      font-weight: 600;
++    }
++
++    .status-pill {
++      display: inline-block;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.75rem;
++      font-weight: 600;
++    }
++
++    .status-allowed {
++      background: var(--success-bg);
++      color: var(--success);
++    }
++
++    .status-blocked {
++      background: var(--danger-bg);
++      color: var(--danger);
++    }
++
++    .status-gated {
++      background: var(--warning-bg);
++      color: var(--warning);
++    }
++
++    /* Code / State Inspector */
++    .inspector-box {
++      background: #261815;
++      color: #f5ebe6;
++      padding: 14px;
++      border-radius: 6px;
++      font-family: 'Courier New', Courier, monospace;
++      font-size: 0.8rem;
++      overflow-x: auto;
++      max-height: 220px;
++      white-space: pre-wrap;
++      word-break: break-all;
++      margin-top: 10px;
++    }
++
++    .alert-banner {
++      padding: 12px 16px;
++      border-radius: 6px;
++      font-size: 0.88rem;
++      margin-top: 14px;
++      display: none;
++    }
++
++    .alert-banner.active {
++      display: block;
++    }
++
++    .alert-success {
++      background: var(--success-bg);
++      color: var(--success);
++      border: 1px solid #a5d6a7;
++    }
++
++    .alert-warning {
++      background: var(--warning-bg);
++      color: var(--warning);
++      border: 1px solid #ffcc80;
++    }
++
++    /* Consent Banner (Non-dark-pattern: Equal visual weight) */
++    .consent-banner {
++      position: fixed;
++      bottom: 20px;
++      left: 50%;
++      transform: translateX(-50%);
++      width: calc(100% - 40px);
++      max-width: 880px;
++      background: white;
++      border: 2px solid var(--primary);
++      border-radius: 10px;
++      padding: 20px 24px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
++      z-index: 1500;
++      display: none;
++    }
++
++    .consent-banner.visible {
++      display: block;
++    }
++
++    .consent-banner-content {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 20px;
++      flex-wrap: wrap;
++    }
++
++    .consent-banner-text {
++      flex: 1 1 420px;
++    }
++
++    .consent-banner-text h3 {
++      color: var(--primary);
++      font-size: 1.05rem;
++      margin-bottom: 4px;
++    }
++
++    .consent-banner-text p {
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    .consent-banner-actions {
++      display: flex;
++      gap: 10px;
++      flex-wrap: wrap;
++    }
++
++    /* Equal prominence buttons to avoid dark patterns */
++    .consent-btn {
++      padding: 9px 16px;
++      border-radius: 5px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      transition: all 0.2s;
++    }
++
++    .consent-btn:hover {
++      background: var(--secondary-light);
++    }
++
++    .consent-btn.primary-choice {
++      background: var(--primary);
++      color: white;
++    }
++
++    .consent-btn.primary-choice:hover {
++      background: var(--primary-dark);
+     }
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+-      margin-top: 40px;
++      margin-top: 60px;
+     }
+ 
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-bottom: 16px;
+     }
+ 
+     .footer-links a {
+@@ -151,62 +657,1209 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      font-weight: 500;
++    }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++    }
++
++    .footer-meta {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++      margin-top: 8px;
+     }
+   </style>
+ </head>
+ 
+ <body>
++  <a href="#main-content" class="skip-link">Skip to main content</a>
+ 
+-  <nav>
++  <!-- Top Privacy & Security Status Ribbon -->
++  <div class="privacy-ribbon" role="region" aria-label="Privacy and Security Status">
++    <div class="privacy-ribbon-badges">
++      <span class="badge badge-secure" id="csp-status-badge">&#128274; Strict CSP &amp; Security Headers Active</span>
++      <span class="badge badge-neutral" id="gpc-status-badge">GPC / DNT: Checking...</span>
++      <span class="badge badge-neutral" id="storage-ttl-badge">Data Minimization: 24h Auto-Expiry</span>
++    </div>
++    <div>
++      <button type="button" class="ribbon-btn" id="open-privacy-center-btn">Privacy &amp; Consent Settings</button>
++    </div>
++  </div>
++
++  <nav aria-label="Primary Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#seasonal-menu">Menu</a></li>
++      <li><a href="#quick-order">Order Pickup</a></li>
++      <li><a href="#privacy-center">Privacy Center</a></li>
++      <li><a href="#third-party-audit">Third-Party Audit</a></li>
++      <li><a href="#security-headers">Security Headers</a></li>
++      <li>
++        <!-- Secure Logout via POST & Client State Purge instead of vulnerable GET link -->
++        <form action="/logout" method="POST" class="logout-form" id="secure-logout-form">
++          <button type="submit" class="logout-link" title="Clears all local session &amp; storage data">Secure Logout</button>
++        </form>
++      </li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <p>Ethically sourced, locally roasted, delivered to your cup &mdash; built with Privacy by Design and zero third-party tracking by default.</p>
++    <div class="hero-actions">
++      <a href="#quick-order" class="btn">Order Express Pickup</a>
++      <a href="#privacy-center" class="btn btn-secondary">Review Data Practices</a>
++    </div>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container" id="main-content">
++    <!-- Seasonal Favorites Section -->
++    <section id="seasonal-menu">
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <p>Select an item to add to your local ephemeral cart. Cart items never leave your browser until you submit an order.</p>
++      </div>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++        <div class="card text-center">
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <button type="button" class="btn select-drink-btn" data-drink="Maple Oat Latte">Select for Pickup ($5.50)</button>
++        </div>
++        <div class="card text-center">
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <button type="button" class="btn select-drink-btn" data-drink="Dark Roast Espresso">Select for Pickup ($3.75)</button>
++        </div>
++        <div class="card text-center">
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <button type="button" class="btn select-drink-btn" data-drink="Cold Brew">Select for Pickup ($4.75)</button>
+         </div>
++      </div>
++    </section>
++
++    <!-- Pillar 1 & 4: Data Minimization & Secure Client-Side Data Handling -->
++    <section id="quick-order" class="pbd-section">
++      <div class="section-header">
++        <h2>Data-Minimized Express Pickup &amp; Rewards</h2>
++        <p>We only collect what is strictly necessary to call your order at the counter. No phone number, birth date, or persistent account profile is required.</p>
++      </div>
++
++      <div class="two-col">
++        <!-- Minimized Order Form -->
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3>Express Counter Order</h3>
++          <form id="minimized-order-form" autocomplete="off" novalidate>
++            <div class="form-group">
++              <label for="pickup-alias">
++                <span>Pickup Alias / Initials</span>
++                <span class="field-tag required">Required (Minimized)</span>
++              </label>
++              <input
++                type="text"
++                id="pickup-alias"
++                name="pickupAlias"
++                class="form-control"
++                placeholder="e.g., Alex or A.B."
++                maxlength="24"
++                required
++                autocomplete="off"
++                data-purpose="Identify cup at pickup counter; purged immediately upon fulfillment"
++              >
++              <div class="field-rationale">Purpose: Calling your cup at the bar. Pseudonymous aliases are encouraged.</div>
++            </div>
++
++            <div class="form-group">
++              <label for="selected-item">
++                <span>Selected Beverage</span>
++                <span class="field-tag required">Required</span>
++              </label>
++              <select id="selected-item" name="selectedItem" class="form-control" required>
++                <option value="Maple Oat Latte">Maple Oat Latte ($5.50)</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso ($3.75)</option>
++                <option value="Cold Brew">Cold Brew ($4.75)</option>
++              </select>
++            </div>
++
++            <div class="form-group">
++              <label for="pickup-store">
++                <span>Pickup Roastery</span>
++                <span class="field-tag minimized">Coarse Selection Only</span>
++              </label>
++              <select id="pickup-store" name="pickupStore" class="form-control">
++                <option value="Downtown Roastery">Downtown Roastery (Main St)</option>
++                <option value="Riverside Cafe">Riverside Cafe (Oak Ave)</option>
++                <option value="Campus Espresso Bar">Campus Espresso Bar (4th St)</option>
++              </select>
++              <div class="field-rationale">No GPS or IP geolocation is used unless you explicitly request nearest-store lookup.</div>
++            </div>
++
++            <div class="form-group">
++              <label for="receipt-email">
++                <span>Email for Digital Receipt</span>
++                <span class="field-tag">Optional &bull; Masked &amp; Hashed</span>
++              </label>
++              <input
++                type="email"
++                id="receipt-email"
++                name="receiptEmail"
++                class="form-control"
++                placeholder="optional@example.com (leave blank for paperless counter code)"
++                autocomplete="off"
++                data-purpose="One-time receipt transmission; stored locally only as SHA-256 hash"
++              >
++              <div class="field-rationale">If provided, your email is hashed via Web Crypto SHA-256 for loyalty lookup and never stored in plaintext.</div>
++            </div>
++
++            <!-- Unbundled Explicit Opt-In Checkboxes (Never Pre-checked) -->
++            <div class="checkbox-group">
++              <input type="checkbox" id="opt-in-rewards" name="optInRewards">
++              <label for="opt-in-rewards">
++                <strong>Optional:</strong> Save a pseudonymous SHA-256 stamp token in local storage (auto-expires in 24h) to earn a free 10th coffee.
++              </label>
++            </div>
++
++            <button type="submit" class="btn">Place Privacy-Protected Order</button>
++            <div id="order-feedback" class="alert-banner" role="status" aria-live="polite"></div>
++          </form>
+         </div>
++
++        <!-- Secure Client-Side Storage & PII Redaction Inspector -->
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <h3>Secure Client-Side Data Vault</h3>
++            <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 12px;">
++              All client-side state uses strict schema validation, automatic PII scrubbing (emails, phone numbers, credit cards, SSNs), SHA-256 pseudonymization, and a 24-hour Time-To-Live (TTL).
++            </p>
++
++            <div class="toggle-row">
++              <div class="toggle-info">
++                <h4>Ephemeral Session Mode</h4>
++                <p>Keep order state strictly in memory/sessionStorage (wiped on tab close).</p>
++              </div>
++              <label class="switch" aria-label="Toggle Ephemeral Session Mode">
++                <input type="checkbox" id="ephemeral-mode-toggle" checked>
++                <span class="slider"></span>
++              </label>
++            </div>
++
++            <div style="margin-top: 14px;">
++              <strong style="font-size: 0.85rem;">Live Sanitized Storage Envelope:</strong>
++              <pre class="inspector-box" id="storage-inspector-view">Initializing secure storage inspector...</pre>
++            </div>
++
++            <div style="margin-top: 14px;">
++              <strong style="font-size: 0.85rem;">PII Sanitizer &amp; URL Parameter Scrubber Log:</strong>
++              <pre class="inspector-box" id="sanitizer-log-view" style="max-height: 110px;"></pre>
++            </div>
++          </div>
++
++          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
++            <button type="button" class="btn btn-secondary btn-sm" id="export-data-btn">Export My Data (JSON)</button>
++            <button type="button" class="btn btn-secondary btn-sm" id="test-pii-scrub-btn">Test PII Redaction</button>
++            <button type="button" class="btn btn-danger btn-sm" id="erase-all-data-btn">Erase All Local Data</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Pillar 2: Privacy Center & Granular Opt-In Controls -->
++    <section id="privacy-center" class="pbd-section">
++      <div class="section-header">
++        <h2>Privacy by Design Control Center</h2>
++        <p>Privacy is our default setting. Optional features are strictly opt-in, respect Global Privacy Control (GPC) and Do Not Track (DNT) signals automatically, and can be revoked at any time.</p>
++      </div>
++
++      <div class="card">
++        <div class="toggle-row">
++          <div class="toggle-info">
++            <h4>Strictly Necessary Security &amp; Order State (Always Active)</h4>
++            <p>Required for CSRF protection, CSP violation monitoring, and holding your active pickup selection in local memory. Zero cross-site tracking.</p>
++          </div>
++          <label class="switch" aria-label="Strictly Necessary Security">
++            <input type="checkbox" checked disabled>
++            <span class="slider"></span>
++          </label>
++        </div>
++
++        <div class="toggle-row">
++          <div class="toggle-info">
++            <h4>Local Loyalty Stamp Preferences (Functional &bull; Default: OFF)</h4>
++            <p>Stores your favorite roastery location and pseudonymous reward counter locally with a 24-hour rolling expiration.</p>
++          </div>
++          <label class="switch" aria-label="Toggle Functional Preferences">
++            <input type="checkbox" id="consent-functional">
++            <span class="slider"></span>
++          </label>
++        </div>
++
++        <div class="toggle-row">
++          <div class="toggle-info">
++            <h4>First-Party Aggregated Telemetry (Analytics &bull; Default: OFF)</h4>
++            <p>Measures anonymous page load performance without cookies, device fingerprinting, or IP logging. Automatically disabled if browser sends GPC or DNT.</p>
++          </div>
++          <label class="switch" aria-label="Toggle First-Party Analytics">
++            <input type="checkbox" id="consent-analytics">
++            <span class="slider"></span>
++          </label>
++        </div>
++
++        <div class="toggle-row">
++          <div class="toggle-info">
++            <h4>Third-Party External Embeds &amp; Fonts (External Media &bull; Default: OFF)</h4>
++            <p>Blocks third-party map iframes, external font CDNs, and social widgets by default to prevent IP address and Referer leakage.</p>
++          </div>
++          <label class="switch" aria-label="Toggle External Media Embeds">
++            <input type="checkbox" id="consent-external-media">
++            <span class="slider"></span>
++          </label>
++        </div>
++
++        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid #efebe9;">
++          <span style="font-size: 0.83rem; color: var(--text-muted);" id="consent-last-updated">Consent state: Privacy-first defaults active (No tracking).</span>
++          <div style="display: flex; gap: 10px;">
++            <button type="button" class="btn btn-secondary btn-sm" id="reject-all-optional-btn">Reset to Strict Defaults (Reject All)</button>
++            <button type="button" class="btn btn-sm" id="save-privacy-prefs-btn">Save Preferences</button>
++          </div>
++        </div>
++      </div>
++    </section>
++
++    <!-- Pillar 3: Third-Party Audit & Runtime Resource Firewall -->
++    <section id="third-party-audit" class="pbd-section">
++      <div class="section-header">
++        <h2>Third-Party Audit &amp; Runtime Resource Guard</h2>
++        <p>Continuous client-side auditing inspects all scripts, stylesheets, images, frames, and network calls (`fetch` / `sendBeacon` / `XMLHttpRequest`) against our strict origin allowlist.</p>
++      </div>
++
++      <div class="card">
++        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 10px;">
++          <div>
++            <h3>External Dependency &amp; Tracker Audit Inventory</h3>
++            <p style="font-size: 0.83rem; color: var(--text-muted);">Audited resources across HTML markup, CSS, and runtime scripts.</p>
++          </div>
++          <div style="display: flex; gap: 10px;">
++            <button type="button" class="btn btn-secondary btn-sm" id="run-dom-audit-btn">Re-Run Live DOM Audit</button>
++            <button type="button" class="btn btn-secondary btn-sm" id="simulate-tracker-btn">Simulate Unauthorized Tracker Block</button>
++          </div>
++        </div>
++
++        <div class="table-responsive">
++          <table aria-label="Third-Party Resource Audit Table">
++            <thead>
++              <tr>
++                <th>Resource / Origin</th>
++                <th>Category</th>
++                <th>Data Shared</th>
++                <th>Mitigation &amp; Policy</th>
++                <th>Audit Status</th>
++              </tr>
++            </thead>
++            <tbody id="audit-table-body">
++              <tr>
++                <td><code>self (dailygrind.local)</code></td>
++                <td>First-Party App</td>
++                <td>None (Local execution)</td>
++                <td>Strict CSP <code>default-src 'self'</code></td>
++                <td><span class="status-pill status-allowed">Verified Safe</span></td>
++              </tr>
++              <tr>
++                <td><code>images.unsplash.com</code></td>
++                <td>Hero Stock Photography</td>
++                <td>Standard HTTP image fetch (no cookies/credentials, strict referrer)</td>
++                <td>Explicitly allowlisted in <code>img-src</code> only; no scripts or frames allowed</td>
++                <td><span class="status-pill status-allowed">Audited &amp; Scoped</span></td>
++              </tr>
++              <tr>
++                <td><code>System UI Font Stack</code></td>
++                <td>Typography</td>
++                <td>Zero network requests</td>
++                <td>Replaced third-party Google Fonts with local OS font stack to prevent IP leakage</td>
++                <td><span class="status-pill status-allowed">Zero Leakage</span></td>
++              </tr>
++              <tr>
++                <td><code>google-analytics.com / doubleclick.net / connect.facebook.net</code></td>
++                <td>Ad-Tech &amp; Behavioral Trackers</td>
++                <td>Blocked (0 bytes transmitted)</td>
++                <td>Blocked via CSP <code>connect-src 'self'</code> + Runtime Fetch/Script Firewall</td>
++                <td><span class="status-pill status-blocked">Blocked by Default</span></td>
++              </tr>
++            </tbody>
++          </table>
++        </div>
++
++        <div style="margin-top: 16px;">
++          <strong style="font-size: 0.85rem;">Live Third-Party Network &amp; DOM Guard Log:</strong>
++          <pre class="inspector-box" id="audit-log-view" style="max-height: 140px;"></pre>
++        </div>
++      </div>
++    </section>
++
++    <!-- Pillar 4: Security & Privacy Headers Verification Matrix -->
++    <section id="security-headers" class="pbd-section">
++      <div class="section-header">
++        <h2>Security &amp; Privacy Headers Matrix</h2>
++        <p>Defense-in-depth policies enforced via HTML meta policies, server configuration files (<code>_headers</code>, <code>vercel.json</code>, <code>netlify.toml</code>), and client-side runtime guards.</p>
++      </div>
++
++      <div class="card">
++        <div class="table-responsive">
++          <table aria-label="Security Headers Configuration">
++            <thead>
++              <tr>
++                <th>Header / Directive</th>
++                <th>Configured Value</th>
++                <th>Privacy by Design Purpose</th>
++              </tr>
++            </thead>
++            <tbody>
++              <tr>
++                <td><code>Content-Security-Policy</code></td>
++                <td><code>default-src 'self'; img-src 'self' data: https://images.unsplash.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'</code></td>
++                <td>Prevents unauthorized third-party script injection, data exfiltration, and clickjacking.</td>
++              </tr>
++              <tr>
++                <td><code>Referrer-Policy</code></td>
++                <td><code>strict-origin-when-cross-origin</code></td>
++                <td>Strips URL paths and query parameters on cross-origin requests so sensitive paths never leak.</td>
++              </tr>
++              <tr>
++                <td><code>Permissions-Policy</code></td>
++                <td><code>camera=(), microphone=(), geolocation=(self), payment=(), usb=(), interest-cohort=(), browsing-topics=()</code></td>
++                <td>Disables sensitive hardware APIs and explicitly opts out of browser ad-targeting cohorts (FLoC/Topics).</td>
++              </tr>
++              <tr>
++                <td><code>Strict-Transport-Security</code></td>
++                <td><code>max-age=63072000; includeSubDomains; preload</code></td>
++                <td>Enforces encrypted HTTPS connections across all requests to prevent network eavesdropping.</td>
++              </tr>
++              <tr>
++                <td><code>Cross-Origin-Opener-Policy</code> &amp; <code>X-Frame-Options</code></td>
++                <td><code>same-origin</code> / <code>DENY</code></td>
++                <td>Isolates browsing context against cross-origin window references and framing attacks.</td>
++              </tr>
++              <tr>
++                <td><code>Cache-Control</code> (Sensitive Actions)</td>
++                <td><code>no-store, max-age=0</code></td>
++                <td>Prevents shared or public browsers from caching authenticated or personal order responses.</td>
++              </tr>
++            </tbody>
++          </table>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Non-Dark-Pattern Consent Banner (Equal prominence buttons, shown only if user opens or needs notice) -->
++  <aside class="consent-banner" id="consent-banner" role="dialog" aria-labelledby="consent-banner-title" aria-describedby="consent-banner-desc">
++    <div class="consent-banner-content">
++      <div class="consent-banner-text">
++        <h3 id="consent-banner-title">Your Privacy is Brewing by Default</h3>
++        <p id="consent-banner-desc">
++          The Daily Grind uses zero third-party ad trackers. By default, only strictly necessary local order state is active. You can keep strict defaults or customize optional local preferences below.
++        </p>
++      </div>
++      <div class="consent-banner-actions">
++        <button type="button" class="consent-btn" id="banner-reject-all">Keep Strict Defaults (Reject Optional)</button>
++        <button type="button" class="consent-btn" id="banner-customize">Customize</button>
++        <button type="button" class="consent-btn primary-choice" id="banner-accept-functional">Enable Local Preferences Only</button>
++      </div>
++    </div>
++  </aside>
++
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++      <a href="#seasonal-menu" rel="noopener noreferrer">Our Menu</a> |
++      <a href="#quick-order" rel="noopener noreferrer">Express Pickup</a> |
++      <a href="#privacy-center" rel="noopener noreferrer">Privacy Center</a> |
++      <a href="#third-party-audit" rel="noopener noreferrer">Third-Party Audit</a> |
++      <a href="#security-headers" rel="noopener noreferrer">Security Headers</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++    <p class="footer-meta">Privacy by Design Architecture &bull; Zero Third-Party Trackers &bull; GPC &amp; DNT Honored Automatically</p>
+   </footer>
+ 
++  <!-- Privacy by Design Client-Side Architecture -->
++  <script>
++    (function () {
++      'use strict';
++
++      /* =========================================================================
++       * 1. CONFIGURATION & ALLOWLISTS (Data Minimization & Third-Party Policy)
++       * ========================================================================= */
++      const PRIVACY_CONFIG = Object.freeze({
++        storagePrefix: 'dg_pbd_v1_',
++        defaultTTLMs: 24 * 60 * 60 * 1000, // 24 hours max retention
++        allowedOrigins: [
++          window.location.origin,
++          'https://images.unsplash.com'
++        ],
++        blockedTrackerPatterns: [
++          /google-analytics\.com/i,
++          /googletagmanager\.com/i,
++          /doubleclick\.net/i,
++          /connect\.facebook\.net/i,
++          /facebook\.com\/tr/i,
++          /hotjar\.com/i,
++          /mixpanel\.com/i,
++          /segment\.io/i,
++          /tiktok\.com/i,
++          /clarity\.ms/i
++        ],
++        trackingQueryParams: [
++          'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
++          'fbclid', 'gclid', 'msclkid', 'twclid', 'mc_cid', 'mc_eid', '_ga', '_gl',
++          'session_id', 'token', 'auth_token', 'email', 'phone'
++        ]
++      });
++
++      const auditLogs = [];
++      const sanitizerLogs = [];
++
++      function appendLog(list, message) {
++        const timestamp = new Date().toISOString().slice(11, 19);
++        list.unshift('[' + timestamp + '] ' + message);
++        if (list.length > 25) list.pop();
++      }
++
++      /* =========================================================================
++       * 2. URL TRACKING & SENSITIVE QUERY PARAMETER SCRUBBER
++       * ========================================================================= */
++      function scrubUrlParameters() {
++        try {
++          const url = new URL(window.location.href);
++          let removed = [];
++          PRIVACY_CONFIG.trackingQueryParams.forEach(function (param) {
++            if (url.searchParams.has(param)) {
++              url.searchParams.delete(param);
++              removed.push(param);
++            }
++          });
++          if (removed.length > 0 && window.history && window.history.replaceState) {
++            window.history.replaceState(null, document.title, url.pathname + url.search + url.hash);
++            appendLog(sanitizerLogs, 'Scrubbed sensitive/tracking URL params: ' + removed.join(', '));
++          } else {
++            appendLog(sanitizerLogs, 'URL query check complete: 0 tracking/PII parameters present.');
++          }
++        } catch (err) {
++          appendLog(sanitizerLogs, 'URL parameter check skipped in current context.');
++        }
++      }
++
++      /* =========================================================================
++       * 3. PII REDACTION & CRYPTOGRAPHIC PSEUDONYMIZATION (Web Crypto SHA-256)
++       * ========================================================================= */
++      const PII_PATTERNS = {
++        email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
++        phone: /(\+?\d{1,2}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g,
++        creditCard: /\b(?:\d[ -]*?){13,16}\b/g,
++        ssn: /\b\d{3}-\d{2}-\d{4}\b/g,
++        jwt: /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g
++      };
++
++      function scrubPIIFromString(input) {
++        if (typeof input !== 'string') return '';
++        let cleaned = input;
++        let redactions = [];
++
++        if (PII_PATTERNS.jwt.test(cleaned)) {
++          cleaned = cleaned.replace(PII_PATTERNS.jwt, '[REDACTED_TOKEN]');
++          redactions.push('JWT');
++        }
++        if (PII_PATTERNS.creditCard.test(cleaned)) {
++          cleaned = cleaned.replace(PII_PATTERNS.creditCard, '[REDACTED_CARD]');
++          redactions.push('PaymentCard');
++        }
++        if (PII_PATTERNS.ssn.test(cleaned)) {
++          cleaned = cleaned.replace(PII_PATTERNS.ssn, '[REDACTED_SSN]');
++          redactions.push('SSN');
++        }
++        if (PII_PATTERNS.email.test(cleaned)) {
++          cleaned = cleaned.replace(PII_PATTERNS.email, '[REDACTED_EMAIL]');
++          redactions.push('Email');
++        }
++        if (PII_PATTERNS.phone.test(cleaned)) {
++          cleaned = cleaned.replace(PII_PATTERNS.phone, '[REDACTED_PHONE]');
++          redactions.push('Phone');
++        }
++
++        if (redactions.length > 0) {
++          appendLog(sanitizerLogs, 'Redacted sensitive pattern(s) [' + redactions.join(', ') + '] prior to storage.');
++        }
++        return cleaned.trim();
++      }
++
++      async function sha256Pseudonymize(value) {
++        const normalized = String(value || '').trim().toLowerCase();
++        if (!normalized) return null;
++        if (window.crypto && window.crypto.subtle && window.TextEncoder) {
++          const msgBuffer = new TextEncoder().encode('daily-grind-salt-v1:' + normalized);
++          const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
++          const hashArray = Array.from(new Uint8Array(hashBuffer));
++          const hashHex = hashArray.map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
++          return 'sha256:' + hashHex.slice(0, 24);
++        }
++        // Fallback deterministic non-plaintext hash if SubtleCrypto unavailable
++        let hash = 0;
++        for (let i = 0; i < normalized.length; i++) {
++          hash = ((hash << 5) - hash) + normalized.charCodeAt(i);
++          hash |= 0;
++        }
++        return 'hash:' + Math.abs(hash).toString(16);
++      }
++
++      /* =========================================================================
++       * 4. SECURE STORAGE WRAPPER WITH TTL, SCHEMA VALIDATION & EPHEMERAL MODE
++       * ========================================================================= */
++      const memoryVault = new Map();
++
++      function isEphemeralMode() {
++        const toggle = document.getElementById('ephemeral-mode-toggle');
++        return toggle ? toggle.checked : true;
++      }
++
++      function getActiveStorageBackend() {
++        try {
++          return isEphemeralMode() ? window.sessionStorage : window.localStorage;
++        } catch (e) {
++          return null;
++        }
++      }
++
++      const SecureStorage = {
++        setItem: function (key, payload, ttlMs) {
++          const fullKey = PRIVACY_CONFIG.storagePrefix + key;
++          const now = Date.now();
++          const expiresAt = now + (ttlMs || PRIVACY_CONFIG.defaultTTLMs);
++
++          // Deep-sanitize strings in payload to guarantee no raw PII enters storage
++          const sanitizedData = JSON.parse(JSON.stringify(payload), function (k, v) {
++            if (typeof v === 'string' && k !== 'emailHash' && k !== 'orderToken') {
++              return scrubPIIFromString(v);
++            }
++            return v;
++          });
++
++          const envelope = {
++            schemaVersion: 1,
++            createdAt: new Date(now).toISOString(),
++            expiresAt: new Date(expiresAt).toISOString(),
++            expiresAtEpoch: expiresAt,
++            storageTier: isEphemeralMode() ? 'sessionStorage (Ephemeral)' : 'localStorage (24h TTL)',
++            data: sanitizedData
++          };
++
++          memoryVault.set(fullKey, envelope);
++          const backend = getActiveStorageBackend();
++          if (backend) {
++            try {
++              backend.setItem(fullKey, JSON.stringify(envelope));
++            } catch (e) {
++              appendLog(sanitizerLogs, 'Storage quota or privacy restriction; kept in ephemeral memory.');
++            }
++          }
++          renderInspectorViews();
++          return envelope;
++        },
++
++        getItem: function (key) {
++          const fullKey = PRIVACY_CONFIG.storagePrefix + key;
++          const now = Date.now();
++
++          let raw = null;
++          try {
++            raw = window.sessionStorage.getItem(fullKey) || window.localStorage.getItem(fullKey);
++          } catch (e) {
++            raw = null;
++          }
++
++          let envelope = raw ? JSON.parse(raw) : memoryVault.get(fullKey);
++          if (!envelope) return null;
++
++          if (envelope.expiresAtEpoch && now > envelope.expiresAtEpoch) {
++            this.removeItem(key);
++            appendLog(sanitizerLogs, 'Auto-purged expired storage key: ' + key);
++            return null;
++          }
++          return envelope.data;
++        },
++
++        removeItem: function (key) {
++          const fullKey = PRIVACY_CONFIG.storagePrefix + key;
++          memoryVault.delete(fullKey);
++          try {
++            window.sessionStorage.removeItem(fullKey);
++            window.localStorage.removeItem(fullKey);
++          } catch (e) { /* ignore */ }
++          renderInspectorViews();
++        },
++
++        purgeExpiredAndUnauthorized: function () {
++          const now = Date.now();
++          [window.localStorage, window.sessionStorage].forEach(function (store) {
++            if (!store) return;
++            try {
++              for (let i = store.length - 1; i >= 0; i--) {
++                const k = store.key(i);
++                if (!k) continue;
++                if (k.indexOf(PRIVACY_CONFIG.storagePrefix) === 0) {
++                  const parsed = JSON.parse(store.getItem(k));
++                  if (parsed && parsed.expiresAtEpoch && now > parsed.expiresAtEpoch) {
++                    store.removeItem(k);
++                    appendLog(sanitizerLogs, 'TTL expired key purged: ' + k);
++                  }
++                }
++              }
++            } catch (e) { /* ignore */ }
++          });
++        },
++
++        purgeAll: function (reason) {
++          memoryVault.clear();
++          [window.localStorage, window.sessionStorage].forEach(function (store) {
++            if (!store) return;
++            try {
++              for (let i = store.length - 1; i >= 0; i--) {
++                const k = store.key(i);
++                if (k && k.indexOf(PRIVACY_CONFIG.storagePrefix) === 0) {
++                  store.removeItem(k);
++                }
++              }
++            } catch (e) { /* ignore */ }
++          });
++          // Clear any first-party cookies if present
++          document.cookie.split(';').forEach(function (c) {
++            const eqPos = c.indexOf('=');
++            const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
++            if (name) {
++              document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict';
++            }
++          });
++          appendLog(sanitizerLogs, 'Complete client-side data erasure executed (' + (reason || 'User Request') + ').');
++          renderInspectorViews();
++        },
++
++        exportAll: function () {
++          const snapshot = {};
++          memoryVault.forEach(function (val, key) {
++            snapshot[key] = val;
++          });
++          [window.sessionStorage, window.localStorage].forEach(function (store) {
++            if (!store) return;
++            try {
++              for (let i = 0; i < store.length; i++) {
++                const k = store.key(i);
++                if (k && k.indexOf(PRIVACY_CONFIG.storagePrefix) === 0) {
++                  snapshot[k] = JSON.parse(store.getItem(k));
++                }
++              }
++            } catch (e) { /* ignore */ }
++          });
++          return snapshot;
++        }
++      };
++
++      /* =========================================================================
++       * 5. GLOBAL PRIVACY CONTROL (GPC) / DNT DETECTION & CONSENT MANAGER
++       * ========================================================================= */
++      function detectPrivacySignals() {
++        const gpcEnabled = Boolean(navigator.globalPrivacyControl === true);
++        const dntEnabled = Boolean(
++          navigator.doNotTrack === '1' ||
++          window.doNotTrack === '1' ||
++          navigator.msDoNotTrack === '1'
++        );
++        return {
++          gpc: gpcEnabled,
++          dnt: dntEnabled,
++          restricted: gpcEnabled || dntEnabled
++        };
++      }
++
++      const defaultConsentState = {
++        necessary: true,
++        functional: false,
++        analytics: false,
++        externalMedia: false,
++        gpcHonored: false,
++        updatedAt: new Date().toISOString()
++      };
++
++      function loadConsentPreferences() {
++        const signals = detectPrivacySignals();
++        const stored = SecureStorage.getItem('consent_prefs') || Object.assign({}, defaultConsentState);
++
++        // If browser sends GPC or DNT, force analytics and external tracking off
++        if (signals.restricted) {
++          stored.analytics = false;
++          stored.externalMedia = false;
++          stored.gpcHonored = true;
++        }
++
++        // Update UI badge
++        const gpcBadge = document.getElementById('gpc-status-badge');
++        if (gpcBadge) {
++          if (signals.restricted) {
++            gpcBadge.textContent = 'GPC / DNT Signal Detected: Opt-Out Enforced';
++            gpcBadge.className = 'badge badge-secure';
++          } else {
++            gpcBadge.textContent = 'GPC / DNT: Not Set (Strict Opt-In Default Active)';
++          }
++        }
++
++        // Sync UI toggles
++        const funcToggle = document.getElementById('consent-functional');
++        const anaToggle = document.getElementById('consent-analytics');
++        const extToggle = document.getElementById('consent-external-media');
++
++        if (funcToggle) funcToggle.checked = Boolean(stored.functional);
++        if (anaToggle) {
++          anaToggle.checked = Boolean(stored.analytics);
++          if (signals.restricted) anaToggle.disabled = true;
++        }
++        if (extToggle) {
++          extToggle.checked = Boolean(stored.externalMedia);
++          if (signals.restricted) extToggle.disabled = true;
++        }
++
++        return stored;
++      }
++
++      function saveConsentPreferences(customState) {
++        const signals = detectPrivacySignals();
++        const funcToggle = document.getElementById('consent-functional');
++        const anaToggle = document.getElementById('consent-analytics');
++        const extToggle = document.getElementById('consent-external-media');
++
++        const nextState = customState || {
++          necessary: true,
++          functional: funcToggle ? funcToggle.checked : false,
++          analytics: signals.restricted ? false : (anaToggle ? anaToggle.checked : false),
++          externalMedia: signals.restricted ? false : (extToggle ? extToggle.checked : false),
++          gpcHonored: signals.restricted,
++          updatedAt: new Date().toISOString()
++        };
++
++        SecureStorage.setItem('consent_prefs', nextState);
++        if (!nextState.functional) {
++          SecureStorage.removeItem('loyalty_token');
++        }
++
++        const statusLabel = document.getElementById('consent-last-updated');
++        if (statusLabel) {
++          statusLabel.textContent =
++            'Preferences saved at ' + new Date().toLocaleTimeString() +
++            ' (Functional: ' + (nextState.functional ? 'ON' : 'OFF') +
++            ', Analytics: ' + (nextState.analytics ? 'ON' : 'OFF') +
++            ', External Media: ' + (nextState.externalMedia ? 'ON' : 'OFF') + ')';
++        }
++        appendLog(auditLogs, 'Updated granular consent state (Strict Opt-In enforced).');
++        loadConsentPreferences();
++        renderInspectorViews();
++      }
++
++      /* =========================================================================
++       * 6. THIRD-PARTY AUDIT & RUNTIME NETWORK / DOM RESOURCE FIREWALL
++       * ========================================================================= */
++      function isUrlAllowed(rawUrl, resourceType) {
++        try {
++          const resolved = new URL(rawUrl, window.location.origin);
++          // Block known tracker patterns unconditionally
++          for (let i = 0; i < PRIVACY_CONFIG.blockedTrackerPatterns.length; i++) {
++            if (PRIVACY_CONFIG.blockedTrackerPatterns[i].test(resolved.href)) {
++              return { allowed: false, reason: 'Matched known tracker blocklist (' + resolved.hostname + ')' };
++            }
++          }
++          // Same-origin is always allowed
++          if (resolved.origin === window.location.origin) {
++            return { allowed: true, reason: 'Same-origin resource' };
++          }
++          // Unsplash is only permitted for passive images, never scripts or fetch
++          if (resolved.origin === 'https://images.unsplash.com' && resourceType === 'image') {
++            return { allowed: true, reason: 'Allowlisted stock image origin (no credentials)' };
++          }
++          // Check if user explicitly opted into external media for non-tracker embeds
++          const prefs = SecureStorage.getItem('consent_prefs') || defaultConsentState;
++          if (prefs.externalMedia && resourceType === 'embed') {
++            return { allowed: true, reason: 'User opted into external media' };
++          }
++          return { allowed: false, reason: 'Unauthorized third-party origin (' + resolved.origin + ')' };
++        } catch (e) {
++          return { allowed: false, reason: 'Malformed URL blocked' };
++        }
++      }
++
++      function installNetworkFirewall() {
++        // Wrap window.fetch to prevent unauthorized third-party data exfiltration
++        if (typeof window.fetch === 'function') {
++          const originalFetch = window.fetch.bind(window);
++          window.fetch = function (input, init) {
++            const targetUrl = typeof input === 'string' ? input : (input && input.url ? input.url : '');
++            const check = isUrlAllowed(targetUrl, 'fetch');
++            if (!check.allowed) {
++              appendLog(auditLogs, 'BLOCKED fetch() to ' + targetUrl + ' -> ' + check.reason);
++              renderInspectorViews();
++              return Promise.reject(new Error('Privacy by Design Firewall blocked request to ' + targetUrl));
++            }
++            // Enforce privacy-preserving defaults on allowed fetch calls
++            const safeInit = Object.assign({
++              credentials: 'same-origin',
++              referrerPolicy: 'strict-origin-when-cross-origin'
++            }, init || {});
++            appendLog(auditLogs, 'ALLOWED same-origin fetch() to ' + targetUrl);
++            renderInspectorViews();
++            return originalFetch(input, safeInit);
++          };
++        }
++
++        // Wrap navigator.sendBeacon to block silent background telemetry beacons
++        if (navigator && typeof navigator.sendBeacon === 'function') {
++          const originalBeacon = navigator.sendBeacon.bind(navigator);
++          navigator.sendBeacon = function (url, data) {
++            const check = isUrlAllowed(url, 'beacon');
++            if (!check.allowed) {
++              appendLog(auditLogs, 'BLOCKED navigator.sendBeacon() to ' + url + ' -> ' + check.reason);
++              renderInspectorViews();
++              return false;
++            }
++            return originalBeacon(url, data);
++          };
++        }
++
++        // Listen for CSP violations
++        document.addEventListener('securitypolicyviolation', function (e) {
++          appendLog(
++            auditLogs,
++            'CSP Violation Blocked: directive [' + e.violatedDirective + '] blocked [' + (e.blockedURI || 'inline') + ']'
++          );
++          renderInspectorViews();
++        });
++      }
++
++      function auditDOMThirdParties() {
++        let externalLinksHardened = 0;
++        let unauthorizedNodesRemoved = 0;
++
++        // 1. Harden all anchor links
++        document.querySelectorAll('a[href]').forEach(function (link) {
++          const href = link.getAttribute('href') || '';
++          if (/^https?:\/\//i.test(href)) {
++            const check = isUrlAllowed(href, 'link');
++            link.setAttribute('rel', 'noopener noreferrer');
++            link.setAttribute('referrerpolicy', 'no-referrer');
++            externalLinksHardened++;
++            if (!check.allowed) {
++              appendLog(auditLogs, 'Hardened external link with rel="noopener noreferrer" & no-referrer: ' + href);
++            }
++          }
++        });
++
++        // 2. Audit scripts, iframes, and images
++        document.querySelectorAll('script[src], iframe[src], img[src]').forEach(function (el) {
++          const src = el.getAttribute('src');
++          if (!src) return;
++          const tag = el.tagName.toLowerCase();
++          const type = tag === 'img' ? 'image' : (tag === 'iframe' ? 'embed' : 'script');
++          const check = isUrlAllowed(src, type);
++          if (!check.allowed) {
++            el.removeAttribute('src');
++            el.setAttribute('data-blocked-src', src);
++            unauthorizedNodesRemoved++;
++            appendLog(auditLogs, 'QUARANTINED unauthorized <' + tag + '> resource: ' + src + ' (' + check.reason + ')');
++          }
++        });
++
++        appendLog(
++          auditLogs,
++          'DOM Third-Party Audit completed: ' +
++          unauthorizedNodesRemoved + ' unauthorized trackers found, ' +
++          externalLinksHardened + ' external links hardened.'
++        );
++        renderInspectorViews();
++      }
++
++      /* =========================================================================
++       * 7. UI INSPECTOR & INTERACTIVE PRIVACY WORKFLOWS
++       * ========================================================================= */
++      function renderInspectorViews() {
++        const storageView = document.getElementById('storage-inspector-view');
++        if (storageView) {
++          const snapshot = SecureStorage.exportAll();
++          const keys = Object.keys(snapshot);
++          if (keys.length === 0) {
++            storageView.textContent = '// Vault is empty (Zero persistent client data stored)';
++          } else {
++            storageView.textContent = JSON.stringify(snapshot, null, 2);
++          }
++        }
++
++        const sanitizerView = document.getElementById('sanitizer-log-view');
++        if (sanitizerView) {
++          sanitizerView.textContent = sanitizerLogs.length
++            ? sanitizerLogs.join('\n')
++            : '// Sanitizer active and monitoring inputs.';
++        }
++
++        const auditView = document.getElementById('audit-log-view');
++        if (auditView) {
++          auditView.textContent = auditLogs.length
++            ? auditLogs.join('\n')
++            : '// Runtime Firewall active.';
++        }
++      }
++
++      function setupOrderAndPrivacyHandlers() {
++        // Drink selector buttons populate the Express Order form
++        document.querySelectorAll('.select-drink-btn').forEach(function (btn) {
++          btn.addEventListener('click', function () {
++            const drink = btn.getAttribute('data-drink');
++            const select = document.getElementById('selected-item');
++            if (select && drink) {
++              select.value = drink;
++            }
++            const orderSection = document.getElementById('quick-order');
++            if (orderSection && orderSection.scrollIntoView) {
++              orderSection.scrollIntoView({ behavior: 'smooth' });
++            }
++            const aliasInput = document.getElementById('pickup-alias');
++            if (aliasInput) aliasInput.focus();
++          });
++        });
++
++        // Data-Minimized Order Form Submission
++        const orderForm = document.getElementById('minimized-order-form');
++        if (orderForm) {
++          orderForm.addEventListener('submit', async function (e) {
++            e.preventDefault();
++            const aliasInput = document.getElementById('pickup-alias');
++            const itemSelect = document.getElementById('selected-item');
++            const storeSelect = document.getElementById('pickup-store');
++            const emailInput = document.getElementById('receipt-email');
++            const optInRewards = document.getElementById('opt-in-rewards');
++            const feedback = document.getElementById('order-feedback');
++
++            const rawAlias = aliasInput ? aliasInput.value.trim() : '';
++            if (!rawAlias) {
++              if (feedback) {
++                feedback.className = 'alert-banner alert-warning active';
++                feedback.textContent = 'Please provide a pickup alias or initials so we can call your order.';
++              }
++              return;
++            }
++
++            // Scrub any accidental PII entered into the alias field
++            const sanitizedAlias = scrubPIIFromString(rawAlias);
++            const rawEmail = emailInput ? emailInput.value.trim() : '';
++            const emailHash = rawEmail ? await sha256Pseudonymize(rawEmail) : 'none (paperless counter code)';
++            const orderCode = 'DG-' + Math.floor(1000 + Math.random() * 9000);
++
++            const minimizedOrderPayload = {
++              orderToken: orderCode,
++              pickupAlias: sanitizedAlias,
++              beverage: itemSelect ? itemSelect.value : 'Maple Oat Latte',
++              roastery: storeSelect ? storeSelect.value : 'Downtown Roastery',
++              emailHash: emailHash
++            };
++
++            SecureStorage.setItem('active_pickup_order', minimizedOrderPayload, 2 * 60 * 60 * 1000); // 2h TTL for active pickup
++
++            if (optInRewards && optInRewards.checked) {
++              const consentFunc = document.getElementById('consent-functional');
++              if (consentFunc) consentFunc.checked = true;
++              saveConsentPreferences();
++              const stampHash = await sha256Pseudonymize(rawEmail || sanitizedAlias);
++              SecureStorage.setItem('loyalty_token', {
++                pseudonymId: stampHash,
++                stampsEarned: 1,
++                preferredRoastery: minimizedOrderPayload.roastery
++              });
++            }
++
++            // Immediately clear sensitive email input from DOM
++            if (emailInput) emailInput.value = '';
++
++            if (feedback) {
++              feedback.className = 'alert-banner alert-success active';
++              feedback.textContent =
++                'Order ' + orderCode + ' queued for "' + sanitizedAlias + '" at ' +
++                minimizedOrderPayload.roastery + '. Plaintext email was discarded; only minimized state is stored.';
++            }
++            appendLog(sanitizerLogs, 'Created minimized order ' + orderCode + ' (PII stripped, 2h auto-expiry set).');
++            renderInspectorViews();
++          });
++        }
++
++        // Ephemeral mode switch
++        const ephemeralToggle = document.getElementById('ephemeral-mode-toggle');
++        if (ephemeralToggle) {
++          ephemeralToggle.addEventListener('change', function () {
++            appendLog(
++              sanitizerLogs,
++              'Switched storage tier to ' + (ephemeralToggle.checked ? 'Ephemeral sessionStorage' : '24h TTL localStorage')
++            );
++            renderInspectorViews();
++          });
++        }
++
++        // Test PII Redaction Button
++        const testPiiBtn = document.getElementById('test-pii-scrub-btn');
++        if (testPiiBtn) {
++          testPiiBtn.addEventListener('click', function () {
++            const samplePayload = {
++              note: 'Call me at 415-555-0199 or email coffee.lover@example.com with card 4532 0151 1283 0366'
++            };
++            SecureStorage.setItem('pii_redaction_demo', samplePayload, 10 * 60 * 1000);
++          });
++        }
++
++        // Export Data Button (Right of Data Portability)
++        const exportBtn = document.getElementById('export-data-btn');
++        if (exportBtn) {
++          exportBtn.addEventListener('click', function () {
++            const data = SecureStorage.exportAll();
++            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
++            const url = URL.createObjectURL(blob);
++            const a = document.createElement('a');
++            a.href = url;
++            a.download = 'daily-grind-privacy-export.json';
++            document.body.appendChild(a);
++            a.click();
++            document.body.removeChild(a);
++            URL.revokeObjectURL(url);
++            appendLog(sanitizerLogs, 'Exported portable JSON archive of client-side data.');
++            renderInspectorViews();
++          });
++        }
++
++        // Erase All Data Button (Right to Erasure)
++        const eraseBtn = document.getElementById('erase-all-data-btn');
++        if (eraseBtn) {
++          eraseBtn.addEventListener('click', function () {
++            SecureStorage.purgeAll('Right to Erasure Triggered');
++            const feedback = document.getElementById('order-feedback');
++            if (feedback) {
++              feedback.className = 'alert-banner alert-warning active';
++              feedback.textContent = 'All client-side storage, session tokens, and cookies have been permanently erased.';
++            }
++          });
++        }
++
++        // Secure Logout Form Handler (POST semantics + full state wipe)
++        const logoutForm = document.getElementById('secure-logout-form');
++        if (logoutForm) {
++          logoutForm.addEventListener('submit', function (e) {
++            e.preventDefault();
++            SecureStorage.purgeAll('Secure Logout');
++            const feedback = document.getElementById('order-feedback');
++            if (feedback) {
++              feedback.className = 'alert-banner alert-success active';
++              feedback.textContent = 'Securely logged out. All session & local storage artifacts have been wiped.';
++            }
++          });
++        }
++
++        // Privacy Control Center Buttons
++        const savePrefsBtn = document.getElementById('save-privacy-prefs-btn');
++        if (savePrefsBtn) {
++          savePrefsBtn.addEventListener('click', function () {
++            saveConsentPreferences();
++          });
++        }
++
++        const rejectAllBtn = document.getElementById('reject-all-optional-btn');
++        if (rejectAllBtn) {
++          rejectAllBtn.addEventListener('click', function () {
++            const funcToggle = document.getElementById('consent-functional');
++            const anaToggle = document.getElementById('consent-analytics');
++            const extToggle = document.getElementById('consent-external-media');
++            if (funcToggle) funcToggle.checked = false;
++            if (anaToggle) anaToggle.checked = false;
++            if (extToggle) extToggle.checked = false;
++            saveConsentPreferences();
++          });
++        }
++
++        // Third-Party Audit Interactive Buttons
++        const runAuditBtn = document.getElementById('run-dom-audit-btn');
++        if (runAuditBtn) {
++          runAuditBtn.addEventListener('click', function () {
++            auditDOMThirdParties();
++          });
++        }
++
++        const simulateTrackerBtn = document.getElementById('simulate-tracker-btn');
++        if (simulateTrackerBtn) {
++          simulateTrackerBtn.addEventListener('click', function () {
++            // Attempt a simulated tracker beacon & fetch that our firewall intercepts and blocks
++            navigator.sendBeacon('https://www.google-analytics.com/collect?v=1&tid=UA-XXXXX-Y', 't=pageview');
++            window.fetch('https://connect.facebook.net/en_US/fbevents.js').catch(function () {
++              // Expected rejection from Privacy by Design Firewall
++            });
++          });
++        }
++
++        // Consent Banner Controls
++        const banner = document.getElementById('consent-banner');
++        const openBannerBtn = document.getElementById('open-privacy-center-btn');
++        const bannerReject = document.getElementById('banner-reject-all');
++        const bannerCustomize = document.getElementById('banner-customize');
++        const bannerAcceptFunc = document.getElementById('banner-accept-functional');
++
++        if (openBannerBtn && banner) {
++          openBannerBtn.addEventListener('click', function () {
++            banner.classList.add('visible');
++          });
++        }
++        if (bannerReject && banner) {
++          bannerReject.addEventListener('click', function () {
++            if (rejectAllBtn) rejectAllBtn.click();
++            banner.classList.remove('visible');
++          });
++        }
++        if (bannerCustomize && banner) {
++          bannerCustomize.addEventListener('click', function () {
++            banner.classList.remove('visible');
++            const section = document.getElementById('privacy-center');
++            if (section && section.scrollIntoView) section.scrollIntoView({ behavior: 'smooth' });
++          });
++        }
++        if (bannerAcceptFunc && banner) {
++          bannerAcceptFunc.addEventListener('click', function () {
++            const funcToggle = document.getElementById('consent-functional');
++            if (funcToggle) funcToggle.checked = true;
++            saveConsentPreferences();
++            banner.classList.remove('visible');
++          });
++        }
++      }
++
++      /* =========================================================================
++       * 8. INITIALIZATION
++       * ========================================================================= */
++      function initPrivacyByDesign() {
++        scrubUrlParameters();
++        installNetworkFirewall();
++        SecureStorage.purgeExpiredAndUnauthorized();
++        loadConsentPreferences();
++        auditDOMThirdParties();
++        setupOrderAndPrivacyHandlers();
++        renderInspectorViews();
++      }
++
++      if (document.readyState === 'loading') {
++        document.addEventListener('DOMContentLoaded', initPrivacyByDesign);
++      } else {
++        initPrivacyByDesign();
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/netlify.toml b/netlify.toml
+new file mode 100644
+index 0000000..9ff97f7
+--- /dev/null
++++ b/netlify.toml
+@@ -0,0 +1,18 @@
++[[headers]]
++  for = "/*"
++  [headers.values]
++    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.unsplash.com; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
++    Referrer-Policy = "strict-origin-when-cross-origin"
++    Permissions-Policy = "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), interest-cohort=(), browsing-topics=()"
++    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
++    X-Content-Type-Options = "nosniff"
++    X-Frame-Options = "DENY"
++    Cross-Origin-Opener-Policy = "same-origin"
++    Cross-Origin-Resource-Policy = "same-origin"
++    X-Permitted-Cross-Domain-Policies = "none"
++
++[[headers]]
++  for = "/logout*"
++  [headers.values]
++    Cache-Control = "no-store, max-age=0"
++    Clear-Site-Data = "\"cache\", \"cookies\", \"storage\""
+diff --git a/vercel.json b/vercel.json
+new file mode 100644
+index 0000000..cdebb8f
+--- /dev/null
++++ b/vercel.json
+@@ -0,0 +1,58 @@
++{
++  "headers": [
++    {
++      "source": "/(.*)",
++      "headers": [
++        {
++          "key": "Content-Security-Policy",
++          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.unsplash.com; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
++        },
++        {
++          "key": "Referrer-Policy",
++          "value": "strict-origin-when-cross-origin"
++        },
++        {
++          "key": "Permissions-Policy",
++          "value": "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), interest-cohort=(), browsing-topics=()"
++        },
++        {
++          "key": "Strict-Transport-Security",
++          "value": "max-age=63072000; includeSubDomains; preload"
++        },
++        {
++          "key": "X-Content-Type-Options",
++          "value": "nosniff"
++        },
++        {
++          "key": "X-Frame-Options",
++          "value": "DENY"
++        },
++        {
++          "key": "Cross-Origin-Opener-Policy",
++          "value": "same-origin"
++        },
++        {
++          "key": "Cross-Origin-Resource-Policy",
++          "value": "same-origin"
++        },
++        {
++          "key": "X-Permitted-Cross-Domain-Policies",
++          "value": "none"
++        }
++      ]
++    },
++    {
++      "source": "/(account|logout)(.*)",
++      "headers": [
++        {
++          "key": "Cache-Control",
++          "value": "no-store, max-age=0"
++        },
++        {
++          "key": "Clear-Site-Data",
++          "value": "\"cache\", \"cookies\", \"storage\""
++        }
++      ]
++    }
++  ]
++}

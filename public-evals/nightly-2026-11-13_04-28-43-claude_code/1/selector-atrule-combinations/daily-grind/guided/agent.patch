@@ -1,0 +1,166 @@
+diff --git a/index.html b/index.html
+index 66c9173..15429e4 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,67 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    /*
++     * Theme selection — the ONLY place light/dark is decided.
++     * `color-scheme: light dark` follows the OS preference; a root
++     * attribute or class forces one scheme. Every themed rule below uses
++     * light-dark() tokens, so no rule is ever written twice.
++     */
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++
++      &:is([data-theme="light"], [data-color-scheme="light"], .light, .theme-light) {
++        color-scheme: light;
++      }
++
++      &:is([data-theme="dark"], [data-color-scheme="dark"], .dark, .theme-dark) {
++        color-scheme: dark;
++      }
++    }
++
++    :root {
++      /* Brand palette (raw values) */
++      --espresso: #4e342e;
++      --roast: #3e2723;
++      --latte: #d7ccc8;
++      --crema: #ffab40;
++      --crema-light: #ffc570;
++      --milk: #fafafa;
++      --night: #1b1412;
++      --bean: #2a1e1a;
++      --bean-light: #33251f;
++      --bean-edge: #4a362e;
++      --foam: #f3ebe7;
++
++      /* Semantic tokens: light-dark(<light>, <dark>) */
++      --primary: var(--espresso);
++      --accent: var(--crema);
++      --text: light-dark(var(--roast), var(--foam));
++      --surface: light-dark(var(--milk), var(--night));
++
++      --nav-bg: light-dark(var(--espresso), var(--bean));
++      --nav-text: light-dark(white, var(--foam));
++      --nav-border: light-dark(transparent, var(--bean-edge));
++
++      --hero-overlay: light-dark(rgb(0 0 0 / 0.45), rgb(12 8 6 / 0.72));
++      --hero-text: white;
++
++      --card-bg: light-dark(white, var(--bean-light));
++      --card-text: light-dark(var(--roast), #e2d6d1);
++      --card-heading: light-dark(var(--espresso), var(--crema-light));
++      --card-border: light-dark(transparent, var(--bean-edge));
++      --card-shadow: light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.5));
++
++      --btn-bg: light-dark(var(--espresso), var(--crema));
++      --btn-bg-hover: light-dark(var(--roast), var(--crema-light));
++      --btn-text: light-dark(white, var(--night));
++
++      --footer-bg: light-dark(var(--latte), var(--bean));
++
++      accent-color: var(--accent);
+     }
+ 
+     * {
+@@ -24,13 +77,14 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--surface);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -56,7 +110,7 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -75,7 +129,7 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,7 +137,7 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -108,22 +162,24 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: 0 2px 5px var(--card-shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--btn-bg);
++      color: var(--btn-text);
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -132,11 +188,11 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-bg-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-bg);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;

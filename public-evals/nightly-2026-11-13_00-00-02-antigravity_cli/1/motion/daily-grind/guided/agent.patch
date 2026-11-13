@@ -1,0 +1,1103 @@
+diff --git a/index.html b/index.html
+index 66c9173..7fca5ed 100644
+--- a/index.html
++++ b/index.html
+@@ -5,16 +5,44 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preload" as="image" href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80" fetchpriority="high">
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-soft: #ffe0b2;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --shadow-sm: 0 2px 6px rgb(62 39 35 / 0.1);
++      --shadow-md: 0 12px 24px rgb(62 39 35 / 0.18);
++      --spring-easing: linear(
++        0, 0.016 0.5%, 0.06 1%, 0.226 2%, 1.116 5.4%, 1.375 6.6%,
++        1.527 7.7%, 1.565 8.2%, 1.585 8.8%, 1.581 9.3%, 1.559 9.8%,
++        1.458 10.9%, 0.937 14.3%, 0.784 15.5%, 0.693 16.6%, 0.67 17.1%,
++        0.657 17.7%, 0.671 18.7%, 0.729 19.8%, 1.042 23.3%, 1.13 24.5%,
++        1.182 25.6%, 1.201 26.7%, 1.192 27.7%, 1.156 28.8%, 0.977 32.2%,
++        0.925 33.4%, 0.894 34.5%, 0.882 35.6%, 0.887 36.6%, 0.907 37.7%,
++        1.045 42.4%, 1.069 44.5%, 1.059 46.3%, 0.979 50.9%, 0.96 53.4%,
++        0.966 55.3%, 1.013 59.9%, 1.024 62.3%, 0.986 71.2%, 1.008 79.9%,
++        0.995 88.9%, 1
++      );
+     }
+ 
+-    * {
++    body,
++    h1,
++    h2,
++    h3,
++    p,
++    ul,
++    li,
++    dl,
++    dt,
++    dd,
++    dialog,
++    button {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -27,6 +55,25 @@
+       background-color: var(--light);
+     }
+ 
++    /* Visually hidden utility for screen-reader context */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    /* Accessible keyboard focus indicators */
++    :where(a, button, [tabindex]):focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -38,6 +85,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgb(0 0 0 / 0.15);
+     }
+ 
+     .logo {
+@@ -48,34 +96,90 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      gap: 20px;
+     }
+ 
+     nav a {
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      position: relative;
++      padding-block: 4px;
++      /* Identity transforms prevent stacking-context shifts on hover */
++      translate: 0px;
++      scale: 1;
++      transition-property: color, background-color, border-color, box-shadow, translate, scale;
++      transition-duration: 0.25s;
++      transition-timing-function: ease-out;
++    }
++
++    nav a::after {
++      content: "";
++      position: absolute;
++      inset-inline: 0;
++      bottom: 0;
++      height: 2px;
++      background-color: var(--accent);
++      scale: 0 1;
++      transform-origin: center;
++      transition: scale 0.25s ease-out;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
++    nav a:not(.logout-link):hover::after,
++    nav a:not(.logout-link):focus-visible::after {
++      scale: 1 1;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav a {
++        transition-timing-function: linear(0, 0.45 15%, 1.08 35%, 0.98 55%, 1.01 75%, 1);
++      }
++
++      nav a:hover {
++        translate: 0 -2px;
++      }
++
++      nav a:active {
++        scale: 0.96;
++      }
++    }
++
++    @supports not (translate: 0px) {
++      @media (prefers-reduced-motion: no-preference) {
++        nav a:hover {
++          transform: translate(0, -2px);
++        }
++
++        nav a:active {
++          transform: scale(0.96);
++        }
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    .logout-link:hover,
++    .logout-link:focus-visible {
++      background-color: rgb(255 171 64 / 0.15);
++      box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 64vh;
++      background: linear-gradient(rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -85,54 +189,485 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 32px 20px;
++      gap: 0.75rem;
++    }
++
++    /* Continuously Animated Daily-Roast Banner */
++    .daily-roast-banner {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      max-width: min(760px, 95vw);
++      background: rgb(62 39 35 / 0.88);
++      border: 1px solid rgb(255 171 64 / 0.5);
++      border-radius: 999px;
++      padding: 6px 10px 6px 16px;
++      margin-bottom: 0.75rem;
++      box-shadow: 0 4px 14px rgb(0 0 0 / 0.3);
++    }
++
++    .daily-roast-viewport {
++      overflow: hidden;
++      max-width: min(560px, 68vw);
++      mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
++    }
++
++    .daily-roast-track {
++      display: inline-flex;
++      align-items: center;
++      gap: 2rem;
++      white-space: nowrap;
++      font-size: 0.9rem;
++      color: var(--accent-soft);
++      translate: 0px;
++
++      /* Run continuous ticker motion and slow down for reduced-motion users */
++      animation: roast-banner-ticker 14s linear infinite;
++
++      @media (prefers-reduced-motion: reduce) {
++        animation-duration: 60s;
++      }
++    }
++
++    .daily-roast-banner[data-paused="true"] .daily-roast-track {
++      animation-play-state: paused;
++    }
++
++    .roast-badge {
++      display: inline-block;
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 700;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 2px 8px;
++      border-radius: 999px;
++      margin-inline-end: 6px;
++    }
++
++    .banner-toggle-btn {
++      appearance: none;
++      background: transparent;
++      color: white;
++      border: 1px solid var(--accent);
++      border-radius: 999px;
++      padding: 4px 12px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      cursor: pointer;
++      min-block-size: 28px;
++      min-inline-size: 68px;
++      translate: 0px;
++      scale: 1;
++      transition: background-color 0.2s ease-out, color 0.2s ease-out, box-shadow 0.2s ease-out, scale 0.2s ease-out;
++    }
++
++    .banner-toggle-btn:hover {
++      background: var(--accent);
++      color: var(--primary-dark);
++      box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .banner-toggle-btn:active {
++        scale: 0.95;
++      }
++    }
++
++    @keyframes roast-banner-ticker {
++      0% {
++        translate: 0 0;
++      }
++      50% {
++        translate: -22% 0;
++      }
++      100% {
++        translate: 0 0;
++      }
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2.2rem, 5vw, 3.2rem);
++      margin-bottom: 0.25rem;
++      translate: 0px;
++      scale: 1;
++
++      @media (prefers-reduced-motion: no-preference) {
++        animation: hero-heading-in 0.7s ease-out both;
++      }
++    }
++
++    .hero p {
++      font-size: 1.1rem;
++      max-width: 540px;
++      opacity: 0.95;
++
++      @media (prefers-reduced-motion: no-preference) {
++        animation: hero-heading-in 0.7s 0.12s ease-out both;
++      }
++    }
++
++    @keyframes hero-heading-in {
++      from {
++        opacity: 0;
++        translate: 0 14px;
++      }
++      to {
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    /* Buttons & Hero Call-to-Action */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      background: var(--primary);
++      color: white;
++      padding: 10px 22px;
++      min-block-size: 40px;
++      text-decoration: none;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      margin-top: 15px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      /* Identity transforms to avoid stacking-context shift on hover */
++      translate: 0px;
++      scale: 1;
++      rotate: 0deg;
++      transition-property: background-color, color, border-color, box-shadow, translate, scale;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++    }
++
++    .btn:hover:not(:disabled) {
++      background: var(--primary-dark);
++      box-shadow: 0 6px 16px rgb(62 39 35 / 0.25);
++    }
++
++    .hero-cta {
++      background: var(--accent);
++      color: var(--primary-dark);
++      padding: 12px 28px;
++      font-size: 1.05rem;
++      box-shadow: 0 4px 14px rgb(0 0 0 / 0.3);
++    }
++
++    .hero-cta:hover:not(:disabled) {
++      background: #ffc46b;
++      color: var(--primary-dark);
++      box-shadow: 0 8px 22px rgb(255 171 64 / 0.45);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .btn {
++        transition-duration: 0.45s;
++        transition-timing-function: ease-out;
++        transition-timing-function: linear(0, 0.45 15%, 1.08 35%, 0.97 55%, 1.01 75%, 1);
++      }
++
++      .btn:hover:not(:disabled) {
++        translate: 0 -2px;
++        scale: 1.04;
++      }
++
++      .btn:active:not(:disabled) {
++        translate: 0 0;
++        scale: 0.97;
++      }
++
++      .hero-cta {
++        animation: hero-cta-entrance 0.75s 0.22s ease-out both;
++      }
++
++      .hero-cta:hover:not(:disabled) {
++        translate: 0 -3px;
++        scale: 1.06;
++      }
++    }
++
++    @supports not (translate: 0px) {
++      @media (prefers-reduced-motion: no-preference) {
++        .btn:hover:not(:disabled) {
++          transform: translate(0, -2px) scale(1.04);
++        }
++
++        .btn:active:not(:disabled) {
++          transform: translate(0, 0) scale(0.97);
++        }
++      }
++    }
++
++    @keyframes hero-cta-entrance {
++      from {
++        opacity: 0;
++        translate: 0 16px;
++        scale: 0.94;
++      }
++      to {
++        opacity: 1;
++        translate: 0 0;
++        scale: 1;
++      }
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 48px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-heading {
++      text-align: center;
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      gap: 24px;
++      margin-top: 24px;
+     }
+ 
++    /* Seasonal Favorites Drink Cards */
+     .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      --stagger-time: 0.12s;
++      background: var(--surface);
++      padding: 24px 20px;
++      border-radius: 10px;
++      border: 1px solid rgb(78 52 46 / 0.08);
++      box-shadow: var(--shadow-sm);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      align-items: center;
++      /* Identity transforms on base card */
++      translate: 0px;
++      scale: 1;
++      rotate: 0deg;
++      transition-property: box-shadow, border-color, translate, scale;
++      transition-duration: 0.35s;
++      transition-timing-function: ease-out;
++      animation: card-fade-in 0.5s ease-out both;
++      animation-delay: calc(var(--sibling-index, 1) * var(--stagger-time));
++
++      @media (prefers-reduced-motion: reduce) {
++        animation: none;
++      }
++    }
++
++    /* Gate sibling-index() in @supports with a literal time value */
++    @supports (animation-delay: calc(sibling-index() * 0.1s)) {
++      .grid > .card {
++        animation-delay: calc(sibling-index() * var(--stagger-time));
++      }
++    }
++
++    .card:hover,
++    .card:focus-within {
++      box-shadow: var(--shadow-md);
++      border-color: rgb(255 171 64 / 0.55);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .card {
++        transition-duration: 0.5s;
++        transition-timing-function: ease-out;
++        transition-timing-function: linear(0, 0.45 15%, 1.06 35%, 0.98 55%, 1.01 75%, 1);
++      }
++
++      .card:hover,
++      .card:focus-within {
++        translate: 0 -6px;
++        scale: 1.02;
++      }
++    }
++
++    @supports not (translate: 0px) {
++      @media (prefers-reduced-motion: no-preference) {
++        .card:hover,
++        .card:focus-within {
++          transform: translate(0, -6px) scale(1.02);
++        }
++      }
++    }
++
++    @keyframes card-fade-in {
++      from {
++        opacity: 0;
++        translate: 0 18px;
++      }
++      to {
++        opacity: 1;
++        translate: 0 0;
++      }
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.3rem;
+     }
+ 
+-    .btn {
++    .card p {
++      color: #5d4037;
++      margin-bottom: 6px;
++    }
++
++    /* Animated Top-Layer Drink Details Dialog Overlay */
++    dialog.drink-dialog {
++      margin: auto;
++      max-width: 480px;
++      width: calc(100% - 32px);
++      border: none;
++      border-radius: 14px;
++      padding: 28px;
++      background: var(--surface);
++      color: var(--text);
++      box-shadow: 0 24px 48px rgb(30 18 14 / 0.35);
++      opacity: 0;
++      translate: 0px;
++      scale: 1;
++      transition-property: opacity, transform, scale, translate, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      /* Separate after transition so shorthand doesn't reset or fail in older browsers */
++      transition-behavior: allow-discrete;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transform: scale(0.9) translateY(12px);
++      }
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-duration: 0.1s;
++      }
++    }
++
++    dialog.drink-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog.drink-dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background-color: rgb(30 18 14 / 0);
++      backdrop-filter: blur(2px);
++      transition-property: background-color, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++
++      @media (prefers-reduced-motion: reduce) {
++        transition-duration: 0.1s;
++      }
++    }
++
++    :is(dialog.drink-dialog[open]):where(:not([data-closing])) {
++      opacity: 1;
++
++      @starting-style {
++        opacity: 0;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        transform: scale(1) translateY(0);
++
++        @starting-style {
++          transform: scale(0.9) translateY(12px);
++        }
++      }
++
++      &::backdrop {
++        background-color: rgb(30 18 14 / 0.55);
++
++        @starting-style {
++          background-color: rgb(30 18 14 / 0);
++        }
++      }
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++      margin-bottom: 12px;
++    }
++
++    .dialog-tag {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      background: var(--accent-soft);
++      color: var(--primary-dark);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 3px 10px;
++      border-radius: 999px;
++      margin-bottom: 6px;
++    }
++
++    .dialog-header h2 {
++      color: var(--primary);
++      font-size: 1.6rem;
++      line-height: 1.25;
++    }
++
++    .drink-specs {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 12px;
++      margin-block: 18px;
++      padding: 14px;
++      background: var(--light);
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++      text-align: left;
++    }
++
++    .drink-specs dt {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.04em;
++      color: #6d4c41;
++      font-weight: 600;
++    }
++
++    .drink-specs dd {
++      font-size: 0.95rem;
++      font-weight: 700;
++      color: var(--primary-dark);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++      margin-top: 18px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--primary-dark);
++    }
++
++    .btn-secondary:hover:not(:disabled) {
++      background: #bcaaa4;
++      color: var(--primary-dark);
+     }
+ 
+     footer {
+@@ -151,13 +686,20 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
++      transition: color 0.2s ease-out;
++    }
++
++    .footer-links a:hover {
++      color: var(--primary-dark);
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
+     }
+   </style>
+ </head>
+ 
+-<body>
++<body data-last-animation-state="idle">
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -169,34 +711,125 @@
+   </nav>
+ 
+   <header class="hero">
++    <div class="daily-roast-banner" id="daily-roast-banner" data-paused="false">
++      <div class="daily-roast-viewport">
++        <div class="daily-roast-track" id="daily-roast-track">
++          <span>
++            <strong class="roast-badge">Daily Roast</strong>
++            Ethiopian Yirgacheffe — Floral bergamot, wild honey &amp; cacao nib notes — Freshly roasted at 6:00 AM
++          </span>
++          <span aria-hidden="true">
++            <strong class="roast-badge">Small Batch</strong>
++            Single-origin washed process — Whole bean &amp; pour-over available all day
++          </span>
++        </div>
++      </div>
++      <button type="button" id="roast-banner-toggle" class="banner-toggle-btn">
++        <span id="roast-banner-toggle-text">Pause</span><span class="visually-hidden"> daily roast banner</span>
++      </button>
++    </div>
++
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn hero-cta">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++    <section aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" class="section-heading">Seasonal Favorites</h2>
++      <div class="grid" id="seasonal-grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
++          <button
++            type="button"
++            class="btn view-details-btn"
++            commandfor="drink-details-dialog"
++            command="show-modal"
++            data-drink="maple-oat-latte"
++          >
++            View Details<span class="visually-hidden"> for Maple Oat Latte</span>
++          </button>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++          </div>
++          <button
++            type="button"
++            class="btn view-details-btn"
++            commandfor="drink-details-dialog"
++            command="show-modal"
++            data-drink="dark-roast-espresso"
++          >
++            View Details<span class="visually-hidden"> for Dark Roast Espresso</span>
++          </button>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++          </div>
++          <button
++            type="button"
++            class="btn view-details-btn"
++            commandfor="drink-details-dialog"
++            command="show-modal"
++            data-drink="cold-brew"
++          >
++            View Details<span class="visually-hidden"> for Cold Brew</span>
++          </button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="drink-details-dialog" class="drink-dialog" closedby="any" aria-labelledby="dialog-drink-title" aria-describedby="dialog-drink-desc">
++    <div class="dialog-header">
++      <div>
++        <span class="dialog-tag" id="dialog-drink-tag">Seasonal Favorite</span>
++        <h2 id="dialog-drink-title">Maple Oat Latte</h2>
++      </div>
++    </div>
++    <p id="dialog-drink-desc">
++      Velvety steamed oat milk blended with our signature double-shot espresso and pure Grade-A Vermont amber maple syrup, finished with a dusting of toasted cinnamon.
++    </p>
++    <dl class="drink-specs">
++      <div>
++        <dt>Roast Profile</dt>
++        <dd id="dialog-drink-roast">Medium-Dark Espresso</dd>
++      </div>
++      <div>
++        <dt>Tasting Notes</dt>
++        <dd id="dialog-drink-notes">Maple, Toasted Oat, Caramel</dd>
++      </div>
++      <div>
++        <dt>Caffeine</dt>
++        <dd id="dialog-drink-caffeine">150 mg (12 oz)</dd>
++      </div>
++      <div>
++        <dt>Price</dt>
++        <dd id="dialog-drink-price">$5.75</dd>
++      </div>
++    </dl>
++    <div class="dialog-actions">
++      <button
++        type="button"
++        id="close-dialog-btn"
++        class="btn btn-secondary"
++        commandfor="drink-details-dialog"
++        command="close"
++        autofocus
++      >
++        Close
++      </button>
++      <a href="/order-online" class="btn">Order This Drink</a>
++    </div>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +840,250 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Conditionally load invokers-polyfill only in browsers lacking native support
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill').catch(() => {});
++    }
++
++    // Fallback for sibling-index() stagger animation in browsers without native support
++    if (!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')) {
++      const seasonalGrid = document.getElementById('seasonal-grid');
++      if (seasonalGrid) {
++        [...seasonalGrid.children].forEach((el, index) => {
++          el.style.setProperty('--sibling-index', index + 1);
++        });
++      }
++    }
++
++    // Track animation and transition state on document.body using event.animation directly
++    function getAnimationFromEvent(event) {
++      if ('animation' in event && event.animation) {
++        return event.animation;
++      }
++      if (event.target && typeof event.target.getAnimations === 'function') {
++        const activeAnimations = event.target.getAnimations();
++        if ('animationName' in event) {
++          return activeAnimations.find((anim) => anim.animationName === event.animationName) || null;
++        }
++        if ('propertyName' in event) {
++          return activeAnimations.find((anim) => anim.transitionProperty === event.propertyName) || null;
++        }
++      }
++      return null;
++    }
++
++    function handleAnimationOrTransitionEvent(event) {
++      const animation = event.animation ?? getAnimationFromEvent(event);
++      const name =
++        animation?.animationName ||
++        animation?.transitionProperty ||
++        animation?.id ||
++        event.animationName ||
++        event.propertyName ||
++        event.type;
++      const playState = animation?.playState || event.type;
++      document.body.dataset.lastAnimationState = `${event.type}:${name}:${playState}`;
++    }
++
++    const motionEvents = [
++      'animationstart',
++      'animationiteration',
++      'animationend',
++      'animationcancel',
++      'transitionrun',
++      'transitionstart',
++      'transitionend',
++      'transitioncancel',
++    ];
++
++    for (const eventName of motionEvents) {
++      document.addEventListener(eventName, handleAnimationOrTransitionEvent);
++    }
++
++    // Continuously animated daily-roast banner pause/resume control
++    const roastBanner = document.getElementById('daily-roast-banner');
++    const roastTrack = document.getElementById('daily-roast-track');
++    const roastToggleBtn = document.getElementById('roast-banner-toggle');
++    const roastToggleText = document.getElementById('roast-banner-toggle-text');
++
++    if (roastBanner && roastToggleBtn && roastToggleText) {
++      roastToggleBtn.addEventListener('click', () => {
++        const isPaused = roastBanner.getAttribute('data-paused') === 'true';
++        const nextPaused = !isPaused;
++        roastBanner.setAttribute('data-paused', String(nextPaused));
++        // Update visible button text between Pause and Resume without setting aria-pressed
++        roastToggleText.textContent = nextPaused ? 'Resume' : 'Pause';
++
++        const trackAnimations = roastTrack?.getAnimations?.() || [];
++        for (const anim of trackAnimations) {
++          if (nextPaused) {
++            anim.pause();
++          } else {
++            anim.play();
++          }
++        }
++        const currentAnim = trackAnimations[0];
++        const stateLabel = currentAnim?.playState || (nextPaused ? 'paused' : 'running');
++        document.body.dataset.lastAnimationState = `roast-banner:${stateLabel}`;
++      });
++    }
++
++    // Drink details catalog and animated top-layer dialog management
++    const DRINK_DETAILS = {
++      'maple-oat-latte': {
++        tag: 'Seasonal Favorite',
++        title: 'Maple Oat Latte',
++        desc: 'Velvety steamed oat milk blended with our signature double-shot espresso and pure Grade-A Vermont amber maple syrup, finished with a dusting of toasted cinnamon.',
++        roast: 'Medium-Dark Espresso',
++        notes: 'Maple, Toasted Oat, Caramel',
++        caffeine: '150 mg (12 oz)',
++        price: '$5.75',
++      },
++      'dark-roast-espresso': {
++        tag: 'House Signature',
++        title: 'Dark Roast Espresso',
++        desc: 'Full-bodied single-origin Sumatra and Colombian beans roasted to a rich dark profile for an intensely aromatic crema and a lingering smoky cocoa finish.',
++        roast: ' Artisanal Dark Roast',
++        notes: 'Dark Chocolate, Cedar, Molasses',
++        caffeine: '185 mg (Double Shot)',
++        price: '$3.95',
++      },
++      'cold-brew': {
++        tag: 'Slow Steeped',
++        title: 'Cold Brew',
++        desc: 'Coarse-ground Ethiopian and Guatemalan beans steeped in filtered cold water for 18 hours, yielding an ultra-smooth, naturally sweet cup with low acidity.',
++        roast: 'Medium Filter Roast',
++        notes: 'Sweet Cocoa, Stone Fruit, Walnut',
++        caffeine: '200 mg (16 oz)',
++        price: '$4.95',
++      },
++    };
++
++    const dialog = document.getElementById('drink-details-dialog');
++    const titleEl = document.getElementById('dialog-drink-title');
++    const tagEl = document.getElementById('dialog-drink-tag');
++    const descEl = document.getElementById('dialog-drink-desc');
++    const roastEl = document.getElementById('dialog-drink-roast');
++    const notesEl = document.getElementById('dialog-drink-notes');
++    const caffeineEl = document.getElementById('dialog-drink-caffeine');
++    const priceEl = document.getElementById('dialog-drink-price');
++    const closeDialogBtn = document.getElementById('close-dialog-btn');
++
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    function supportsTopLayerExit() {
++      return Boolean(window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay());
++    }
++
++    async function closeTopLayer(element) {
++      if (!element || !element.open) return;
++      if (!supportsTopLayerExit()) {
++        element.setAttribute('data-closing', '');
++        const animations = element.getAnimations({ subtree: true });
++        if (animations.length > 0) {
++          await Promise.race([
++            Promise.allSettled(animations.map((a) => a.finished)),
++            new Promise((r) => setTimeout(r, 2000)),
++          ]);
++        }
++        if (!element.hasAttribute('data-closing')) return;
++        element.removeAttribute('data-closing');
++      }
++      element.close();
++    }
++
++    function populateDrinkDialog(drinkKey) {
++      const details = DRINK_DETAILS[drinkKey] || DRINK_DETAILS['maple-oat-latte'];
++      if (tagEl) tagEl.textContent = details.tag;
++      if (titleEl) titleEl.textContent = details.title;
++      if (descEl) descEl.textContent = details.desc;
++      if (roastEl) roastEl.textContent = details.roast.trim();
++      if (notesEl) notesEl.textContent = details.notes;
++      if (caffeineEl) caffeineEl.textContent = details.caffeine;
++      if (priceEl) priceEl.textContent = details.price;
++    }
++
++    document.querySelectorAll('.view-details-btn').forEach((button) => {
++      button.addEventListener('click', () => {
++        const drinkKey = button.getAttribute('data-drink');
++        populateDrinkDialog(drinkKey);
++        if (dialog) {
++          dialog.removeAttribute('data-closing');
++          if (!dialog.open) {
++            dialog.showModal();
++          }
++        }
++      });
++    });
++
++    if (dialog) {
++      dialog.addEventListener('command', (event) => {
++        if (event.command === 'close') {
++          if (!supportsTopLayerExit()) {
++            event.preventDefault();
++            closeTopLayer(dialog);
++          }
++        }
++      });
++
++      dialog.addEventListener('cancel', (event) => {
++        if (!supportsTopLayerExit()) {
++          event.preventDefault();
++          closeTopLayer(dialog);
++        }
++      });
++
++      dialog.addEventListener('close', () => {
++        dialog.returnValue = '';
++      });
++
++      // Fallback for browsers without closedby="any" support
++      if (!('closedBy' in HTMLDialogElement.prototype)) {
++        const outside = (e, dlg) => {
++          const r = dlg.getBoundingClientRect();
++          return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++        };
++        let pressedOutside = false;
++        dialog.addEventListener('pointerdown', (e) => {
++          if (e.target === dialog) {
++            pressedOutside = outside(e, dialog);
++          } else {
++            pressedOutside = false;
++          }
++        });
++        dialog.addEventListener('pointerup', (e) => {
++          if (pressedOutside && e.target === dialog && outside(e, dialog)) {
++            closeTopLayer(dialog);
++          }
++          pressedOutside = false;
++        });
++      }
++    }
++
++    if (closeDialogBtn && dialog) {
++      closeDialogBtn.addEventListener('click', (event) => {
++        if (!supportsTopLayerExit() || !('commandForElement' in HTMLButtonElement.prototype)) {
++          event.preventDefault();
++          closeTopLayer(dialog);
++        }
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>

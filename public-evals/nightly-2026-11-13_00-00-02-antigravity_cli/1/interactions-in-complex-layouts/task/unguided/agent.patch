@@ -1,0 +1,450 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,161 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    /* Barista Order-Tracking Kanban Board */
++    .kanban-section {
++      margin-bottom: 50px;
++    }
++
++    .kanban-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .kanban-header h2 {
++      color: var(--primary);
++      font-size: 2rem;
++      margin-bottom: 6px;
++    }
++
++    .kanban-header p {
++      color: #6d4c41;
++      font-size: 0.95rem;
++    }
++
++    .kanban-board {
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 20px;
++      align-items: start;
++    }
++
++    @media (max-width: 768px) {
++      .kanban-board {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .board-column {
++      background: #efebe9;
++      border-radius: 10px;
++      padding: 16px;
++      min-height: 360px;
++      display: flex;
++      flex-direction: column;
++      border: 2px solid transparent;
++      transition: border-color 0.2s, background-color 0.2s;
++      contain: layout style;
++    }
++
++    .board-column.drag-over {
++      border-color: var(--accent);
++      background: #e4dcd9;
++    }
++
++    .column-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 14px;
++      padding-bottom: 10px;
++      border-bottom: 2px solid var(--secondary);
++    }
++
++    .column-title {
++      font-size: 1.15rem;
++      font-weight: 700;
++      color: var(--primary);
++      display: flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .column-count {
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      font-weight: 700;
++      padding: 2px 9px;
++      border-radius: 999px;
++    }
++
++    .column-cards {
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++      flex: 1;
++      min-height: 240px;
++    }
++
++    .board-column .card {
++      text-align: left;
++      padding: 14px 16px;
++      cursor: grab;
++      border-left: 4px solid var(--primary);
++      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
++      user-select: none;
++    }
++
++    .board-column[data-status="queued"] .card {
++      border-left-color: #8d6e63;
++    }
++
++    .board-column[data-status="brewing"] .card {
++      border-left-color: var(--accent);
++    }
++
++    .board-column[data-status="ready"] .card {
++      border-left-color: #2e7d32;
++    }
++
++    .board-column .card:hover {
++      transform: translateY(-2px);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
++    }
++
++    .board-column .card:active {
++      cursor: grabbing;
++    }
++
++    .board-column .card.dragging {
++      opacity: 0.45;
++    }
++
++    .order-meta {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.78rem;
++      color: #795548;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .order-id {
++      background: #f5f0ee;
++      padding: 2px 6px;
++      border-radius: 4px;
++    }
++
++    .board-column .card h3 {
++      font-size: 1.05rem;
++      margin-bottom: 4px;
++    }
++
++    .order-customer {
++      font-size: 0.88rem;
++      font-weight: 600;
++      color: var(--text);
++      margin-bottom: 4px;
++    }
++
++    .order-notes {
++      font-size: 0.82rem;
++      color: #6d4c41;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -174,8 +327,38 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="kanban-section" aria-labelledby="kanban-heading">
++      <div class="kanban-header">
++        <h2 id="kanban-heading">Barista Live Order Tracker</h2>
++        <p>Drag and drop drink orders across stations as they move from Queued to Brewing and Ready for Pickup.</p>
++      </div>
++      <div class="kanban-board" id="barista-board">
++        <div class="board-column" data-status="queued" id="col-queued">
++          <div class="column-header">
++            <span class="column-title">Queued</span>
++            <span class="column-count" data-count-for="queued">0</span>
++          </div>
++          <div class="column-cards" data-cards-for="queued"></div>
++        </div>
++        <div class="board-column" data-status="brewing" id="col-brewing">
++          <div class="column-header">
++            <span class="column-title">Brewing</span>
++            <span class="column-count" data-count-for="brewing">0</span>
++          </div>
++          <div class="column-cards" data-cards-for="brewing"></div>
++        </div>
++        <div class="board-column" data-status="ready" id="col-ready">
++          <div class="column-header">
++            <span class="column-title">Ready</span>
++            <span class="column-count" data-count-for="ready">0</span>
++          </div>
++          <div class="column-cards" data-cards-for="ready"></div>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +389,245 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const initialOrders = {
++        queued: [
++          {
++            id: 'ord-101',
++            number: '#101',
++            drink: 'Maple Oat Latte',
++            size: '16oz',
++            customer: 'Maya Lin',
++            notes: 'Extra hot, light foam',
++            time: '2m ago'
++          },
++          {
++            id: 'ord-102',
++            number: '#102',
++            drink: 'Iced Matcha Cortado',
++            size: '12oz',
++            customer: 'Devon Brooks',
++            notes: 'Almond milk, half sweet',
++            time: '1m ago'
++          },
++          {
++            id: 'ord-103',
++            number: '#103',
++            drink: 'Double Espresso Macchiato',
++            size: '8oz',
++            customer: 'Elena Rostova',
++            notes: 'Single origin Ethiopian',
++            time: 'Just now'
++          }
++        ],
++        brewing: [
++          {
++            id: 'ord-099',
++            number: '#099',
++            drink: 'Cold Brew Tonic',
++            size: '16oz',
++            customer: 'Liam Carter',
++            notes: 'Express bar, orange peel',
++            time: '4m ago'
++          },
++          {
++            id: 'ord-100',
++            number: '#100',
++            drink: 'Honey Cinnamon Flat White',
++            size: '12oz',
++            customer: 'Sofia Patel',
++            notes: 'Oat milk, cinnamon dusting',
++            time: '3m ago'
++          }
++        ],
++        ready: [
++          {
++            id: 'ord-097',
++            number: '#097',
++            drink: 'Dark Roast Pour Over',
++            size: '12oz',
++            customer: 'Noah Kim',
++            notes: 'Black, for here cup',
++            time: '7m ago'
++          },
++          {
++            id: 'ord-098',
++            number: '#098',
++            drink: 'Caramel Cardamom Latte',
++            size: '16oz',
++            customer: 'Chloe Vance',
++            notes: 'Whipped cream, mobile pickup',
++            time: '5m ago'
++          }
++        ]
++      };
++
++      // Isolated column controllers so each column manages and renders only its own state
++      const columnControllers = {};
++      let activeDrag = null;
++
++      function createCardElement(order, status) {
++        const card = document.createElement('article');
++        card.className = 'card';
++        card.draggable = true;
++        card.id = order.id;
++        card.dataset.orderId = order.id;
++        card.dataset.status = status;
++
++        card.innerHTML = `
++          <div class="order-meta">
++            <span class="order-id">${order.number} &bull; ${order.size}</span>
++            <span>${order.time}</span>
++          </div>
++          <h3>${order.drink}</h3>
++          <div class="order-customer">For: ${order.customer}</div>
++          <p class="order-notes">${order.notes}</p>
++        `;
++
++        card.addEventListener('dragstart', (e) => {
++          const currentStatus = card.dataset.status;
++          activeDrag = {
++            orderId: order.id,
++            sourceStatus: currentStatus
++          };
++          card.classList.add('dragging');
++          if (e.dataTransfer) {
++            e.dataTransfer.effectAllowed = 'move';
++            e.dataTransfer.setData('text/plain', order.id);
++          }
++        });
++
++        card.addEventListener('dragend', () => {
++          card.classList.remove('dragging');
++          document.querySelectorAll('.board-column.drag-over').forEach((col) => {
++            col.classList.remove('drag-over');
++          });
++          activeDrag = null;
++        });
++
++        return card;
++      }
++
++      class IsolatedColumn {
++        constructor(columnEl, status, orders) {
++          this.columnEl = columnEl;
++          this.status = status;
++          this.orders = orders.slice();
++          this.cardsContainer = columnEl.querySelector('[data-cards-for="' + status + '"]');
++          this.countBadge = columnEl.querySelector('[data-count-for="' + status + '"]');
++          this.cardNodes = new Map();
++
++          this.bindEvents();
++          this.render();
++        }
++
++        bindEvents() {
++          this.columnEl.addEventListener('dragover', (e) => {
++            e.preventDefault();
++            if (e.dataTransfer) {
++              e.dataTransfer.dropEffect = 'move';
++            }
++            if (!this.columnEl.classList.contains('drag-over')) {
++              this.columnEl.classList.add('drag-over');
++            }
++          });
++
++          this.columnEl.addEventListener('dragleave', (e) => {
++            if (!this.columnEl.contains(e.relatedTarget)) {
++              this.columnEl.classList.remove('drag-over');
++            }
++          });
++
++          this.columnEl.addEventListener('drop', (e) => {
++            e.preventDefault();
++            this.columnEl.classList.remove('drag-over');
++
++            const droppedOrderId =
++              (activeDrag && activeDrag.orderId) ||
++              (e.dataTransfer && e.dataTransfer.getData('text/plain'));
++
++            if (!droppedOrderId) return;
++
++            let sourceStatus = activeDrag && activeDrag.sourceStatus;
++            if (!sourceStatus) {
++              for (const key of Object.keys(columnControllers)) {
++                if (columnControllers[key].hasOrder(droppedOrderId)) {
++                  sourceStatus = key;
++                  break;
++                }
++              }
++            }
++
++            if (!sourceStatus || sourceStatus === this.status) {
++              return;
++            }
++
++            const sourceColumn = columnControllers[sourceStatus];
++            const movedOrder = sourceColumn.removeOrder(droppedOrderId);
++            if (movedOrder) {
++              this.addOrder(movedOrder);
++            }
++          });
++        }
++
++        hasOrder(orderId) {
++          return this.orders.some((o) => o.id === orderId);
++        }
++
++        removeOrder(orderId) {
++          const idx = this.orders.findIndex((o) => o.id === orderId);
++          if (idx === -1) return null;
++          const [removed] = this.orders.splice(idx, 1);
++          this.render();
++          return removed;
++        }
++
++        addOrder(order) {
++          this.orders.push(order);
++          this.render();
++        }
++
++        // Renders only this column's DOM nodes and count badge in complete isolation
++        render() {
++          this.countBadge.textContent = String(this.orders.length);
++
++          const currentIds = new Set(this.orders.map((o) => o.id));
++          for (const [id, node] of this.cardNodes.entries()) {
++            if (!currentIds.has(id)) {
++              if (node.parentNode === this.cardsContainer) {
++                this.cardsContainer.removeChild(node);
++              }
++              this.cardNodes.delete(id);
++            }
++          }
++
++          this.orders.forEach((order) => {
++            let node = this.cardNodes.get(order.id);
++            if (!node) {
++              node = createCardElement(order, this.status);
++              this.cardNodes.set(order.id, node);
++              this.cardsContainer.appendChild(node);
++            } else {
++              node.dataset.status = this.status;
++              node.classList.remove('dragging');
++              if (node.parentNode !== this.cardsContainer) {
++                this.cardsContainer.appendChild(node);
++              }
++            }
++          });
++        }
++      }
++
++      ['queued', 'brewing', 'ready'].forEach((status) => {
++        const colEl = document.querySelector('.board-column[data-status="' + status + '"]');
++        if (colEl) {
++          columnControllers[status] = new IsolatedColumn(colEl, status, initialOrders[status] || []);
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

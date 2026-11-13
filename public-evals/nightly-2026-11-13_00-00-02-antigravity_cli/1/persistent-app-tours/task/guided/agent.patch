@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,61 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding Tour Step */
++    #feature {
++      anchor-name: --feature;
++    }
++
++    #tour-step {
++      position-anchor: --feature;
++      position-area: block-end;
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(left);
++      margin-block-start: 0.75rem;
++      padding: 1rem 1.25rem;
++      width: max-content;
++      max-width: 16rem;
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      background-color: var(--light);
++      color: var(--text);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++    }
++
++    #tour-step:where(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    #tour-step h2 {
++      font-size: 1.05rem;
++      color: var(--primary);
++      margin-block-end: 0.35rem;
++    }
++
++    #tour-step p {
++      font-size: 0.9rem;
++      margin-block-end: 0.75rem;
++    }
++
++    #tour-step button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 0.4rem 0.9rem;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    #tour-step button:hover:not(:disabled) {
++      background: var(--text);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,9 +214,9 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a id="feature" href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -196,8 +249,14 @@
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="tour-step" role="dialog" popover="manual" aria-labelledby="tour-title">
++    <h2 id="tour-title">Earn Rewards Points</h2>
++    <p>Earn points on every purchase and redeem them for free handcrafted drinks and treats.</p>
++    <button type="button" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +265,34 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js").catch(() => {});
++    }
++    if (!CSS.supports("anchor-name: --a")) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning").catch(() => {});
++    }
++
++    const tourStep = document.getElementById("tour-step");
++    const feature = document.getElementById("feature");
++
++    tourStep.showPopover();
++    tourStep.querySelector("button").focus();
++
++    feature.addEventListener("click", (event) => {
++      if (tourStep.matches(":popover-open, .\\:popover-open")) {
++        event.preventDefault();
++      }
++    });
++
++    tourStep.addEventListener("toggle", (event) => {
++      if (event.newState === "closed") {
++        feature.focus();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

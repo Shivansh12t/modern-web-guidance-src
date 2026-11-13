@@ -1,0 +1,124 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,89 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Featured promo badge (Seasonal Favorites) */
++    .promo-row {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-top: 16px;
++      min-height: 120px;
++    }
++
++    .target {
++      display: grid;
++      place-items: center;
++      width: 96px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      background: var(--accent);
++      color: var(--primary);
++      border: 3px dashed var(--primary);
++      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
++      font-size: 0.8rem;
++      font-weight: bold;
++      line-height: 1.2;
++      text-align: center;
++      text-transform: uppercase;
++      cursor: pointer;
++
++      /* Identity values for every transform property that changes, so the
++         stacking context / containing block exists from the start and never
++         flips on hover or when an animation starts (no will-change needed). */
++      translate: 0px;
++      rotate: 0deg;
++      scale: 1;
++      position: relative;
++      z-index: 1;
++      isolation: isolate;
++
++      /* Only scale is transitioned; translate/rotate are owned by the
++         animations, so hovering never interrupts them. */
++      transition: scale 0.3s ease;
++
++      @media (prefers-reduced-motion: no-preference) {
++        animation:
++          badge-spin 6s linear infinite,
++          badge-slide 4s ease-in-out infinite alternate;
++      }
++    }
++
++    .target:hover,
++    .target:focus-visible {
++      scale: 1.2;
++    }
++
++    .promo-row.is-paused .target {
++      animation-play-state: paused;
++    }
++
++    @keyframes badge-spin {
++      to { rotate: 360deg; }
++    }
++
++    @keyframes badge-slide {
++      from { translate: -80px 0; }
++      to { translate: 80px 0; }
++    }
++
++    .promo-toggle {
++      display: none;
++      background: none;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      border-radius: 4px;
++      padding: 4px 10px;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++
++      @media (prefers-reduced-motion: no-preference) {
++        display: inline-block;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -176,8 +257,12 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="promo-row">
++        <a href="/menu/seasonal" class="target" aria-label="Featured: Maple Oat Latte">Featured<br>Pick</a>
++        <button type="button" class="promo-toggle">Pause</button>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +291,17 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // WCAG 2.2.2: let users stop the persistent badge motion.
++    document.querySelectorAll('.promo-toggle').forEach((btn) => {
++      btn.addEventListener('click', () => {
++        const paused = btn.closest('.promo-row').classList.toggle('is-paused');
++        btn.textContent = paused ? 'Play' : 'Pause';
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

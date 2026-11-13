@@ -1,0 +1,406 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,182 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .page-section {
++      margin-bottom: 48px;
++      padding: 24px;
++      border-radius: 10px;
++      background: #fff;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
++      border: 2px solid transparent;
++      transition: border-color 0.25s ease;
++    }
++
++    .page-section.has-modal {
++      border-color: var(--accent);
++    }
++
++    .section-header {
++      text-align: center;
++      margin-bottom: 16px;
++    }
++
++    .section-badge {
++      display: inline-block;
++      font-size: 0.75rem;
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-top: 6px;
++      font-weight: 600;
++    }
++
++    .feedback-trigger-btn {
++      background: var(--accent);
++      color: var(--text);
++      border: none;
++      padding: 8px 16px;
++      border-radius: 4px;
++      font-weight: 600;
++      cursor: pointer;
++      font-size: 0.9rem;
++      transition: opacity 0.2s;
++    }
++
++    .feedback-trigger-btn:hover {
++      opacity: 0.9;
++    }
++
++    /* Feedback Modal Overlay */
++    dialog.feedback-modal {
++      margin: auto;
++      max-width: 480px;
++      width: 90%;
++      border: none;
++      border-radius: 12px;
++      padding: 28px;
++      background: #ffffff;
++      color: var(--text);
++      text-align: left;
++      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
++      z-index: 2000;
++    }
++
++    dialog.feedback-modal::backdrop {
++      background: rgba(30, 18, 15, 0.6);
++      backdrop-filter: blur(2px);
++    }
++
++    .modal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 12px;
++      margin-bottom: 12px;
++    }
++
++    .modal-header h2 {
++      color: var(--primary);
++      font-size: 1.4rem;
++      margin: 0;
++    }
++
++    .modal-location-badge {
++      display: inline-block;
++      background: #fff3e0;
++      color: var(--primary);
++      border: 1px solid var(--accent);
++      border-radius: 6px;
++      padding: 6px 10px;
++      font-size: 0.82rem;
++      margin-bottom: 16px;
++      width: 100%;
++    }
++
++    .feedback-form .form-group {
++      margin-bottom: 14px;
++    }
++
++    .feedback-form label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 5px;
++      color: var(--primary);
++    }
++
++    .feedback-form input,
++    .feedback-form select,
++    .feedback-form textarea {
++      width: 100%;
++      padding: 9px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .feedback-form input:focus,
++    .feedback-form select:focus,
++    .feedback-form textarea:focus {
++      outline: 2px solid var(--accent);
++      border-color: var(--primary);
++      background: #fff;
++    }
++
++    .modal-actions {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 10px;
++      margin-top: 18px;
++      flex-wrap: wrap;
++    }
++
++    .modal-actions-right {
++      display: flex;
++      gap: 8px;
++    }
++
++    .btn-button {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-top: 0;
++    }
++
++    .btn-move {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn-move:hover {
++      background: #ff9100;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .feedback-status {
++      margin-top: 10px;
++      font-size: 0.88rem;
++      color: #2e7d32;
++      font-weight: 600;
++      min-height: 1.2em;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,8 +337,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><button type="button" id="open-feedback-btn" class="feedback-trigger-btn">Feedback</button></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -174,10 +349,13 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" class="page-section has-modal" data-section-title="Seasonal Favorites">
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <span class="section-badge" data-section-indicator>Modal Host Section</span>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,9 +371,88 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <dialog id="feedback-modal" class="feedback-modal" aria-labelledby="feedback-modal-title">
++        <div class="modal-header">
++          <h2 id="feedback-modal-title">Customer Feedback</h2>
++          <button type="button" id="close-feedback-btn" class="btn btn-button btn-secondary" aria-label="Close feedback modal">Close</button>
++        </div>
++        <div class="modal-location-badge" id="modal-section-status">
++          Current DOM Section: <strong id="current-section-name">Seasonal Favorites</strong> (<code id="current-section-id">#seasonal-favorites</code>)
++        </div>
++        <form id="feedback-form" class="feedback-form">
++          <div class="form-group">
++            <label for="feedback-name">Your Name</label>
++            <input type="text" id="feedback-name" name="name" placeholder="Jane Doe" autocomplete="name">
++          </div>
++          <div class="form-group">
++            <label for="feedback-rating">Rating</label>
++            <select id="feedback-rating" name="rating">
++              <option value="5">5 - Excellent</option>
++              <option value="4">4 - Good</option>
++              <option value="3">3 - Average</option>
++              <option value="2">2 - Fair</option>
++              <option value="1">1 - Poor</option>
++            </select>
++          </div>
++          <div class="form-group">
++            <label for="feedback-comment">Comments</label>
++            <textarea id="feedback-comment" name="comment" rows="3" placeholder="Tell us what you think about our coffee..."></textarea>
++          </div>
++          <div id="feedback-status" class="feedback-status" role="status" aria-live="polite"></div>
++          <div class="modal-actions">
++            <button type="button" id="move-modal-btn" class="btn btn-button btn-move">Move</button>
++            <div class="modal-actions-right">
++              <button type="submit" id="submit-feedback-btn" class="btn btn-button">Submit Feedback</button>
++            </div>
++          </div>
++        </form>
++      </dialog>
+     </section>
++
++    <section id="roasting-process" class="page-section" data-section-title="Our Roasting Craft">
++      <div class="section-header">
++        <h2>Our Roasting Craft</h2>
++        <span class="section-badge" data-section-indicator>Section 2</span>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Single-Origin Beans</h3>
++          <p>Hand-selected micro-lots from sustainable farms in Colombia, Ethiopia, and Guatemala.</p>
++        </div>
++        <div class="card">
++          <h3>Small-Batch Roasting</h3>
++          <p>Roasted daily in small batches to highlight each origin's natural sweetness and aroma.</p>
++        </div>
++        <div class="card">
++          <h3>Freshly Ground</h3>
++          <p>Ground to order for pour-over, espresso, or French press perfection.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="community-rewards" class="page-section" data-section-title="Community & Rewards">
++      <div class="section-header">
++        <h2>Community &amp; Rewards</h2>
++        <span class="section-badge" data-section-indicator>Section 3</span>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn Every Sip</h3>
++          <p>Collect points on every coffee and pastry purchase toward free handcrafted drinks.</p>
++        </div>
++        <div class="card">
++          <h3>Tasting Workshops</h3>
++          <p>Join our weekend cupping sessions and latte art classes led by head baristas.</p>
++        </div>
++        <div class="card">
++          <h3>We Value Your Voice</h3>
++          <p>Have thoughts on our seasonal menu? Open our feedback overlay anytime to share.</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +463,104 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const modal = document.getElementById('feedback-modal');
++      const moveBtn = document.getElementById('move-modal-btn');
++      const openBtn = document.getElementById('open-feedback-btn');
++      const closeBtn = document.getElementById('close-feedback-btn');
++      const form = document.getElementById('feedback-form');
++      const statusEl = document.getElementById('feedback-status');
++      const currentSectionNameEl = document.getElementById('current-section-name');
++      const currentSectionIdEl = document.getElementById('current-section-id');
++      const sections = Array.from(document.querySelectorAll('main .page-section'));
++
++      function updateSectionIndicators() {
++        const currentParentSection = modal.closest('section');
++        sections.forEach((sec, idx) => {
++          const isHost = sec === currentParentSection;
++          sec.classList.toggle('has-modal', isHost);
++          const badge = sec.querySelector('[data-section-indicator]');
++          if (badge) {
++            badge.textContent = isHost ? 'Modal Host Section' : 'Section ' + (idx + 1);
++          }
++        });
++
++        if (currentParentSection) {
++          const title = currentParentSection.getAttribute('data-section-title') || currentParentSection.id;
++          currentSectionNameEl.textContent = title;
++          currentSectionIdEl.textContent = '#' + currentParentSection.id;
++          modal.setAttribute('data-current-section', currentParentSection.id);
++        }
++      }
++
++      function openModal() {
++        if (!modal.open) {
++          if (typeof modal.showModal === 'function') {
++            modal.showModal();
++          } else {
++            modal.setAttribute('open', '');
++          }
++        }
++        updateSectionIndicators();
++      }
++
++      function relocateModal() {
++        const currentSection = modal.closest('section');
++        const currentIndex = sections.indexOf(currentSection);
++        const nextIndex = (currentIndex + 1) % sections.length;
++        const targetSection = sections[nextIndex];
++
++        if (!targetSection || targetSection === currentSection) {
++          return;
++        }
++
++        // Use atomic DOM move (moveBefore) to preserve modal open/top-layer state and focus across reparenting
++        if (typeof targetSection.moveBefore === 'function') {
++          targetSection.moveBefore(modal, null);
++        } else {
++          const activeEl = document.activeElement;
++          const wasOpen = modal.open;
++          targetSection.appendChild(modal);
++          if (wasOpen && !modal.open) {
++            if (typeof modal.showModal === 'function') {
++              modal.showModal();
++            } else {
++              modal.setAttribute('open', '');
++            }
++          }
++          if (activeEl && modal.contains(activeEl) && typeof activeEl.focus === 'function') {
++            activeEl.focus();
++          }
++        }
++
++        updateSectionIndicators();
++      }
++
++      moveBtn.addEventListener('click', relocateModal);
++
++      openBtn.addEventListener('click', openModal);
++
++      closeBtn.addEventListener('click', () => {
++        if (modal.open) {
++          if (typeof modal.close === 'function') {
++            modal.close();
++          } else {
++            modal.removeAttribute('open');
++          }
++        }
++      });
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        statusEl.textContent = 'Thank you for sharing your feedback!';
++      });
++
++      // Open the feedback modal overlay on load so it is active immediately
++      openModal();
++    })();
++  </script>
+ </body>
+ 
+ </html>

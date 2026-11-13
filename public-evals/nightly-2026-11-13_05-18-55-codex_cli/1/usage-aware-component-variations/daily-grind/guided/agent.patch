@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+index 66c9173..9938556 100644
+--- a/index.html
++++ b/index.html
+@@ -107,9 +107,42 @@
+       margin-top: 20px;
+     }
+ 
++    /* Context belongs to the section; cards inherit its palette. */
++    [data-category="seasonal"] {
++      --category: seasonal;
++      --card-surface: #fff8ed;
++      --card-accent: #9a4b16;
++      --card-border: #e4c6a2;
++    }
++
++    [data-theme="light"] {
++      --theme: light;
++      --card-text: var(--text);
++      --card-heading: var(--primary);
++      --card-button-text: white;
++      --card-button-hover: #3e2723;
++    }
++
++    /* Theme overrides the category palette while retaining its visual treatment. */
++    [data-theme="dark"] {
++      --theme: dark;
++      --card-surface: #2f2420;
++      --card-text: #f5e9df;
++      --card-heading: #ffe0b2;
++      --card-accent: #ffbd75;
++      --card-border: #8c6b51;
++      --card-button-text: #2f2420;
++      --card-button-hover: #ffd39e;
++    }
++
+     .card {
+-      background: white;
++      display: flex;
++      flex-direction: column;
++      align-items: stretch;
++      background: var(--card-surface, white);
++      color: var(--card-text, var(--text));
+       padding: 20px;
++      border: 1px solid var(--card-border, transparent);
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+@@ -117,7 +150,27 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--card-heading, var(--primary));
++    }
++
++    .card p {
++      margin-block-end: 15px;
++    }
++
++    /* Selector fallback for browsers without container style queries. */
++    :where([data-category="seasonal"]) .card {
++      border-block-start: 4px solid var(--card-accent, var(--primary));
++      border-radius: 8px 8px 16px 16px;
++      text-align: start;
++    }
++
++    /* The inherited flag also works through wrappers or in a new section. */
++    @container style(--category: seasonal) {
++      .card {
++        border-block-start: 4px solid var(--card-accent, var(--primary));
++        border-radius: 8px 8px 16px 16px;
++        text-align: start;
++      }
+     }
+ 
+     .btn {
+@@ -135,6 +188,17 @@
+       background: #3e2723;
+     }
+ 
++    .card .btn {
++      align-self: center;
++      margin-block-start: auto;
++      background: var(--card-accent, var(--primary));
++      color: var(--card-button-text, white);
++    }
++
++    .card .btn:hover {
++      background: var(--card-button-hover, #3e2723);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,7 +239,7 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section data-category="seasonal" data-theme="light">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">

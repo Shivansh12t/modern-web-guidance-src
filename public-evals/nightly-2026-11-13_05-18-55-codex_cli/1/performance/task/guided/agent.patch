@@ -1,0 +1,81 @@
+diff --git a/PERFORMANCE_AUDIT.md b/PERFORMANCE_AUDIT.md
+new file mode 100644
+--- a/PERFORMANCE_AUDIT.md
++++ b/PERFORMANCE_AUDIT.md
+@@ -0,0 +1,76 @@
++# Daily Grind performance audit
++
++Audit date: 2026-11-13. Scope: the repository's single static homepage,
++its inline styles, navigation, and hero image. No browser, Lighthouse,
++development/preview server, or server entrypoint was used. No build script
++exists or is needed for this static HTML page.
++
++## Findings and changes
++
++| Area | Finding | Action / result |
++| --- | --- | --- |
++| LCP discovery | Hero existed only as a CSS background, with no priority hint. | Moved it into the initial HTML as an eager `img` with `fetchpriority="high"`. The preload scanner can discover it without waiting for CSS evaluation. No duplicate preload request. |
++| Image transfer | Every screen used the same external 1350px URL. | Four same-origin, content-hashed WebP candidates with `srcset` and `sizes="100vw"`; removed the external critical-path connection. |
++| Layout stability | Hero already had a reserved height, but mobile `vh` could resize as browser chrome changes. | Retained reserved hero space, added stable `svh` with a `vh` fallback and a minimum height; image has intrinsic dimensions and fills the reserved area. |
++| Mobile interactions | Unwrapped navigation plus item margins could overflow small viewports. | Flex wrapping and gaps keep links reachable; grid columns can shrink below 250px on narrow screens. |
++| INP / main thread | No JavaScript, handlers, timers, hydration, analytics, or third-party widgets exist. | Preserved native links and zero client JavaScript. There is no source evidence of a slow handler; actual interaction latency remains unmeasured. |
++| Rendering / fonts | Small inline stylesheet, system fonts, three cards, no large DOM or expensive effects. | Kept inline CSS and system fonts. Additional CSS requests, containment, lazy-rendering machinery, or a service worker would add complexity without evidence of benefit here. |
++| Navigation | Linked routes have no implementations in this repository. | Preserved their destinations. Destination response times, backend work, and route availability require deployment context and cannot be audited from this page. |
++| Delivery | No production host, compression, or cache configuration is provided. | Recorded deployment requirements below; response headers and TTFB remain unverified. |
++
++## Measured payloads (not timing measurements)
++
++The original Unsplash URL returned **157,968 bytes** during this audit.
++`auto=format` is negotiated by the image service, so that baseline can vary
++by client and request. Local files have the following fixed sizes:
++
++| Candidate | Bytes | Difference from captured original |
++| --- | ---: | ---: |
++| 640 × 427 | 32,260 | 79.6% smaller |
++| 960 × 640 | 56,230 | 64.4% smaller |
++| 1440 × 960 | 111,724 | 29.3% smaller |
++| 1920 × 1280 | 186,470 | 18.0% larger; supplies additional large-screen detail |
++
++Only one image candidate is fetched per initial selection. Actual selection
++depends on viewport, pixel density, and browser heuristics; resizing can fetch
++another candidate. These are not mobile timing or LCP improvement claims.
++The page is **5,528 bytes raw / 1,972 bytes gzip**, with **0 bytes of client
++JavaScript** and no external runtime assets. Gzip size is computed locally;
++it does not prove the host serves compression.
++
++## Automated verification
++
++Run `npm run audit:performance` without a server or network connection.
++The check enforces HTML and per-candidate image byte budgets, validates WebP
++container lengths and encoded dimensions, verifies content hashes and srcset
++descriptors, checks fallback reuse and hero priority, and flags the introduction
++of scripts or external critical assets for performance review.
++`git diff --check` also passes.
++
++This source audit cannot establish LCP, INP, CLS, TTFB, visual rendering, or
++production cache behavior. No lab scores or field measurements are claimed.
++
++## Deployment follow-through
++
++- Serve HTML with Brotli or gzip and `Cache-Control: no-cache` so it can be
++  stored but revalidated. Avoid globally disabling caching for this public page.
++- Serve `assets/images/coffee-*.<hash>.webp` as `image/webp` with
++  `Cache-Control: public, max-age=31536000, immutable`. Regenerate the hash and
++  HTML references whenever an image changes. Publish new assets before HTML
++  and retain previous hashes through the deployment's cache lifetime.
++- Measure deployed TTFB, compression, cache headers, and all linked routes.
++  Use field data (CrUX or existing RUM) to assess the 75th percentile targets:
++  LCP ≤ 2.5 seconds, INP ≤ 200 ms, CLS ≤ 0.1, separately for mobile and desktop.
++  Runtime verification was intentionally outside this task's execution constraints.
++
++LCP approach follows [web.dev's LCP optimization guidance](https://web.dev/articles/optimize-lcp):
++make the critical image discoverable in HTML, prioritize it, and reduce its
++transfer size while assessing timing with real data.
++
++## Image provenance
++
++Preserved the existing stock photo, [Unsplash photo-1495474472287-4d71bcdd2085](https://images.unsplash.com/photo-1495474472287-4d71bcdd2085).
++Each local variant was downloaded using the source URL with
++`?fm=webp&fit=crop&w=WIDTH&q=60`, where WIDTH is 640, 960, 1440, or 1920.
++The filenames contain the first 12 hexadecimal characters of each file's SHA-256.
++The photo remains decorative (`alt=""`); the heading and copy convey the hero's content.

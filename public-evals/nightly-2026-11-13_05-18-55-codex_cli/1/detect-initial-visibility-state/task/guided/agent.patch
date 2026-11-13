@@ -1,0 +1,35 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,31 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (() => {
++      const entries = 'VisibilityStateEntry' in window
++        ? performance.getEntriesByType('visibility-state')
++        : [];
++      const initialEntry = entries[0];
++      const firstHiddenEntry = entries.find((entry) => entry.name === 'hidden');
++      const initiallyBackgrounded = initialEntry
++        ? initialEntry.name === 'hidden'
++        : document.visibilityState === 'hidden';
++
++      console.log({
++        initiallyBackgrounded,
++        // Milliseconds since navigation start; null if no hidden state was recorded.
++        timeBackgrounded: initialEntry
++          ? (firstHiddenEntry ? firstHiddenEntry.startTime : null)
++          : (initiallyBackgrounded ? 0 : null),
++        note: initialEntry
++          ? 'Recorded visibility history; timestamps are milliseconds since navigation start.'
++          : 'Fallback estimate: document.visibilityState and visibilitychange checks are unreliable for async scripts. The tab may become visible before the script runs, missing its initial background state; timestamps are approximate.'
++      });
++    })();
++  </script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;

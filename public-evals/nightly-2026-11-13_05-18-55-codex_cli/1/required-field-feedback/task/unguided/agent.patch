@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -145,8 +145,60 @@
+     .footer-links {
+       margin-bottom: 20px;
+     }
+ 
++    .mailing-list {
++      max-width: 460px;
++      margin: 0 auto 30px;
++    }
++
++    .mailing-list form {
++      margin-top: 15px;
++      text-align: left;
++    }
++
++    .mailing-list label {
++      display: block;
++      margin-bottom: 5px;
++      font-weight: 600;
++    }
++
++    .mailing-list input {
++      width: 100%;
++      padding: 10px 12px;
++      border: 1px solid #79645e;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font: inherit;
++    }
++
++    .mailing-list input:focus-visible,
++    .mailing-list button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .mailing-list input[aria-invalid="true"] {
++      border: 2px solid #a32121;
++    }
++
++    .email-error {
++      color: #8b1a1a;
++      margin-top: 5px;
++      font-size: 0.9rem;
++    }
++
++    .mailing-list button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .signup-status {
++      margin-top: 10px;
++    }
++
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+@@ -197,8 +249,19 @@
+     </section>
+   </main>
+ 
+   <footer>
++    <section class="mailing-list" aria-labelledby="mailing-list-heading">
++      <h2 id="mailing-list-heading">Join our mailing list</h2>
++      <p>Get the latest coffee news and seasonal favorites.</p>
++      <form id="mailing-list-form" novalidate>
++        <label for="mailing-list-email">Email address (required)</label>
++        <input id="mailing-list-email" name="email" type="email" autocomplete="email" required>
++        <p id="email-error" class="email-error" aria-live="polite" hidden></p>
++        <button class="btn" type="submit">Subscribe</button>
++        <p id="signup-status" class="signup-status" role="status"></p>
++      </form>
++    </section>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +269,64 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const mailingListForm = document.getElementById('mailing-list-form');
++    const emailInput = document.getElementById('mailing-list-email');
++    const emailError = document.getElementById('email-error');
++    const signupStatus = document.getElementById('signup-status');
++    let emailTouched = false;
++    let submitAttempted = false;
++
++    function validateEmail() {
++      let message = '';
++
++      if (emailTouched || submitAttempted) {
++        if (emailInput.validity.valueMissing) {
++          message = 'Please enter your email address.';
++        } else if (emailInput.validity.typeMismatch) {
++          message = 'Please enter a valid email address.';
++        }
++      }
++
++      emailError.textContent = message;
++      emailError.hidden = !message;
++
++      if (message) {
++        emailInput.setAttribute('aria-invalid', 'true');
++        emailInput.setAttribute('aria-describedby', 'email-error');
++      } else {
++        emailInput.removeAttribute('aria-invalid');
++        emailInput.removeAttribute('aria-describedby');
++      }
++
++      return emailInput.validity.valid;
++    }
++
++    emailInput.addEventListener('blur', () => {
++      emailTouched = true;
++      validateEmail();
++    });
++
++    emailInput.addEventListener('input', () => {
++      signupStatus.textContent = '';
++      validateEmail();
++    });
++
++    mailingListForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      submitAttempted = true;
++      signupStatus.textContent = '';
++
++      if (!validateEmail()) {
++        emailInput.focus();
++        return;
++      }
++
++      signupStatus.textContent = 'Online signup is currently unavailable. Please try again later.';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

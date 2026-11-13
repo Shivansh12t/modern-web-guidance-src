@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+index 66c9173..37969c6 100644
+--- a/index.html
++++ b/index.html
+@@ -28,7 +28,7 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -46,23 +46,23 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+@@ -94,6 +94,48 @@
+     }
+ 
+     /* Content Sections */
++    .breadcrumbs {
++      max-width: 1100px;
++      margin: 24px auto 0;
++      padding: 0 20px;
++      font-size: 0.9rem;
++    }
++
++    .breadcrumbs ol {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem;
++      list-style: none;
++    }
++
++    .breadcrumbs li + li::before {
++      content: "/" / "";
++      margin-inline-end: 0.5rem;
++    }
++
++    .breadcrumbs a {
++      display: inline-block;
++      min-height: 24px;
++      color: var(--primary);
++      text-underline-offset: 3px;
++    }
++
++    .breadcrumbs a:hover {
++      text-decoration-thickness: 2px;
++    }
++
++    .breadcrumbs a[aria-current="page"] {
++      font-weight: 700;
++    }
++
++    .breadcrumbs a:focus-visible {
++      position: relative;
++      z-index: 1;
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -157,7 +199,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -174,6 +216,48 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <nav class="breadcrumbs" aria-label="Breadcrumbs">
++    <ol id="breadcrumb-list">
++      <li><a href="/" aria-current="page">Home</a></li>
++    </ol>
++  </nav>
++
++  <script>
++    const breadcrumbList = document.getElementById('breadcrumb-list');
++    const segments = window.location.pathname.split('/').filter(Boolean);
++    // Treat the explicit index document as the home page, too.
++    if (segments[segments.length - 1] === 'index.html') segments.pop();
++
++    const pageLabels = {
++      '/menu': 'Menu',
++      '/menu/seasonal': 'Maple Oat Latte',
++      '/menu/espresso': 'Dark Roast Espresso',
++      '/menu/cold-brew': 'Cold Brew',
++      '/account': 'My Account',
++      '/about': 'Our Story',
++      '/careers': 'Join the Team',
++      '/contact': 'Contact Us',
++      '/privacy-policy': 'Privacy'
++    };
++
++    if (segments.length > 0) {
++      breadcrumbList.querySelector('a').removeAttribute('aria-current');
++      let path = '';
++      segments.forEach((segment, index) => {
++        path += '/' + segment;
++        const item = document.createElement('li');
++        const link = document.createElement('a');
++        link.href = path;
++        // Use textContent so URL segments are always rendered as text.
++        link.textContent = pageLabels[path] || segment.split('-')
++          .map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
++        if (index === segments.length - 1) link.setAttribute('aria-current', 'page');
++        item.append(link);
++        breadcrumbList.append(item);
++      });
++    }
++  </script>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>

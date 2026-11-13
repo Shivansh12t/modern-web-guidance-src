@@ -1,0 +1,223 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,102 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-outline {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary) !important;
++    }
++
++    .btn-outline:hover {
++      background: var(--secondary);
++    }
++
++    /* Feedback dialog */
++    #feedback-dialog {
++      margin: auto;
++      width: min(480px, calc(100% - 2rem));
++      border: 0;
++      border-radius: 10px;
++      padding: 0;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++      text-align: left;
++    }
++
++    #feedback-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    #feedback-dialog::backdrop {
++      background: rgba(30, 15, 10, 0.6);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    #feedback-dialog header {
++      background: var(--primary);
++      color: white;
++      padding: 1rem 1.25rem;
++    }
++
++    #feedback-dialog h2 {
++      font-size: 1.25rem;
++    }
++
++    #feedback-dialog .location {
++      font-size: 0.85rem;
++      color: var(--secondary);
++    }
++
++    #feedback-dialog form {
++      padding: 1.25rem;
++      display: grid;
++      gap: 0.75rem;
++    }
++
++    #feedback-dialog label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    #feedback-dialog select,
++    #feedback-dialog textarea {
++      width: 100%;
++      font: inherit;
++      padding: 0.5rem;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++    }
++
++    #feedback-dialog .actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: flex-end;
++      gap: 0.5rem;
++    }
++
++    #feedback-dialog .actions .btn {
++      margin-top: 0;
++    }
++
++    #feedback-dialog .actions .move {
++      margin-right: auto;
++    }
++
++    .feedback-thanks {
++      margin-top: 1rem;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -167,16 +261,18 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="section-hero" data-section-name="Hero banner">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" command="show-modal" commandfor="feedback-dialog">Give Feedback</button>
++    <p class="feedback-thanks" id="feedback-thanks" role="status"></p>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="section-favorites" data-section-name="Seasonal Favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -193,12 +289,37 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <dialog id="feedback-dialog" aria-labelledby="feedback-title">
++        <header>
++          <h2 id="feedback-title">Share Your Feedback</h2>
++          <p class="location" id="feedback-location" aria-live="polite">Currently in: Seasonal Favorites</p>
++        </header>
++        <form method="dialog" id="feedback-form">
++          <label for="feedback-rating">How was your visit?</label>
++          <select id="feedback-rating" name="rating">
++            <option value="5">Excellent</option>
++            <option value="4">Good</option>
++            <option value="3">Okay</option>
++            <option value="2">Not great</option>
++            <option value="1">Poor</option>
++          </select>
++          <label for="feedback-message">Comments</label>
++          <textarea id="feedback-message" name="message" rows="4" autofocus
++            placeholder="Tell us about your coffee experience..."></textarea>
++          <div class="actions">
++            <button type="button" class="btn btn-outline move" id="feedback-move">Move</button>
++            <button type="button" class="btn btn-outline" command="close" commandfor="feedback-dialog" value="">Cancel</button>
++            <button type="submit" class="btn" value="submit">Send</button>
++          </div>
++        </form>
++      </dialog>
+     </section>
+   </main>
+ 
+-  <footer>
++  <footer id="section-footer" data-section-name="Footer">
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+       <a href="/contact">Contact Us</a> |
+@@ -206,7 +327,56 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load the Invoker Commands polyfill only where command/commandfor is unsupported.
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.sh/invokers-polyfill');
++    }
++
++    const dialog = document.getElementById('feedback-dialog');
++    const form = document.getElementById('feedback-form');
++    const moveBtn = document.getElementById('feedback-move');
++    const locationLabel = document.getElementById('feedback-location');
++    const thanks = document.getElementById('feedback-thanks');
++    const sections = ['section-hero', 'section-favorites', 'section-footer']
++      .map((id) => document.getElementById(id));
++
++    function moveDialogTo(target) {
++      if ('moveBefore' in Element.prototype) {
++        // Atomic move: the modal stays open, in the top layer, with focus intact.
++        target.moveBefore(dialog, null);
++        return;
++      }
++      // Fallback: a traditional move drops the dialog out of the top layer,
++      // so restore modal state and focus manually.
++      const wasOpen = dialog.open;
++      target.insertBefore(dialog, null);
++      if (wasOpen) {
++        if (dialog.open) dialog.removeAttribute('open'); // showModal() throws if already [open] but non-modal
++        dialog.showModal();
++        moveBtn.focus();
++      }
++    }
++
++    moveBtn.addEventListener('click', () => {
++      const current = sections.findIndex((section) => section.contains(dialog));
++      const next = sections[(current + 1) % sections.length];
++      moveDialogTo(next);
++      locationLabel.textContent = `Currently in: ${next.dataset.sectionName}`;
++    });
++
++    dialog.addEventListener('close', () => {
++      // A fallback move may queue a close event; ignore it if the dialog was reopened.
++      if (dialog.open) return;
++      if (dialog.returnValue === 'submit') {
++        thanks.textContent = 'Thanks for your feedback!';
++        form.reset();
++      }
++      dialog.returnValue = '';
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -137,9 +137,9 @@
+ 
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: 40px 20px 6rem;
+       margin-top: 40px;
+     }
+ 
+     .footer-links {
+@@ -151,13 +151,110 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Page scroll container: a scroll-state query container so descendants
++       can react to its scroll position without JS scroll listeners. */
++    .scroller {
++      height: 100vh;
++      height: 100dvh;
++      overflow-y: auto;
++      container-type: scroll-state;
++
++      @media (prefers-reduced-motion: no-preference) {
++        scroll-behavior: smooth;
++      }
++    }
++
++    /* Only ever focused programmatically (tabindex="-1"), acts like <body>. */
++    .scroller:focus {
++      outline: none;
++    }
++
++    /* Zero-size marker used by the IntersectionObserver fallback. */
++    .scroll-sentinel {
++      height: 0;
++      width: 0;
++      visibility: hidden;
++    }
++
++    /* Back to top: hidden by default (visibility removes it from the tab
++       order and accessibility tree, not just from sight). */
++    .back-to-top {
++      --size: 3rem;
++      --offset: 1.5rem;
++      position: sticky;
++      bottom: var(--offset);
++      z-index: 900;
++      display: grid;
++      place-items: center;
++      width: var(--size);
++      height: var(--size);
++      /* Float over the end of the content instead of adding space after it */
++      margin-block-start: calc(-1 * (var(--size) + var(--offset)));
++      margin-inline: auto var(--offset);
++      border: none;
++      border-radius: 50%;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
++      cursor: pointer;
++      visibility: hidden;
++      opacity: 0;
++      transition:
++        visibility 0.3s,
++        opacity 0.3s ease,
++        background-color 0.2s;
++
++      @media (prefers-reduced-motion: no-preference) {
++        translate: 0 1rem;
++        transition:
++          visibility 0.3s,
++          opacity 0.3s ease,
++          translate 0.3s ease,
++          background-color 0.2s;
++      }
++    }
++
++    .back-to-top:hover {
++      background: var(--text);
++    }
++
++    .back-to-top:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .back-to-top svg {
++      width: 1.5rem;
++      height: 1.5rem;
++    }
++
++    /* Revealed once the container can scroll back toward the top,
++       i.e. the user has scrolled down. */
++    @container scroll-state(scrollable: top) {
++      .back-to-top {
++        visibility: visible;
++        opacity: 1;
++        translate: 0 0;
++      }
++    }
++
++    /* Fallback for browsers without scroll-state queries (class set by JS). */
++    .scroller.scrolled .back-to-top {
++      visibility: visible;
++      opacity: 1;
++      translate: 0 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="scroller" id="scroller" tabindex="-1">
++  <div class="scroll-sentinel" aria-hidden="true"></div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -206,7 +303,50 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <button type="button" class="back-to-top" aria-label="Back to top">
++    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
++      stroke-linejoin="round" aria-hidden="true" focusable="false">
++      <path d="M12 19V5M5 12l7-7 7 7" />
++    </svg>
++  </button>
++  </div>
++
++  <script>
++    (() => {
++      const scroller = document.querySelector('.scroller');
++      const button = scroller.querySelector('.back-to-top');
++
++      button.addEventListener('click', () => {
++        // Hand focus to the scroll region first so it isn't lost to <body>
++        // when the button hides itself at the top.
++        scroller.focus({ preventScroll: true });
++        scroller.scrollTo({ top: 0 }); // smooth via CSS scroll-behavior
++      });
++
++      // If the button is focused and the region is scrolled to the top some
++      // other way (Home / Page Up), the button becomes visibility:hidden and
++      // drops focus. Keep focus inside the scroll region instead.
++      button.addEventListener('focusout', (event) => {
++        if (event.relatedTarget) return;
++        requestAnimationFrame(() => {
++          if (document.activeElement === document.body || !document.activeElement) {
++            scroller.focus({ preventScroll: true });
++          }
++        });
++      });
++
++      // Fallback: no scroll-state container queries -> one IntersectionObserver
++      // on a sentinel at the top of the scroller (no scroll listeners).
++      if (!CSS.supports('container-type', 'scroll-state')) {
++        const sentinel = scroller.querySelector('.scroll-sentinel');
++        new IntersectionObserver(([entry]) => {
++          scroller.classList.toggle('scrolled', !entry.isIntersecting);
++        }, { root: scroller }).observe(sentinel);
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,76 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,30 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    #target-container {
++      --card-density: 1;
++    }
++
++    #target-container .card {
++      padding: calc(20px * var(--card-density, 1));
++    }
++
++    .density-controls {
++      text-align: center;
++    }
++
++    #toggle-spacious {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #toggle-spacious[hidden] {
++      display: none;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -176,10 +198,14 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="density-controls">
++        <button id="toggle-spacious" class="btn" type="button" aria-pressed="false"
++          aria-controls="target-container" hidden>Spacious layout</button>
++      </div>
++      <div class="grid" id="target-container">
++        <div class="card" id="target-item">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -206,7 +232,24 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Keep the control hidden unless inherited custom properties and calc() are supported.
++    if (window.CSS && CSS.supports('padding', 'var(--card-padding)') &&
++        CSS.supports('padding', 'calc(20px * 1.6)')) {
++      const toggle = document.getElementById('toggle-spacious');
++      const container = document.getElementById('target-container');
++
++      toggle.addEventListener('click', () => {
++        const spacious = toggle.getAttribute('aria-pressed') !== 'true';
++        container.style.setProperty('--card-density', spacious ? '1.6' : '1');
++        toggle.setAttribute('aria-pressed', String(spacious));
++      });
++
++      toggle.hidden = false;
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,205 @@
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..76ffbc8 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -39,20 +39,110 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++    <section
++        id="top-stories-carousel"
++        class="bg-white border-b border-gray-300"
++        aria-roledescription="carousel"
++        aria-label="Top Stories"
++    >
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
++            <button
++                type="button"
++                data-direction="previous"
++                aria-label="Previous story"
++                class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[24px] min-w-[24px] text-sm font-semibold text-gray-800 bg-gray-100 hover:bg-amber-400 hover:text-gray-900 border border-gray-300 rounded transition-colors cursor-pointer shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
++            >
++                <span aria-hidden="true">&larr;</span>
++                <span>Previous</span>
++            </button>
++
++            <div class="top-story-viewport flex-1 min-w-0 text-center px-2">
++                {topStories.map((article, index) => (
++                    <div
++                        data-story-slide
++                        data-index={index}
++                        role="group"
++                        aria-roledescription="slide"
++                        aria-label={`${index + 1} of ${topStories.length}`}
++                        hidden={index !== 0}
++                    >
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer truncate">{article.data.title}</h3>
+                         </a>
+                         <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+                     </div>
+                 ))}
+             </div>
++
++            <button
++                type="button"
++                data-direction="next"
++                aria-label="Next story"
++                class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[24px] min-w-[24px] text-sm font-semibold text-gray-800 bg-gray-100 hover:bg-amber-400 hover:text-gray-900 border border-gray-300 rounded transition-colors cursor-pointer shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
++            >
++                <span>Next</span>
++                <span aria-hidden="true">&rarr;</span>
++            </button>
++
++            <p class="sr-only" role="status" aria-live="polite" data-carousel-status></p>
+         </div>
+-    </div>
++    </section>
++
++    <script>
++        function initTopStoriesCarousel() {
++            const carousel = document.getElementById('top-stories-carousel');
++            if (!carousel || carousel.dataset.initialized === 'true') return;
++            carousel.dataset.initialized = 'true';
++
++            const slides = Array.from(carousel.querySelectorAll<HTMLElement>('[data-story-slide]'));
++            const prevBtn = carousel.querySelector<HTMLButtonElement>('button[data-direction="previous"]');
++            const nextBtn = carousel.querySelector<HTMLButtonElement>('button[data-direction="next"]');
++            const statusEl = carousel.querySelector<HTMLElement>('[data-carousel-status]');
++            const total = slides.length;
++            if (total === 0) return;
++
++            let currentIndex = slides.findIndex((slide) => !slide.hidden);
++            if (currentIndex === -1) currentIndex = 0;
++
++            function updateSlideDOM(nextIndex: number) {
++                currentIndex = nextIndex;
++                slides.forEach((slide, idx) => {
++                    slide.hidden = idx !== currentIndex;
++                });
++                if (statusEl) {
++                    statusEl.textContent = `Story ${currentIndex + 1} of ${total}`;
++                }
++            }
++
++            function navigate(nextIndex: number, direction: 'forward' | 'backward') {
++                const updateDOM = () => updateSlideDOM(nextIndex);
++
++                if (!document.startViewTransition) {
++                    updateDOM();
++                    return;
++                }
++
++                const transition = document.startViewTransition({
++                    update: updateDOM,
++                    types: [direction],
++                });
++                transition.ready.catch(() => {});
++            }
++
++            prevBtn?.addEventListener('click', () => {
++                const nextIndex = (currentIndex - 1 + total) % total;
++                navigate(nextIndex, 'backward');
++            });
++
++            nextBtn?.addEventListener('click', () => {
++                const nextIndex = (currentIndex + 1) % total;
++                navigate(nextIndex, 'forward');
++            });
++        }
++
++        initTopStoriesCarousel();
++        document.addEventListener('astro:page-load', initTopStoriesCarousel);
++    </script>
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..4c6395a 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,76 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@keyframes slide-to-left {
++  /* Mandatory: animate `transform` instead of inset properties for better performance. */
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-to-right {
++  to {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++}
++
++::view-transition-group(root),
++::view-transition-group(top-story) {
++  animation: 0.4s ease-in-out both;
++}
++
++.top-story-viewport {
++  overflow: clip;
++  view-transition-name: top-story;
++  view-transition-group: contain;
++}
++
++::view-transition-group-children(top-story) {
++  overflow: clip;
++}
++
++html:active-view-transition-type(forward)::view-transition-old(root),
++html:active-view-transition-type(forward)::view-transition-old(top-story),
++:active-view-transition-type(forward)::view-transition-old(top-story) {
++  animation-name: slide-to-left;
++}
++
++html:active-view-transition-type(forward)::view-transition-new(root),
++html:active-view-transition-type(forward)::view-transition-new(top-story),
++:active-view-transition-type(forward)::view-transition-new(top-story) {
++  animation-name: slide-from-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-old(root),
++html:active-view-transition-type(backward)::view-transition-old(top-story),
++:active-view-transition-type(backward)::view-transition-old(top-story) {
++  animation-name: slide-to-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-new(root),
++html:active-view-transition-type(backward)::view-transition-new(top-story),
++:active-view-transition-type(backward)::view-transition-new(top-story) {
++  animation-name: slide-from-left;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(*),
++  ::view-transition-old(*),
++  ::view-transition-new(*) {
++    animation: none !important;
++  }
++}

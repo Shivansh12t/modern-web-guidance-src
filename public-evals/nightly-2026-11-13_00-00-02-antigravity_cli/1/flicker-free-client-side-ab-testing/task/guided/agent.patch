@@ -1,0 +1,293 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,289 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>PulseFlow — Next-Generation Workflow Automation</title>
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin>
++
++  <!--
++    Load the experimentation script with both `async` and `blocking="render"`.
++    - `async`: Prevents parser-blocking, so the DOM is built in parallel.
++    - `blocking="render"`: Holds rendering until the script executes,
++      ensuring experiment changes are applied before the user sees anything.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    blocking="render"
++  ></script>
++
++  <script>
++    // Apply the anti-flicker fallback only in browsers that do not support blocking="render".
++    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
++      // Hide the page until the experiment script runs.
++      document.documentElement.classList.add('ab-loading');
++
++      // Reveal the page if the experiment script takes too long (4s safety timeout).
++      setTimeout(() => {
++        document.documentElement.classList.remove('ab-loading');
++      }, 4000);
++    }
++
++    // Callback for the experiment SDK initialization to reveal the page when the fallback is active.
++    window.onExperimentReady = function onExperimentReady() {
++      document.documentElement.classList.remove('ab-loading');
++    };
++  </script>
++
++  <style>
++    /* Anti-flicker fallback for browsers that do not support blocking="render" */
++    .ab-loading {
++      opacity: 0 !important;
++    }
++
++    :root {
++      --bg-primary: #0b0f19;
++      --bg-card: #131b2e;
++      --text-primary: #f8fafc;
++      --text-secondary: #94a3b8;
++      --accent: #4f46e5;
++      --accent-hover: #4338ca;
++      --accent-glow: rgba(79, 70, 229, 0.35);
++      --border: rgba(148, 163, 184, 0.16);
++    }
++
++    /* Variant B overrides when activated by the experiment SDK via data-variant="b" on <html> */
++    [data-variant="b"] {
++      --accent: #059669;
++      --accent-hover: #047857;
++      --accent-glow: rgba(5, 150, 105, 0.35);
++    }
++
++    *, *::before, *::after {
++      box-sizing: border-box;
++    }
++
++    body {
++      margin: 0;
++      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
++      background-color: var(--bg-primary);
++      color: var(--text-primary);
++      line-height: 1.6;
++      -webkit-font-smoothing: antialiased;
++    }
++
++    header {
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 1.25rem 1.5rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .brand {
++      font-size: 1.25rem;
++      font-weight: 700;
++      letter-spacing: -0.02em;
++      color: var(--text-primary);
++      text-decoration: none;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .brand-dot {
++      width: 0.65rem;
++      height: 0.65rem;
++      border-radius: 50%;
++      background-color: var(--accent);
++      box-shadow: 0 0 12px var(--accent-glow);
++    }
++
++    .nav-links {
++      display: flex;
++      gap: 1.5rem;
++      list-style: none;
++      margin: 0;
++      padding: 0;
++    }
++
++    .nav-links a {
++      color: var(--text-secondary);
++      text-decoration: none;
++      font-size: 0.95rem;
++      transition: color 0.15s ease;
++    }
++
++    .nav-links a:hover {
++      color: var(--text-primary);
++    }
++
++    .hero {
++      max-width: 1200px;
++      margin: 0 auto;
++      padding: 5rem 1.5rem;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 3.5rem;
++      align-items: center;
++    }
++
++    .hero-badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++      padding: 0.35rem 0.85rem;
++      border-radius: 9999px;
++      font-size: 0.85rem;
++      font-weight: 500;
++      color: #cbd5e1;
++      background-color: var(--bg-card);
++      border: 1px solid var(--border);
++      margin-bottom: 1.5rem;
++    }
++
++    .hero-title {
++      font-size: clamp(2.25rem, 4.5vw, 3.75rem);
++      font-weight: 800;
++      line-height: 1.1;
++      letter-spacing: -0.03em;
++      margin: 0 0 1.25rem;
++    }
++
++    .hero-subtitle {
++      font-size: 1.125rem;
++      color: var(--text-secondary);
++      margin: 0 0 2.25rem;
++      max-width: 54ch;
++    }
++
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 1rem;
++    }
++
++    .cta-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      padding: 0.9rem 1.75rem;
++      font-size: 1rem;
++      font-weight: 600;
++      color: #ffffff;
++      background-color: var(--accent);
++      border: none;
++      border-radius: 0.5rem;
++      cursor: pointer;
++      text-decoration: none;
++      box-shadow: 0 8px 24px -4px var(--accent-glow);
++      transition: background-color 0.15s ease, transform 0.15s ease;
++    }
++
++    .cta-button:hover {
++      background-color: var(--accent-hover);
++      transform: translateY(-1px);
++    }
++
++    .cta-button:focus-visible {
++      outline: 2px solid var(--text-primary);
++      outline-offset: 3px;
++    }
++
++    .secondary-link {
++      display: inline-flex;
++      align-items: center;
++      padding: 0.9rem 1.25rem;
++      font-size: 1rem;
++      font-weight: 500;
++      color: var(--text-primary);
++      text-decoration: none;
++      border-radius: 0.5rem;
++      border: 1px solid var(--border);
++      background-color: rgba(255, 255, 255, 0.03);
++      transition: background-color 0.15s ease;
++    }
++
++    .secondary-link:hover {
++      background-color: rgba(255, 255, 255, 0.08);
++    }
++
++    .hero-visual {
++      position: relative;
++      border-radius: 1rem;
++      overflow: hidden;
++      background-color: var(--bg-card);
++      border: 1px solid var(--border);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
++    }
++
++    .hero-visual img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    @media (max-width: 860px) {
++      .hero {
++        grid-template-columns: 1fr;
++        padding: 3.5rem 1.5rem;
++      }
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <a href="/" class="brand">
++      <span class="brand-dot" aria-hidden="true"></span>
++      PulseFlow
++    </a>
++    <nav aria-label="Main navigation">
++      <ul class="nav-links">
++        <li><a href="#features">Features</a></li>
++        <li><a href="#solutions">Solutions</a></li>
++        <li><a href="#pricing">Pricing</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" aria-labelledby="hero-heading">
++      <div class="hero-content" data-experiment-target="hero-copy">
++        <div class="hero-badge">
++          <span>New: Real-time pipeline telemetry</span>
++        </div>
++        <h1 id="hero-heading" class="hero-title" data-experiment-element="headline">
++          Ship faster with automated release pipelines
++        </h1>
++        <p class="hero-subtitle" data-experiment-element="subheadline">
++          Connect your repositories, orchestrate tests in parallel, and deploy with zero-downtime rollbacks in minutes.
++        </p>
++        <div class="hero-actions">
++          <button type="button" id="hero-cta" class="cta-button" data-experiment-element="cta">
++            Start Free Trial
++          </button>
++          <a href="#demo" class="secondary-link">Watch 2-Min Demo</a>
++        </div>
++      </div>
++
++      <div class="hero-visual">
++        <img
++          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80"
++          alt="Analytics dashboard displaying deployment metrics and real-time workflow graphs"
++          width="800"
++          height="600"
++          fetchpriority="high"
++          loading="eager"
++        >
++      </div>
++    </section>
++  </main>
++</body>
++</html>

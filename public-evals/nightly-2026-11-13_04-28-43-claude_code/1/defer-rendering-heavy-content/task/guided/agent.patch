@@ -1,0 +1,188 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -180,8 +180,65 @@
+       font-weight: bold;
+       margin-top: 1rem;
+     }
+ 
++    /* Cards below the initial viewport: skip layout/paint until scrolled near. */
++    .off-screen-card {
++      content-visibility: auto;
++      /* Estimated card height; 'auto' remembers the real size once rendered. */
++      contain-intrinsic-size: auto none auto 340px;
++    }
++
++    /* Debug panel: content-visibility keeps its rendering state cached while
++       hidden, so toggling it back on is instant. The wrapper carries no box
++       styles, so when hidden it collapses to zero size. */
++    .debug-panel {
++      max-width: 800px;
++      margin: 0 auto 2rem;
++      padding: 0 1rem;
++      box-sizing: border-box;
++    }
++
++    .debug-panel.is-hidden {
++      content-visibility: hidden;
++    }
++
++    @supports not (content-visibility: hidden) {
++      .debug-panel.is-hidden {
++        display: none;
++      }
++    }
++
++    .debug-panel-body {
++      background: #0f172a;
++      color: #e2e8f0;
++      border-radius: 1rem;
++      padding: 1.5rem;
++      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
++      font-size: 0.85rem;
++    }
++
++    .debug-panel-body h2 {
++      margin: 0 0 1rem;
++      font-size: 1rem;
++      color: #93c5fd;
++    }
++
++    .debug-panel-body dl {
++      display: grid;
++      grid-template-columns: max-content 1fr;
++      gap: 0.25rem 1.5rem;
++      margin: 0;
++    }
++
++    .debug-panel-body dt {
++      color: #94a3b8;
++    }
++
++    .debug-panel-body dd {
++      margin: 0;
++    }
++
+     .info-text {
+       max-width: 600px;
+       margin: 2rem auto;
+       text-align: center;
+@@ -207,8 +264,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="debug-toggle" class="toggle-btn off" aria-controls="debug-panel" aria-expanded="false">Debug: Off</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +277,51 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <section id="debug-panel" class="debug-panel is-hidden" aria-label="Debug panel" aria-hidden="true" inert>
++    <div class="debug-panel-body">
++      <h2>Debug</h2>
++      <dl>
++        <dt>Total cards</dt>
++        <dd id="debug-total">0</dd>
++        <dt>Rendered eagerly</dt>
++        <dd id="debug-eager">0</dd>
++        <dt>Deferred (.off-screen-card)</dt>
++        <dd id="debug-deferred">0</dd>
++        <dt>Last render</dt>
++        <dd id="debug-render">&ndash;</dd>
++        <dt>Viewport</dt>
++        <dd id="debug-viewport">&ndash;</dd>
++      </dl>
++    </div>
++  </section>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
+     const cardCount = 500;
++    // Rough height of one card including its bottom margin, used to decide
++    // which cards fall inside the initial viewport.
++    const estimatedCardPitch = 340 + 32;
+ 
++    const debugPanel = document.getElementById('debug-panel');
++    const debugToggle = document.getElementById('debug-toggle');
++    const debugFields = {
++      total: document.getElementById('debug-total'),
++      eager: document.getElementById('debug-eager'),
++      deferred: document.getElementById('debug-deferred'),
++      render: document.getElementById('debug-render'),
++      viewport: document.getElementById('debug-viewport'),
++    };
+ 
+ 
+-    function createCard(index) {
++
++    function createCard(index, offScreen) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = offScreen ? 'card off-screen-card' : 'card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +354,9 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          debugFields.render.textContent = `${duration}ms`;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -283,14 +373,22 @@
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
++      // Cards that can appear in the initial viewport render normally (plus a
++      // one-card buffer); everything below is deferred via content-visibility.
++      const eagerCount = Math.min(cardCount, Math.ceil(window.innerHeight / estimatedCardPitch) + 1);
+       const fragment = document.createDocumentFragment();
+       for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++        fragment.appendChild(createCard(i, i >= eagerCount));
+       }
+       feed.appendChild(fragment);
+ 
++      debugFields.total.textContent = cardCount;
++      debugFields.eager.textContent = eagerCount;
++      debugFields.deferred.textContent = cardCount - eagerCount;
++      debugFields.viewport.textContent = `${window.innerWidth} × ${window.innerHeight}`;
++
+       measureRender(startTime);
+     }
+ 
+     window.addEventListener('load', () => {
+@@ -298,9 +396,19 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    debugToggle.addEventListener('click', () => {
++      const show = debugPanel.classList.contains('is-hidden');
++      debugPanel.classList.toggle('is-hidden', !show);
++      debugPanel.inert = !show;
++      debugPanel.setAttribute('aria-hidden', String(!show));
++      debugToggle.setAttribute('aria-expanded', String(show));
++      debugToggle.classList.toggle('off', !show);
++      debugToggle.textContent = show ? 'Debug: On' : 'Debug: Off';
++    });
+ 
++
+   </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

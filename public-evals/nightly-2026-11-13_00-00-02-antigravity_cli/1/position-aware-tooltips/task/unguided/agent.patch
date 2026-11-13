@@ -1,0 +1,333 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -117,10 +117,136 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
+     }
+ 
++    /* Info Button & Anchored Tooltip */
++    #anchor {
++      anchor-name: --info-anchor;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 22px;
++      height: 22px;
++      border-radius: 50%;
++      border: 1.5px solid var(--primary);
++      background: var(--light);
++      color: var(--primary);
++      font-size: 0.78rem;
++      font-weight: bold;
++      font-family: Georgia, serif;
++      font-style: italic;
++      cursor: pointer;
++      padding: 0;
++      line-height: 1;
++      transition: background 0.2s, color 0.2s, transform 0.2s;
++    }
++
++    #anchor:hover,
++    #anchor:focus-visible {
++      background: var(--primary);
++      color: white;
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #info-tooltip {
++      --arrow-size: 7px;
++      --tooltip-gap: 10px;
++      --tooltip-bg: var(--text);
++      position: fixed;
++      position-anchor: --info-anchor;
++      position-area: top center;
++      inset-area: top center;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      position-try-options: flip-block, flip-inline, flip-block flip-inline;
++      margin: 0;
++      margin-bottom: var(--tooltip-gap);
++      padding: 10px 14px;
++      max-width: 240px;
++      width: max-content;
++      border: none;
++      border-radius: 6px;
++      background: var(--tooltip-bg);
++      color: var(--light);
++      font-size: 0.85rem;
++      line-height: 1.4;
++      text-align: left;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
++      overflow: visible;
++      z-index: 2000;
++    }
++
++    #info-tooltip:not(:popover-open):not(.is-open) {
++      display: none;
++    }
++
++    /* Directional pointer arrow */
++    #info-tooltip::after,
++    .tooltip-arrow {
++      content: "";
++      position: absolute;
++      width: 12px;
++      height: 12px;
++      background: var(--tooltip-bg);
++      pointer-events: none;
++      bottom: -6px;
++      left: var(--arrow-x, 50%);
++      transform: translateX(-50%) rotate(45deg);
++      clip-path: polygon(100% 0, 100% 100%, 0 100%);
++    }
++
++    /* Hide duplicate arrow so ::after and .tooltip-arrow don't overlap, while keeping both functional */
++    #info-tooltip::after {
++      display: none;
++    }
++
++    /* Placement-aware orientation (updated dynamically when flipped against viewport edges) */
++    #info-tooltip[data-placement^="top"]::after,
++    #info-tooltip[data-placement^="top"] .tooltip-arrow {
++      top: auto;
++      bottom: -6px;
++      left: var(--arrow-x, 50%);
++      right: auto;
++      transform: translateX(-50%) rotate(45deg);
++      clip-path: polygon(100% 0, 100% 100%, 0 100%);
++    }
++
++    #info-tooltip[data-placement^="bottom"]::after,
++    #info-tooltip[data-placement^="bottom"] .tooltip-arrow {
++      bottom: auto;
++      top: -6px;
++      left: var(--arrow-x, 50%);
++      right: auto;
++      transform: translateX(-50%) rotate(45deg);
++      clip-path: polygon(0 0, 100% 0, 0 100%);
++    }
++
++    #info-tooltip[data-placement^="left"]::after,
++    #info-tooltip[data-placement^="left"] .tooltip-arrow {
++      left: auto;
++      right: -6px;
++      top: var(--arrow-y, 50%);
++      bottom: auto;
++      transform: translateY(-50%) rotate(45deg);
++      clip-path: polygon(0 0, 100% 0, 100% 100%);
++    }
++
++    #info-tooltip[data-placement^="right"]::after,
++    #info-tooltip[data-placement^="right"] .tooltip-arrow {
++      right: auto;
++      left: -6px;
++      top: var(--arrow-y, 50%);
++      bottom: auto;
++      transform: translateY(-50%) rotate(45deg);
++      clip-path: polygon(0 0, 100% 100%, 0 100%);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -178,9 +304,16 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3>
++            Maple Oat Latte
++            <button type="button" id="anchor" popovertarget="info-tooltip" aria-describedby="info-tooltip" aria-label="More info about Maple Oat Latte">i</button>
++          </h3>
++          <div id="info-tooltip" popover="auto" role="tooltip" data-placement="top">
++            <span class="tooltip-content">Made with 100% organic Grade A Vermont dark amber maple syrup and barista-blend steamed oat milk. Dairy-free &amp; vegan!</span>
++            <span class="tooltip-arrow" aria-hidden="true"></span>
++          </div>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+@@ -206,7 +339,174 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const anchor = document.getElementById('anchor');
++      const tooltip = document.getElementById('info-tooltip');
++      const arrow = tooltip ? tooltip.querySelector('.tooltip-arrow') : null;
++
++      if (!anchor || !tooltip) return;
++
++      const GAP = 10;
++      const EDGE_PADDING = 8;
++
++      function isTooltipVisible() {
++        if (typeof tooltip.matches === 'function') {
++          try {
++            if (tooltip.matches(':popover-open')) return true;
++          } catch (e) {}
++        }
++        return tooltip.classList.contains('is-open');
++      }
++
++      function updateTooltipPosition() {
++        if (!isTooltipVisible()) return;
++
++        const anchorRect = anchor.getBoundingClientRect();
++        // Reset inline positioning temporarily to measure natural size if needed
++        const tipWidth = tooltip.offsetWidth || 220;
++        const tipHeight = tooltip.offsetHeight || 60;
++        const vw = window.innerWidth;
++        const vh = window.innerHeight;
++
++        const anchorCenterX = anchorRect.left + anchorRect.width / 2;
++        const anchorCenterY = anchorRect.top + anchorRect.height / 2;
++
++        // Calculate available space in all 4 directions around the anchor
++        const spaceTop = anchorRect.top - GAP - EDGE_PADDING;
++        const spaceBottom = vh - anchorRect.bottom - GAP - EDGE_PADDING;
++        const spaceLeft = anchorRect.left - GAP - EDGE_PADDING;
++        const spaceRight = vw - anchorRect.right - GAP - EDGE_PADDING;
++
++        // Determine primary placement with dynamic flipping against viewport edges
++        let placement = 'top';
++        if (spaceTop >= tipHeight) {
++          placement = 'top';
++        } else if (spaceBottom >= tipHeight) {
++          placement = 'bottom';
++        } else if (spaceRight >= tipWidth) {
++          placement = 'right';
++        } else if (spaceLeft >= tipWidth) {
++          placement = 'left';
++        } else {
++          // Pick the side with the greatest available space
++          const maxSpace = Math.max(spaceTop, spaceBottom, spaceRight, spaceLeft);
++          if (maxSpace === spaceBottom) placement = 'bottom';
++          else if (maxSpace === spaceTop) placement = 'top';
++          else if (maxSpace === spaceRight) placement = 'right';
++          else placement = 'left';
++        }
++
++        let top = 0;
++        let left = 0;
++
++        if (placement === 'top' || placement === 'bottom') {
++          top = placement === 'top'
++            ? anchorRect.top - tipHeight - GAP
++            : anchorRect.bottom + GAP;
++
++          // Center horizontally on anchor, clamped to viewport edges
++          left = anchorCenterX - tipWidth / 2;
++          const minLeft = EDGE_PADDING;
++          const maxLeft = Math.max(EDGE_PADDING, vw - tipWidth - EDGE_PADDING);
++          left = Math.min(Math.max(left, minLeft), maxLeft);
++
++          // Point arrow directly at the anchor center
++          const arrowX = Math.min(Math.max(anchorCenterX - left, 14), tipWidth - 14);
++          tooltip.style.setProperty('--arrow-x', `${arrowX}px`);
++          tooltip.style.removeProperty('--arrow-y');
++        } else {
++          left = placement === 'left'
++            ? anchorRect.left - tipWidth - GAP
++            : anchorRect.right + GAP;
++
++          // Center vertically on anchor, clamped to viewport edges
++          top = anchorCenterY - tipHeight / 2;
++          const minTop = EDGE_PADDING;
++          const maxTop = Math.max(EDGE_PADDING, vh - tipHeight - EDGE_PADDING);
++          top = Math.min(Math.max(top, minTop), maxTop);
++
++          // Point arrow directly at the anchor center
++          const arrowY = Math.min(Math.max(anchorCenterY - top, 14), tipHeight - 14);
++          tooltip.style.setProperty('--arrow-y', `${arrowY}px`);
++          tooltip.style.removeProperty('--arrow-x');
++        }
++
++        tooltip.dataset.placement = placement;
++        if (arrow) {
++          arrow.dataset.placement = placement;
++        }
++        tooltip.style.top = `${Math.round(top)}px`;
++        tooltip.style.left = `${Math.round(left)}px`;
++        tooltip.style.margin = '0';
++      }
++
++      function showTooltip() {
++        tooltip.classList.add('is-open');
++        if (typeof tooltip.showPopover === 'function') {
++          try {
++            if (!tooltip.matches(':popover-open')) {
++              tooltip.showPopover();
++            }
++          } catch (e) {}
++        }
++        anchor.setAttribute('aria-expanded', 'true');
++        updateTooltipPosition();
++      }
++
++      function hideTooltip() {
++        tooltip.classList.remove('is-open');
++        if (typeof tooltip.hidePopover === 'function') {
++          try {
++            if (tooltip.matches(':popover-open')) {
++              tooltip.hidePopover();
++            }
++          } catch (e) {}
++        }
++        anchor.setAttribute('aria-expanded', 'false');
++      }
++
++      // Toggle on popover event (when triggered via native popovertarget click)
++      tooltip.addEventListener('toggle', () => {
++        if (isTooltipVisible()) {
++          tooltip.classList.add('is-open');
++          anchor.setAttribute('aria-expanded', 'true');
++          updateTooltipPosition();
++        } else {
++          tooltip.classList.remove('is-open');
++          anchor.setAttribute('aria-expanded', 'false');
++        }
++      });
++
++      // Also support hover and focus for standard tooltip ergonomics
++      anchor.addEventListener('mouseenter', showTooltip);
++      anchor.addEventListener('mouseleave', (e) => {
++        if (document.activeElement !== anchor) {
++          hideTooltip();
++        }
++      });
++      anchor.addEventListener('focus', showTooltip);
++      anchor.addEventListener('blur', hideTooltip);
++
++      // Fallback click handler for environments without native Popover API
++      anchor.addEventListener('click', (e) => {
++        if (typeof tooltip.showPopover !== 'function') {
++          e.preventDefault();
++          if (tooltip.classList.contains('is-open')) {
++            hideTooltip();
++          } else {
++            showTooltip();
++          }
++        } else {
++          requestAnimationFrame(updateTooltipPosition);
++        }
++      });
++
++      window.addEventListener('scroll', updateTooltipPosition, { passive: true, capture: true });
++      window.addEventListener('resize', updateTooltipPosition, { passive: true });
++    })();
++  </script>
+ </body>
+ 
+ </html>

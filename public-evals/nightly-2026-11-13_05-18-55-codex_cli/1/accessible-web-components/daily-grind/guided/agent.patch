@@ -1,0 +1,143 @@
+diff --git a/favorite-toggle.js b/favorite-toggle.js
+new file mode 100644
+index 0000000..c6c83b8
+--- /dev/null
++++ b/favorite-toggle.js
+@@ -0,0 +1,105 @@
++// Reuse with a stable drink-id and a descriptive drink-name.
++// The boolean `checked` attribute/property also supports setting state directly.
++class FavoriteToggle extends HTMLElement {
++  static observedAttributes = ['checked', 'drink-name'];
++
++  #button;
++  #state;
++  #initialized = false;
++
++  constructor() {
++    super();
++    const shadow = this.attachShadow({ mode: 'open' });
++    shadow.innerHTML = `
++      <style>
++        :host { display: block; margin-top: 16px; }
++        :host([hidden]) { display: none; }
++        button {
++          display: inline-flex;
++          align-items: center;
++          justify-content: center;
++          gap: 8px;
++          min-height: 44px;
++          padding: 8px 14px;
++          border: 1px solid var(--primary, #4e342e);
++          border-radius: 24px;
++          background: white;
++          color: var(--primary, #4e342e);
++          font: inherit;
++          cursor: pointer;
++        }
++        button:hover { background: var(--secondary, #d7ccc8); }
++        button[aria-pressed="true"] {
++          background: var(--primary, #4e342e);
++          color: white;
++        }
++        button:focus-visible {
++          outline: 3px solid var(--primary, #4e342e);
++          outline-offset: 3px;
++        }
++        svg { width: 20px; height: 20px; fill: none; stroke: currentColor; }
++        button[aria-pressed="true"] svg { fill: currentColor; }
++        .state { font-size: 0.85em; }
++      </style>
++      <button type="button" aria-pressed="false">
++        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
++          <path stroke-width="1.8" stroke-linejoin="round"
++            d="M12 21 3.5 12.5C-2 7 6 0 12 6c6-6 14 1 8.5 6.5Z" />
++        </svg>
++        <span>Favorite</span>
++        <span class="state" aria-hidden="true">Off</span>
++      </button>
++    `;
++    this.#button = shadow.querySelector('button');
++    this.#state = shadow.querySelector('.state');
++    this.#button.addEventListener('click', () => {
++      this.checked = !this.checked;
++      try {
++        if (this.#storageKey) {
++          localStorage.setItem(this.#storageKey, String(this.checked));
++        }
++      } catch {
++        // Favoriting still works for this visit when storage is unavailable.
++      }
++      this.dispatchEvent(new CustomEvent('favorite-change', {
++        bubbles: true,
++        composed: true,
++        detail: { drinkId: this.getAttribute('drink-id'), favorite: this.checked },
++      }));
++    });
++  }
++
++  get #storageKey() {
++    const drinkId = this.getAttribute('drink-id');
++    return drinkId ? `daily-grind:favorite:${drinkId}` : null;
++  }
++
++  get checked() { return this.hasAttribute('checked'); }
++  set checked(value) { this.toggleAttribute('checked', Boolean(value)); }
++
++  connectedCallback() {
++    if (!this.#initialized) {
++      this.#initialized = true;
++      try {
++        const saved = this.#storageKey ? localStorage.getItem(this.#storageKey) : null;
++        if (saved !== null) this.checked = saved === 'true';
++      } catch {
++        // Retain the markup's initial state if storage access is blocked.
++      }
++    }
++    this.#render();
++  }
++
++  attributeChangedCallback() { this.#render(); }
++
++  #render() {
++    this.#button.setAttribute('aria-pressed', String(this.checked));
++    const drinkName = this.getAttribute('drink-name') || 'drink';
++    this.#button.setAttribute('aria-label', `Favorite ${drinkName}`);
++    this.#state.textContent = this.checked ? 'On' : 'Off';
++  }
++}
++
++if (!customElements.get('favorite-toggle')) {
++  customElements.define('favorite-toggle', FavoriteToggle);
++}
+diff --git a/index.html b/index.html
+index 66c9173..8b9e217 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./favorite-toggle.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -182,16 +183,19 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <favorite-toggle drink-id="maple-oat-latte" drink-name="Maple Oat Latte"></favorite-toggle>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <favorite-toggle drink-id="dark-roast-espresso" drink-name="Dark Roast Espresso"></favorite-toggle>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <favorite-toggle drink-id="cold-brew" drink-name="Cold Brew"></favorite-toggle>
+         </div>
+       </div>
+     </section>

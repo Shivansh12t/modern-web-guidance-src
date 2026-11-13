@@ -1,0 +1,214 @@
+diff --git a/index.html b/index.html
+index 66c9173..c830848 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,15 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <!-- Hero image is the LCP element: start fetching it before the CSS/HTML parser reaches it -->
++  <link rel="preload" as="image" fetchpriority="high"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++    imagesrcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=75 640w,
++                 https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1024&q=75 1024w,
++                 https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w,
++                 https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1920&q=75 1920w"
++    imagesizes="100vw">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -66,6 +75,61 @@
+       color: var(--accent);
+     }
+ 
++    /* Collapsed nav promo (image is lazy + low priority; only fetched when expanded) */
++    .nav-promo {
++      position: relative;
++      margin-left: 20px;
++    }
++
++    .nav-promo summary {
++      cursor: pointer;
++      list-style: none;
++      font-size: 0.9rem;
++      color: var(--accent);
++    }
++
++    .nav-promo summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .nav-promo summary::after {
++      content: " \25BE";
++    }
++
++    .nav-promo[open] summary::after {
++      content: " \25B4";
++    }
++
++    .nav-promo-panel {
++      position: absolute;
++      right: 0;
++      top: calc(100% + 12px);
++      width: 260px;
++      background: white;
++      color: var(--text);
++      border-radius: 8px;
++      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
++      overflow: hidden;
++    }
++
++    .nav-promo-panel img {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++    }
++
++    .nav-promo-panel p {
++      padding: 10px 14px;
++      font-size: 0.85rem;
++    }
++
++    .nav-promo-panel a {
++      color: var(--primary);
++      font-weight: bold;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -73,12 +137,13 @@
+     }
+ 
+     /* Hero Section */
++    /* Hero image is a real <img> (discoverable by the preload scanner) instead of a CSS background */
+     .hero {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background-color: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +153,24 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-img {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      z-index: -2;
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: -1;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -115,6 +198,17 @@
+       text-align: center;
+     }
+ 
++    .card-img {
++      display: block;
++      width: calc(100% + 40px);
++      height: auto;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      margin: -20px -20px 15px;
++      border-radius: 8px 8px 0 0;
++      background: var(--secondary);
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -165,10 +259,29 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li class="nav-promo-item">
++        <details class="nav-promo">
++          <summary>Today's Deal</summary>
++          <div class="nav-promo-panel">
++            <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=520&h=347&q=70"
++              alt="Fresh cup of coffee on a cafe table" width="260" height="173"
++              loading="lazy" decoding="async" fetchpriority="low">
++            <p>2-for-1 lattes every weekday before 9am. <a href="/rewards">Learn more</a></p>
++          </div>
++        </details>
++      </li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <img class="hero-img"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++      srcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=640&q=75 640w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1024&q=75 1024w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w,
++              https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1920&q=75 1920w"
++      sizes="100vw" width="1350" height="900" alt=""
++      fetchpriority="high" loading="eager" decoding="async">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -179,16 +292,40 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img class="card-img"
++            src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&h=450&q=70"
++            srcset="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=400&h=300&q=70 400w,
++                    https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&h=450&q=70 600w,
++                    https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&h=600&q=70 800w"
++            sizes="(max-width: 600px) 100vw, 360px"
++            width="600" height="450" alt="Maple oat latte in a glass"
++            loading="lazy" decoding="async" fetchpriority="low">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-img"
++            src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&h=450&q=70"
++            srcset="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=400&h=300&q=70 400w,
++                    https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&h=450&q=70 600w,
++                    https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&h=600&q=70 800w"
++            sizes="(max-width: 600px) 100vw, 360px"
++            width="600" height="450" alt="Shot of dark roast espresso"
++            loading="lazy" decoding="async" fetchpriority="low">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-img"
++            src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&h=450&q=70"
++            srcset="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=400&h=300&q=70 400w,
++                    https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&h=450&q=70 600w,
++                    https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=800&h=600&q=70 800w"
++            sizes="(max-width: 600px) 100vw, 360px"
++            width="600" height="450" alt="Iced cold brew coffee"
++            loading="lazy" decoding="async" fetchpriority="low">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

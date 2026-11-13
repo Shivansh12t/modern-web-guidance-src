@@ -1,0 +1,455 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,171 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Operations Queue Simulator */
++    .ops-queue {
++      margin-top: 50px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++    }
++
++    .ops-queue h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .ops-sub {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-bottom: 18px;
++    }
++
++    .ops-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-bottom: 18px;
++    }
++
++    .ops-btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.9rem;
++      color: white;
++      padding: 10px 16px;
++      border-radius: 5px;
++      transition: filter 0.2s, transform 0.1s;
++    }
++
++    .ops-btn:hover { filter: brightness(1.12); }
++    .ops-btn:active { transform: scale(0.97); }
++    .ops-btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
++    .ops-btn.urgent { background: #c62828; }
++    .ops-btn.standard { background: #1565c0; }
++    .ops-btn.background { background: #546e7a; }
++    .ops-btn.batch { background: var(--primary); }
++    .ops-btn.clear { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
++
++    .ops-status {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      align-items: center;
++      font-size: 0.85rem;
++      background: #f5f0ee;
++      border-radius: 6px;
++      padding: 10px 14px;
++      margin-bottom: 18px;
++    }
++
++    .ops-status strong { color: var(--primary); }
++
++    .ops-heartbeat {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      background: var(--accent);
++      display: inline-block;
++      vertical-align: middle;
++      margin-right: 6px;
++      animation: ops-pulse 0.8s ease-in-out infinite alternate;
++    }
++
++    @keyframes ops-pulse {
++      from { transform: scale(0.6); opacity: 0.5; }
++      to { transform: scale(1.1); opacity: 1; }
++    }
++
++    .ops-columns {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++    }
++
++    .ops-columns h3 {
++      font-size: 1rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .ops-list {
++      list-style: none;
++      max-height: 280px;
++      overflow-y: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 8px;
++      min-height: 80px;
++    }
++
++    .ops-empty {
++      color: #a1887f;
++      font-size: 0.85rem;
++      text-align: center;
++      padding: 20px 0;
++    }
++
++    .ops-task {
++      padding: 8px 10px;
++      border-left: 4px solid #999;
++      background: #fafafa;
++      border-radius: 4px;
++      margin-bottom: 6px;
++      font-size: 0.85rem;
++    }
++
++    .ops-task[data-priority="user-blocking"] { border-color: #c62828; }
++    .ops-task[data-priority="user-visible"] { border-color: #1565c0; }
++    .ops-task[data-priority="background"] { border-color: #546e7a; }
++
++    .ops-task-head {
++      display: flex;
++      justify-content: space-between;
++      gap: 8px;
++    }
++
++    .ops-task-state {
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #8d6e63;
++    }
++
++    .ops-task.done .ops-task-state { color: #2e7d32; }
++    .ops-task.running .ops-task-state { color: #ef6c00; }
++
++    .ops-progress {
++      height: 6px;
++      background: #eee;
++      border-radius: 3px;
++      overflow: hidden;
++      margin-top: 6px;
++    }
++
++    .ops-progress > span {
++      display: block;
++      height: 100%;
++      width: 0;
++      background: var(--accent);
++      transition: width 0.1s linear;
++    }
++
++    .ops-log {
++      font-family: Consolas, Menlo, monospace;
++      font-size: 0.78rem;
++    }
++
++    .ops-log li {
++      padding: 2px 4px;
++      border-bottom: 1px dashed #eee;
++    }
++
++    .ops-log time { color: #a1887f; margin-right: 6px; }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +357,46 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="ops-queue" id="ops-queue" aria-labelledby="ops-title">
++      <h2 id="ops-title">Operations Queue Simulator</h2>
++      <p class="ops-sub">
++        Long-running jobs are split into small chunks and scheduled by priority, yielding to the browser between
++        chunks so the page stays responsive. Urgent checkout work always jumps ahead of menu updates, which run
++        ahead of background telemetry.
++      </p>
++
++      <div class="ops-controls">
++        <button type="button" class="ops-btn urgent" data-task="checkout">Run Urgent Checkout</button>
++        <button type="button" class="ops-btn standard" data-task="menu">Run Menu Update</button>
++        <button type="button" class="ops-btn background" data-task="telemetry">Log Telemetry</button>
++        <button type="button" class="ops-btn batch" id="ops-batch">Run Mixed Batch</button>
++        <button type="button" class="ops-btn clear" id="ops-clear">Clear Finished</button>
++      </div>
++
++      <div class="ops-status" aria-live="polite">
++        <span><span class="ops-heartbeat" aria-hidden="true"></span>UI heartbeat</span>
++        <span>Scheduler: <strong id="ops-engine">-</strong></span>
++        <span>Queued / running: <strong id="ops-active">0</strong></span>
++        <span>Completed: <strong id="ops-completed">0</strong></span>
++        <span>Longest frame gap: <strong id="ops-longest">0 ms</strong></span>
++      </div>
++
++      <div class="ops-columns">
++        <div>
++          <h3>Task Queue</h3>
++          <ul class="ops-list" id="ops-tasks">
++            <li class="ops-empty">No tasks yet. Use the buttons above.</li>
++          </ul>
++        </div>
++        <div>
++          <h3>Execution Log</h3>
++          <ul class="ops-list ops-log" id="ops-log"></ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +407,232 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      'use strict';
++
++      // ---- Task definitions -------------------------------------------------
++      const TASK_TYPES = {
++        checkout: { label: 'Checkout', priority: 'user-blocking', chunks: 12, verbs: ['Validate cart', 'Authorize payment', 'Confirm order'] },
++        menu: { label: 'Menu update', priority: 'user-visible', chunks: 25, verbs: ['Sync prices', 'Refresh items', 'Rebuild menu cache'] },
++        telemetry: { label: 'Telemetry', priority: 'background', chunks: 40, verbs: ['Collect metrics', 'Compress logs', 'Flush telemetry'] },
++      };
++      const PRIORITY_RANK = { 'user-blocking': 0, 'user-visible': 1, 'background': 2 };
++      const CHUNK_MS = 8; // max synchronous work per slice, well under a 16ms frame
++
++      // ---- Scheduler abstraction -------------------------------------------
++      // Prefer the native Prioritized Task Scheduling API; fall back to a small
++      // priority queue driven by MessageChannel (macrotasks that let the browser
++      // render and handle input between slices).
++      const hasNative = typeof window.scheduler !== 'undefined' && typeof window.scheduler.postTask === 'function';
++
++      const fallback = (() => {
++        const queues = [[], [], []];
++        const channel = new MessageChannel();
++        let pending = false;
++
++        channel.port1.onmessage = () => {
++          pending = false;
++          const q = queues.find((list) => list.length);
++          if (!q) return;
++          const job = q.shift();
++          job();
++          if (queues.some((list) => list.length)) request();
++        };
++
++        function request() {
++          if (!pending) {
++            pending = true;
++            channel.port2.postMessage(null);
++          }
++        }
++
++        function enqueue(priority, job) {
++          queues[PRIORITY_RANK[priority]].push(job);
++          request();
++        }
++
++        return {
++          postTask(fn, priority) {
++            return new Promise((resolve, reject) => {
++              enqueue(priority, () => {
++                try { resolve(fn()); } catch (err) { reject(err); }
++              });
++            });
++          },
++          yield(priority) {
++            return new Promise((resolve) => enqueue(priority, resolve));
++          },
++        };
++      })();
++
++      const sched = {
++        name: hasNative ? 'scheduler.postTask (native)' : 'priority queue (fallback)',
++        postTask(fn, priority) {
++          return hasNative ? window.scheduler.postTask(fn, { priority }) : fallback.postTask(fn, priority);
++        },
++        yield(priority) {
++          if (hasNative) {
++            // scheduler.yield() continuations inherit the priority of the
++            // current postTask; otherwise post an empty task at that priority.
++            if (typeof window.scheduler.yield === 'function') return window.scheduler.yield();
++            return window.scheduler.postTask(() => {}, { priority });
++          }
++          return fallback.yield(priority);
++        },
++      };
++
++      // ---- DOM refs ---------------------------------------------------------
++      const root = document.getElementById('ops-queue');
++      const tasksEl = document.getElementById('ops-tasks');
++      const logEl = document.getElementById('ops-log');
++      const activeEl = document.getElementById('ops-active');
++      const completedEl = document.getElementById('ops-completed');
++      const longestEl = document.getElementById('ops-longest');
++      document.getElementById('ops-engine').textContent = sched.name;
++
++      let nextId = 1;
++      let active = 0;
++      let completed = 0;
++      let longestBlock = 0;
++
++      function updateCounters() {
++        activeEl.textContent = active;
++        completedEl.textContent = completed;
++        longestEl.textContent = `${longestBlock.toFixed(1)} ms`;
++      }
++
++      function log(message) {
++        const li = document.createElement('li');
++        const time = document.createElement('time');
++        const now = new Date();
++        time.textContent = now.toLocaleTimeString([], { hour12: false }) + '.' + String(now.getMilliseconds()).padStart(3, '0');
++        li.append(time, document.createTextNode(message));
++        logEl.prepend(li);
++        while (logEl.children.length > 100) logEl.lastElementChild.remove();
++      }
++
++      function removeEmptyPlaceholder() {
++        const empty = tasksEl.querySelector('.ops-empty');
++        if (empty) empty.remove();
++      }
++
++      function renderTask(task) {
++        removeEmptyPlaceholder();
++        const li = document.createElement('li');
++        li.className = 'ops-task queued';
++        li.dataset.priority = task.priority;
++        li.innerHTML = `
++          <div class="ops-task-head">
++            <span class="ops-task-name"></span>
++            <span class="ops-task-state">queued</span>
++          </div>
++          <div class="ops-progress"><span></span></div>`;
++        li.querySelector('.ops-task-name').textContent = `#${task.id} ${task.label} · ${task.priority}`;
++        tasksEl.append(li);
++        task.el = li;
++        task.stateEl = li.querySelector('.ops-task-state');
++        task.barEl = li.querySelector('.ops-progress > span');
++      }
++
++      function setState(task, state, detail) {
++        task.el.classList.remove('queued', 'running', 'done');
++        task.el.classList.add(state);
++        task.stateEl.textContent = detail || state;
++      }
++
++      // Simulated CPU-bound work bounded to CHUNK_MS per slice.
++      function doChunk() {
++        const start = performance.now();
++        let x = 0;
++        while (performance.now() - start < CHUNK_MS) {
++          x += Math.sqrt(Math.random() * 1000);
++        }
++        return x;
++      }
++
++      async function runTask(task) {
++        setState(task, 'running', 'running');
++        log(`▶ #${task.id} ${task.label} started (${task.priority})`);
++        const started = performance.now();
++
++        for (let i = 0; i < task.chunks; i++) {
++          doChunk();
++          const pct = ((i + 1) / task.chunks) * 100;
++          task.barEl.style.width = `${pct}%`;
++          const verb = task.verbs[Math.min(task.verbs.length - 1, Math.floor((i / task.chunks) * task.verbs.length))];
++          task.stateEl.textContent = `${verb} ${Math.round(pct)}%`;
++          // Hand control back to the browser so input and rendering can run,
++          // and so higher-priority tasks can preempt between chunks.
++          if (i < task.chunks - 1) await sched.yield(task.priority);
++        }
++
++        const elapsed = performance.now() - started;
++        setState(task, 'done', `done · ${Math.round(elapsed)} ms`);
++        log(`✔ #${task.id} ${task.label} finished in ${Math.round(elapsed)} ms`);
++        active--;
++        completed++;
++        updateCounters();
++      }
++
++      function enqueue(type) {
++        const def = TASK_TYPES[type];
++        const task = { id: nextId++, type, ...def };
++        renderTask(task);
++        active++;
++        updateCounters();
++        log(`+ #${task.id} ${task.label} queued (${task.priority})`);
++        sched.postTask(() => runTask(task), task.priority).catch((err) => {
++          log(`✖ #${task.id} ${task.label} failed: ${err && err.message ? err.message : err}`);
++          setState(task, 'done', 'failed');
++          active--;
++          updateCounters();
++        });
++        return task;
++      }
++
++      // ---- Controls ---------------------------------------------------------
++      root.querySelectorAll('[data-task]').forEach((btn) => {
++        btn.addEventListener('click', () => enqueue(btn.dataset.task));
++      });
++
++      document.getElementById('ops-batch').addEventListener('click', () => {
++        // Submit in deliberately mixed order; the scheduler executes by priority.
++        const batch = ['telemetry', 'menu', 'checkout', 'telemetry', 'checkout', 'menu', 'telemetry', 'checkout'];
++        log(`⧉ Mixed batch submitted: ${batch.length} tasks in arrival order ${batch.join(', ')}`);
++        batch.forEach(enqueue);
++      });
++
++      document.getElementById('ops-clear').addEventListener('click', () => {
++        tasksEl.querySelectorAll('.ops-task.done').forEach((el) => el.remove());
++        if (!tasksEl.children.length) {
++          const li = document.createElement('li');
++          li.className = 'ops-empty';
++          li.textContent = 'No tasks yet. Use the buttons above.';
++          tasksEl.append(li);
++        }
++      });
++
++      // ---- Responsiveness monitor ------------------------------------------
++      // Track the longest gap between animation frames as a proxy for main-thread blocking.
++      let lastFrame = performance.now();
++      function frame(now) {
++        const gap = now - lastFrame;
++        lastFrame = now;
++        if (active > 0 && gap > longestBlock) {
++          longestBlock = gap;
++          longestEl.textContent = `${longestBlock.toFixed(1)} ms`;
++        }
++        requestAnimationFrame(frame);
++      }
++      requestAnimationFrame(frame);
++
++      updateCounters();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

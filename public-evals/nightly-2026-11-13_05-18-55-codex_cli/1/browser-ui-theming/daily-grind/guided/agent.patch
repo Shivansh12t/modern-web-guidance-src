@@ -1,0 +1,216 @@
+diff --git a/index.html b/index.html
+index 66c9173..a22e5d7 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,7 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +13,24 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --cream: #fff8ef;
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: auto;
++    }
++
++    ::selection {
++      color: var(--text);
++      background: var(--accent);
++    }
++
++    /* Keep full-size native scrollbars, including in older WebKit browsers. */
++    ::-webkit-scrollbar-track { background: var(--secondary); }
++    ::-webkit-scrollbar-thumb {
++      background: var(--primary);
++      border: 3px solid var(--secondary);
++      border-radius: 12px;
+     }
+ 
+     * {
+@@ -120,6 +139,96 @@
+       color: var(--primary);
+     }
+ 
++    .coffee-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
++      align-items: start;
++      gap: 32px;
++    }
++
++    .favorites .grid { grid-template-columns: minmax(0, 1fr); }
++    .favorites h2 { text-align: center; }
++
++    .customization {
++      background: var(--cream);
++      border: 1px solid var(--secondary);
++      border-top: 4px solid var(--primary);
++      border-radius: 8px;
++      padding: 24px;
++    }
++
++    .customization h2 { color: var(--primary); }
++    .customization > p { margin: 4px 0 20px; }
++    .order-form { display: grid; gap: 18px; }
++    .field { display: grid; gap: 6px; min-width: 0; }
++    .field > label, legend { font-weight: 600; }
++    .field-row {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 16px;
++    }
++
++    input, select, textarea, button { font: inherit; }
++
++    .field :is(select, textarea, input:not([type="range"])) {
++      width: 100%;
++      min-width: 0;
++      min-height: 44px;
++      padding: 9px 12px;
++      color: var(--text);
++      background: var(--light);
++      border: 1px solid #8d6e63;
++      border-radius: 5px;
++    }
++
++    textarea { resize: vertical; }
++    textarea::placeholder { color: #73574e; opacity: 1; }
++    input[type="range"] { width: 100%; min-height: 32px; }
++    .range-labels { display: flex; justify-content: space-between; font-size: 0.85rem; }
++    fieldset { border: 0; min-width: 0; }
++    legend { margin-bottom: 6px; }
++    .choices { display: flex; flex-wrap: wrap; gap: 8px 16px; }
++    .choice { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
++    .choice input { width: 18px; height: 18px; }
++    .choice:has(:checked) { color: var(--primary); font-weight: 600; }
++    :focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
++    .field :is(input:not([type="range"]), textarea, select):user-invalid {
++      border: 2px solid #a12d1b;
++    }
++
++    /* Enhance the browser's own picker where supported; keep native selects elsewhere. */
++    @supports (appearance: base-select) {
++      .order-form select, .order-form select::picker(select) { appearance: base-select; }
++      .order-form select::picker(select) {
++        color: var(--text);
++        background: var(--cream);
++        border: 1px solid var(--primary);
++        border-radius: 5px;
++        padding: 6px;
++        font: inherit;
++      }
++      .order-form select::picker-icon,
++      .order-form option::checkmark { color: var(--primary); }
++      .order-form option { padding: 8px 12px; border-radius: 3px; }
++      .order-form option:checked { background: var(--secondary); }
++      .order-form option:is(:hover, :focus) { background: var(--accent); color: var(--text); }
++    }
++
++    .order-form .btn { border: 0; margin-top: 0; cursor: pointer; min-height: 44px; }
++    .form-note { font-size: 0.85rem; }
++
++    @media (max-width: 760px) {
++      .coffee-layout { grid-template-columns: minmax(0, 1fr); }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++    }
++
++    @media (max-width: 400px) {
++      .field-row { grid-template-columns: minmax(0, 1fr); }
++      .customization { padding: 18px; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -174,9 +283,9 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container coffee-layout">
++    <section class="favorites" aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +304,68 @@
+         </div>
+       </div>
+     </section>
++    <section class="customization" aria-labelledby="customization-heading">
++      <h2 id="customization-heading">Make It Your Daily Grind</h2>
++      <p>Your coffee, just the way you like it.</p>
++      <form class="order-form" action="/order-online" method="get">
++        <div class="field">
++          <label for="drink">Choose your coffee</label>
++          <select id="drink" name="drink">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </div>
++        <div class="field-row">
++          <div class="field">
++            <label for="milk">Milk preference</label>
++            <select id="milk" name="milk">
++              <option value="oat">Oat milk</option>
++              <option value="whole">Whole milk</option>
++              <option value="almond">Almond milk</option>
++              <option value="none">No milk</option>
++            </select>
++          </div>
++          <div class="field">
++            <label for="quantity">Quantity</label>
++            <input id="quantity" name="quantity" type="number" min="1" max="10" value="1" required>
++          </div>
++        </div>
++        <fieldset>
++          <legend>Cup size</legend>
++          <div class="choices">
++            <label class="choice"><input type="radio" name="size" value="small"> Small</label>
++            <label class="choice"><input type="radio" name="size" value="medium" checked> Medium</label>
++            <label class="choice"><input type="radio" name="size" value="large"> Large</label>
++          </div>
++        </fieldset>
++        <div class="field">
++          <label for="sweetness">Sweetness</label>
++          <input id="sweetness" name="sweetness" type="range" min="0" max="4" step="1" value="2" aria-describedby="sweetness-hint">
++          <div class="range-labels" id="sweetness-hint"><span>Unsweetened</span><span>Extra sweet</span></div>
++        </div>
++        <label class="choice"><input type="checkbox" name="extra-shot" value="yes"> Add an extra espresso shot</label>
++        <fieldset>
++          <legend>Preferred pickup (optional)</legend>
++          <div class="field-row">
++            <div class="field">
++              <label for="pickup-date">Date</label>
++              <input id="pickup-date" name="pickup-date" type="date">
++            </div>
++            <div class="field">
++              <label for="pickup-time">Time</label>
++              <input id="pickup-time" name="pickup-time" type="time">
++            </div>
++          </div>
++        </fieldset>
++        <div class="field">
++          <label for="notes">Special requests (optional)</label>
++          <textarea id="notes" name="notes" rows="2" maxlength="300" placeholder="A little less ice, room for cream…"></textarea>
++        </div>
++        <p class="form-note">Continue to online ordering to review your selections and pickup availability.</p>
++        <button class="btn" type="submit">Continue to Order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>

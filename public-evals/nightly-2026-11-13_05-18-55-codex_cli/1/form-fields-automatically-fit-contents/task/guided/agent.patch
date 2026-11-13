@@ -1,0 +1,179 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,93 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .coffee-preferences {
++      margin-block-start: 40px;
++      padding: clamp(20px, 4vw, 36px);
++      background: #fff;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .coffee-preferences > p {
++      margin-block: 8px 24px;
++    }
++
++    .preference-form,
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      min-inline-size: 0;
++    }
++
++    .preference-form {
++      gap: 20px;
++    }
++
++    .form-field {
++      gap: 6px;
++      inline-size: 100%;
++    }
++
++    .form-field label {
++      font-weight: 600;
++    }
++
++    .form-field input,
++    .form-field textarea,
++    .form-field select {
++      field-sizing: content;
++      font: inherit;
++      font-size: max(1rem, 1em);
++      color: var(--text);
++      background: var(--light);
++      border: 1px solid #85716a;
++      border-radius: 5px;
++      padding: 10px 12px;
++      min-block-size: 48px;
++      max-inline-size: 100%;
++      align-self: flex-start;
++    }
++
++    .form-field input {
++      width: auto;
++      min-inline-size: min(12ch, 100%);
++      max-inline-size: min(50ch, 100%);
++    }
++
++    .form-field select {
++      width: auto;
++      padding-inline-end: 28px;
++    }
++
++    .form-field textarea {
++      width: min(100%, 48ch);
++      height: auto;
++      max-block-size: 12lh;
++      overflow-y: auto;
++      resize: vertical;
++    }
++
++    .preference-form .btn {
++      margin: 0;
++      border: 0;
++      font: inherit;
++      min-block-size: 48px;
++      cursor: pointer;
++    }
++
++    .preference-form :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    #preference-status:empty {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +279,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="coffee-preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Your coffee, your way</h2>
++      <p>A little more you in every cup. Tell us how you like it.</p>
++      <form class="preference-form" id="preference-form" aria-labelledby="preferences-heading"
++        aria-describedby="preferences-help">
++        <div class="form-field">
++          <label for="coffee-name">Name for your cup</label>
++          <input type="text" id="coffee-name" name="name" autocomplete="given-name"
++            placeholder="Your name" maxlength="100">
++        </div>
++        <div class="form-field">
++          <label for="favorite-coffee">Your go-to coffee</label>
++          <select id="favorite-coffee" name="coffee">
++            <option value="latte">Latte</option>
++            <option value="espresso">Espresso</option>
++            <option value="cappuccino">Cappuccino</option>
++            <option value="americano">Americano</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++          </select>
++        </div>
++        <div class="form-field">
++          <label for="coffee-notes">Make it yours <span style="font-weight: normal;">(optional)</span></label>
++          <textarea id="coffee-notes" name="notes" rows="1" maxlength="2000"
++            placeholder="Oat milk, an extra shot…"></textarea>
++        </div>
++        <p id="preferences-help">Preferences are saved only in this browser. This doesn't place an order.</p>
++        <button type="submit" class="btn">Save my preferences</button>
++        <p id="preference-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +323,40 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const preferenceForm = document.getElementById('preference-form');
++    const preferenceStatus = document.getElementById('preference-status');
++    const preferenceKey = 'daily-grind-coffee-preferences';
++
++    try {
++      const saved = JSON.parse(localStorage.getItem(preferenceKey));
++      if (saved && typeof saved === 'object') {
++        for (const field of preferenceForm.elements) {
++          if (field.name && typeof saved[field.name] === 'string') {
++            field.value = saved[field.name];
++          }
++        }
++      }
++    } catch {
++      // The form remains usable when browser storage is unavailable.
++    }
++
++    preferenceForm.addEventListener('input', () => {
++      preferenceStatus.textContent = '';
++    });
++
++    preferenceForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      try {
++        localStorage.setItem(preferenceKey, JSON.stringify(Object.fromEntries(new FormData(preferenceForm))));
++        preferenceStatus.textContent = 'Your preferences are saved in this browser. See you for your next cup!';
++      } catch {
++        preferenceStatus.textContent = 'Your browser couldn’t save these preferences. Please allow site storage and try again.';
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

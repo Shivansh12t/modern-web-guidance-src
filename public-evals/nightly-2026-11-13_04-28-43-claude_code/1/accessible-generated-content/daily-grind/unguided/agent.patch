@@ -1,0 +1,251 @@
+diff --git a/index.html b/index.html
+index 66c9173..68e7973 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,210 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* ------------------------------------------------------------------
++       Decorative icons & flourishes
++       All icons below are purely decorative and are generated with CSS
++       pseudo-elements. They are kept out of the accessibility tree by:
++         1. Using an empty string (content: "") and drawing the shape with
++            backgrounds/borders, so there is no text for assistive tech to
++            announce; or
++         2. When a glyph is used, supplying empty alternative text with the
++            CSS Generated Content syntax  content: "✦" / "";  inside an
++            @supports block, so browsers that can't mark it as decorative
++            never render (and therefore never announce) the glyph.
++       Meaningful information always lives in real HTML text.
++    ------------------------------------------------------------------ */
++
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Section heading: "Seasonal Favorites" */
++    .section-title {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.75rem;
++      text-align: center;
++    }
++
++    .section-title::before,
++    .section-title::after {
++      content: "";
++      flex: 0 1 90px;
++      height: 2px;
++      background: linear-gradient(to right, transparent, var(--accent));
++      border-radius: 2px;
++    }
++
++    .section-title::after {
++      background: linear-gradient(to left, transparent, var(--accent));
++    }
++
++    .section-title .flourish {
++      display: inline-flex;
++      gap: 0.75rem;
++      align-items: center;
++    }
++
++    @supports (content: "x" / "") {
++      .section-title .flourish::before,
++      .section-title .flourish::after {
++        content: "\2726" / "";
++        color: var(--accent);
++        font-size: 0.8em;
++      }
++    }
++
++    /* Drink headings */
++    .drink-title {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.6rem;
++    }
++
++    /* Icon badge above each drink name */
++    .drink-title::before {
++      content: "";
++      display: block;
++      width: 28px;
++      height: 28px;
++      margin: 0 auto;
++    }
++
++    /* Maple leaf-ish shape */
++    .drink-title--maple::before {
++      width: 24px;
++      height: 24px;
++      background: linear-gradient(135deg, #ffab40, #e65100);
++      border-radius: 0 75% 0 75%;
++      transform: rotate(-45deg);
++      box-shadow: inset -3px 3px 0 rgba(255, 255, 255, 0.25);
++    }
++
++    /* Coffee bean: ellipse with a centre crease */
++    .drink-title--espresso::before {
++      width: 20px;
++      height: 28px;
++      border-radius: 50%;
++      background: linear-gradient(105deg, #5d4037 44%, #d7ccc8 46% 52%, #3e2723 54%);
++      transform: rotate(25deg);
++    }
++
++    /* Ice cube with highlight */
++    .drink-title--cold::before {
++      width: 24px;
++      height: 24px;
++      border-radius: 5px;
++      background:
++        linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0 22%, transparent 23%),
++        linear-gradient(135deg, #b3e5fc, #4fc3f7);
++      border: 2px solid #81d4fa;
++      transform: rotate(12deg);
++    }
++
++    /* Small underline flourish under each drink name */
++    .drink-title::after {
++      content: "";
++      display: block;
++      width: 60px;
++      height: 8px;
++      background:
++        linear-gradient(45deg, transparent 35%, var(--accent) 36% 64%, transparent 65%) center / 8px 8px no-repeat,
++        linear-gradient(var(--secondary), var(--secondary)) center / 100% 2px no-repeat;
++    }
++
++    /* Buttons */
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* Trailing chevron on every button */
++    .btn::after {
++      content: "";
++      width: 7px;
++      height: 7px;
++      border-top: 2px solid currentColor;
++      border-right: 2px solid currentColor;
++      transform: rotate(45deg);
++      transition: transform 0.25s ease;
++    }
++
++    .btn:hover::after,
++    .btn:focus-visible::after {
++      transform: translateX(4px) rotate(45deg);
++    }
++
++    /* Leading coffee-cup icon on "Order Now" */
++    .btn--order {
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 600;
++    }
++
++    .btn--order:hover {
++      background: #ffc570;
++    }
++
++    .btn--order::before {
++      content: "";
++      width: 19px;
++      height: 14px;
++      background:
++        /* handle */
++        radial-gradient(circle at 14px 6px, transparent 2px, currentColor 2.5px 4px, transparent 4.5px),
++        /* cup body */
++        linear-gradient(currentColor, currentColor) 0 0 / 13px 12px no-repeat,
++        /* saucer */
++        linear-gradient(currentColor, currentColor) 0 100% / 17px 2px no-repeat;
++      border-radius: 0 0 2px 2px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn::after {
++        transition: none;
++      }
++
++      .btn:hover::after,
++      .btn:focus-visible::after {
++        transform: rotate(45deg);
++      }
++    }
++
++    /* Windows High Contrast / forced colours: keep icons visible using
++       system colours instead of hard-coded brand colours. */
++    @media (forced-colors: active) {
++      .section-title::before,
++      .section-title::after,
++      .drink-title::before,
++      .drink-title::after {
++        forced-color-adjust: none;
++        background: CanvasText;
++        border-color: CanvasText;
++        box-shadow: none;
++      }
++
++      .drink-title::after {
++        height: 2px;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -171,27 +375,27 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn--order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title"><span class="flourish">Seasonal Favorites</span></h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 class="drink-title drink-title--maple">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 class="drink-title drink-title--espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 class="drink-title drink-title--cold">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
+         </div>
+       </div>
+     </section>

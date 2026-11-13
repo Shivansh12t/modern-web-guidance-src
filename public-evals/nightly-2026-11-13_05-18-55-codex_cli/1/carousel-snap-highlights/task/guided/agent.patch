@@ -1,0 +1,132 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -99,15 +99,35 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .carousel {
++      display: flex;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      scroll-padding-inline: 32px;
++      gap: 56px;
+       margin-top: 20px;
++      padding: 40px 32px;
+     }
+ 
++    .carousel:focus-visible {
++      outline: 3px solid #005fcc;
++      outline-offset: 4px;
++    }
++
++    .carousel-item {
++      flex: 0 0 min(80%, 360px);
++      min-width: 0;
++      display: flex;
++      scroll-snap-align: center;
++      container-type: scroll-state;
++    }
++
++    .carousel-item .card {
++      width: 100%;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -119,8 +139,43 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      .carousel .card {
++        transition: scale 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
++          background-color 0.4s, color 0.4s, box-shadow 0.4s;
++      }
++
++      .carousel .card h3 {
++        transition: color 0.4s;
++      }
++
++      @container scroll-state(snapped: x) {
++        .carousel .card {
++          scale: 1.15;
++          background-color: #005fcc;
++          color: white;
++          box-shadow: 0 10px 25px rgba(0, 95, 204, 0.3);
++        }
++
++        .carousel .card h3 {
++          color: white;
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .carousel .card,
++      .carousel .card * {
++        transition: none !important;
++      }
++
++      .carousel .card {
++        scale: 1 !important;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -175,24 +230,30 @@
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <h2 id="seasonal-favorites" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="carousel" role="region" aria-labelledby="seasonal-favorites" tabindex="0">
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="carousel-item">
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>

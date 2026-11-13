@@ -1,0 +1,107 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,35 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .scroll-progress {
++      position: fixed;
++      top: 0;
++      left: 0;
++      width: 100%;
++      height: 4px;
++      z-index: 1001;
++      background: var(--accent);
++      pointer-events: none;
++      transform: scaleX(0);
++      transform-origin: left center;
++    }
++
++    @keyframes scroll-progress {
++      from { transform: scaleX(0); }
++      to { transform: scaleX(1); }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports (animation-timeline: scroll(root)) {
++        .scroll-progress {
++          animation: scroll-progress auto linear;
++          animation-timeline: scroll(root);
++        }
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -155,8 +182,9 @@
+   </style>
+ </head>
+ 
+ <body>
++  <div class="scroll-progress" aria-hidden="true"></div>
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -206,7 +234,57 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var progress = document.querySelector('.scroll-progress');
++      var motionPreference = window.matchMedia('(prefers-reduced-motion: no-preference)');
++      var supportsTimeline = window.CSS && CSS.supports &&
++        CSS.supports('animation-timeline', 'scroll(root)');
++      var scheduled = false;
++
++      function updateProgress() {
++        scheduled = false;
++        if (supportsTimeline && motionPreference.matches) {
++          progress.style.removeProperty('transform');
++          return;
++        }
++
++        // Direct position updates also preserve progress with reduced motion.
++        var root = document.scrollingElement || document.documentElement;
++        var scrollable = root.scrollHeight - document.documentElement.clientHeight;
++        var fraction = scrollable > 0 ? root.scrollTop / scrollable : 0;
++        progress.style.transform = 'scaleX(' + Math.min(1, Math.max(0, fraction)) + ')';
++      }
++
++      function scheduleUpdate() {
++        if (!scheduled) {
++          scheduled = true;
++          window.requestAnimationFrame(updateProgress);
++        }
++      }
++
++      if (!supportsTimeline) {
++        window.addEventListener('scroll', scheduleUpdate, { passive: true });
++      } else {
++        window.addEventListener('scroll', function () {
++          if (!motionPreference.matches) scheduleUpdate();
++        }, { passive: true });
++      }
++      window.addEventListener('resize', scheduleUpdate);
++      window.addEventListener('load', scheduleUpdate);
++      window.addEventListener('pageshow', scheduleUpdate);
++      if (motionPreference.addEventListener) {
++        motionPreference.addEventListener('change', scheduleUpdate);
++      } else {
++        motionPreference.addListener(scheduleUpdate);
++      }
++      if ('ResizeObserver' in window) {
++        new ResizeObserver(scheduleUpdate).observe(document.body);
++      }
++      updateProgress();
++    }());
++  </script>
+ </body>
+ 
+ </html>

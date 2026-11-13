@@ -1,0 +1,118 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..fbbb13f 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,110 @@
++export type TranslatorAvailability =
++  | 'available'
++  | 'downloadable'
++  | 'downloading'
++  | 'unavailable'
++  | 'readily'
++  | 'after-download'
++  | 'no';
++
++export interface DownloadProgressEvent extends Event {
++  readonly loaded: number;
++  readonly total: number;
++}
++
++export interface CreateMonitor extends EventTarget {
++  addEventListener(
++    type: 'downloadprogress',
++    listener: (event: DownloadProgressEvent) => void,
++    options?: boolean | AddEventListenerOptions
++  ): void;
++  ondownloadprogress?: ((event: DownloadProgressEvent) => void) | null;
++}
++
++export interface TranslatorCreateOptions {
++  sourceLanguage: string;
++  targetLanguage: string;
++  signal?: AbortSignal;
++  monitor?: (monitor: CreateMonitor) => void;
++}
++
++export interface TranslatorTranslateOptions {
++  signal?: AbortSignal;
++}
++
++export interface BrowserTranslator {
++  readonly sourceLanguage?: string;
++  readonly targetLanguage?: string;
++  translate(input: string, options?: TranslatorTranslateOptions): Promise<string>;
++  translateStreaming?(input: string, options?: TranslatorTranslateOptions): ReadableStream<string>;
++  destroy?(): void;
++}
++
++export interface TranslatorFactory {
++  availability(options: {
++    sourceLanguage: string;
++    targetLanguage: string;
++  }): Promise<TranslatorAvailability>;
++  create(options: TranslatorCreateOptions): Promise<BrowserTranslator>;
++}
++
++export interface DetectedLanguageResult {
++  detectedLanguage: string;
++  confidence: number;
++}
++
++export interface BrowserLanguageDetector {
++  detect(input: string, options?: { signal?: AbortSignal }): Promise<DetectedLanguageResult[]>;
++  destroy?(): void;
++}
++
++export interface LanguageDetectorFactory {
++  availability(options?: { expectedInputLanguages?: string[] }): Promise<TranslatorAvailability>;
++  create(options?: {
++    signal?: AbortSignal;
++    monitor?: (monitor: CreateMonitor) => void;
++  }): Promise<BrowserLanguageDetector>;
++}
++
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: any;
++    Translator?: TranslatorFactory;
++    LanguageDetector?: LanguageDetectorFactory;
++    ai?: {
++      translator?: {
++        availability?: (options: {
++          sourceLanguage: string;
++          targetLanguage: string;
++        }) => Promise<TranslatorAvailability>;
++        capabilities?: () => Promise<{
++          available?: TranslatorAvailability;
++          languagePairAvailable?: (
++            sourceLanguage: string,
++            targetLanguage: string
++          ) => TranslatorAvailability;
++        }>;
++        create: (options: TranslatorCreateOptions) => Promise<BrowserTranslator>;
++      };
++      languageDetector?: {
++        availability?: () => Promise<TranslatorAvailability>;
++        capabilities?: () => Promise<{ available?: TranslatorAvailability }>;
++        create: (options?: {
++          signal?: AbortSignal;
++          monitor?: (monitor: CreateMonitor) => void;
++        }) => Promise<BrowserLanguageDetector>;
++      };
++    };
++    translation?: {
++      canTranslate?: (options: {
++        sourceLanguage: string;
++        targetLanguage: string;
++      }) => Promise<TranslatorAvailability>;
++      createTranslator?: (options: TranslatorCreateOptions) => Promise<BrowserTranslator>;
++      canDetect?: () => Promise<TranslatorAvailability>;
++      createDetector?: () => Promise<BrowserLanguageDetector>;
++    };
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};

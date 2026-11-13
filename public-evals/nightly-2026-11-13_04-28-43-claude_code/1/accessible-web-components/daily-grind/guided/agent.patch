@@ -1,0 +1,282 @@
+diff --git a/favorite-toggle.js b/favorite-toggle.js
+new file mode 100644
+index 0000000..87726a8
+--- /dev/null
++++ b/favorite-toggle.js
+@@ -0,0 +1,221 @@
++/**
++ * <favorite-toggle> — a reusable on/off switch for marking an item as a favorite.
++ *
++ * Usage:
++ *   <favorite-toggle label="Favorite Maple Oat Latte" storage-key="maple-oat-latte">
++ *     Favorite
++ *   </favorite-toggle>
++ *
++ * Attributes / properties:
++ *   checked      (boolean)  Whether the item is a favorite. Reflected.
++ *   label        (string)   Accessible name for the switch. Should start with the visible
++ *                           text (e.g. "Favorite …") so voice-control users can target it.
++ *   storage-key  (string)   Optional. When set, the state is persisted in localStorage
++ *                           under "favorite:<storage-key>" and restored on load.
++ *   disabled     (boolean)  Disables the switch.
++ *
++ * Slot:
++ *   (default)    Visible label text. Defaults to "Favorite".
++ *
++ * Events:
++ *   change       Bubbles from the host when the user toggles. Read `event.target.checked`.
++ *
++ * CSS custom properties:
++ *   --favorite-toggle-accent  On-state color (default #e65100)
++ *   --favorite-toggle-track   Off-state track color (default #8d6e63)
++ *   --favorite-toggle-focus   Focus ring color (default #4e342e)
++ *
++ * Custom state:
++ *   :state(checked)  Matches while the switch is on.
++ */
++
++const supportsNativeSwitch = 'switch' in HTMLInputElement.prototype;
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  :host {
++    display: inline-block;
++    --_accent: var(--favorite-toggle-accent, #e65100);
++    --_track: var(--favorite-toggle-track, #8d6e63);
++    --_focus: var(--favorite-toggle-focus, #4e342e);
++  }
++  :host([hidden]) { display: none; }
++
++  label {
++    display: inline-flex;
++    align-items: center;
++    gap: 0.5em;
++    cursor: pointer;
++    user-select: none;
++    font: inherit;
++    color: inherit;
++  }
++  :host([disabled]) label { cursor: not-allowed; opacity: 0.6; }
++
++  .heart {
++    inline-size: 1.1em;
++    block-size: 1.1em;
++    fill: transparent;
++    stroke: currentColor;
++    stroke-width: 2;
++    transition: fill 0.2s, stroke 0.2s, scale 0.2s;
++  }
++  :host(:state(checked)) .heart {
++    fill: #d84315;
++    stroke: #d84315;
++    scale: 1.1;
++  }
++
++  input {
++    margin: 0;
++    cursor: inherit;
++    accent-color: var(--_accent);
++  }
++  input:focus-visible {
++    outline: 3px solid var(--_focus);
++    outline-offset: 3px;
++  }
++
++  /* Lightweight fallback for browsers without <input type="checkbox" switch>. */
++  input.fallback {
++    appearance: none;
++    position: relative;
++    inline-size: 2.5em;
++    block-size: 1.4em;
++    border-radius: 999px;
++    background: var(--_track);
++    transition: background-color 0.2s;
++    flex-shrink: 0;
++  }
++  input.fallback::before {
++    content: "";
++    position: absolute;
++    inset-block-start: 0.15em;
++    inset-inline-start: 0.15em;
++    inline-size: 1.1em;
++    block-size: 1.1em;
++    border-radius: 50%;
++    background: #fff;
++    box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
++    transition: translate 0.2s;
++  }
++  input.fallback:checked { background: var(--_accent); }
++  input.fallback:checked::before { translate: 1.1em 0; }
++  :dir(rtl) input.fallback:checked::before { translate: -1.1em 0; }
++
++  @media (forced-colors: active) {
++    input.fallback { border: 1px solid CanvasText; }
++    input.fallback::before { background: CanvasText; }
++    input.fallback:checked { background: Highlight; }
++  }
++  @media (prefers-reduced-motion: reduce) {
++    .heart, input.fallback, input.fallback::before { transition: none; }
++  }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <label part="label">
++    <svg class="heart" part="icon" viewBox="0 0 24 24" aria-hidden="true">
++      <path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.8 4.5c2.1 0 3.6 1.1 5.2 3 1.6-1.9 3.1-3 5.2-3 3.8 0 5.9 3.9 4.4 7.3C19.5 16.4 12 21 12 21z"/>
++    </svg>
++    <span part="text"><slot>Favorite</slot></span>
++    <input type="checkbox" part="switch">
++  </label>
++`;
++
++class FavoriteToggle extends HTMLElement {
++  static observedAttributes = ['checked', 'label', 'disabled', 'storage-key'];
++
++  #internals = this.attachInternals();
++  #input;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.adoptedStyleSheets = [sheet];
++    root.append(template.content.cloneNode(true));
++
++    this.#input = root.querySelector('input');
++    if (supportsNativeSwitch) {
++      this.#input.setAttribute('switch', '');
++    } else {
++      this.#input.classList.add('fallback');
++      this.#input.setAttribute('role', 'switch');
++    }
++
++    this.#input.addEventListener('change', () => {
++      // Reflect user interaction to the host attribute (single source of truth).
++      this.checked = this.#input.checked;
++      this.#persist();
++      // Native `change` is not composed, so re-dispatch from the host.
++      this.dispatchEvent(new Event('change', { bubbles: true }));
++    });
++  }
++
++  connectedCallback() {
++    this.#restore();
++    this.#sync();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    if (name === 'storage-key' && this.isConnected) this.#restore();
++    this.#sync();
++  }
++
++  get checked() { return this.hasAttribute('checked'); }
++  set checked(on) { this.toggleAttribute('checked', !!on); }
++
++  get disabled() { return this.hasAttribute('disabled'); }
++  set disabled(on) { this.toggleAttribute('disabled', !!on); }
++
++  get label() { return this.getAttribute('label') ?? ''; }
++  set label(v) { v ? this.setAttribute('label', v) : this.removeAttribute('label'); }
++
++  get storageKey() { return this.getAttribute('storage-key') ?? ''; }
++  set storageKey(v) { v ? this.setAttribute('storage-key', v) : this.removeAttribute('storage-key'); }
++
++  toggle(force) {
++    this.checked = force === undefined ? !this.checked : force;
++    this.#persist();
++    return this.checked;
++  }
++
++  #sync() {
++    const on = this.checked;
++    this.#input.checked = on;
++    this.#input.disabled = this.disabled;
++    if (this.label) this.#input.setAttribute('aria-label', this.label);
++    else this.#input.removeAttribute('aria-label');
++    if (on) this.#internals.states.add('checked');
++    else this.#internals.states.delete('checked');
++  }
++
++  #storageId() {
++    return this.storageKey ? `favorite:${this.storageKey}` : null;
++  }
++
++  #restore() {
++    const id = this.#storageId();
++    if (!id) return;
++    try {
++      const saved = localStorage.getItem(id);
++      if (saved !== null) this.checked = saved === 'true';
++    } catch { /* storage unavailable (e.g. privacy mode) — keep markup state */ }
++  }
++
++  #persist() {
++    const id = this.#storageId();
++    if (!id) return;
++    try {
++      localStorage.setItem(id, String(this.checked));
++    } catch { /* storage unavailable — state still works for this page view */ }
++  }
++}
++
++if (!customElements.get('favorite-toggle')) {
++  customElements.define('favorite-toggle', FavoriteToggle);
++}
++
++export { FavoriteToggle };
+diff --git a/index.html b/index.html
+index 66c9173..da520e0 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,22 @@
+       background: #3e2723;
+     }
+ 
++    .card-favorite {
++      margin-bottom: 10px;
++      font-size: 0.9rem;
++      --favorite-toggle-accent: #e65100;
++      --favorite-toggle-focus: var(--primary);
++    }
++
++    favorite-toggle:not(:defined) {
++      visibility: hidden;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to { visibility: visible; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +169,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="/favorite-toggle.js"></script>
+ </head>
+ 
+ <body>
+@@ -180,16 +197,19 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
++          <favorite-toggle class="card-favorite" label="Favorite Maple Oat Latte" storage-key="maple-oat-latte">Favorite</favorite-toggle>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
++          <favorite-toggle class="card-favorite" label="Favorite Dark Roast Espresso" storage-key="dark-roast-espresso">Favorite</favorite-toggle>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
++          <favorite-toggle class="card-favorite" label="Favorite Cold Brew" storage-key="cold-brew">Favorite</favorite-toggle>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

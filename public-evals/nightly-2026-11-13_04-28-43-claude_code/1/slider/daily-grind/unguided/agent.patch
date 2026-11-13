@@ -1,0 +1,303 @@
+diff --git a/index.html b/index.html
+index 66c9173..3591fd2 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,214 @@
+       background: #3e2723;
+     }
+ 
++    /* Brew Strength Slider */
++    .strength-section {
++      margin-top: 60px;
++    }
++
++    .strength-card {
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 32px 36px;
++      max-width: 640px;
++      margin: 20px auto 0;
++      text-align: center;
++    }
++
++    .strength-card > p {
++      color: #6d4c41;
++      margin-bottom: 24px;
++    }
++
++    .strength-readout {
++      display: flex;
++      align-items: baseline;
++      justify-content: center;
++      gap: 10px;
++      margin-bottom: 4px;
++    }
++
++    .strength-name {
++      font-size: 1.75rem;
++      font-weight: bold;
++      color: var(--primary);
++      transition: color 0.3s;
++    }
++
++    .strength-beans {
++      font-size: 1.1rem;
++      letter-spacing: 2px;
++    }
++
++    .strength-desc {
++      min-height: 3.2em;
++      color: #6d4c41;
++      font-size: 0.95rem;
++      margin-bottom: 20px;
++    }
++
++    .strength-slider {
++      --thumb: 28px;
++      --track: 10px;
++      --pct: 0;
++      --fill: var(--accent);
++      position: relative;
++      padding: 0 2px;
++    }
++
++    .strength-range {
++      -webkit-appearance: none;
++      appearance: none;
++      width: 100%;
++      height: var(--thumb);
++      background: transparent;
++      cursor: pointer;
++      margin: 0;
++      display: block;
++    }
++
++    .strength-range:focus {
++      outline: none;
++    }
++
++    /* Track (WebKit) — fill is painted so it ends exactly at the thumb centre */
++    .strength-range::-webkit-slider-runnable-track {
++      height: var(--track);
++      border-radius: 999px;
++      background:
++        linear-gradient(90deg, #ffcc80, var(--fill)) 0 / calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--pct)) 100% no-repeat,
++        var(--secondary);
++      box-shadow: inset 0 1px 3px rgba(62, 39, 35, 0.25);
++    }
++
++    /* Track (Firefox) */
++    .strength-range::-moz-range-track {
++      height: var(--track);
++      border-radius: 999px;
++      background: var(--secondary);
++      box-shadow: inset 0 1px 3px rgba(62, 39, 35, 0.25);
++    }
++
++    .strength-range::-moz-range-progress {
++      height: var(--track);
++      border-radius: 999px;
++      background: linear-gradient(90deg, #ffcc80, var(--fill));
++    }
++
++    /* Thumb (WebKit) */
++    .strength-range::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      width: var(--thumb);
++      height: var(--thumb);
++      margin-top: calc((var(--track) - var(--thumb)) / 2);
++      border-radius: 50%;
++      background: radial-gradient(circle at 35% 30%, #8d6e63, var(--primary) 70%);
++      border: 3px solid white;
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.45), 0 0 0 0 rgba(255, 171, 64, 0.5);
++      transition: transform 0.15s, box-shadow 0.2s;
++    }
++
++    /* Thumb (Firefox) */
++    .strength-range::-moz-range-thumb {
++      width: var(--thumb);
++      height: var(--thumb);
++      box-sizing: border-box;
++      border-radius: 50%;
++      background: radial-gradient(circle at 35% 30%, #8d6e63, var(--primary) 70%);
++      border: 3px solid white;
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.45), 0 0 0 0 rgba(255, 171, 64, 0.5);
++      transition: transform 0.15s, box-shadow 0.2s;
++    }
++
++    .strength-range:hover::-webkit-slider-thumb,
++    .strength-range:active::-webkit-slider-thumb {
++      transform: scale(1.1);
++    }
++
++    .strength-range:hover::-moz-range-thumb,
++    .strength-range:active::-moz-range-thumb {
++      transform: scale(1.1);
++    }
++
++    .strength-range:focus-visible::-webkit-slider-thumb {
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.45), 0 0 0 6px rgba(255, 171, 64, 0.5);
++    }
++
++    .strength-range:focus-visible::-moz-range-thumb {
++      box-shadow: 0 2px 6px rgba(62, 39, 35, 0.45), 0 0 0 6px rgba(255, 171, 64, 0.5);
++    }
++
++    /* Step labels, positioned to line up with each thumb stop */
++    .strength-ticks {
++      position: relative;
++      height: 2.5rem;
++      margin: 10px calc(var(--thumb) / 2) 0;
++      list-style: none;
++    }
++
++    .strength-ticks li {
++      position: absolute;
++      top: 0;
++      transform: translateX(-50%);
++    }
++
++    .strength-ticks li:nth-child(1) { left: 0%; }
++    .strength-ticks li:nth-child(2) { left: 33.333%; }
++    .strength-ticks li:nth-child(3) { left: 66.667%; }
++    .strength-ticks li:nth-child(4) { left: 100%; }
++
++    .strength-ticks button {
++      background: none;
++      border: none;
++      font: inherit;
++      font-size: 0.8rem;
++      color: #8d6e63;
++      cursor: pointer;
++      padding: 4px 6px;
++      border-radius: 4px;
++      white-space: nowrap;
++      transition: color 0.2s;
++    }
++
++    .strength-ticks button::before {
++      content: '';
++      display: block;
++      width: 2px;
++      height: 6px;
++      margin: 0 auto 4px;
++      background: currentColor;
++      opacity: 0.6;
++    }
++
++    .strength-ticks button:hover,
++    .strength-ticks button[aria-pressed="true"] {
++      color: var(--primary);
++      font-weight: bold;
++    }
++
++    .strength-ticks button:focus-visible {
++      outline: 2px solid var(--accent);
++    }
++
++    @media (max-width: 480px) {
++      .strength-card {
++        padding: 24px 20px;
++      }
++
++      .strength-ticks button {
++        font-size: 0.7rem;
++        padding: 4px 2px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .strength-range::-webkit-slider-thumb { transition: none; }
++      .strength-range::-moz-range-thumb { transition: none; }
++      .strength-name { transition: none; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +403,31 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="strength-section" aria-labelledby="strength-heading">
++      <h2 id="strength-heading" style="text-align: center;">Find Your Brew Strength</h2>
++      <div class="strength-card">
++        <p>Slide to tell our baristas how strong you like it.</p>
++
++        <div class="strength-readout" aria-hidden="true">
++          <span class="strength-name" id="strength-name">Medium</span>
++          <span class="strength-beans" id="strength-beans">☕☕</span>
++        </div>
++        <p class="strength-desc" id="strength-desc" aria-live="polite"></p>
++
++        <div class="strength-slider" id="strength-slider">
++          <label for="brew-strength" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Brew strength</label>
++          <input type="range" id="brew-strength" class="strength-range" name="brew-strength"
++            min="0" max="3" step="1" value="1" aria-valuetext="Medium" aria-describedby="strength-desc">
++          <ul class="strength-ticks" aria-label="Strength presets">
++            <li><button type="button" data-value="0">Mild</button></li>
++            <li><button type="button" data-value="1">Medium</button></li>
++            <li><button type="button" data-value="2">Bold</button></li>
++            <li><button type="button" data-value="3">Extra Bold</button></li>
++          </ul>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +440,51 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var strengths = [
++        { name: 'Mild', color: '#ffcc80', desc: 'Light and mellow with bright, fruity notes. Easy sipping any time of day.' },
++        { name: 'Medium', color: '#ffab40', desc: 'Balanced and smooth, with caramel sweetness and a clean finish.' },
++        { name: 'Bold', color: '#e65100', desc: 'Full-bodied and rich, with deep chocolate and toasted nut flavors.' },
++        { name: 'Extra Bold', color: '#6d2c00', desc: 'Intense, smoky, and robust. For those who mean business before 7am.' }
++      ];
++
++      var range = document.getElementById('brew-strength');
++      var slider = document.getElementById('strength-slider');
++      var nameEl = document.getElementById('strength-name');
++      var beansEl = document.getElementById('strength-beans');
++      var descEl = document.getElementById('strength-desc');
++      var buttons = slider.querySelectorAll('.strength-ticks button');
++      var max = Number(range.max);
++
++      function update() {
++        var i = Number(range.value);
++        var s = strengths[i];
++        slider.style.setProperty('--pct', i / max);
++        slider.style.setProperty('--fill', s.color);
++        range.setAttribute('aria-valuetext', s.name);
++        nameEl.textContent = s.name;
++        nameEl.style.color = i === 0 ? 'var(--primary)' : s.color;
++        beansEl.textContent = '☕'.repeat(i + 1);
++        descEl.textContent = s.desc;
++        buttons.forEach(function (b) {
++          b.setAttribute('aria-pressed', String(Number(b.dataset.value) === i));
++        });
++      }
++
++      range.addEventListener('input', update);
++      buttons.forEach(function (b) {
++        b.addEventListener('click', function () {
++          range.value = b.dataset.value;
++          update();
++          range.dispatchEvent(new Event('change', { bubbles: true }));
++        });
++      });
++
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

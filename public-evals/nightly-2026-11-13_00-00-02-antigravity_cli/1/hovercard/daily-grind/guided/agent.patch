@@ -1,0 +1,301 @@
+diff --git a/index.html b/index.html
+index 66c9173..497fab9 100644
+--- a/index.html
++++ b/index.html
+@@ -131,10 +131,121 @@
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:is(:interest-source, .interest-source) {
+       background: #3e2723;
+     }
+ 
++    /* Interest Invoker Timing */
++    [interestfor] {
++      --interest-delay-start: 0.2s;
++      interest-delay-start: var(--interest-delay-start);
++      --interest-delay-end: 0.1s;
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    .grid:has([interestfor]:is(:interest-source, .interest-source)) [interestfor] {
++      --interest-delay-start: 0s;
++    }
++
++    /* Hovercard Component */
++    [popover].hovercard {
++      width: min(340px, 90vw);
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      padding: 16px;
++      box-shadow: 0 12px 28px rgba(62, 39, 35, 0.18);
++      text-align: left;
++      opacity: 0;
++      transform-origin: top;
++    }
++
++    @supports (position-area: block-end) {
++      [popover].hovercard {
++        inset: auto;
++        margin: 8px 0 0 0;
++        position-area: block-end span-inline-end;
++        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      }
++    }
++
++    [popover].hovercard:is(:popover-open, .\:popover-open) {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    @starting-style {
++      [popover].hovercard:is(:popover-open, .\:popover-open) {
++        opacity: 0;
++        transform: translateY(-10px) scale(0.95);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      [popover].hovercard {
++        transition:
++          opacity,
++          transform,
++          display,
++          overlay;
++        transition-duration: 0.4s;
++        transition-behavior: allow-discrete;
++      }
++    }
++
++    .hovercard h4 {
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin-bottom: 2px;
++    }
++
++    .hovercard-meta {
++      font-size: 0.8rem;
++      color: #6d4c41;
++      font-weight: 600;
++      margin-bottom: 10px;
++    }
++
++    .hovercard-body {
++      display: grid;
++      grid-template-columns: 96px 1fr;
++      gap: 12px;
++      align-items: start;
++      margin-bottom: 10px;
++    }
++
++    .hovercard-body img {
++      width: 96px;
++      height: 80px;
++      object-fit: cover;
++      border-radius: 6px;
++      background: var(--secondary);
++    }
++
++    .hovercard-body p {
++      font-size: 0.85rem;
++      line-height: 1.45;
++    }
++
++    .hovercard-specs {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      list-style: none;
++      border-top: 1px solid var(--secondary);
++      padding-top: 10px;
++      font-size: 0.75rem;
++    }
++
++    .hovercard-specs li {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      padding: 2px 8px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,17 +292,53 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="maple-oat-preview">View Details</a>
++          <div id="maple-oat-preview" popover="hint" class="hovercard">
++            <h4>Maple Oat Latte</h4>
++            <p class="hovercard-meta">Seasonal Limited Edition &bull; $5.75 &bull; 240 cal</p>
++            <div class="hovercard-body">
++              <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=400&q=80" alt="Maple oat milk latte with rosetta art">
++              <p>Velvety steamed oat milk blended with our signature double-shot espresso, pure Grade-A Vermont amber maple syrup, and a dusting of organic Ceylon cinnamon.</p>
++            </div>
++            <ul class="hovercard-specs">
++              <li><strong>Roast:</strong> Medium</li>
++              <li><strong>Notes:</strong> Toasted Pecan, Maple, Cinnamon</li>
++            </ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="dark-roast-preview">View Details</a>
++          <div id="dark-roast-preview" popover="hint" class="hovercard">
++            <h4>Dark Roast Espresso</h4>
++            <p class="hovercard-meta">House Signature Blend &bull; $3.50 &bull; 15 cal</p>
++            <div class="hovercard-body">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=400&q=80" alt="Freshly pulled dark roast espresso shot">
++              <p>Full-bodied, slow-roasted beans from Sumatra and Colombia extracted under high pressure for a rich golden crema and intense dark chocolate finish.</p>
++            </div>
++            <ul class="hovercard-specs">
++              <li><strong>Roast:</strong> Dark</li>
++              <li><strong>Notes:</strong> Dark Cocoa, Cedar, Molasses</li>
++            </ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-preview">View Details</a>
++          <div id="cold-brew-preview" popover="hint" class="hovercard">
++            <h4>Cold Brew</h4>
++            <p class="hovercard-meta">Small-Batch Steeped &bull; $4.75 &bull; 5 cal</p>
++            <div class="hovercard-body">
++              <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=400&q=80" alt="Iced cold brew coffee in a glass">
++              <p>Coarse-ground Ethiopian single-origin beans steeped in filtered cold water for 18 hours, delivering a naturally sweet, low-acid cup over crystal ice.</p>
++            </div>
++            <ul class="hovercard-specs">
++              <li><strong>Roast:</strong> Medium-Light</li>
++              <li><strong>Notes:</strong> Caramel, Sweet Citrus, Smooth</li>
++            </ul>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +354,116 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const ownedExpandedTriggers = new WeakSet();
++    const normalizeText = (str) => (str ?? "").replace(/\s+/g, " ").trim();
++
++    function extractTextWithImgAlt(node) {
++      if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
++      if (node.nodeType !== Node.ELEMENT_NODE) return "";
++      if (node.tagName === "IMG") return node.getAttribute("alt") ?? "";
++      let text = "";
++      for (const child of node.childNodes) {
++        text += extractTextWithImgAlt(child);
++      }
++      return text;
++    }
++
++    function getAccessibleName(el) {
++      if (el.hasAttribute("aria-labelledby")) {
++        const ids = el.getAttribute("aria-labelledby").trim().split(/\s+/);
++        return normalizeText(
++          ids
++            .map((id) => document.getElementById(id)?.textContent ?? "")
++            .join(" ")
++        );
++      }
++      if (el.hasAttribute("aria-label")) {
++        return normalizeText(el.getAttribute("aria-label"));
++      }
++      const textContent = normalizeText(extractTextWithImgAlt(el));
++      if (textContent) return textContent;
++      if (el.hasAttribute("title")) {
++        return normalizeText(el.getAttribute("title"));
++      }
++      return "";
++    }
++
++    function isPopoverOpen(popover) {
++      try {
++        if (popover.matches(":popover-open")) return true;
++      } catch {
++        // Ignore if :popover-open is unsupported natively
++      }
++      return popover.classList.contains(":popover-open");
++    }
++
++    export function wireInterestHints(root = document) {
++      for (const trigger of root.querySelectorAll("[interestfor]")) {
++        const id = trigger.getAttribute("interestfor");
++        if (!id) continue;
++        const hint = document.getElementById(id);
++        if (!hint || hint.getAttribute("popover") !== "hint") continue;
++
++        const hintText = normalizeText(extractTextWithImgAlt(hint));
++        const triggerName = getAccessibleName(trigger);
++        if (hintText && hintText === triggerName) continue;
++
++        if (!hint.hasAttribute("role")) {
++          hint.setAttribute("role", "tooltip");
++        }
++
++        if (!triggerName) {
++          if (!trigger.hasAttribute("aria-labelledby")) {
++            trigger.setAttribute("aria-labelledby", id);
++          }
++        } else {
++          const opensOnActivation =
++            trigger.getAttribute("popovertarget") === id ||
++            trigger.getAttribute("commandfor") === id;
++          if (opensOnActivation) {
++            if (!trigger.hasAttribute("aria-expanded") || ownedExpandedTriggers.has(trigger)) {
++              trigger.setAttribute("aria-expanded", String(isPopoverOpen(hint)));
++              ownedExpandedTriggers.add(trigger);
++            }
++          } else if (!trigger.hasAttribute("aria-describedby")) {
++            trigger.setAttribute("aria-describedby", id);
++          }
++        }
++      }
++    }
++
++    window.wireInterestHints = wireInterestHints;
++
++    document.addEventListener(
++      "toggle",
++      (event) => {
++        const target = event.target;
++        if (!(target instanceof HTMLElement) || !target.id) return;
++        const openState = event.newState
++          ? event.newState === "open"
++          : isPopoverOpen(target);
++        for (const trigger of document.querySelectorAll(
++          `[interestfor="${CSS.escape(target.id)}"]`
++        )) {
++          if (ownedExpandedTriggers.has(trigger)) {
++            trigger.setAttribute("aria-expanded", String(openState));
++          }
++        }
++      },
++      true
++    );
++
++    wireInterestHints();
++
++    if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++
++    if (!("interestForElement" in HTMLButtonElement.prototype)) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++  </script>
+ </body>
+ 
+ </html>

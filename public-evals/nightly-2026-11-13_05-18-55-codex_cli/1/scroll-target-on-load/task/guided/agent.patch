@@ -1,0 +1,170 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>document.documentElement.classList.add('js');</script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -134,8 +135,95 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .journal {
++      margin-top: 48px;
++    }
++
++    .journal > p {
++      margin: 6px 0 20px;
++    }
++
++    .media-feed {
++      height: 440px;
++      overflow-y: auto;
++      overscroll-behavior-y: contain;
++      scroll-behavior: auto;
++      scrollbar-gutter: stable;
++      padding: 16px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      background: #f0ebe8;
++    }
++
++    .js .media-feed:not([data-ready]) {
++      visibility: hidden;
++    }
++
++    .media-feed:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    .media-card {
++      display: grid;
++      grid-template-columns: 38% 1fr;
++      min-height: 240px;
++      overflow: hidden;
++      border-radius: 8px;
++      background: white;
++    }
++
++    .media-card + .media-card {
++      margin-top: 16px;
++    }
++
++    .media-card img {
++      display: block;
++      width: 100%;
++      height: 240px;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .media-copy {
++      align-self: center;
++      padding: 24px;
++    }
++
++    .media-copy h3 {
++      margin: 8px 0;
++      line-height: 1.3;
++    }
++
++    .media-label {
++      color: #765a4c;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++    }
++
++    .media-card.target {
++      scroll-initial-target: nearest;
++      border: 2px solid var(--primary);
++    }
++
++    @media (max-width: 600px) {
++      .media-card {
++        grid-template-columns: 1fr;
++      }
++
++      .media-card img {
++        height: 160px;
++      }
++
++      .media-copy {
++        padding: 16px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +282,60 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="journal" aria-labelledby="journal-title">
++      <h2 id="journal-title">From Bean to Cup</h2>
++      <p>A little inspiration for your daily ritual. Start with our featured story, then scroll to explore.</p>
++      <div class="media-feed" role="region" aria-labelledby="journal-title" tabindex="0">
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&amp;fit=crop&amp;w=960&amp;h=540&amp;q=80" width="960" height="540" alt="Freshly roasted coffee beans">
++          <div class="media-copy">
++            <span class="media-label">The craft</span>
++            <h3>Good coffee starts at the source</h3>
++            <p>Thoughtfully grown beans, carefully roasted to bring out the character in every cup.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&amp;fit=crop&amp;w=960&amp;h=540&amp;q=80" width="960" height="540" alt="A cup of espresso ready to enjoy">
++          <div class="media-copy">
++            <span class="media-label">Brew notes</span>
++            <h3>A small cup. A bold beginning.</h3>
++            <p>Take a moment to appreciate the rich aroma and deep flavor of a freshly pulled espresso.</p>
++          </div>
++        </article>
++        <article class="media-card target">
++          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=960&amp;h=540&amp;q=80" width="960" height="540" alt="A warm cup of coffee with delicate latte art">
++          <div class="media-copy">
++            <span class="media-label">Featured story</span>
++            <h3>Make room for your morning ritual</h3>
++            <p>Your favorite cup, a quiet moment, and a fresh start. Sometimes the simplest rituals are the best.</p>
++          </div>
++        </article>
++        <article class="media-card">
++          <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&amp;fit=crop&amp;w=960&amp;h=540&amp;q=80" width="960" height="540" alt="Coffee served in a white ceramic cup">
++          <div class="media-copy">
++            <span class="media-label">Everyday moments</span>
++            <h3>Better when shared</h3>
++            <p>Catch up with an old friend or settle into your favorite corner. There is always a place for you here.</p>
++          </div>
++        </article>
++      </div>
++      <script>
++        {
++          const feed = document.querySelector('.media-feed');
++          const target = feed.querySelector('.target');
++          if (!CSS.supports('scroll-initial-target', 'nearest')) {
++            // Position only this container before revealing it; never scroll the page.
++            const top = target.getBoundingClientRect().top
++              - feed.getBoundingClientRect().top - feed.clientTop + feed.scrollTop;
++            feed.scrollTo({ top: Math.max(0, top - 16), behavior: 'instant' });
++          }
++          feed.setAttribute('data-ready', '');
++        }
++      </script>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

@@ -1,0 +1,483 @@
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..3ddc576 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -1,4 +1,5 @@
+ ---
++import SectionNav from "./SectionNav.astro";
+ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+@@ -64,6 +65,8 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+     </div>
+   </div>
+ 
++  <SectionNav />
++
+   <!-- Bottom Navigation Bar -->
+   <BottomNav client:load categories={categories} articles={articles} reports={reports} multimedia={multimedia} />
+ </header>
+diff --git a/src/components/SectionNav.astro b/src/components/SectionNav.astro
+new file mode 100644
+index 0000000..a45435f
+--- /dev/null
++++ b/src/components/SectionNav.astro
+@@ -0,0 +1,17 @@
++---
++import { getSection, sections } from '../utils/sections';
++
++const activeSection = getSection(Astro.url);
++---
++<nav aria-label="Main sections" class="border-t border-gray-300 px-4 flex justify-start sm:justify-center gap-6 overflow-x-auto text-sm font-semibold">
++  {sections.map(section => (
++    <a
++      href={`${import.meta.env.BASE_URL}${section.path}`}
++      data-section-link={section.id}
++      aria-current={activeSection === section.id ? 'page' : undefined}
++      class="section-link whitespace-nowrap py-3 border-b-2 border-transparent hover:text-amber-800"
++    >
++      {section.label}
++    </a>
++  ))}
++</nav>
+diff --git a/src/components/SectionViews.astro b/src/components/SectionViews.astro
+new file mode 100644
+index 0000000..5d82b75
+--- /dev/null
++++ b/src/components/SectionViews.astro
+@@ -0,0 +1,115 @@
++---
++import ArticleTeaser from '../components/ArticleTeaser.astro';
++import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import Ad from '../components/AdSlotBanner';
++import { getCollection } from 'astro:content';
++import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import type { RenderResult } from 'astro:content';
++
++import { getSection, sections } from '../utils/sections';
++
++const activeSection = getSection(Astro.url);
++const multimedia = await getCollection('multimedia');
++const reports = await getCollection('reports');
++const articles = await getCollection('articles');
++articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
++
++// Slicing articles for different sections
++const topArticle = articles[0];
++const topStories = articles.slice(1, 4);
++const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
++const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
++const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
++
++// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
++politicsArticles[2] = {
++    id: 'public-transit-overhaul',
++    data: {
++      title: 'What\'s new in DevTools',
++      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
++      author: 'Chrome DevTools Team',
++      date: new Date('2025-09-16T00:00:00.000Z'),
++      category: 'Web Development',
++      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
++      image_caption: '',
++      readingTime: 3
++    },
++    body: '',
++    collection: 'articles',
++    slug: 'public-transit-overhaul',
++    render: async () => '' as unknown as RenderResult,
++  };
++---
++
++<div data-section-views data-active-section={activeSection}>
++    <section data-section-view="top-news" class:list={["section-view", { "is-inactive": activeSection !== "top-news" }]} inert={activeSection !== "top-news"} aria-hidden={activeSection !== "top-news" ? "true" : undefined} aria-label="Top News" tabindex="-1">
++    <!-- Top Stories Bar -->
++    <div class="bg-white border-b border-gray-300">
++        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++                {topStories.map(article => (
++                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
++                        </a>
++                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
++                    </div>
++                ))}
++            </div>
++        </div>
++    </div>
++
++    <!-- Main Content Area -->
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++        <ArticleTeaser article={topArticle} large={true} />
++    </div>
++
++    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++        <!-- "Top News" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++    </div>
++    </section>
++    <section data-section-view="world" class:list={["section-view", { "is-inactive": activeSection !== "world" }]} inert={activeSection !== "world"} aria-hidden={activeSection !== "world" ? "true" : undefined} aria-labelledby="world-heading" tabindex="-1">
++        <h1 id="world-heading" class="sr-only">World</h1>
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
++
++    </section>
++    <section data-section-view="politics" class:list={["section-view", { "is-inactive": activeSection !== "politics" }]} inert={activeSection !== "politics"} aria-hidden={activeSection !== "politics" ? "true" : undefined} aria-labelledby="politics-heading" tabindex="-1">
++        <h1 id="politics-heading" class="sr-only">Politics</h1>
++        <!-- "Politics" section with the new grid variant -->
++        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        
++    </section>
++    {sections.filter(section => section.id === 'multimedia' || section.id === 'reports').map(section => (
++        <section data-section-view={section.id} class:list={["section-view", { "is-inactive": activeSection !== section.id }]} inert={activeSection !== section.id} aria-hidden={activeSection !== section.id ? "true" : undefined} aria-labelledby={`${section.id}-heading`} tabindex="-1">
++            <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
++                <h1 id={`${section.id}-heading`} class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{section.label}</h1>
++                <div class="prose max-w-none">
++                    <p>{section.id === 'multimedia' ? 'Watch our latest multimedia content.' : 'Read our latest reports.'}</p>
++                    <ul>
++                        {(section.id === 'multimedia' ? multimedia : reports).map(item => (
++                            <li><a href={`${import.meta.env.BASE_URL}${section.id}/${item.id}`}>{item.data.title}</a></li>
++                        ))}
++                    </ul>
++                </div>
++            </div>
++        </section>
++    ))}
++</div>
++
++<script>
++    import '../scripts/section-navigation';
++</script>
+\ No newline at end of file
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..abbbaac 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,8 +4,6 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
+ }
+@@ -33,8 +31,6 @@ const baseUrl = import.meta.env.BASE_URL;
+     <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+-
+-    <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..efa95c3 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -1,84 +1,10 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
++import SectionViews from '../components/SectionViews.astro';
++import { getSection, sections } from '../utils/sections';
+ 
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++const section = sections.find(section => section.id === getSection(Astro.url))!;
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
+-    </div>
+-</Layout>
+\ No newline at end of file
++<Layout title={section.id === 'top-news' ? 'The DevTools Times' : `${section.label} | The DevTools Times`}>
++    <SectionViews />
++</Layout>
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..9d72151 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -1,21 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import { getCollection } from 'astro:content';
+-
+-const multimedia = await getCollection('multimedia');
++import SectionViews from '../components/SectionViews.astro';
+ ---
+-<Layout title="Multimedia">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+-        <div class="prose max-w-none">
+-            <p>Watch our latest multimedia content.</p>
+-            <ul>
+-                {multimedia.map(item => (
+-                    <li>
+-                        <a href={`/multimedia/${item.slug}`}>{item.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-        </div>
+-    </div>
+-</Layout>
+\ No newline at end of file
++<Layout title="Multimedia | The DevTools Times">
++    <SectionViews />
++</Layout>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..be95dce 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -1,21 +1,7 @@
+ ---
+ import Layout from '../layouts/Layout.astro';
+-import { getCollection } from 'astro:content';
+-
+-const reports = await getCollection('reports');
++import SectionViews from '../components/SectionViews.astro';
+ ---
+-<Layout title="Reports">
+-    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+-        <div class="prose max-w-none">
+-            <p>Read our latest reports.</p>
+-            <ul>
+-                {reports.map(report => (
+-                    <li>
+-                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
+-                    </li>
+-                ))}
+-            </ul>
+-        </div>
+-    </div>
+-</Layout>
+\ No newline at end of file
++<Layout title="Reports | The DevTools Times">
++    <SectionViews />
++</Layout>
+diff --git a/src/scripts/section-navigation.ts b/src/scripts/section-navigation.ts
+new file mode 100644
+index 0000000..e61798f
+--- /dev/null
++++ b/src/scripts/section-navigation.ts
+@@ -0,0 +1,69 @@
++import { getSection, sections } from '../utils/sections';
++import type { SectionId } from '../utils/sections';
++
++const host = document.querySelector<HTMLElement>('[data-section-views]');
++
++if (host) {
++  const views = Array.from(host.querySelectorAll<HTMLElement>('[data-section-view]'));
++  const positions = new Map<SectionId, { x: number; y: number }>();
++  let activeSection = host.dataset.activeSection as SectionId;
++  const previousScrollRestoration = history.scrollRestoration;
++  history.scrollRestoration = 'manual';
++
++  function activate(section: SectionId) {
++    positions.set(activeSection, { x: window.scrollX, y: window.scrollY });
++    const next = views.find(view => view.dataset.sectionView === section)!;
++
++    // Reveal and focus first, so focus never remains inside an inert subtree.
++    next.classList.remove('is-inactive');
++    next.inert = false;
++    next.removeAttribute('aria-hidden');
++    next.focus();
++
++    for (const view of views) {
++      if (view === next) continue;
++      view.inert = true;
++      view.setAttribute('aria-hidden', 'true');
++      view.classList.add('is-inactive');
++    }
++
++    activeSection = section;
++    host!.dataset.activeSection = section;
++    document.querySelectorAll<HTMLAnchorElement>('[data-section-link]').forEach(link => {
++      if (link.dataset.sectionLink === section) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
++    });
++    const label = sections.find(item => item.id === section)!.label;
++    document.title = section === 'top-news' ? 'The DevTools Times' : `${label} | The DevTools Times`;
++    const position = positions.get(section) ?? { x: 0, y: 0 };
++    window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
++  }
++
++  document.addEventListener('click', event => {
++    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++    const link = event.target instanceof Element ? event.target.closest('a') : null;
++    if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
++    const url = new URL(link.href, window.location.href);
++    if (url.origin !== window.location.origin || url.hash) return;
++    const section = getSection(url);
++    if (!section) return;
++
++    event.preventDefault();
++    if (url.href === window.location.href) return;
++    history.pushState(null, '', url);
++    activate(section);
++  });
++
++  window.addEventListener('popstate', () => {
++    const section = getSection(new URL(window.location.href));
++    if (section) activate(section);
++    else window.location.reload();
++  });
++
++  window.addEventListener('pagehide', () => {
++    history.scrollRestoration = previousScrollRestoration;
++  });
++  window.addEventListener('pageshow', () => {
++    history.scrollRestoration = 'manual';
++  });
++}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..9b1fa1f 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,29 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++[data-section-views] {
++  position: relative;
++  isolation: isolate;
++}
++
++.section-view.is-inactive {
++  /* Retain DOM and rendering state without laying out or painting descendants. */
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto;
++  block-size: 0;
++  overflow: clip;
++}
++
++.section-link[aria-current="page"] {
++  border-bottom-color: currentColor;
++  color: #92400e;
++}
++
++@supports not (content-visibility: hidden) {
++  .section-view.is-inactive {
++    display: none;
++  }
++}
+diff --git a/src/utils/sections.ts b/src/utils/sections.ts
+new file mode 100644
+index 0000000..b3dfd9d
+--- /dev/null
++++ b/src/utils/sections.ts
+@@ -0,0 +1,22 @@
++export const sections = [
++  { id: 'top-news', label: 'Top News', path: '' },
++  { id: 'world', label: 'World', path: '?section=world' },
++  { id: 'politics', label: 'Politics', path: '?section=politics' },
++  { id: 'multimedia', label: 'Multimedia', path: 'multimedia' },
++  { id: 'reports', label: 'Reports', path: 'reports' },
++] as const;
++
++export type SectionId = (typeof sections)[number]['id'];
++
++// Only the five fixed sections belong to the SPA; article/category URLs stay links.
++export function getSection(url: URL): SectionId | null {
++  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
++  const path = url.pathname.replace(/\/$/, '');
++  if (path === base) {
++    const section = url.searchParams.get('section');
++    return section === 'world' || section === 'politics' ? section : 'top-news';
++  }
++  if (path === `${base}/multimedia`) return 'multimedia';
++  if (path === `${base}/reports`) return 'reports';
++  return null;
++}

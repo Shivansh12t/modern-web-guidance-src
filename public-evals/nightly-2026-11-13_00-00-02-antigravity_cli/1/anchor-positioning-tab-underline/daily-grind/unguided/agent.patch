@@ -1,0 +1,125 @@
+diff --git a/index.html b/index.html
+index 66c9173..28221f1 100644
+--- a/index.html
++++ b/index.html
+@@ -48,7 +48,9 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -59,13 +61,27 @@
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      padding: 6px 0;
++      display: inline-block;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a.active {
+       color: var(--accent);
+     }
+ 
++    .nav-indicator {
++      position: absolute;
++      bottom: 0;
++      left: 0;
++      height: 2px;
++      background-color: var(--accent);
++      border-radius: 2px;
++      pointer-events: none;
++      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -159,12 +175,13 @@
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++    <ul id="nav-list">
++      <li><a href="/menu" class="nav-item active" aria-current="page">Menu</a></li>
++      <li><a href="/locations" class="nav-item">Locations</a></li>
++      <li><a href="/rewards" class="nav-item">Rewards</a></li>
++      <li><a href="/account" class="nav-item">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <span class="nav-indicator" id="nav-indicator" aria-hidden="true"></span>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +224,62 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const navList = document.getElementById('nav-list');
++      const navItems = Array.from(navList.querySelectorAll('.nav-item'));
++      const indicator = document.getElementById('nav-indicator');
++
++      function updateIndicator(activeItem, animate = true) {
++        if (!activeItem || !indicator) return;
++
++        const listRect = navList.getBoundingClientRect();
++        const itemRect = activeItem.getBoundingClientRect();
++        const offsetLeft = itemRect.left - listRect.left;
++
++        if (!animate) {
++          indicator.style.transition = 'none';
++        }
++
++        indicator.style.width = `${itemRect.width}px`;
++        indicator.style.transform = `translateX(${offsetLeft}px)`;
++
++        if (!animate) {
++          // Force reflow to apply initial position before restoring transitions
++          indicator.offsetHeight;
++          indicator.style.transition = '';
++        }
++      }
++
++      function setActiveItem(selectedItem, animate = true) {
++        navItems.forEach((item) => {
++          const isSelected = item === selectedItem;
++          item.classList.toggle('active', isSelected);
++          if (isSelected) {
++            item.setAttribute('aria-current', 'page');
++          } else {
++            item.removeAttribute('aria-current');
++          }
++        });
++        updateIndicator(selectedItem, animate);
++      }
++
++      navItems.forEach((item) => {
++        item.addEventListener('click', (event) => {
++          event.preventDefault();
++          setActiveItem(item, true);
++        });
++      });
++
++      const initialActive = navList.querySelector('.nav-item.active') || navItems[0];
++      updateIndicator(initialActive, false);
++
++      window.addEventListener('resize', () => {
++        const currentActive = navList.querySelector('.nav-item.active');
++        updateIndicator(currentActive, false);
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,49 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -114,8 +114,45 @@
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+ 
++    /*
++     * Scroll-driven reveal (CSS only).
++     * Cards grow from 50% to 100% as they enter the viewport and shrink
++     * back to 50% as they leave it. Only applied when the browser supports
++     * scroll-driven animations AND the user has not asked for reduced motion;
++     * otherwise cards simply render at full size.
++     */
++    @keyframes card-grow {
++      from { scale: 0.5; }
++      to   { scale: 1; }
++    }
++
++    @keyframes card-shrink {
++      from { scale: 1; }
++      to   { scale: 0.5; }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports (animation-timeline: view()) {
++        .card {
++          /* grow fills backwards (before entering); shrink only fills forwards
++             so it never overrides the grow animation before the exit range. */
++          animation:
++            card-grow linear both,
++            card-shrink linear forwards;
++          animation-timeline: view(), view();
++          animation-range: entry 0% entry 100%, exit 0% exit 100%;
++        }
++
++        /* Keep keyboard-focused cards at full size so focused content
++           is always fully legible. */
++        .card:focus-within {
++          animation: none;
++        }
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+     }

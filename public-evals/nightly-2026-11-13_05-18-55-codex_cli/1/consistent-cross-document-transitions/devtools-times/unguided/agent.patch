@@ -1,0 +1,224 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..a51b563 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -44,6 +44,8 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         alt=""
+                         width={800}
+                         height={533}
++                        loading="eager"
++                        fetchpriority="high"
+                         format="webp"
+                         class="w-full h-auto object-cover"
+                     />
+@@ -80,4 +82,4 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..9df710a 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -54,7 +54,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+       <!-- Center Section: Logo -->
+       <div class="text-center">
+         <a href={`${import.meta.env.BASE_URL}`}>
+-          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" class="w-80 h-auto mx-auto" />
++          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" width="872" height="102" class="w-80 h-auto mx-auto" />
+         </a>
+       </div>
+ 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..077bb71 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -5,6 +5,7 @@ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+ import { ClientRouter } from "astro:transitions";
++import { fade } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
+@@ -23,7 +24,6 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="preconnect" href="https://fonts.googleapis.com" />
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
+@@ -34,9 +34,12 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <ClientRouter fallback="swap" />
++    <script>
++      import "../scripts/page-transitions";
++    </script>
+   </head>
+-  <body class="bg-gray-100">
++  <body class="bg-gray-100" transition:animate={fade({ duration: "220ms" })}>
+     <div class="mx-auto">
+       <AdSlotFireplace client:load />
+       <div
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..2a31453 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -75,6 +75,8 @@ const isBookmarked = readingList.includes(article.slug);
+                     alt={article.data.title} 
+                     width={1200}
+                     height={675}
++                    loading="eager"
++                    fetchpriority="high"
+                     format="webp"
+                     class="w-full h-auto"
+                 />
+@@ -123,4 +125,4 @@ const isBookmarked = readingList.includes(article.slug);
+     </section>
+ 
+ 
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..a1e92ef 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -47,6 +47,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     alt={`Background for ${capitalizedCategory}`} 
+                     width={1200}
+                     height={400}
++                    loading="eager"
+                     format="webp"
+                     quality={80}
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+@@ -73,6 +74,8 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             alt={featuredArticle.data.title} 
+                             width={1200}
+                             height={675}
++                            loading="eager"
++                            fetchpriority="high"
+                             format="webp"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+diff --git a/src/scripts/page-transitions.ts b/src/scripts/page-transitions.ts
+new file mode 100644
+index 0000000..afd8a61
+--- /dev/null
++++ b/src/scripts/page-transitions.ts
+@@ -0,0 +1,91 @@
++import type { TransitionBeforePreparationEvent } from "astro:transitions/client";
++
++// Keep the current page visible while preparing the incoming page. Async
++// after-swap listeners cannot delay the browser's transition snapshot.
++async function prepareVisuals(event: TransitionBeforePreparationEvent): Promise<boolean> {
++  const cleanups: Array<() => void> = [];
++  let timeout: ReturnType<typeof setTimeout>;
++
++  const interrupted = new Promise<boolean>((resolve) => {
++    const abort = () => resolve(false);
++    event.signal.addEventListener("abort", abort, { once: true });
++    cleanups.push(() => event.signal.removeEventListener("abort", abort));
++    timeout = setTimeout(() => resolve(false), 3000);
++  });
++
++  try {
++    if (event.signal.aborted) return false;
++
++    // Astro preloads CSS bytes; also wait for stylesheet loading/parsing before
++    // swapping. Nonmatching media keeps incoming styles off the current page.
++    const styles = Array.from(
++      event.newDocument.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
++    ).filter((link) => !Array.from(document.styleSheets).some(
++      (sheet) => sheet.href === link.href,
++    )).map((link) => new Promise<boolean>((resolve) => {
++      const pending = link.cloneNode() as HTMLLinkElement;
++      pending.media = "not all";
++      pending.onload = () => resolve(true);
++      pending.onerror = () => resolve(false);
++      cleanups.push(() => {
++        pending.onload = pending.onerror = null;
++        pending.remove();
++      });
++      document.head.append(pending);
++    }));
++
++    // Decode in the live document's environment: images in the detached incoming
++    // document (especially lazy images) do not reliably load. Copy responsive and
++    // request attributes before src so the browser chooses the same resource.
++    // Include lazy images for restored scroll positions and tall viewports.
++    const images = Array.from(event.newDocument.images).map(async (source) => {
++      const image = new Image();
++      for (const attribute of ["crossorigin", "referrerpolicy", "sizes", "srcset", "src"]) {
++        const value = source.getAttribute(attribute);
++        if (value !== null) image.setAttribute(attribute, value);
++      }
++      try {
++        await image.decode();
++        return true;
++      } catch {
++        // Failed images are settled too. An unavailable third-party image
++        // must not disable transitions for the rest of the page.
++        return true;
++      }
++    });
++
++    const font = Promise.all(styles).then(async () => {
++      await document.fonts.ready;
++      await document.fonts.load('500 1em "Grenze"');
++      return true;
++    }).catch(() => false);
++    return await Promise.race([
++      Promise.all([...styles, ...images, font]).then((results) => results.every(Boolean)),
++      interrupted,
++    ]);
++  } finally {
++    clearTimeout(timeout!);
++    cleanups.forEach((cleanup) => cleanup());
++  }
++}
++
++// Processed Astro scripts run once, so these listeners survive page swaps
++// without accumulating on every navigation. The router retains history,
++// scroll restoration, focus handling, and link interception.
++const preparedDocuments = new WeakMap<Document, boolean>();
++
++document.addEventListener("astro:before-preparation", (event) => {
++  const loader = event.loader;
++  event.loader = async () => {
++    await loader();
++    if (event.defaultPrevented || event.signal.aborted) return;
++    preparedDocuments.set(event.newDocument, await prepareVisuals(event));
++  };
++});
++
++document.addEventListener("astro:before-swap", (event) => {
++  if (!preparedDocuments.get(event.newDocument)
++    || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
++    event.viewTransition.skipTransition();
++  }
++});
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..0d8eee6 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,11 @@
+ @import "tailwindcss";
+ 
++html {
++  scrollbar-gutter: stable;
++}
++
+ .font-brand {
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

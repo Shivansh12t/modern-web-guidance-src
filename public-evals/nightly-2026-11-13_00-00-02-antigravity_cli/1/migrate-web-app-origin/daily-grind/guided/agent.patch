@@ -1,0 +1,367 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..f6aa144
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://new-app.dailygrind.example.com/index.html": {
++    "allow_migration": true
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..71b225f 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,9 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -152,11 +154,111 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Origin Migration Banner & Config Sync */
++    .migration-banner {
++      background: #fff8e1;
++      border-bottom: 2px solid var(--accent);
++      color: var(--text);
++      padding: 0.75rem 5%;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      font-size: 0.9rem;
++    }
++
++    .migration-banner[hidden] {
++      display: none;
++    }
++
++    .migration-banner-actions {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      flex-shrink: 0;
++    }
++
++    .migration-banner .btn-small {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 6px 12px;
++      border-radius: 4px;
++      text-decoration: none;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    .migration-banner .btn-dismiss {
++      background: transparent;
++      color: var(--text);
++      border: 1px solid var(--primary);
++      padding: 5px 10px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    .config-panel {
++      background: white;
++      border-left: 4px solid var(--accent);
++      padding: 16px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      margin-bottom: 30px;
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: center;
++      gap: 16px;
++    }
++
++    .config-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .config-controls label {
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .config-controls select {
++      padding: 6px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .sync-badge {
++      font-size: 0.8rem;
++      background: #efebe9;
++      color: var(--primary);
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-weight: 600;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <!-- Manual reinstallation fallback banner for browsers without automatic Web App Origin Migration -->
++  <div id="migration-fallback-banner" class="migration-banner" role="region" aria-label="App Origin Migration Notice">
++    <div>
++      <strong>App Origin Updated:</strong> The Daily Grind has moved to <code>https://new-app.dailygrind.example.com</code>.
++      In supported browsers, your OS shortcuts transfer automatically. If your browser does not support automatic origin migration, reinstall from the new address and sync your preferences below.
++    </div>
++    <div class="migration-banner-actions">
++      <a id="migrate-new-origin-link" href="https://new-app.dailygrind.example.com/index.html" class="btn-small">Open New Origin</a>
++      <button type="button" id="dismiss-migration-banner" class="btn-dismiss" aria-label="Dismiss migration notice">Dismiss</button>
++    </div>
++  </div>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -175,6 +277,31 @@
+   </header>
+ 
+   <main class="container">
++    <section class="config-panel" aria-label="User Configuration & Origin Sync">
++      <div>
++        <strong>Your Coffee Preferences</strong>
++        <p style="font-size: 0.85rem; opacity: 0.85;">Preserved across same-site origins (<code>.dailygrind.example.com</code>) during Web App Origin Migration.</p>
++      </div>
++      <div class="config-controls">
++        <label for="pref-milk">Milk:</label>
++        <select id="pref-milk" name="milk">
++          <option value="oat">Oat Milk</option>
++          <option value="whole">Whole Milk</option>
++          <option value="almond">Almond Milk</option>
++          <option value="black">None (Black)</option>
++        </select>
++
++        <label for="pref-roast">Default Roast:</label>
++        <select id="pref-roast" name="roast">
++          <option value="medium">Medium Roast</option>
++          <option value="dark">Dark Roast</option>
++          <option value="blonde">Blonde Roast</option>
++        </select>
++
++        <span id="config-sync-status" class="sync-badge" aria-live="polite">Config Synced</span>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +334,139 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const STORAGE_KEY = 'daily_grind_user_config';
++      const COOKIE_NAME = 'dg_shared_config';
++      const SAME_SITE_DOMAIN = '.dailygrind.example.com';
++      const NEW_ORIGIN = 'https://new-app.dailygrind.example.com';
++      const OLD_ORIGIN = 'https://old-app.dailygrind.example.com';
++
++      const milkSelect = document.getElementById('pref-milk');
++      const roastSelect = document.getElementById('pref-roast');
++      const syncStatus = document.getElementById('config-sync-status');
++      const banner = document.getElementById('migration-fallback-banner');
++      const migrateLink = document.getElementById('migrate-new-origin-link');
++      const dismissBtn = document.getElementById('dismiss-migration-banner');
++
++      function readSharedCookie() {
++        const match = document.cookie
++          .split('; ')
++          .find((row) => row.startsWith(COOKIE_NAME + '='));
++        if (!match) return null;
++        try {
++          return JSON.parse(decodeURIComponent(match.split('=')[1]));
++        } catch {
++          return null;
++        }
++      }
++
++      function writeSharedCookie(config) {
++        const encoded = encodeURIComponent(JSON.stringify(config));
++        const maxAge = 60 * 60 * 24 * 365;
++        // Share across same-site registrable domain (.dailygrind.example.com) and current host fallback
++        document.cookie = `${COOKIE_NAME}=${encoded}; path=/; max-age=${maxAge}; SameSite=Lax`;
++        if (location.hostname.endsWith('dailygrind.example.com')) {
++          document.cookie = `${COOKIE_NAME}=${encoded}; domain=${SAME_SITE_DOMAIN}; path=/; max-age=${maxAge}; SameSite=Lax; Secure`;
++        }
++      }
++
++      function loadUserConfig() {
++        // 1. Check URL migration payload (?migrated_config=...)
++        const params = new URLSearchParams(location.search);
++        const urlPayload = params.get('migrated_config');
++        if (urlPayload) {
++          try {
++            const parsed = JSON.parse(atob(urlPayload));
++            saveUserConfig(parsed, 'Migrated from Predecessor Origin');
++            const cleanUrl = new URL(location.href);
++            cleanUrl.searchParams.delete('migrated_config');
++            history.replaceState(null, '', cleanUrl.toString());
++            return parsed;
++          } catch {
++            // Fall through to storage/cookie
++          }
++        }
++
++        // 2. Check origin LocalStorage
++        try {
++          const localRaw = localStorage.getItem(STORAGE_KEY);
++          if (localRaw) {
++            return JSON.parse(localRaw);
++          }
++        } catch {
++          // Ignore storage access errors
++        }
++
++        // 3. Check same-site shared cookie transferred during origin migration
++        const cookieConfig = readSharedCookie();
++        if (cookieConfig) {
++          try {
++            localStorage.setItem(STORAGE_KEY, JSON.stringify(cookieConfig));
++          } catch {}
++          if (syncStatus) syncStatus.textContent = 'Restored from Same-Site Origin';
++          return cookieConfig;
++        }
++
++        return { milk: 'oat', roast: 'medium' };
++      }
++
++      function updateMigrationLink(config) {
++        if (!migrateLink) return;
++        try {
++          const targetUrl = new URL('/index.html', NEW_ORIGIN);
++          targetUrl.searchParams.set('migrated_config', btoa(JSON.stringify(config)));
++          migrateLink.href = targetUrl.toString();
++        } catch {}
++      }
++
++      function saveUserConfig(config, label) {
++        try {
++          localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
++        } catch {}
++        writeSharedCookie(config);
++        updateMigrationLink(config);
++        if (syncStatus) {
++          syncStatus.textContent = label || 'Saved & Synced Across Origins';
++        }
++      }
++
++      // Cross-origin message listener for postMessage state transfer between old and new same-site origins
++      window.addEventListener('message', (event) => {
++        if (event.origin !== OLD_ORIGIN && event.origin !== NEW_ORIGIN && event.origin !== location.origin) {
++          return;
++        }
++        if (event.data && event.data.type === 'DAILY_GRIND_MIGRATE_CONFIG' && event.data.config) {
++          const incoming = event.data.config;
++          if (milkSelect && incoming.milk) milkSelect.value = incoming.milk;
++          if (roastSelect && incoming.roast) roastSelect.value = incoming.roast;
++          saveUserConfig(incoming, 'Synced via Cross-Origin Handover');
++        }
++      });
++
++      const currentConfig = loadUserConfig();
++      if (milkSelect && currentConfig.milk) milkSelect.value = currentConfig.milk;
++      if (roastSelect && currentConfig.roast) roastSelect.value = currentConfig.roast;
++      updateMigrationLink(currentConfig);
++
++      function handlePreferenceChange() {
++        saveUserConfig({
++          milk: milkSelect ? milkSelect.value : 'oat',
++          roast: roastSelect ? roastSelect.value : 'medium'
++        });
++      }
++
++      if (milkSelect) milkSelect.addEventListener('change', handlePreferenceChange);
++      if (roastSelect) roastSelect.addEventListener('change', handlePreferenceChange);
++
++      if (dismissBtn && banner) {
++        dismissBtn.addEventListener('click', () => {
++          banner.hidden = true;
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..61e12d4
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,33 @@
++{
++  "name": "The Daily Grind | Artisanal Coffee",
++  "short_name": "Daily Grind",
++  "id": "/index.html",
++  "start_url": "/index.html",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%234e342e'/%3E%3Ctext x='96' y='125' font-size='96' text-anchor='middle' fill='%23ffab40'%3E%E2%98%95%3C/text%3E%3C/svg%3E",
++      "sizes": "192x192",
++      "type": "image/svg+xml",
++      "purpose": "any"
++    },
++    {
++      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%234e342e'/%3E%3Ctext x='256' y='330' font-size='256' text-anchor='middle' fill='%23ffab40'%3E%E2%98%95%3C/text%3E%3C/svg%3E",
++      "sizes": "512x512",
++      "type": "image/svg+xml",
++      "purpose": "any"
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://old-app.dailygrind.example.com/",
++      "behavior": "force"
++    }
++  ],
++  "migrate_to": {
++    "id": "https://new-app.dailygrind.example.com/index.html",
++    "install_url": "https://new-app.dailygrind.example.com/index.html"
++  }
++}
+diff --git a/old-origin-manifest.json b/old-origin-manifest.json
+new file mode 100644
+index 0000000..ba19812
+--- /dev/null
++++ b/old-origin-manifest.json
+@@ -0,0 +1,13 @@
++{
++  "name": "The Daily Grind | Artisanal Coffee (Legacy Origin)",
++  "short_name": "Daily Grind",
++  "id": "https://old-app.dailygrind.example.com/",
++  "start_url": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "migrate_to": {
++    "id": "https://new-app.dailygrind.example.com/index.html",
++    "install_url": "https://new-app.dailygrind.example.com/index.html"
++  }
++}

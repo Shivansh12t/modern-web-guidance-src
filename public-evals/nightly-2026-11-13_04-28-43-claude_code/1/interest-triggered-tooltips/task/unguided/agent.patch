@@ -1,0 +1,219 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,100 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Tooltips for card action buttons */
++    .tip-wrap {
++      position: relative;
++      display: inline-block;
++    }
++
++    .tip-wrap .btn {
++      anchor-name: var(--anchor);
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .tooltip {
++      /* Fallback positioning: centred above the button */
++      position: absolute;
++      bottom: calc(100% + 10px);
++      left: 50%;
++      transform: translateX(-50%);
++      z-index: 20;
++      width: max-content;
++      max-width: 260px;
++      padding: 12px 14px;
++      background: var(--primary);
++      color: white;
++      border-radius: 6px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
++      font-size: 0.85rem;
++      line-height: 1.45;
++      text-align: left;
++      pointer-events: auto;
++      opacity: 0;
++      visibility: hidden;
++      /* Short hide delay lets the pointer cross the gap onto the tooltip */
++      transition: opacity 0.15s ease, visibility 0s linear 0.15s;
++    }
++
++    .tooltip.tip-below {
++      bottom: auto;
++      top: calc(100% + 10px);
++    }
++
++    .tooltip dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 2px 10px;
++    }
++
++    .tooltip dt {
++      color: var(--accent);
++      font-weight: 600;
++    }
++
++    .tip-wrap:hover .tooltip,
++    .tip-wrap:focus-within .tooltip {
++      opacity: 1;
++      visibility: visible;
++      transition-delay: 0s;
++    }
++
++    .tip-wrap.tip-dismissed .tooltip {
++      opacity: 0;
++      visibility: hidden;
++      transition: none;
++    }
++
++    /* Modern browsers: CSS anchor positioning with viewport-aware flipping */
++    @supports (anchor-name: --a) and (position-try-fallbacks: flip-block) {
++      .tip-wrap {
++        position: static;
++      }
++
++      .tooltip,
++      .tooltip.tip-below {
++        position: fixed;
++        position-anchor: var(--anchor);
++        inset: auto;
++        transform: none;
++        margin: 10px;
++        position-area: top;
++        position-try-fallbacks: flip-block, top span-right, top span-left, bottom span-right, bottom span-left;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .tooltip {
++        transition: none;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,19 +272,54 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="tip-wrap" style="--anchor: --tip-maple;">
++            <a href="/menu/seasonal" class="btn" aria-describedby="tip-maple">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-maple">
++              <dl>
++                <dt>Sizes</dt><dd>12 oz · 16 oz · 20 oz</dd>
++                <dt>Price</dt><dd>From $5.25</dd>
++                <dt>Caffeine</dt><dd>~150 mg (16 oz)</dd>
++                <dt>Calories</dt><dd>190 (16 oz)</dd>
++                <dt>Diet</dt><dd>Dairy-free, vegan</dd>
++                <dt>Allergens</dt><dd>Oats (may contain gluten)</dd>
++              </dl>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="tip-wrap" style="--anchor: --tip-espresso;">
++            <a href="/menu/espresso" class="btn" aria-describedby="tip-espresso">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-espresso">
++              <dl>
++                <dt>Sizes</dt><dd>Single · Double</dd>
++                <dt>Price</dt><dd>From $3.00</dd>
++                <dt>Caffeine</dt><dd>~75 mg per shot</dd>
++                <dt>Origin</dt><dd>Sumatra &amp; Brazil blend</dd>
++                <dt>Notes</dt><dd>Dark chocolate, cedar, smoke</dd>
++              </dl>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="tip-wrap" style="--anchor: --tip-coldbrew;">
++            <a href="/menu/cold-brew" class="btn" aria-describedby="tip-coldbrew">View Details</a>
++            <div class="tooltip" role="tooltip" id="tip-coldbrew">
++              <dl>
++                <dt>Sizes</dt><dd>16 oz · 24 oz</dd>
++                <dt>Price</dt><dd>From $4.50</dd>
++                <dt>Caffeine</dt><dd>~200 mg (16 oz)</dd>
++                <dt>Calories</dt><dd>5 (black)</dd>
++                <dt>Notes</dt><dd>Low acidity, cocoa finish</dd>
++                <dt>Add-ons</dt><dd>Sweet cream, vanilla, oat milk</dd>
++              </dl>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +333,56 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var wraps = document.querySelectorAll('.tip-wrap');
++      var hasAnchor = window.CSS && CSS.supports &&
++        CSS.supports('anchor-name: --a') && CSS.supports('position-try-fallbacks: flip-block');
++
++      function place(wrap) {
++        if (hasAnchor) return;
++        var tip = wrap.querySelector('.tooltip');
++        var btn = wrap.querySelector('.btn');
++        if (!tip || !btn) return;
++        // Reset, then measure and adjust so the tooltip stays on screen.
++        tip.classList.remove('tip-below');
++        tip.style.left = '';
++        tip.style.marginLeft = '';
++        var b = btn.getBoundingClientRect();
++        var t = tip.getBoundingClientRect();
++        var navEl = document.querySelector('nav');
++        var topLimit = navEl ? navEl.getBoundingClientRect().bottom : 0;
++        if (b.top - t.height - 10 < topLimit) tip.classList.add('tip-below');
++        var vw = document.documentElement.clientWidth;
++        var pad = 8, shift = 0;
++        if (t.left < pad) shift = pad - t.left;
++        else if (t.right > vw - pad) shift = vw - pad - t.right;
++        if (shift) tip.style.marginLeft = shift + 'px';
++      }
++
++      function dismissAll() {
++        for (var i = 0; i < wraps.length; i++) wraps[i].classList.add('tip-dismissed');
++      }
++
++      for (var i = 0; i < wraps.length; i++) {
++        (function (wrap) {
++          function show() {
++            wrap.classList.remove('tip-dismissed');
++            place(wrap);
++          }
++          wrap.addEventListener('mouseenter', show);
++          wrap.addEventListener('focusin', show);
++        })(wraps[i]);
++      }
++
++      // WCAG 1.4.13: allow dismissing tooltips without moving pointer or focus.
++      document.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape' || e.key === 'Esc') dismissAll();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

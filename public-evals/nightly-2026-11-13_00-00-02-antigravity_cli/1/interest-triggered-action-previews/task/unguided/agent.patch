@@ -1,0 +1,119 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,38 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    [interestfor] {
++      interest-delay-start: 0s;
++      interest-delay-end: 0s;
++      interest-delay: 0s;
++    }
++
++    .btn:interest-source {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #seasonal-preview {
++       --preview-accent: var(--secondary);
++      margin-top: 24px;
++      padding: 18px 24px;
++      background: white;
++      border: 2px solid var(--preview-accent);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++      text-align: center;
++      font-weight: 600;
++      color: var(--text);
++      transition: border-color 0.2s, background-color 0.2s, color 0.2s;
++    }
++
++    #seasonal-preview:interest-target {
++      border-color: var(--accent);
++      background-color: #fff8e1;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,24 +210,73 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="seasonal-preview" data-drink="Maple Oat Latte" data-description="Creamy oat milk with a hint of Vermont maple syrup." data-accent="#d97706">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="seasonal-preview" data-drink="Dark Roast Espresso" data-description="Bold, smokey, and perfect for a morning boost." data-accent="#4e342e">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="seasonal-preview" data-drink="Cold Brew" data-description="Steeped for 18 hours for maximum smoothness." data-accent="#0284c7">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <div id="seasonal-preview" aria-live="polite">Select a drink to preview</div>
+   </main>
+ 
++  <script>
++    const previewBox = document.getElementById('seasonal-preview');
++    const defaultPreviewText = 'Select a drink to preview';
++    let activeInvoker = null;
++
++    function resolveInvoker(event) {
++      if (event && event.source) return event.source;
++      try {
++        const matched = document.querySelector('[interestfor="seasonal-preview"]:interest-source');
++        if (matched) return matched;
++      } catch {}
++      if (document.activeElement && document.activeElement.getAttribute('interestfor') === 'seasonal-preview') {
++        return document.activeElement;
++      }
++      return null;
++    }
++
++    previewBox.addEventListener('interest', (event) => {
++      const source = resolveInvoker(event);
++      activeInvoker = source;
++      const card = source?.closest('.card');
++      const drink = source?.dataset.drink || card?.querySelector('h3')?.textContent?.trim() || '';
++      const description = source?.dataset.description || card?.querySelector('p')?.textContent?.trim() || '';
++      const accent = source?.dataset.accent || '#ffab40';
++
++      previewBox.textContent = description ? `${drink} — ${description}` : (drink || defaultPreviewText);
++      previewBox.dataset.drink = drink;
++      previewBox.dataset.accent = accent;
++      previewBox.style.setProperty('--preview-accent', accent);
++      previewBox.style.borderColor = accent;
++      previewBox.style.color = accent;
++    });
++
++    previewBox.addEventListener('loseinterest', (event) => {
++      if (event.source && activeInvoker && event.source !== activeInvoker) {
++        return;
++      }
++      activeInvoker = null;
++      previewBox.textContent = defaultPreviewText;
++      delete previewBox.dataset.drink;
++      delete previewBox.dataset.accent;
++      previewBox.style.removeProperty('--preview-accent');
++      previewBox.style.borderColor = '';
++      previewBox.style.color = '';
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

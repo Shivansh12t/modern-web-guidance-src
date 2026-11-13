@@ -1,0 +1,293 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,101 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Options dropdown */
++    .options-trigger {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.35);
++      border-radius: 4px;
++      padding: 5px 12px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s, border-color 0.3s;
++    }
++
++    .options-trigger:hover,
++    .options-trigger[aria-expanded="true"] {
++      color: var(--accent);
++      border-color: var(--accent);
++    }
++
++    .options-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .options-trigger .caret {
++      font-size: 0.7rem;
++      transition: transform 0.2s;
++    }
++
++    .options-trigger[aria-expanded="true"] .caret {
++      transform: rotate(180deg);
++    }
++
++    /*
++     * The panel is rendered in the browser's top layer via the Popover API
++     * (and lives as a direct child of <body>), so no ancestor's overflow,
++     * transform or z-index can clip or cover it. Coordinates are computed
++     * in JS against the viewport (position: fixed).
++     */
++    .action-panel {
++      position: fixed;
++      inset: auto;
++      top: 0;
++      left: 0;
++      margin: 0;
++      z-index: 2147483647; /* fallback when the Popover API is unavailable */
++      min-width: 200px;
++      max-width: calc(100vw - 16px);
++      max-height: calc(100vh - 16px);
++      overflow-y: auto;
++      padding: 6px;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
++    }
++
++    .action-panel:not(:popover-open):not(.is-open) {
++      display: none;
++    }
++
++    .action-panel button {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      width: 100%;
++      padding: 10px 12px;
++      background: none;
++      border: none;
++      border-radius: 5px;
++      color: var(--text);
++      font: inherit;
++      font-size: 0.9rem;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    .action-panel button:hover,
++    .action-panel button:focus-visible {
++      background: var(--secondary);
++      color: var(--primary);
++      outline: none;
++    }
++
++    .action-panel .icon {
++      width: 1.2em;
++      text-align: center;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -163,8 +256,14 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li>
++        <button type="button" id="trigger-btn" class="options-trigger" aria-haspopup="menu"
++          aria-expanded="false" aria-controls="action-panel">
++          Options <span class="caret" aria-hidden="true">&#9662;</span>
++        </button>
++      </li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -206,7 +305,172 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Options panel: kept at the end of <body> and promoted to the top layer -->
++  <div id="action-panel" class="action-panel" popover="auto" role="menu" aria-labelledby="trigger-btn">
++    <button type="button" role="menuitem" data-href="/menu/seasonal"><span class="icon" aria-hidden="true">&#127810;</span>Seasonal Offers</button>
++    <button type="button" role="menuitem" data-href="/account/settings"><span class="icon" aria-hidden="true">&#9881;</span>Account Settings</button>
++    <button type="button" role="menuitem" data-href="/support"><span class="icon" aria-hidden="true">&#128172;</span>Support</button>
++  </div>
++
++  <script>
++    (function () {
++      const trigger = document.getElementById('trigger-btn');
++      const panel = document.getElementById('action-panel');
++      const GAP = 6;      // space between trigger and panel
++      const MARGIN = 8;   // minimum distance from viewport edges
++      const supportsPopover = typeof panel.showPopover === 'function';
++
++      if (!supportsPopover) panel.removeAttribute('popover');
++
++      const isOpen = () =>
++        supportsPopover ? panel.matches(':popover-open') : panel.classList.contains('is-open');
++
++      const items = () => Array.from(panel.querySelectorAll('[role="menuitem"]'));
++
++      function position() {
++        const t = trigger.getBoundingClientRect();
++        const vw = document.documentElement.clientWidth;
++        const vh = document.documentElement.clientHeight;
++        const w = panel.offsetWidth;
++        const h = panel.offsetHeight;
++
++        // Default: directly below the trigger, left edges aligned.
++        let top = t.bottom + GAP;
++        let left = t.left;
++        let placement = 'bottom-start';
++
++        // Vertical flip: if it overflows the bottom, open above when that fits
++        // (or at least has more room than below).
++        const spaceBelow = vh - t.bottom - GAP - MARGIN;
++        const spaceAbove = t.top - GAP - MARGIN;
++        if (h > spaceBelow && (h <= spaceAbove || spaceAbove > spaceBelow)) {
++          top = t.top - GAP - h;
++          placement = 'top-start';
++        }
++
++        // Horizontal flip: if it overflows the right edge, align right edges.
++        if (left + w > vw - MARGIN) {
++          const flipped = t.right - w;
++          if (flipped >= MARGIN || flipped > left) {
++            left = flipped;
++            placement = placement.replace('start', 'end');
++          }
++        }
++
++        // Final clamp so the panel is never cut off, whatever the geometry.
++        left = Math.min(Math.max(left, MARGIN), Math.max(MARGIN, vw - w - MARGIN));
++        top = Math.min(Math.max(top, MARGIN), Math.max(MARGIN, vh - h - MARGIN));
++
++        panel.style.left = Math.round(left) + 'px';
++        panel.style.top = Math.round(top) + 'px';
++        panel.dataset.placement = placement;
++      }
++
++      let frame = 0;
++      function schedulePosition() {
++        if (frame || !isOpen()) return;
++        frame = requestAnimationFrame(() => {
++          frame = 0;
++          if (isOpen()) position();
++        });
++      }
++
++      function open(focusFirst) {
++        if (isOpen()) return;
++        if (supportsPopover) panel.showPopover();
++        else panel.classList.add('is-open');
++        position(); // synchronous: measured and placed before the next paint
++        onOpened();
++        if (focusFirst) items()[0]?.focus();
++      }
++
++      function close(returnFocus) {
++        if (!isOpen()) return;
++        if (supportsPopover) panel.hidePopover();
++        else {
++          panel.classList.remove('is-open');
++          onClosed();
++        }
++        if (returnFocus) trigger.focus();
++      }
++
++      function onOpened() {
++        trigger.setAttribute('aria-expanded', 'true');
++        window.addEventListener('resize', schedulePosition);
++        window.addEventListener('scroll', schedulePosition, true);
++      }
++
++      function onClosed() {
++        trigger.setAttribute('aria-expanded', 'false');
++        window.removeEventListener('resize', schedulePosition);
++        window.removeEventListener('scroll', schedulePosition, true);
++      }
++
++      // Keep state in sync with light-dismiss / Escape handled by the browser.
++      if (supportsPopover) {
++        panel.addEventListener('toggle', (e) => {
++          if (e.newState === 'closed') onClosed();
++        });
++      }
++
++      // Re-anchor if the panel's or trigger's size changes while open.
++      if ('ResizeObserver' in window) {
++        const ro = new ResizeObserver(schedulePosition);
++        ro.observe(panel);
++        ro.observe(trigger);
++      }
++
++      // popover="auto" light-dismisses on pointerdown outside the panel, which
++      // happens before the trigger's click. Remember the pre-dismiss state so
++      // clicking the trigger while open closes it instead of reopening it.
++      let wasOpenAtPointerDown = null;
++      trigger.addEventListener('pointerdown', () => { wasOpenAtPointerDown = isOpen(); });
++      trigger.addEventListener('click', () => {
++        const wasOpen = wasOpenAtPointerDown ?? isOpen();
++        wasOpenAtPointerDown = null;
++        if (wasOpen) close(false);
++        else open(false);
++      });
++
++      trigger.addEventListener('keydown', (e) => {
++        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
++          e.preventDefault();
++          open(false);
++          const list = items();
++          (e.key === 'ArrowDown' ? list[0] : list[list.length - 1])?.focus();
++        }
++      });
++
++      panel.addEventListener('keydown', (e) => {
++        const list = items();
++        const i = list.indexOf(document.activeElement);
++        switch (e.key) {
++          case 'ArrowDown': e.preventDefault(); list[(i + 1) % list.length].focus(); break;
++          case 'ArrowUp': e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); break;
++          case 'Home': e.preventDefault(); list[0].focus(); break;
++          case 'End': e.preventDefault(); list[list.length - 1].focus(); break;
++          case 'Escape': e.preventDefault(); close(true); break;
++          case 'Tab': close(false); break;
++        }
++      });
++
++      panel.addEventListener('click', (e) => {
++        const item = e.target.closest('[role="menuitem"]');
++        if (!item) return;
++        close(true);
++        if (item.dataset.href) window.location.href = item.dataset.href;
++      });
++
++      // Fallback light-dismiss when the Popover API is unavailable.
++      if (!supportsPopover) {
++        document.addEventListener('pointerdown', (e) => {
++          if (isOpen() && !panel.contains(e.target) && !trigger.contains(e.target)) close(false);
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

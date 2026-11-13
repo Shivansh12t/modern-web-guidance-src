@@ -1,0 +1,117 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,112 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <!-- Core Web Vitals monitoring -->
++  <script type="module">
++    import { onCLS, onINP, onLCP, onFCP, onTTFB } from 'https://unpkg.com/web-vitals@5?module';
++
++    // Minimal fetchLater() polyfill for browsers without native support
++    // (Firefox, Safari). Delivers on `visibilitychange` -> hidden, which is
++    // bfcache-safe (unlike `unload`/`beforeunload`).
++    globalThis.fetchLater ??= function fetchLater(url, init = {}) {
++      let timeoutHandle;
++      let activated = false;
++
++      function sendNow() {
++        if (!(init.signal && init.signal.aborted)) {
++          if (
++            'keepalive' in Request.prototype ||
++            init.method !== 'POST' ||
++            init.headers
++          ) {
++            fetch(url, Object.assign({}, init, { keepalive: true }));
++            activated = true;
++          } else {
++            activated = navigator.sendBeacon(url, init.body);
++          }
++        }
++        destroy();
++      }
++
++      function destroy() {
++        document.removeEventListener('visibilitychange', sendNow);
++        clearTimeout(timeoutHandle);
++      }
++
++      if (document.visibilityState === 'hidden') {
++        queueMicrotask(sendNow);
++      } else {
++        document.addEventListener('visibilitychange', sendNow);
++        if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
++          timeoutHandle = setTimeout(sendNow, init.activateAfter);
++        }
++      }
++
++      if (init.signal) {
++        init.signal.addEventListener('abort', destroy);
++      }
++
++      return {
++        get activated() {
++          return activated;
++        },
++      };
++    };
++
++    const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
++
++    // Latest value of each metric, keyed by metric name. The whole snapshot is
++    // sent in a single beacon when the user leaves the page.
++    const metrics = new Map();
++    let fetchLaterController = null;
++
++    function queueBeacon() {
++      // Replace any pending beacon with one containing the latest snapshot.
++      fetchLaterController?.abort();
++      fetchLaterController = new AbortController();
++
++      const body = JSON.stringify({
++        page: location.href,
++        metrics: [...metrics.values()],
++      });
++
++      try {
++        fetchLater(ANALYTICS_ENDPOINT, {
++          method: 'POST',
++          headers: { 'content-type': 'application/json' },
++          body,
++          signal: fetchLaterController.signal,
++        });
++      } catch (error) {
++        // Quota exceeded or unsupported; drop silently.
++      }
++    }
++
++    function handleMetric({ name, value, rating, delta, id, navigationType }) {
++      metrics.set(name, { name, value, rating, delta, id, navigationType });
++      queueBeacon();
++    }
++
++    // On bfcache restore, the previous beacon has already been sent; start a
++    // fresh snapshot so already-reported metrics aren't sent twice.
++    addEventListener('pageshow', (event) => {
++      if (event.persisted) {
++        metrics.clear();
++        fetchLaterController = null;
++      }
++    });
++
++    // reportAllChanges keeps the queued payload current as values evolve
++    // (CLS, INP, LCP); the browser sends only the final snapshot on page exit.
++    const opts = { reportAllChanges: true };
++    onCLS(handleMetric, opts);
++    onINP(handleMetric, opts);
++    onLCP(handleMetric, opts);
++    onFCP(handleMetric, opts);
++    onTTFB(handleMetric, opts);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

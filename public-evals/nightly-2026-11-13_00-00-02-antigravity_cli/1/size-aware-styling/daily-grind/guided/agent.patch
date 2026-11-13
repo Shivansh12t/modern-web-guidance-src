@@ -1,0 +1,179 @@
+diff --git a/index.html b/index.html
+index 66c9173..deef46c 100644
+--- a/index.html
++++ b/index.html
+@@ -103,21 +103,119 @@
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-auto-rows: auto;
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
++      container: card / inline-size;
++      display: grid;
++      grid-template-columns: 1fr;
++      grid-template-rows: auto auto 1fr auto;
++      gap: clamp(0.75rem, 3cqi, 1.25rem);
+       background: white;
+-      padding: 20px;
++      padding: clamp(1rem, 4cqi, 1.5rem);
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      align-items: safe center;
++      justify-items: center;
++      overflow: clip;
++    }
++
++    .card:not(:has(> img)) {
++      grid-template-rows: auto 1fr auto;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
++    .card > img {
++      display: block;
++      inline-size: 100%;
++      aspect-ratio: 16 / 10;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .card > h3 {
++      margin-bottom: 0;
+       color: var(--primary);
++      font-size: clamp(1.15rem, 4.5cqi, 1.5rem);
++    }
++
++    .card > h3 a {
++      color: inherit;
++      text-decoration: none;
++    }
++
++    .card > h3 a:hover {
++      text-decoration: underline;
++    }
++
++    .card > p {
++      font-size: clamp(0.9rem, 3.2cqi, 1.05rem);
++      align-self: start;
++    }
++
++    .card > footer {
++      background: transparent;
++      padding: 0;
++      margin-top: 0;
++      align-self: end;
++    }
++
++    .card > footer .btn {
++      margin-top: 0;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      inline-size: 1px;
++      block-size: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: clip;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Side-by-side layout when the card container itself has enough width */
++    @container card (min-width: 320px) {
++      .card:has(> img) > img,
++      .card:has(> img) > h3,
++      .card:has(> img) > p,
++      .card:has(> img) > footer {
++        text-align: start;
++        justify-self: start;
++      }
++
++      .card:has(> img) > img {
++        grid-column: 1;
++        grid-row: 1 / 4;
++        inline-size: clamp(110px, 36cqi, 180px);
++        block-size: 100%;
++        aspect-ratio: 1 / 1;
++        align-self: stretch;
++        margin-inline-end: clamp(0.25rem, 1.5cqi, 0.75rem);
++      }
++
++      .card:has(> img) > h3 {
++        grid-column: 2;
++        grid-row: 1;
++        align-self: end;
++      }
++
++      .card:has(> img) > p {
++        grid-column: 2;
++        grid-row: 2;
++        align-self: center;
++      }
++
++      .card:has(> img) > footer {
++        grid-column: 2;
++        grid-row: 3;
++        align-self: start;
++      }
+     }
+ 
+     .btn {
+@@ -135,7 +233,7 @@
+       background: #3e2723;
+     }
+ 
+-    footer {
++    body > footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -178,21 +276,30 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Warm Maple Oat Latte topped with steamed oat milk foam">
++          <h3><a href="/menu/seasonal">Maple Oat Latte</a></h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Rich Dark Roast Espresso shot in a ceramic demitasse cup">
++          <h3><a href="/menu/espresso">Dark Roast Espresso</a></h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Chilled Cold Brew coffee poured over ice in a tall glass">
++          <h3><a href="/menu/cold-brew">Cold Brew</a></h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>

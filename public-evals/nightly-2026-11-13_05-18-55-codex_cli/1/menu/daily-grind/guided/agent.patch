@@ -1,0 +1,501 @@
+diff --git a/index.html b/index.html
+index 66c9173..4b12b82 100644
+--- a/index.html
++++ b/index.html
+@@ -46,12 +46,12 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    nav > ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    nav > ul > li {
+       margin-left: 20px;
+     }
+ 
+@@ -152,18 +152,111 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    button { font: inherit; cursor: pointer; }
++    button.btn { border: 0; font-size: .9rem; }
++    .nav-trigger {
++      border: 0;
++      background: transparent;
++      color: white;
++      padding: 5px 8px;
++      font-size: .9rem;
++      border-radius: 4px;
++    }
++    .nav-trigger:hover, .nav-trigger[aria-expanded="true"] { color: var(--accent); background: #ffffff12; }
++    .btn[aria-expanded="true"] { background: #795548; }
++    :is(button, a):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .popup-menu {
++      position: fixed;
++      width: 248px;
++      max-width: calc(100vw - 24px);
++      max-height: calc(100dvh - 24px);
++      overflow: auto;
++      padding: 7px;
++      border: 1px solid var(--secondary);
++      border-radius: 9px;
++      color: var(--text);
++      background: #fffdfa;
++      box-shadow: 0 10px 35px #3e272329;
++      text-align: left;
++      z-index: 1100;
++    }
++    .popup-menu:not(.is-open) { display: none; }
++    .popup-menu.is-open { display: block; }
++    .menu-group > :is(button, a), .menu-group > [role="group"] > button {
++      width: 100%;
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      min-height: 42px;
++      padding: 8px 10px;
++      border: 0;
++      border-radius: 5px;
++      background: transparent;
++      color: var(--text);
++      font: inherit;
++      font-size: .9rem;
++      text-decoration: none;
++      text-align: left;
++    }
++    .menu-group :is(button, a):hover, .menu-group :is(button, a):focus-visible,
++    .menu-group button[aria-expanded="true"] { background: #efe7e1; color: var(--primary); }
++    .menu-group :is(button, a):focus-visible { outline-offset: -3px; }
++    .menu-group > :is(button, a)::before, .menu-group > [role="group"] > button::before {
++      content: ''; flex: none; width: 18px;
++    }
++    .menu-group button[aria-checked="true"]::before { content: '✓'; font-weight: bold; }
++    .menu-arrow { margin-left: auto; }
++    .menu-group > .popup-menu { overflow: visible; }
++    .menu-group { max-height: calc(100dvh - 40px); overflow: auto; }
++    .popup-menu[data-bridge]::before {
++      content: ''; position: absolute; inset: -100vh -100vw;
++      --bridge-slack: 5px;
++      --bridge-edge: clamp(100vw, 50% + var(--pointer-x) * 1e6, 100% - 100vw);
++      --bridge-apex: calc(100vw + var(--pointer-x) + clamp(-5px, var(--pointer-x) * 1e6, 5px));
++      clip-path: polygon(
++        var(--bridge-apex) calc(100vh + var(--pointer-y) - var(--bridge-slack)),
++        var(--bridge-edge) 100vh,
++        var(--bridge-edge) calc(100% - 100vh),
++        var(--bridge-apex) calc(100vh + var(--pointer-y) + var(--bridge-slack)));
++    }
++    .popup-menu hr { border: 0; border-top: 1px solid #e7dcd5; margin: 6px; }
++    .menu-label { padding: 6px 10px; font-size: .75rem; color: #795548; letter-spacing: .06em; text-transform: uppercase; }
++    .customization-summary { font-size: .8rem; color: #795548; margin-top: 12px; }
++    .order-summary { margin-top: 32px; padding: 24px; border: 1px solid var(--secondary); border-radius: 8px; background: white; }
++    #order-items { padding-left: 22px; margin-top: 12px; }
++    .menu-status { min-height: 26px; margin-top: 16px; text-align: center; font-size: .9rem; }
++    @supports (position-area: block-end) {
++      .popup-menu { inset: auto; margin: 0; position-area: block-end span-inline-end; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; }
++      .menu-group > .popup-menu { position-area: inline-end span-block-end; position-try-fallbacks: flip-inline, flip-block, --below; }
++    }
++    @position-try --below {
++      position-area: block-end span-inline-end;
++      margin-inline-start: 1rem;
++      min-inline-size: 0;
++      max-inline-size: calc(100% - 1rem);
++    }
++    @supports not (position-area: block-end) {
++      .popup-menu { inset: auto; margin: 0; left: var(--menu-left); top: var(--menu-top); }
++    }
++    @media (max-width: 650px) {
++      nav { flex-wrap: wrap; gap: 12px; padding: 14px 5%; }
++      nav > ul { flex-wrap: wrap; gap: 8px 12px; align-items: center; }
++      nav > ul > li { margin-left: 0; }
++      .hero h1 { font-size: 2.3rem; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li id="browse-menu"><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li id="account-menu"><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,26 +268,33 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-title">
++      <h2 id="seasonal-title" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-drink="maple">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink="espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-drink="cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section id="order" class="order-summary" aria-labelledby="order-title" hidden>
++      <h2 id="order-title">Your order</h2>
++      <p>Items saved for this visit. Ready to order? Continue to online ordering.</p>
++      <ul id="order-items"></ul>
++      <a class="btn" href="/order-online">Continue to ordering</a>
++    </section>
++    <p id="menu-status" class="menu-status" role="status" aria-live="polite" aria-atomic="true"></p>
+   </main>
+ 
+   <footer>
+@@ -207,6 +307,327 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++(() => {
++  const nativePopover = 'popover' in HTMLElement.prototype;
++  const nativeInvokers = nativePopover && 'commandForElement' in HTMLButtonElement.prototype;
++  const nativeFocus = 'focusGroup' in HTMLElement.prototype;
++  const anchored = CSS.supports('position-area: block-end');
++  const menus = [];
++  const enterOnOpen = new WeakSet();
++  const status = document.getElementById('menu-status');
++  let sequence = 0;
++  let closeTimer;
++  let restoring = false;
++
++  const link = (label, href) => ({ label, href });
++  const branch = (label, children) => ({ label, children });
++  const drinks = {
++    maple: { name: 'Maple Oat Latte', milk: 'Oat milk', path: '/menu/seasonal' },
++    espresso: { name: 'Dark Roast Espresso', milk: 'No milk', path: '/menu/espresso' },
++    'cold-brew': { name: 'Cold Brew', milk: 'No milk', path: '/menu/cold-brew' }
++  };
++  const preferences = Object.fromEntries(Object.entries(drinks).map(([id, drink]) =>
++    [id, { size: 'Regular', milk: drink.milk, shot: false }]));
++  const isOpen = menu => menu.classList.contains('is-open');
++  const items = group => [...group.querySelectorAll('button, a[href]')]
++    .filter(item => item.closest('[focusgroup]') === group && !item.disabled);
++  const firstItem = menu => items(menu.firstElementChild)[0];
++  const rootMenu = menu => {
++    let parent;
++    while ((parent = menu.parentElement.closest('.popup-menu'))) menu = parent;
++    return menu;
++  };
++  const announce = message => { status.textContent = message; };
++
++  function position(menu) {
++    if (anchored || !isOpen(menu)) return;
++    const rect = menu.trigger.getBoundingClientRect();
++    const width = menu.offsetWidth;
++    const height = menu.offsetHeight;
++    const nested = menu.parentElement.matches('[focusgroup]');
++    let left = nested ? rect.right : rect.left;
++    let top = nested ? rect.top : rect.bottom;
++    if (left + width > innerWidth - 12) left = nested ? rect.left - width : rect.right - width;
++    if (nested && left < 12) { left = rect.left + 16; top = rect.bottom; }
++    if (top + height > innerHeight - 12 && rect.top >= height + 12) top = rect.top - height;
++    menu.style.setProperty('--menu-left', `${Math.max(12, Math.min(left, innerWidth - width - 12))}px`);
++    menu.style.setProperty('--menu-top', `${Math.max(12, Math.min(top, innerHeight - height - 12))}px`);
++  }
++
++  function close(menu, restore = false) {
++    clearTimeout(closeTimer);
++    if (!isOpen(menu)) return;
++    if (restore) {
++      restoring = true;
++      menu.trigger.focus({ preventScroll: true });
++      restoring = false;
++    }
++    menu.querySelectorAll('.popup-menu').forEach(child => close(child));
++    if (nativePopover) menu.hidePopover();
++    menu.classList.remove('is-open');
++    menu.trigger.setAttribute('aria-expanded', 'false');
++  }
++
++  function open(menu, enter = false) {
++    clearTimeout(closeTimer);
++    menus.filter(other => other !== menu && !other.contains(menu) && !menu.contains(other))
++      .forEach(other => close(other));
++    if (isOpen(menu)) {
++      if (enter) firstItem(menu)?.focus();
++      return;
++    }
++    if (enter) enterOnOpen.add(menu);
++    if (nativePopover) menu.showPopover({ source: menu.trigger });
++    else {
++      menu.classList.add('is-open');
++      menu.trigger.setAttribute('aria-expanded', 'true');
++      position(menu);
++      if (enter) { enterOnOpen.delete(menu); firstItem(menu)?.focus(); }
++    }
++  }
++
++  function startBridge(menu, event) {
++    if (!isOpen(menu)) return;
++    const rect = menu.getBoundingClientRect();
++    const left = event.clientX < rect.left;
++    if (!left && event.clientX <= rect.right) return;
++    menu.style.setProperty('--pointer-x', `${event.clientX - rect.left}px`);
++    menu.style.setProperty('--pointer-y', `${event.clientY - rect.top}px`);
++    menu.dataset.bridge = '';
++    let lastX = event.clientX;
++    let timer;
++    const stop = () => {
++      clearTimeout(timer);
++      delete menu.dataset.bridge;
++      menu.removeEventListener('pointermove', extend);
++    };
++    const extend = ({ target, clientX }) => {
++      if (target !== menu || (left ? clientX < lastX : clientX > lastX)) return stop();
++      lastX = clientX;
++      clearTimeout(timer);
++      timer = setTimeout(stop, 300);
++    };
++    timer = setTimeout(stop, 300);
++    menu.addEventListener('pointermove', extend);
++    menu.addEventListener('toggle', stop, { once: true });
++  }
++
++  function createMenu(label, options, className = '', accessibleLabel = label) {
++    const id = `coffee-menu-${++sequence}`;
++    const trigger = document.createElement('button');
++    trigger.type = 'button';
++    trigger.id = `${id}-trigger`;
++    trigger.className = className;
++    trigger.setAttribute('aria-label', accessibleLabel);
++    trigger.setAttribute('aria-haspopup', 'menu');
++    trigger.setAttribute('aria-expanded', 'false');
++    trigger.setAttribute('commandfor', id);
++    trigger.setAttribute('command', 'toggle-popover');
++    trigger.append(document.createTextNode(label + ' '));
++    const arrow = document.createElement('span');
++    arrow.className = 'menu-arrow';
++    arrow.setAttribute('aria-hidden', 'true');
++    arrow.textContent = className ? '▾' : '›';
++    trigger.append(arrow);
++    const menu = document.createElement('div');
++    menu.id = id;
++    menu.className = 'popup-menu';
++    menu.setAttribute('popover', 'auto');
++    menu.trigger = trigger;
++    const group = document.createElement('div');
++    group.className = 'menu-group';
++    group.setAttribute('focusgroup', 'menu nomemory');
++    group.setAttribute('aria-labelledby', trigger.id);
++    if (!nativeFocus) group.setAttribute('role', 'menu');
++    menu.append(group);
++    menus.push(menu);
++
++    options.forEach(option => {
++      if (option.children) {
++        const child = createMenu(option.label, option.children);
++        if (!nativeFocus) child.trigger.setAttribute('role', 'menuitem');
++        if (!nativeFocus) child.trigger.tabIndex = -1;
++        group.append(child.trigger, child.menu);
++        return;
++      }
++      if (option.separator) { group.append(document.createElement('hr')); return; }
++      const item = document.createElement(option.href ? 'a' : 'button');
++      if (option.href) item.href = option.href;
++      else item.type = 'button';
++      item.textContent = option.label;
++      if (!nativeFocus) item.tabIndex = -1;
++      if (option.kind) {
++        item.setAttribute('role', `menuitem${option.kind}`);
++        item.setAttribute('aria-checked', String(option.checked));
++      } else if (!nativeFocus) item.setAttribute('role', 'menuitem');
++      item.addEventListener('click', event => {
++        const root = rootMenu(menu);
++        if (option.kind === 'radio') {
++          items(group).filter(sibling => sibling.getAttribute('role') === 'menuitemradio')
++            .forEach(sibling => sibling.setAttribute('aria-checked', String(sibling === item)));
++        } else if (option.kind === 'checkbox') {
++          item.setAttribute('aria-checked', String(item.getAttribute('aria-checked') !== 'true'));
++        }
++        option.action?.(item.getAttribute('aria-checked') === 'true');
++        if (option.kind) {
++          clearTimeout(closeTimer);
++          closeTimer = setTimeout(() => close(root, true), 300);
++        } else close(root, !option.href);
++      });
++      group.append(item);
++    });
++
++    // Older popover implementations need explicit anchors for showPopover({ source }).
++    if (anchored && (!window.ToggleEvent || !('source' in ToggleEvent.prototype))) {
++      trigger.style.setProperty('anchor-name', `--${id}`);
++      menu.style.setProperty('position-anchor', `--${id}`);
++    }
++    if (nativePopover) {
++      menu.addEventListener('beforetoggle', event => {
++        menu.classList.toggle('is-open', event.newState === 'open');
++      });
++      menu.addEventListener('toggle', event => {
++        const opened = event.newState === 'open';
++        trigger.setAttribute('aria-expanded', String(opened));
++        if (opened) {
++          position(menu);
++          if (enterOnOpen.has(menu)) { enterOnOpen.delete(menu); firstItem(menu)?.focus(); }
++        } else {
++          enterOnOpen.delete(menu);
++          delete menu.dataset.bridge;
++        }
++      });
++    }
++    trigger.addEventListener('click', event => {
++      if (event.detail === 0 && !isOpen(menu)) enterOnOpen.add(menu);
++      if (!nativeInvokers) {
++        event.preventDefault();
++        isOpen(menu) ? close(menu, true) : open(menu, event.detail === 0);
++      }
++    });
++    trigger.addEventListener('keydown', event => {
++      if (event.key !== 'ArrowDown' && !(event.key === 'ArrowRight' && !className)) return;
++      event.preventDefault();
++      event.stopPropagation();
++      if (!isOpen(menu)) {
++        enterOnOpen.add(menu);
++        trigger.click();
++      } else firstItem(menu)?.focus();
++    });
++    trigger.addEventListener('focus', event => {
++      if (!className && !restoring && !menu.contains(event.relatedTarget)) open(menu);
++    });
++    group.addEventListener('focusin', event => {
++      if (event.target.closest('[focusgroup]') !== group) return;
++      [...group.children].filter(child => child.matches('.popup-menu') && child.trigger !== event.target)
++        .forEach(child => close(child));
++    });
++    if (matchMedia('(hover: hover)').matches) {
++      let hoverTimer;
++      group.addEventListener('pointermove', event => {
++        const item = event.target.closest('button, a');
++        if (!item || item.closest('[focusgroup]') !== group || document.activeElement === item) return;
++        if (!item.contains(document.elementFromPoint(event.clientX, event.clientY))) return;
++        clearTimeout(hoverTimer);
++        hoverTimer = setTimeout(() => item.focus({ preventScroll: true, focusVisible: false }), 100);
++      });
++      group.addEventListener('pointerleave', () => clearTimeout(hoverTimer));
++      if (!className) trigger.addEventListener('pointerleave', event => startBridge(menu, event));
++    }
++    group.addEventListener('keydown', event => {
++      if (event.target.closest('[focusgroup]') !== group) return;
++      if (event.key === 'Escape' || (event.key === 'ArrowLeft' && !className)) {
++        event.preventDefault();
++        event.stopPropagation();
++        close(menu, true);
++      } else if (!nativeFocus && ['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
++        const list = items(group);
++        const current = list.indexOf(document.activeElement);
++        const next = event.key === 'Home' ? 0 : event.key === 'End' ? list.length - 1 :
++          (current + (event.key === 'ArrowUp' ? -1 : 1) + list.length) % list.length;
++        event.preventDefault();
++        event.stopPropagation();
++        list[next]?.focus();
++      }
++    });
++    return { trigger, menu };
++  }
++
++  const browse = createMenu('Menu', [
++    link('View full menu', '/menu'),
++    branch('Drink categories', [
++      branch('Coffee', [
++        branch('Espresso drinks', [link('Dark Roast Espresso', '/menu/espresso'), link('Maple Oat Latte', '/menu/seasonal')]),
++        branch('Cold coffee', [link('Cold Brew', '/menu/cold-brew'), link('Iced coffee', '/menu/iced-coffee')])
++      ]),
++      branch('Tea & more', [link('Hot tea', '/menu/tea'), link('Hot chocolate', '/menu/hot-chocolate')])
++    ]),
++    { separator: true },
++    link('Seasonal favorites', '#seasonal-title'),
++    link('Order online', '/order-online')
++  ], 'nav-trigger');
++  document.getElementById('browse-menu').replaceChildren(browse.trigger, browse.menu);
++  const account = createMenu('My Account', [link('Account overview', '/account'), link('My rewards', '/rewards'), link('Logout', '/logout')], 'nav-trigger');
++  document.getElementById('account-menu').replaceChildren(account.trigger, account.menu);
++
++  document.querySelectorAll('[data-drink]').forEach(card => {
++    const id = card.dataset.drink;
++    const drink = drinks[id];
++    const state = preferences[id];
++    const summary = document.createElement('p');
++    summary.className = 'customization-summary';
++    const description = () => `${state.size} · ${state.milk}${state.shot ? ' · Extra shot' : ''}`;
++    const update = () => {
++      summary.textContent = description();
++      announce(`${drink.name}: ${description()}.`);
++    };
++    const choices = (key, values) => values.map(value => ({
++      label: value, kind: 'radio', checked: state[key] === value,
++      action: () => { state[key] = value; update(); }
++    }));
++    const actions = createMenu('Order options', [
++      link('View drink details', drink.path),
++      branch('Customize drink', [
++        branch('Size', choices('size', ['Small', 'Regular', 'Large'])),
++        branch('Milk', choices('milk', ['No milk', 'Whole milk', 'Oat milk', 'Almond milk'])),
++        { label: 'Extra espresso shot', kind: 'checkbox', checked: false, action: checked => { state.shot = checked; update(); } }
++      ]),
++      { separator: true },
++      { label: 'Add to order', action: () => {
++        const item = document.createElement('li');
++        item.textContent = `${drink.name} — ${description()}`;
++        document.getElementById('order-items').append(item);
++        document.getElementById('order').hidden = false;
++        announce(`${drink.name} added to your order.`);
++      } }
++    ], 'btn', `Order options for ${drink.name}`);
++    card.querySelector('.btn').replaceWith(actions.trigger, actions.menu, summary);
++    summary.textContent = description();
++  });
++
++  document.addEventListener('pointerdown', event => {
++    if (!event.target.closest('.popup-menu, [commandfor]')) menus.forEach(menu => close(menu));
++  });
++  document.addEventListener('focusin', event => {
++    if (!event.target.closest('.popup-menu, [commandfor]')) menus.forEach(menu => close(menu));
++  });
++  document.addEventListener('keydown', event => {
++    if (event.key === 'Tab') {
++      // Return to the root trigger before the browser chooses the next Tab stop.
++      const active = document.activeElement.closest('.popup-menu');
++      if (active) close(rootMenu(active), true);
++      else menus.forEach(menu => close(menu));
++    } else if (event.key === 'Escape') {
++      const active = menus.find(menu => isOpen(menu) && menu.trigger === document.activeElement);
++      if (active) { event.preventDefault(); close(active, true); }
++    }
++  });
++  window.addEventListener('resize', () => menus.forEach(position));
++  window.addEventListener('scroll', () => menus.forEach(position), true);
++})();
++</script>
++
+ </body>
+ 
+ </html>

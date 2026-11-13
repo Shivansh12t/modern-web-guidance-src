@@ -1,0 +1,260 @@
+diff --git a/index.html b/index.html
+index 66c9173..202ce7e 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,7 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --nav-height: 80px;
+     }
+ 
+     * {
+@@ -27,6 +28,14 @@
+       background-color: var(--light);
+     }
+ 
++    html {
++      scroll-behavior: smooth;
++    }
++
++    section[id] {
++      scroll-margin-top: calc(var(--nav-height) + 24px);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -62,10 +71,22 @@
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a[aria-current="location"] {
+       color: var(--accent);
+     }
+ 
++    nav a[aria-current="location"] {
++      text-decoration: underline;
++      text-underline-offset: 6px;
++      text-decoration-thickness: 2px;
++    }
++
++    a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 5px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -107,6 +128,51 @@
+       margin-top: 20px;
+     }
+ 
++    main section {
++      padding: 40px 0;
++    }
++
++    main section + section {
++      border-top: 1px solid var(--secondary);
++    }
++
++    .section-intro {
++      text-align: center;
++      max-width: 650px;
++      margin: 0 auto;
++    }
++
++    .section-intro h2 {
++      margin-bottom: 8px;
++    }
++
++    @media (max-width: 700px) {
++      nav {
++        flex-direction: column;
++        gap: 12px;
++      }
++
++      nav ul {
++        justify-content: center;
++        flex-wrap: wrap;
++        gap: 12px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .hero h1 {
++        font-size: 2.25rem;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html {
++        scroll-behavior: auto;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -157,13 +223,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,8 +241,11 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" aria-labelledby="menu-heading">
++      <div class="section-intro">
++        <h2 id="menu-heading">Menu</h2>
++        <p>Explore our seasonal favorites, from comforting lattes to refreshingly smooth cold brew.</p>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +264,62 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" aria-labelledby="locations-heading">
++      <div class="section-intro">
++        <h2 id="locations-heading">Locations</h2>
++        <p>Make your next coffee break a little more local. Find a Daily Grind near you and settle in for a fresh cup.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Find Your Neighborhood Café</h3>
++          <p>Looking for directions, opening hours, or a place to meet? Our team can help you plan your visit.</p>
++          <a href="/contact" class="btn">Ask About Locations</a>
++        </div>
++        <div class="card">
++          <h3>Stay for a While</h3>
++          <p>Take a moment to unwind, catch up with a friend, and enjoy coffee made with care.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" aria-labelledby="rewards-heading">
++      <div class="section-intro">
++        <h2 id="rewards-heading">Rewards</h2>
++        <p>Bring a little more joy to your daily coffee ritual with Daily Grind Rewards.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Your Coffee, More Rewarding</h3>
++          <p>Visit your account to explore your rewards and discover what’s available for your next coffee break.</p>
++          <a href="#account" class="btn">Explore My Account</a>
++        </div>
++        <div class="card">
++          <h3>Need a Hand?</h3>
++          <p>Have a question about membership or redeeming rewards? Get in touch with our team.</p>
++          <a href="/contact" class="btn">Rewards Help</a>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" aria-labelledby="account-heading">
++      <div class="section-intro">
++        <h2 id="account-heading">My Account</h2>
++        <p>Your Daily Grind essentials, all in one place.</p>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Manage Your Account</h3>
++          <p>Open your account to review your profile and rewards.</p>
++          <a href="/account" class="btn">Open Account</a>
++        </div>
++        <div class="card">
++          <h3>Ready for Your Next Cup?</h3>
++          <p>Make time for your favorite coffee and start your next order.</p>
++          <a href="/order-online" class="btn">Order Online</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +332,60 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const sectionLinks = [...navigation.querySelectorAll('a[href^="#"]')];
++    const sections = sectionLinks.map(link => document.querySelector(link.hash));
++    let updatePending = false;
++
++    function updateActiveSection() {
++      updatePending = false;
++      const navHeight = navigation.getBoundingClientRect().height;
++      // Follow the section near the top third of the unobstructed viewport.
++      const readingLine = navHeight + (window.innerHeight - navHeight) * 0.3;
++      let activeSection = null;
++
++      for (const section of sections) {
++        const bounds = section.getBoundingClientRect();
++        if (bounds.top <= readingLine && bounds.bottom > navHeight) {
++          activeSection = section;
++        }
++      }
++
++      // The final section may be too short to reach the reading line.
++      if (window.scrollY > 0 &&
++          window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
++        activeSection = sections[sections.length - 1];
++      }
++
++      for (const link of sectionLinks) {
++        if (activeSection && link.hash === `#${activeSection.id}`) {
++          link.setAttribute('aria-current', 'location');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      }
++    }
++
++    function scheduleUpdate() {
++      if (!updatePending) {
++        updatePending = true;
++        requestAnimationFrame(updateActiveSection);
++      }
++    }
++
++    const navigationObserver = new ResizeObserver(() => {
++      document.documentElement.style.setProperty('--nav-height', `${navigation.offsetHeight}px`);
++      scheduleUpdate();
++    });
++    navigationObserver.observe(navigation);
++    window.addEventListener('scroll', scheduleUpdate, { passive: true });
++    window.addEventListener('resize', scheduleUpdate);
++    window.addEventListener('hashchange', scheduleUpdate);
++    window.addEventListener('pageshow', scheduleUpdate);
++    updateActiveSection();
++  </script>
++
+ </body>
+ 
+ </html>

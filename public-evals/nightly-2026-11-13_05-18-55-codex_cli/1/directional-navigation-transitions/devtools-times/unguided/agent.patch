@@ -1,0 +1,182 @@
+diff --git a/src/components/TopStoriesCarousel.astro b/src/components/TopStoriesCarousel.astro
+new file mode 100644
+index 0000000..d9aadb5
+--- /dev/null
++++ b/src/components/TopStoriesCarousel.astro
+@@ -0,0 +1,134 @@
++---
++import type { CollectionEntry } from 'astro:content';
++
++interface Props {
++    articles: CollectionEntry<'articles'>[];
++}
++
++const { articles } = Astro.props;
++---
++
++<top-stories-carousel class="block bg-white border-b border-gray-300" role="region" aria-label="Top Stories" aria-roledescription="carousel">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
++            <h2 class="text-sm font-bold uppercase tracking-widest">Top Stories</h2>
++            <div data-controls hidden class="items-center gap-3">
++                <button type="button" data-previous aria-label="Previous story" class="carousel-button">&larr; Previous</button>
++                <span data-position class="text-xs text-gray-500 tabular-nums" aria-live="polite" aria-atomic="true">{articles.length ? 1 : 0} / {articles.length}</span>
++                <button type="button" data-next aria-label="Next story" class="carousel-button">Next &rarr;</button>
++            </div>
++        </div>
++        <div class="story-viewport">
++            {articles.map((article, index) => (
++                <div data-story class="story" data-active={index === 0 ? '' : undefined} inert={index !== 0} aria-hidden={index !== 0 ? 'true' : undefined} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${articles.length}`}>
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="font-bold text-gray-900 hover:text-amber-400 focus-visible:outline-2 focus-visible:outline-amber-500 focus-visible:outline-offset-2">
++                        {article.data.title}
++                    </a>
++                    <time datetime={article.data.date.toISOString()} class="block text-xs text-gray-500 mt-1">{article.data.date.toLocaleDateString()}</time>
++                </div>
++            ))}
++        </div>
++    </div>
++</top-stories-carousel>
++
++<style>
++    .story-viewport {
++        display: grid;
++        overflow: hidden;
++    }
++
++    .story {
++        grid-area: 1 / 1;
++        min-width: 0;
++        padding: 4px;
++        visibility: hidden;
++    }
++
++    .story[data-active], .story[data-leaving] {
++        visibility: visible;
++    }
++
++    [data-controls]:not([hidden]) {
++        display: flex;
++    }
++
++    .carousel-button {
++        padding: 6px 10px;
++        border: 1px solid var(--color-gray-300);
++        font-size: 0.75rem;
++        font-weight: 600;
++        cursor: pointer;
++    }
++
++    .carousel-button:hover {
++        background: var(--color-amber-100);
++    }
++
++    .carousel-button:focus-visible {
++        outline: 2px solid var(--color-amber-500);
++        outline-offset: 2px;
++    }
++</style>
++
++<script>
++    class TopStoriesCarousel extends HTMLElement {
++        connectedCallback() {
++            // Custom elements initialize again when Astro's client router returns here.
++            if (this.dataset.initialized !== undefined) return;
++            this.dataset.initialized = '';
++
++            const stories = Array.from(this.querySelectorAll<HTMLElement>('[data-story]'));
++            const controls = this.querySelector<HTMLElement>('[data-controls]')!;
++            const position = this.querySelector<HTMLElement>('[data-position]')!;
++            if (stories.length < 2) return;
++            controls.hidden = false;
++
++            let current = 0;
++            let animations: Animation[] = [];
++
++            const move = (direction: number) => {
++                // Finish the last change so quick clicks can immediately change direction.
++                animations.forEach(animation => {
++                    animation.onfinish = null;
++                    animation.finish();
++                });
++                animations = [];
++                stories.forEach(story => { delete story.dataset.leaving; });
++
++                const outgoing = stories[current];
++                current = (current + direction + stories.length) % stories.length;
++                const incoming = stories[current];
++
++                delete outgoing.dataset.active;
++                outgoing.inert = true;
++                outgoing.setAttribute('aria-hidden', 'true');
++                incoming.dataset.active = '';
++                incoming.inert = false;
++                incoming.removeAttribute('aria-hidden');
++                position.textContent = `${current + 1} / ${stories.length}`;
++
++                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
++
++                outgoing.dataset.leaving = '';
++                const options = { duration: 320, easing: 'ease-in-out' };
++                const exit = outgoing.animate([
++                    { transform: 'translateX(0)' },
++                    { transform: `translateX(${-direction * 100}%)` },
++                ], options);
++                const enter = incoming.animate([
++                    { transform: `translateX(${direction * 100}%)` },
++                    { transform: 'translateX(0)' },
++                ], options);
++                exit.onfinish = () => { delete outgoing.dataset.leaving; };
++                animations = [exit, enter];
++            };
++
++            this.querySelector('[data-previous]')!.addEventListener('click', () => move(-1));
++            this.querySelector('[data-next]')!.addEventListener('click', () => move(1));
++        }
++    }
++
++    if (!customElements.get('top-stories-carousel')) {
++        customElements.define('top-stories-carousel', TopStoriesCarousel);
++    }
++</script>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..66ac58d 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesCarousel from '../components/TopStoriesCarousel.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -38,21 +39,7 @@ politicsArticles[2] = {
+ ---
+ 
+ <Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesCarousel articles={topStories} />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+@@ -81,4 +68,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

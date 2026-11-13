@@ -1,0 +1,391 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -3,9 +3,9 @@
+ 
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
++  <title>The Daily Grind | Global Coffee Tasting Coordinator</title>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -134,8 +134,127 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Event coordinator */
++    .planner {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 16px;
++      align-items: end;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .field input,
++    .field select {
++      font: inherit;
++      font-weight: 400;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .field input:focus-visible,
++    .field select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .field input[aria-invalid="true"] {
++      border-color: #c62828;
++    }
++
++    .status {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      background: #efebe9;
++      border-left: 4px solid var(--primary);
++    }
++
++    .status.error {
++      background: #ffebee;
++      border-left-color: #c62828;
++      color: #8e0000;
++    }
++
++    .status:empty {
++      display: none;
++    }
++
++    .tz-card {
++      text-align: left;
++      border-top: 4px solid var(--secondary);
++    }
++
++    .tz-card.is-host {
++      border-top-color: var(--accent);
++    }
++
++    .tz-card .city {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 8px;
++    }
++
++    .tz-card .zone {
++      font-size: 0.8rem;
++      color: #8d6e63;
++    }
++
++    .tz-card .time {
++      font-size: 2rem;
++      font-weight: 700;
++      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .tz-card .date {
++      font-size: 0.95rem;
++    }
++
++    .badges {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++      margin-top: 10px;
++    }
++
++    .badge {
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 999px;
++      background: #efebe9;
++    }
++
++    .badge.dst { background: #fff3e0; color: #e65100; }
++    .badge.host { background: var(--accent); color: var(--text); }
++    .badge.good { background: #e8f5e9; color: #1b5e20; }
++    .badge.odd { background: #ede7f6; color: #4527a0; }
++    .badge.day { background: #e3f2fd; color: #0d47a1; }
++
++    .grid-empty {
++      grid-column: 1 / -1;
++      text-align: center;
++      color: #8d6e63;
++      padding: 30px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -168,36 +287,226 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <h1>Global Coffee Tasting</h1>
++    <p>One cupping session, every time zone. Pick a slot and see when the world sips along.</p>
++    <a href="#planner" class="btn">Plan a Tasting</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++    <section aria-labelledby="planner-title">
++      <h2 id="planner-title" style="text-align: center; margin-bottom: 16px;">Schedule a Tasting Event</h2>
++      <form id="planner" class="planner" novalidate>
++        <label class="field">Event date
++          <input type="date" id="dateInput" required>
++        </label>
++        <label class="field">Start time (host local)
++          <input type="time" id="timeInput" required>
++        </label>
++        <label class="field">Host time zone
++          <select id="hostTzSelect"></select>
++        </label>
++      </form>
++      <div id="status" class="status" role="status" aria-live="polite"></div>
++
++      <h2 style="text-align: center; margin-top: 32px;">Around the World</h2>
++      <div id="grid" class="grid" aria-live="polite"></div>
+     </section>
+   </main>
+ 
++  <script type="module">
++    // Load Temporal polyfill only when the browser lacks native support.
++    if (typeof Temporal === 'undefined') {
++      const mod = await import('https://esm.sh/temporal-polyfill@0.3.0');
++      globalThis.Temporal = mod.Temporal;
++    }
++
++    const ZONES = [
++      { id: 'America/Los_Angeles', city: 'Los Angeles' },
++      { id: 'America/Denver', city: 'Denver' },
++      { id: 'America/Chicago', city: 'Chicago' },
++      { id: 'America/New_York', city: 'New York' },
++      { id: 'America/Bogota', city: 'Bogotá' },
++      { id: 'America/Sao_Paulo', city: 'São Paulo' },
++      { id: 'UTC', city: 'UTC' },
++      { id: 'Europe/London', city: 'London' },
++      { id: 'Europe/Paris', city: 'Paris' },
++      { id: 'Europe/Berlin', city: 'Berlin' },
++      { id: 'Africa/Addis_Ababa', city: 'Addis Ababa' },
++      { id: 'Africa/Nairobi', city: 'Nairobi' },
++      { id: 'Asia/Kolkata', city: 'Kolkata' },
++      { id: 'Asia/Jakarta', city: 'Jakarta' },
++      { id: 'Asia/Ho_Chi_Minh', city: 'Ho Chi Minh City' },
++      { id: 'Asia/Tokyo', city: 'Tokyo' },
++      { id: 'Australia/Sydney', city: 'Sydney' },
++      { id: 'Pacific/Auckland', city: 'Auckland' },
++    ];
++
++    // Cities shown as cards (Tokyo always included).
++    const TARGETS = [
++      'America/Los_Angeles', 'America/New_York', 'America/Bogota', 'America/Sao_Paulo',
++      'Europe/London', 'Europe/Paris', 'Africa/Addis_Ababa', 'Asia/Kolkata',
++      'Asia/Jakarta', 'Asia/Tokyo', 'Australia/Sydney', 'Pacific/Auckland',
++    ];
++
++    // Format an instant in its own zone via Intl (consistent across native Temporal and the polyfill).
++    const fmtIn = (zdt, opts) =>
++      new Intl.DateTimeFormat('en-US', { ...opts, timeZone: zdt.timeZoneId }).format(zdt.epochMilliseconds);
++
++    const cityOf = (id) => ZONES.find((z) => z.id === id)?.city ?? id;
++
++    const dateInput = document.getElementById('dateInput');
++    const timeInput = document.getElementById('timeInput');
++    const hostTzSelect = document.getElementById('hostTzSelect');
++    const grid = document.getElementById('grid');
++    const statusEl = document.getElementById('status');
++
++    // Populate host select
++    for (const z of ZONES) {
++      hostTzSelect.add(new Option(`${z.city} (${z.id})`, z.id));
++    }
++    const localTz = Temporal.Now.timeZoneId();
++    hostTzSelect.value = ZONES.some((z) => z.id === localTz) ? localTz : 'America/New_York';
++
++    // Defaults: next day at 10:00 in the host zone
++    if (!dateInput.value) {
++      dateInput.value = Temporal.Now.plainDateISO(hostTzSelect.value).add({ days: 1 }).toString();
++    }
++    if (!timeInput.value) timeInput.value = '10:00';
++
++    /**
++     * Resolve the host wall-clock time strictly. Returns { zdt } or { error }.
++     * Uses disambiguation: 'reject' so DST gaps (skipped) and overlaps (repeated) are refused.
++     */
++    function resolveHostTime(dateStr, timeStr, tz) {
++      let pdt;
++      try {
++        pdt = Temporal.PlainDateTime.from(`${dateStr}T${timeStr}`, { overflow: 'reject' });
++      } catch {
++        return { error: 'Please enter a valid date and time.' };
++      }
++      try {
++        return { zdt: pdt.toZonedDateTime(tz, { disambiguation: 'reject' }) };
++      } catch (e) {
++        if (!(e instanceof RangeError)) throw e;
++        const earlier = pdt.toZonedDateTime(tz, { disambiguation: 'earlier' });
++        const later = pdt.toZonedDateTime(tz, { disambiguation: 'later' });
++        const fmt = (z) => fmtIn(z, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
++        const wall = pdt.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
++        // In a gap the wall time is shifted; in an overlap both candidates keep the same wall time.
++        const isGap = !earlier.toPlainDateTime().equals(pdt);
++        if (isGap) {
++          return {
++            error: `${wall} does not exist in ${cityOf(tz)} — clocks spring forward for daylight saving time and skip this hour. ` +
++              `Try ${fmt(earlier)} or ${fmt(later)} instead.`,
++          };
++        }
++        return {
++          error: `${wall} occurs twice in ${cityOf(tz)} — clocks fall back for daylight saving time, so this time is ambiguous ` +
++            `(${fmt(earlier)} or ${fmt(later)}). Please pick a time outside the repeated hour.`,
++        };
++      }
++    }
++
++    // DST detection: zone is in DST if current offset exceeds its standard (smaller of Jan/Jul) offset.
++    function isDst(zdt) {
++      const y = zdt.year;
++      const jan = Temporal.PlainDate.from({ year: y, month: 1, day: 1 }).toZonedDateTime(zdt.timeZoneId);
++      const jul = Temporal.PlainDate.from({ year: y, month: 7, day: 1 }).toZonedDateTime(zdt.timeZoneId);
++      const standard = Math.min(jan.offsetNanoseconds, jul.offsetNanoseconds);
++      return jan.offsetNanoseconds !== jul.offsetNanoseconds && zdt.offsetNanoseconds > standard;
++    }
++
++    function badge(text, cls) {
++      const b = document.createElement('span');
++      b.className = `badge ${cls}`;
++      b.textContent = text;
++      return b;
++    }
++
++    function setStatus(msg, isError = false) {
++      statusEl.textContent = msg;
++      statusEl.classList.toggle('error', isError);
++    }
++
++    function render() {
++      const tz = hostTzSelect.value;
++      grid.replaceChildren();
++      dateInput.removeAttribute('aria-invalid');
++      timeInput.removeAttribute('aria-invalid');
++
++      if (!dateInput.value || !timeInput.value) {
++        setStatus('Choose a date and time to see converted times.', true);
++        grid.append(Object.assign(document.createElement('p'), { className: 'grid-empty', textContent: 'No event scheduled yet.' }));
++        return;
++      }
++
++      const { zdt: host, error } = resolveHostTime(dateInput.value, timeInput.value, tz);
++      if (error) {
++        timeInput.setAttribute('aria-invalid', 'true');
++        setStatus(error, true);
++        grid.append(Object.assign(document.createElement('p'), { className: 'grid-empty', textContent: 'Fix the event time to see conversions.' }));
++        return;
++      }
++
++      setStatus(
++        `Tasting hosted from ${cityOf(tz)} on ` +
++        fmtIn(host, { dateStyle: 'full', timeStyle: 'short' }) +
++        ` (${host.toInstant().toString({ smallestUnit: 'minute' })}).`
++      );
++
++      const targets = [tz, ...TARGETS.filter((t) => t !== tz)];
++      const hostDate = host.toPlainDate();
++
++      for (const id of targets) {
++        const local = host.withTimeZone(id);
++        const card = document.createElement('article');
++        card.className = 'card tz-card' + (id === tz ? ' is-host' : '');
++
++        const head = document.createElement('div');
++        head.className = 'city';
++        const h3 = document.createElement('h3');
++        h3.textContent = cityOf(id);
++        const zone = document.createElement('span');
++        zone.className = 'zone';
++        zone.textContent = id;
++        head.append(h3, zone);
++
++        const time = document.createElement('time');
++        time.className = 'time';
++        time.dateTime = local.toString({ timeZoneName: 'never' });
++        time.textContent = fmtIn(local, { hour: 'numeric', minute: '2-digit' });
++
++        const date = document.createElement('div');
++        date.className = 'date';
++        date.textContent = fmtIn(local, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
++
++        const badges = document.createElement('div');
++        badges.className = 'badges';
++        if (id === tz) badges.append(badge('Host', 'host'));
++        badges.append(badge(`UTC${local.offset === '+00:00' ? '' : local.offset}`, ''));
++        const tzName = fmtIn(local, { timeZoneName: 'short' }).split(' ').pop();
++        badges.append(badge(tzName, ''));
++        if (isDst(local)) badges.append(badge('DST active', 'dst'));
++        const dayDiff = local.toPlainDate().since(hostDate).days;
++        if (dayDiff !== 0) badges.append(badge(`${dayDiff > 0 ? '+' : ''}${dayDiff} day vs host`, 'day'));
++        const h = local.hour;
++        badges.append(h >= 7 && h < 21 ? badge('☕ Good tasting hour', 'good') : badge('🌙 Off-hours', 'odd'));
++
++        card.append(head, time, date, badges);
++        grid.append(card);
++      }
++    }
++
++    for (const el of [dateInput, timeInput, hostTzSelect]) {
++      el.addEventListener('input', render);
++      el.addEventListener('change', render);
++    }
++    document.getElementById('planner').addEventListener('submit', (e) => { e.preventDefault(); render(); });
++    render();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

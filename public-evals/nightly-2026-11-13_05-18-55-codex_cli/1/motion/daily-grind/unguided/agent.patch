@@ -1,0 +1,362 @@
+diff --git a/index.html b/index.html
+index 66c9173..cbcb76d 100644
+--- a/index.html
++++ b/index.html
+@@ -12,8 +12,11 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+     }
+ 
++    html { scroll-behavior: smooth; }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -56,16 +59,36 @@
+     }
+ 
+     nav a {
++      position: relative;
++      display: inline-block;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      transition: color 200ms ease, transform 250ms var(--ease);
+     }
+ 
+-    nav a:hover {
++    nav a:hover, nav a:focus-visible {
+       color: var(--accent);
++      transform: translateY(-2px);
++    }
++
++    nav a:not(.logout-link)::after {
++      content: '';
++      position: absolute;
++      left: 0;
++      right: 0;
++      bottom: -5px;
++      height: 2px;
++      background: var(--accent);
++      transform: scaleX(0);
++      transform-origin: left;
++      transition: transform 250ms var(--ease);
+     }
+ 
++    nav a:hover::after, nav a:focus-visible::after { transform: scaleX(1); }
++
++    :focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -74,7 +97,7 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,14 +108,59 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2.25rem, 6vw, 3.75rem);
+       margin-bottom: 1rem;
+     }
+ 
++    .hero > h1, .hero > p, .hero > .btn {
++      animation: hero-arrive 750ms var(--ease) both;
++    }
++    .hero > p { animation-delay: 100ms; }
++    .hero > .btn { animation-delay: 200ms; }
++    .hero > .btn { background: var(--accent); color: var(--text); font-weight: 700; }
++    .hero > .btn:hover { background: #ffc16f; }
++
++    .roast-banner {
++      display: flex;
++      align-items: center;
++      width: min(100%, 640px);
++      margin-top: 32px;
++      border: 1px solid #ffffff50;
++      border-radius: 8px;
++      background: #281b18d9;
++      overflow: hidden;
++      text-align: left;
++    }
++    .roast-window { flex: 1; min-width: 0; overflow: hidden; }
++    .roast-track {
++      display: flex;
++      width: max-content;
++      animation: daily-roast 24s linear infinite;
++    }
++    .roast-copy { flex: none; padding: 12px 24px; white-space: nowrap; font-size: 0.85rem; letter-spacing: 0.03em; }
++    .roast-copy strong { color: var(--accent); }
++    .roast-track.is-paused { animation-play-state: paused; }
++    .roast-control {
++      flex: none;
++      align-self: stretch;
++      border: 0;
++      border-left: 1px solid #ffffff50;
++      padding: 10px 16px;
++      background: transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++      transition: background 200ms ease, color 200ms ease;
++    }
++    .roast-control:hover { background: #ffffff18; color: var(--accent); }
++    .roast-control:focus-visible { outline-offset: -4px; }
++    .roast-control:disabled { cursor: default; color: var(--secondary); }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -113,6 +181,14 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      border: 1px solid #4e342e12;
++      transition: transform 350ms var(--ease), box-shadow 350ms ease, border-color 250ms ease;
++    }
++
++    .card:hover, .card:focus-within {
++      transform: translateY(-7px);
++      box-shadow: 0 14px 30px #4e342e18;
++      border-color: #b47e5055;
+     }
+ 
+     .card h3 {
+@@ -128,11 +204,68 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++      transition: background 200ms ease, transform 250ms var(--ease), box-shadow 250ms ease;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      transform: translateY(-3px);
++      box-shadow: 0 7px 16px #281b1830;
++    }
++    .btn:active { transform: translateY(0) scale(0.98); box-shadow: none; }
++
++    .drink-dialog {
++      position: fixed;
++      inset: 0;
++      margin: auto;
++      width: min(480px, calc(100% - 32px));
++      max-height: calc(100dvh - 48px);
++      overflow-y: auto;
++      border: 1px solid var(--secondary);
++      border-radius: 16px;
++      padding: 36px;
++      background: #fffaf5;
++      color: var(--text);
++      box-shadow: 0 24px 80px #1e100850;
++    }
++    .drink-dialog[open] { animation: dialog-in 320ms var(--ease) both; }
++    .drink-dialog::backdrop { background: #21130ec4; }
++    .drink-dialog[open]::backdrop { animation: backdrop-in 320ms ease both; }
++    .drink-dialog.is-closing { animation: dialog-out 220ms ease both; }
++    .drink-dialog.is-closing::backdrop { animation: backdrop-out 220ms ease both; }
++    .dialog-eyebrow { font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: #795548; margin-bottom: 12px; }
++    .drink-dialog h2 { line-height: 1.2; margin: 0 28px 16px 0; font-size: 2rem; }
++    .drink-dialog dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 20px; margin-top: 24px; font-size: 0.9rem; }
++    .drink-dialog dt { font-weight: 700; }
++    .dialog-close { position: absolute; top: 12px; right: 12px; border: 0; border-radius: 50%; width: 36px; height: 36px; background: transparent; color: var(--primary); font-size: 1.5rem; cursor: pointer; transition: background 200ms ease, transform 200ms var(--ease); }
++    .dialog-close:hover { background: var(--secondary); transform: rotate(90deg); }
++    body:has(.drink-dialog[open]) { overflow: hidden; }
++
++    @keyframes hero-arrive { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
++    @keyframes daily-roast { to { transform: translateX(-50%); } }
++    @keyframes dialog-in { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
++    @keyframes dialog-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(12px) scale(0.98); } }
++    @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
++    @keyframes backdrop-out { from { opacity: 1; } to { opacity: 0; } }
++
++    @media (max-width: 640px) {
++      nav { flex-direction: column; gap: 12px; padding: 16px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
++      nav ul li { margin: 0; }
++      .hero { min-height: 520px; }
++      .drink-dialog { padding: 28px; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      html { scroll-behavior: auto; }
++      *, *::before, *::after { animation: none !important; transition: none !important; }
++      .btn:hover, .btn:active, .card:hover, .card:focus-within, nav a:hover, nav a:focus-visible, .dialog-close:hover { transform: none; }
++      .roast-track { width: auto; }
++      .roast-copy { white-space: normal; }
++      .roast-copy[aria-hidden] { display: none; }
+     }
+ 
+     footer {
+@@ -172,6 +305,15 @@
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="roast-banner" role="region" aria-label="Daily roast">
++      <div class="roast-window" id="daily-roast">
++        <div class="roast-track">
++          <span class="roast-copy"><strong>DAILY ROAST</strong> &nbsp;·&nbsp; Freshly roasted. Thoughtfully sourced. &nbsp;·&nbsp; Your morning starts here. &nbsp;·&nbsp;</span>
++          <span class="roast-copy" aria-hidden="true"><strong>DAILY ROAST</strong> &nbsp;·&nbsp; Freshly roasted. Thoughtfully sourced. &nbsp;·&nbsp; Your morning starts here. &nbsp;·&nbsp;</span>
++        </div>
++      </div>
++      <button class="roast-control" type="button" aria-controls="daily-roast" aria-label="Pause daily roast animation">Pause</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+@@ -181,22 +323,34 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="maple" aria-haspopup="dialog" aria-controls="drink-details">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="espresso" aria-haspopup="dialog" aria-controls="drink-details">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-drink="coldbrew" aria-haspopup="dialog" aria-controls="drink-details">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <dialog class="drink-dialog" id="drink-details" aria-labelledby="drink-title" aria-describedby="drink-description">
++    <button class="dialog-close" type="button" aria-label="Close drink details" autofocus>×</button>
++    <p class="dialog-eyebrow">The Daily Grind · Seasonal Favorites</p>
++    <h2 id="drink-title"></h2>
++    <p id="drink-description"></p>
++    <dl>
++      <dt>Tasting notes</dt><dd id="drink-notes"></dd>
++      <dt>Served</dt><dd id="drink-served"></dd>
++    </dl>
++    <a class="btn" id="drink-menu" href="/menu">Explore on the menu</a>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +361,96 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
++    const track = document.querySelector('.roast-track');
++    const roastControl = document.querySelector('.roast-control');
++    const dialog = document.querySelector('#drink-details');
++    let roastPaused = false;
++    let openingButton = null;
++
++    // Standard CSS events expose names/properties, not an Animation instance.
++    // Inspect a directly supplied animation first, then resolve the native object.
++    function inspectMotionEvent(event) {
++      const animation = event.animation ?? event.target.getAnimations?.().find(candidate => {
++        const matches = event.type.startsWith('transition')
++          ? candidate.transitionProperty === event.propertyName
++          : candidate.animationName === event.animationName;
++        return matches && (candidate.effect?.pseudoElement || '') === (event.pseudoElement || '');
++      });
++      const completed = event.type.endsWith('end');
++      const canceled = event.type.endsWith('cancel');
++      document.body.dataset.lastAnimationState = canceled ? 'idle'
++        : completed ? 'finished' : (animation?.playState ?? 'running');
++    }
++
++    for (const type of ['animationstart', 'animationiteration', 'animationend', 'animationcancel',
++      'transitionrun', 'transitionstart', 'transitionend', 'transitioncancel']) {
++      document.addEventListener(type, inspectMotionEvent, true);
++    }
++    document.body.dataset.lastAnimationState = 'idle';
++
++    function updateRoast() {
++      const reduced = motionPreference.matches;
++      track.classList.toggle('is-paused', roastPaused);
++      roastControl.disabled = reduced;
++      roastControl.textContent = reduced ? 'Motion off' : roastPaused ? 'Resume' : 'Pause';
++      roastControl.setAttribute('aria-label', reduced ? 'Daily roast animation disabled by reduced-motion preference'
++        : `${roastPaused ? 'Resume' : 'Pause'} daily roast animation`);
++      const animation = track.getAnimations().find(item => item.animationName === 'daily-roast');
++      document.body.dataset.lastAnimationState = reduced ? 'idle' : animation?.playState ?? (roastPaused ? 'paused' : 'running');
++    }
++    roastControl.addEventListener('click', () => { roastPaused = !roastPaused; updateRoast(); });
++
++    const drinks = {
++      maple: { title: 'Maple Oat Latte', description: 'Rich espresso meets creamy oat milk and a hint of Vermont maple syrup. A cozy, gently sweet seasonal favorite.', notes: 'Maple, toasted oats, caramel', served: 'Hot or iced · Made with oat milk', url: '/menu/seasonal' },
++      espresso: { title: 'Dark Roast Espresso', description: 'A concentrated shot of our bold dark roast, crafted for a full-bodied sip and a lingering, smoky finish.', notes: 'Dark chocolate, toasted nuts, smoke', served: 'Hot · Espresso shot', url: '/menu/espresso' },
++      coldbrew: { title: 'Cold Brew', description: 'Slow-steeped for 18 hours to bring out a naturally smooth, mellow flavor. Poured over ice for an easygoing pick-me-up.', notes: 'Cocoa, soft sweetness, smooth finish', served: 'Iced · Add your favorite milk', url: '/menu/cold-brew' }
++    };
++
++    document.querySelectorAll('[data-drink]').forEach(button => {
++      button.addEventListener('click', () => {
++        const drink = drinks[button.dataset.drink];
++        openingButton = button;
++        document.querySelector('#drink-title').textContent = drink.title;
++        document.querySelector('#drink-description').textContent = drink.description;
++        document.querySelector('#drink-notes').textContent = drink.notes;
++        document.querySelector('#drink-served').textContent = drink.served;
++        document.querySelector('#drink-menu').href = drink.url;
++        dialog.classList.remove('is-closing');
++        dialog.showModal();
++      });
++    });
++
++    function finishClose() {
++      dialog.close();
++      dialog.classList.remove('is-closing');
++    }
++    function closeDetails() {
++      if (!dialog.open || dialog.classList.contains('is-closing')) return;
++      if (motionPreference.matches) finishClose();
++      else dialog.classList.add('is-closing');
++    }
++    dialog.querySelector('.dialog-close').addEventListener('click', closeDetails);
++    dialog.addEventListener('cancel', event => { event.preventDefault(); closeDetails(); });
++    let backdropPress = false;
++    const outsideDialog = event => {
++      const rect = dialog.getBoundingClientRect();
++      return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
++    };
++    dialog.addEventListener('pointerdown', event => { backdropPress = event.target === dialog && outsideDialog(event); });
++    dialog.addEventListener('click', event => { if (backdropPress && event.target === dialog && outsideDialog(event)) closeDetails(); backdropPress = false; });
++    dialog.addEventListener('animationend', event => {
++      if (event.target === dialog && !event.pseudoElement && event.animationName === 'dialog-out') finishClose();
++    });
++    dialog.addEventListener('close', () => { openingButton?.focus({ preventScroll: true }); });
++    motionPreference.addEventListener('change', () => {
++      updateRoast();
++      if (motionPreference.matches && dialog.classList.contains('is-closing')) finishClose();
++    });
++    updateRoast();
++  </script>
++
+ </body>
+ 
+ </html>

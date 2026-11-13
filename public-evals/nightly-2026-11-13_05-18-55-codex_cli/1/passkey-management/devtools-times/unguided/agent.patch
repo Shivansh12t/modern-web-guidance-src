@@ -1,0 +1,906 @@
+diff --git a/.gitignore b/.gitignore
+index c2b8e14..c7b03f4 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -23,4 +23,6 @@ pnpm-debug.log*
+ # jetbrains setting folder
+ .idea/
+ 
+-db.file
+\ No newline at end of file
++db.file
++# Persistent account/passkey data
++.data/
+diff --git a/README.md b/README.md
+index 4479b53..5e56fe8 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,45 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## Account settings and passkeys
++
++Signed-in readers can open **My account** → **Sign-in & security** at
++`/devtools-times/account/settings` to create, rename, and remove passkeys. Password
++sign-in continues to use the existing Times login service, now through a same-origin
++endpoint that establishes an HttpOnly Astro session. The service must return a
++nonempty `token` on successful authentication. Its `user.id` (or `userId`) is used
++as the stable account subject; the demo fallback is its unique, stable username.
++Passwords and upstream tokens are never persisted by this application.
++
++Passkeys are verified with SimpleWebAuthn, require user verification, and store only
++public credential material. Credential IDs and mutations are scoped to the signed-in
++reader and relying-party domain. Account responses disable caching; mutations check
++the request Origin. Registration and authentication challenges expire after five
++minutes, and reader sessions expire after 24 hours.
++
++Runtime configuration:
++
++- Use Node.js **22.13 or later** (the credential store uses `node:sqlite`).
++- Set `WEBAUTHN_ORIGIN` to the public HTTPS origin, such as
++  `https://astro-news-pytrpecapa-uc.a.run.app`, without the `/devtools-times` path.
++  Set this explicitly behind a reverse proxy. Localhost is supported for development.
++- Set `PASSKEY_DB_PATH` to a durable SQLite path. It defaults to
++  `.data/passkeys.sqlite`. Preserve this file across deployments, along with Astro's
++  session storage. SQLite and the default filesystem session driver suit a single
++  instance; a deployment with multiple instances needs shared account and session
++  storage. Ephemeral Cloud Run filesystems do not preserve passkeys across restarts.
++
++The browser receives the complete remaining credential list after a successful
++load or mutation, including an empty list when the last passkey is removed, using
++[`signalAllAcceptedCredentials`](https://www.w3.org/TR/webauthn-3/#sctn-signalAllAcceptedCredentials).
++Account names are refreshed using `signalCurrentUserDetails` where available.
++Individual passkey display names are site labels; WebAuthn does not offer a signal
++to rename individual keys in a device's password manager. Browser signals are
++best effort and only run after the server confirms account state. Unsupported
++browsers and failed signals show instructions for manual password-manager cleanup;
++failed signals can be retried without repeating the account mutation.
++
++Run `pnpm test` for credential ownership, persistence, validation, origin enforcement,
++and browser-sync tests, and `pnpm build` to compile the app. These checks do not
++start a server or require browser verification.
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..ed8e415 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -17,6 +17,7 @@ export default defineConfig({
+     mode: "standalone",
+   }),
+   output: "server",
++  session: { ttl: 86400, cookie: { sameSite: "lax" } },
+ 
+   image: {
+     service: {
+diff --git a/package.json b/package.json
+index bfffcf0..274cbb6 100644
+--- a/package.json
++++ b/package.json
+@@ -7,12 +7,15 @@
+     "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
+     "build": "astro build",
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "test": "tsx --test tests/*.test.ts"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.9",
+     "@astrojs/react": "^5.0.7",
+     "@heroicons/react": "^2.2.0",
++    "@simplewebauthn/browser": "^14.0.0",
++    "@simplewebauthn/server": "^14.1.0",
+     "@tailwindcss/vite": "^4.3.3",
+     "@types/react": "^19.3.0",
+     "@types/react-dom": "^19.3.0",
+@@ -23,12 +26,18 @@
+     "tailwindcss": "^4.3.3"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "@types/node": "^26.6.6",
++    "tsx": "^4.23.15",
++    "typescript": "^7.0.2"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+       "esbuild",
+       "sharp"
+     ]
++  },
++  "engines": {
++    "node": ">=22.13.0"
+   }
+ }
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..51e9e98 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -10,6 +10,7 @@ const multimedia = await getCollection("multimedia");
+ const categories = [...new Set(articles.map((article) => article.data.category))];
+ 
+ const baseUrl = import.meta.env.BASE_URL;
++const signedIn = !!(await Astro.session?.get('readerId'));
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+@@ -25,6 +26,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+ 
+       <!-- Right: Buttons -->
+       <div class="flex items-center space-x-3">
++        {signedIn ? <a href={`${baseUrl}account/settings`} data-skip-tracking="true" class="rounded bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-700">My account</a> : <>
+         <a
+           href={`${baseUrl}signup`}
+           data-skip-tracking="true"
+@@ -39,6 +41,7 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         >
+           Sign in
+         </a>
++        </>}
+       </div>
+     </div>
+   </div>
+diff --git a/src/components/PasskeySettings.tsx b/src/components/PasskeySettings.tsx
+new file mode 100644
+index 0000000..3bdcaf3
+--- /dev/null
++++ b/src/components/PasskeySettings.tsx
+@@ -0,0 +1,140 @@
++import { useEffect, useRef, useState } from 'react';
++import { startRegistration } from '@simplewebauthn/browser';
++import { ArrowPathIcon, CheckCircleIcon, ComputerDesktopIcon, KeyIcon, PencilSquareIcon, PlusIcon, ShieldCheckIcon, TrashIcon } from '@heroicons/react/24/outline';
++import { accountRequest, browserSignalAPI, syncAuthenticator, type PasskeySnapshot } from '../lib/passkeys';
++
++type Key = PasskeySnapshot['passkeys'][number];
++const inputClass = 'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-800';
++const buttonClass = 'rounded-md bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:cursor-wait disabled:opacity-50';
++const date = (value: string) => new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
++
++export default function PasskeySettings() {
++  const [data, setData] = useState<PasskeySnapshot | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [notice, setNotice] = useState('');
++  const [sync, setSync] = useState<'synced' | 'unsupported' | 'failed' | 'pending'>('pending');
++  const [editing, setEditing] = useState<Key | null>(null);
++  const [removing, setRemoving] = useState<Key | null>(null);
++  const [adding, setAdding] = useState(false);
++  const [name, setName] = useState('');
++  const returnFocus = useRef<HTMLButtonElement | null>(null);
++  const editor = useRef<HTMLInputElement | null>(null);
++  const heading = useRef<HTMLHeadingElement | null>(null);
++  const cancelRemove = useRef<HTMLButtonElement | null>(null);
++
++  async function synchronize(snapshot: PasskeySnapshot) {
++    setSync('pending');
++    setSync(await syncAuthenticator(snapshot, browserSignalAPI()));
++  }
++  async function load() {
++    setLoading(true); setError('');
++    try {
++      const snapshot = await accountRequest('passkeys');
++      setData(snapshot);
++      await synchronize(snapshot);
++    } catch (err) { setError((err as Error).message); setData(null); }
++    finally { setLoading(false); }
++  }
++  useEffect(() => { void load(); }, []);
++  useEffect(() => {
++    if (editing || adding) editor.current?.focus();
++    if (removing) cancelRemove.current?.focus();
++  }, [editing, adding, removing]);
++
++  function close() {
++    setEditing(null); setRemoving(null); setAdding(false); setName('');
++    requestAnimationFrame(() => {
++      if (returnFocus.current?.isConnected) returnFocus.current.focus();
++      heading.current?.focus();
++    });
++  }
++  function begin(event: React.MouseEvent<HTMLButtonElement>, key?: Key, remove = false) {
++    returnFocus.current = event.currentTarget;
++    setError(''); setNotice(''); setEditing(null); setRemoving(null); setAdding(false);
++    if (!key) { setAdding(true); setName(''); }
++    else if (remove) setRemoving(key);
++    else { setEditing(key); setName(key.displayName); }
++  }
++  async function save(event: React.FormEvent) {
++    event.preventDefault();
++    if (busy || !name.trim()) return;
++    setBusy(true); setError(''); setNotice('');
++    try {
++      let snapshot: PasskeySnapshot;
++      if (adding) {
++        const optionsJSON = await accountRequest('register-passkey', { action: 'options', displayName: name.trim() });
++        const credential = await startRegistration({ optionsJSON });
++        snapshot = await accountRequest('register-passkey', { action: 'verify', credential });
++      } else {
++        snapshot = await accountRequest('passkeys', { id: editing!.id, displayName: name.trim() }, 'PATCH');
++      }
++      setData(snapshot); setNotice(adding ? 'Your new passkey is ready to use.' : 'Passkey name updated.'); close();
++      await synchronize(snapshot);
++    } catch (err) {
++      setError((err as Error).name === 'NotAllowedError' ? 'Passkey setup was canceled or timed out. You can try again.' : (err as Error).message);
++    } finally { setBusy(false); }
++  }
++  async function remove() {
++    if (!removing || busy) return;
++    setBusy(true); setError(''); setNotice('');
++    try {
++      const snapshot = await accountRequest('passkeys', { id: removing.id }, 'DELETE');
++      setData(snapshot); setNotice('Passkey removed. It can no longer sign in to your account.'); close();
++      await synchronize(snapshot);
++    } catch (err) { setError((err as Error).message); }
++    finally { setBusy(false); }
++  }
++
++  return <section aria-labelledby="passkeys-heading">
++    <div className="mb-7 flex items-start gap-4">
++      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-100"><KeyIcon className="h-6 w-6" /></div>
++      <div><h2 ref={heading} tabIndex={-1} id="passkeys-heading" className="text-2xl font-semibold tracking-tight">Passkeys</h2>
++        <p className="mt-2 max-w-xl text-sm leading-6 text-gray-600">A simpler, safer way to sign in. Use your fingerprint, face, or device screen lock—no password to remember.</p></div>
++    </div>
++
++    {error && <div role="alert" className="mb-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>}
++    {notice && <div role="status" className="mb-5 flex items-start gap-2 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-900"><CheckCircleIcon className="h-5 w-5 shrink-0" />{notice}</div>}
++
++    {loading ? <p role="status" className="py-10 text-sm text-gray-500">Loading your passkeys…</p> : !data ?
++      <div className="rounded-lg border border-gray-200 p-6"><p className="text-sm text-gray-600">Your passkeys couldn’t be loaded.</p><button onClick={load} className={`${buttonClass} mt-4`}>Try again</button><a className="ml-4 text-sm underline" href={`${import.meta.env.BASE_URL}signin`}>Sign in</a></div> : <>
++      <div className="overflow-hidden rounded-lg border border-gray-200">
++        <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-5 py-4">
++          <h3 className="text-sm font-semibold">Your registered passkeys <span className="ml-1 rounded bg-gray-200 px-1.5 py-0.5 text-xs text-gray-600">{data.passkeys.length}</span></h3>
++          <button type="button" onClick={load} disabled={busy || !!editing || !!removing || adding} aria-label="Refresh passkeys" className="rounded p-1 text-gray-500 hover:text-gray-900 disabled:opacity-40"><ArrowPathIcon className="h-4 w-4" /></button>
++        </div>
++        {data.passkeys.length === 0 ? <div className="px-6 py-10 text-center"><KeyIcon className="mx-auto mb-3 h-8 w-8 text-gray-400" /><p className="font-semibold">No passkeys yet</p><p className="mt-2 text-sm text-gray-500">Add a passkey to make your next sign-in a little easier.</p></div> :
++          <ul className="divide-y divide-gray-200">{data.passkeys.map(key => <li key={key.id} className="px-5 py-5">
++            <div className="flex flex-wrap items-start gap-3">
++              <ComputerDesktopIcon className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" />
++              <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{key.displayName}</p><p className="mt-1 text-xs leading-5 text-gray-500">Added {date(key.createdAt)}<span className="mx-2">·</span>{key.lastUsedAt ? `Last used ${date(key.lastUsedAt)}` : 'Not used yet'}</p></div>
++              <div className="flex gap-3"><button disabled={busy || !!editing || !!removing || adding} onClick={e => begin(e, key)} aria-label={`Rename ${key.displayName}`} className="rounded p-1 text-gray-500 hover:text-gray-900 disabled:opacity-30"><PencilSquareIcon className="h-5 w-5" /></button>
++                <button disabled={busy || !!editing || !!removing || adding} onClick={e => begin(e, key, true)} aria-label={`Remove ${key.displayName}`} className="rounded p-1 text-gray-500 hover:text-red-700 disabled:opacity-30"><TrashIcon className="h-5 w-5" /></button></div>
++            </div>
++            {editing?.id === key.id && renderEditor()}
++            {removing?.id === key.id && <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4" role="group" aria-label={`Confirm removal of ${key.displayName}`}>
++              <p className="text-sm font-semibold">Remove this passkey?</p><p className="mt-1 text-sm leading-6 text-gray-600">You won’t be able to use “{key.displayName}” to sign in again. {data.passkeys.length === 1 ? 'This is your last passkey. You can still sign in with your username and password.' : 'Your other passkeys will still work.'}</p>
++              <div className="mt-4 flex gap-3"><button ref={cancelRemove} disabled={busy} onClick={close} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold">Keep passkey</button><button disabled={busy} onClick={remove} className="rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? 'Removing…' : 'Remove passkey'}</button></div>
++            </div>}
++          </li>)}</ul>}
++      </div>
++      {adding ? renderEditor() : <button onClick={e => begin(e)} disabled={busy || !!editing || !!removing} className={`${buttonClass} mt-5 inline-flex items-center gap-2`}><PlusIcon className="h-4 w-4" />Add a passkey</button>}
++
++      <div className="mt-7 border-t border-gray-200 pt-5 text-xs leading-5 text-gray-500" aria-live="polite">
++        <p>{sync === 'pending' ? 'Updating your browser’s saved passkeys…' : sync === 'synced' ? 'Your browser has been notified of your current passkeys.' : sync === 'unsupported' ? 'This browser can’t update saved passkeys automatically. After removing a passkey here, you can also remove it from your device’s password manager.' : 'Your account is up to date, but your browser couldn’t update its saved passkeys. Retry or remove unused keys from your device’s password manager.'}</p>
++        {sync === 'failed' && <button disabled={busy} className="mt-2 font-semibold text-gray-900 underline" onClick={async () => { setBusy(true); try { await load(); } finally { setBusy(false); } }}>Retry browser sync</button>}
++      </div>
++    </>}
++    <aside className="mt-8 flex gap-3 rounded-lg bg-gray-50 p-5"><ShieldCheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" /><div><h3 className="text-sm font-semibold">Made for your peace of mind</h3><p className="mt-1 text-sm leading-6 text-gray-600">Your fingerprint and face data stay on your device. The DevTools Times never sees or stores them.</p></div></aside>
++  </section>;
++
++  function renderEditor() {
++    return <form onSubmit={save} className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4" onKeyDown={e => { if (e.key === 'Escape' && !busy) close(); }}>
++      <label htmlFor="passkey-name" className="mb-2 block text-sm font-semibold">{adding ? 'Name your new passkey' : 'Passkey display name'}</label>
++      <input ref={editor} id="passkey-name" value={name} onChange={e => setName(e.target.value)} maxLength={64} required disabled={busy} placeholder="e.g. Personal laptop" className={inputClass} />
++      <p className="mt-2 text-xs leading-5 text-gray-500">Choose a name to recognize this key. This label is only used on The DevTools Times.</p>
++      <div className="mt-4 flex gap-3"><button type="submit" disabled={busy || !name.trim()} className={buttonClass}>{busy ? 'Saving…' : adding ? 'Create passkey' : 'Save name'}</button><button type="button" disabled={busy} onClick={close} className="px-3 py-2 text-sm font-semibold">Cancel</button></div>
++    </form>;
++  }
++}
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..4430625 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,39 +1,23 @@
+ import React, { useState } from 'react';
++import { startAuthentication } from '@simplewebauthn/browser';
++import { accountRequest } from '../lib/passkeys';
+ 
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
+   const [error, setError] = useState<string | null>(null);
+-  const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError(null);
+-    setSuccess(null);
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
+-
+-      const data = await response.json();
+-
+-      if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
+-      } else {
+-        setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+-      }
++      await accountRequest('login', { username, password });
++      window.location.assign(`${import.meta.env.BASE_URL}account/settings`);
+     } catch (err) {
+-      setError('An unexpected error occurred. Please try again later.');
++      setError(err instanceof Error ? err.message : 'Unable to sign in. Please try again.');
+     } finally {
+       setLoading(false);
+     }
+@@ -49,12 +33,6 @@ export default function SignInForm() {
+         </div>
+       )}
+       
+-      {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
+-        </div>
+-      )}
+-
+       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+@@ -63,6 +41,7 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            autoComplete="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
+             required
+@@ -77,6 +56,7 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            autoComplete="current-password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
+             required
+@@ -94,6 +74,19 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++      <div className="mt-5 border-t border-gray-200 pt-5">
++        <button type="button" disabled={loading} className="w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50" onClick={async () => {
++          setLoading(true); setError(null);
++          try {
++            const optionsJSON = await accountRequest('passkey-login', { action: 'options' });
++            const credential = await startAuthentication({ optionsJSON });
++            await accountRequest('passkey-login', { action: 'verify', credential });
++            window.location.assign(`${import.meta.env.BASE_URL}account/settings`);
++          } catch (err) {
++            setError(err instanceof Error && err.name === 'NotAllowedError' ? 'Passkey sign-in was canceled. Try again or use your password.' : err instanceof Error ? err.message : 'Unable to sign in.');
++          } finally { setLoading(false); }
++        }}>Sign in with a passkey</button>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/components/SignOutButton.tsx b/src/components/SignOutButton.tsx
+new file mode 100644
+index 0000000..a086931
+--- /dev/null
++++ b/src/components/SignOutButton.tsx
+@@ -0,0 +1,11 @@
++import { useState } from 'react';
++import { accountRequest } from '../lib/passkeys';
++export default function SignOutButton() {
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  return <div><button disabled={busy} className="text-sm text-gray-500 underline hover:text-gray-900" onClick={async () => {
++    setBusy(true); setError('');
++    try { await accountRequest('logout', {}); window.location.assign(import.meta.env.BASE_URL); }
++    catch { setError('Unable to sign out. Please try again.'); setBusy(false); }
++  }}>{busy ? 'Signing out…' : 'Sign out'}</button>{error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}</div>;
++}
+diff --git a/src/env.d.ts b/src/env.d.ts
+new file mode 100644
+index 0000000..7e45f8a
+--- /dev/null
++++ b/src/env.d.ts
+@@ -0,0 +1,9 @@
++/// <reference types="astro/client" />
++declare namespace App {
++  interface SessionData {
++    readerId: string;
++    registration: { challenge: string; readerId: string; name: string };
++    authenticationChallenge: string;
++    readingList: string[];
++  }
++}
+diff --git a/src/lib/passkeys.ts b/src/lib/passkeys.ts
+new file mode 100644
+index 0000000..d990cca
+--- /dev/null
++++ b/src/lib/passkeys.ts
+@@ -0,0 +1,38 @@
++export interface PasskeySnapshot {
++  user: { username: string; userId: string };
++  rpId: string;
++  passkeys: { id: string; displayName: string; createdAt: string; lastUsedAt: string | null }[];
++}
++
++export async function accountRequest(path: string, data?: unknown, method = 'POST') {
++  const response = await fetch(`${import.meta.env.BASE_URL}api/account/${path}`, {
++    method: data === undefined ? 'GET' : method,
++    credentials: 'same-origin', cache: 'no-store',
++    headers: data === undefined ? {} : { 'Content-Type': 'application/json' },
++    body: data === undefined ? undefined : JSON.stringify(data),
++  });
++  const result = await response.json();
++  if (!response.ok) throw new Error(result.error || 'Unable to complete this request. Please try again.');
++  return result;
++}
++
++type SignalAPI = {
++  signalAllAcceptedCredentials?: (options: { rpId: string; userId: string; allAcceptedCredentialIds: string[] }) => Promise<void>;
++  signalCurrentUserDetails?: (options: { rpId: string; userId: string; name: string; displayName: string }) => Promise<void>;
++};
++export async function syncAuthenticator(snapshot: PasskeySnapshot, api: SignalAPI | undefined): Promise<'synced' | 'unsupported' | 'failed'> {
++  if (!api?.signalAllAcceptedCredentials) return 'unsupported';
++  try {
++    // Always send the complete authoritative list, including an empty list after removing the last key.
++    await api.signalAllAcceptedCredentials({ rpId: snapshot.rpId, userId: snapshot.user.userId,
++      allAcceptedCredentialIds: snapshot.passkeys.map(key => key.id) });
++    if (api.signalCurrentUserDetails) {
++      // This is the account name, not an individual passkey's local nickname.
++      await api.signalCurrentUserDetails({ rpId: snapshot.rpId, userId: snapshot.user.userId,
++        name: snapshot.user.username, displayName: snapshot.user.username });
++    }
++    return 'synced';
++  } catch { return 'failed'; }
++}
++export const browserSignalAPI = (): SignalAPI | undefined =>
++  typeof PublicKeyCredential === 'undefined' ? undefined : PublicKeyCredential as unknown as SignalAPI;
+diff --git a/src/lib/server/account.ts b/src/lib/server/account.ts
+new file mode 100644
+index 0000000..d09fd34
+--- /dev/null
++++ b/src/lib/server/account.ts
+@@ -0,0 +1,56 @@
++import type { APIContext } from 'astro';
++import { passkeyStore } from './passkey-store';
++
++export class AccountError extends Error {
++  constructor(public status: number, message: string) { super(message); }
++}
++export const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
++  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
++});
++export function relyingParty(request: Request) {
++  // Pin this to the public URL in production (also when behind a reverse proxy).
++  const origin = new URL(process.env.WEBAUTHN_ORIGIN || request.url).origin;
++  return { origin, rpId: new URL(origin).hostname };
++}
++export function requireSameOrigin(request: Request) {
++  if (request.headers.get('Origin') !== relyingParty(request).origin) {
++    throw new AccountError(403, 'This request must come from this website.');
++  }
++}
++export async function requireReader(context: Pick<APIContext, 'session'>) {
++  const id = await context.session?.get('readerId');
++  const reader = typeof id === 'string' ? passkeyStore().reader(id) : undefined;
++  if (!reader) throw new AccountError(401, 'Please sign in to manage your passkeys.');
++  return reader;
++}
++export async function body(request: Request) {
++  if (!request.headers.get('Content-Type')?.startsWith('application/json')) {
++    throw new AccountError(415, 'Expected JSON.');
++  }
++  try {
++    const data = await request.json();
++    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error();
++    return data;
++  } catch { throw new AccountError(400, 'Invalid request.'); }
++}
++export function displayName(value: unknown): string {
++  if (typeof value !== 'string' || !value.trim() || value.trim().length > 64) {
++    throw new AccountError(400, 'Use a name between 1 and 64 characters.');
++  }
++  return value.trim();
++}
++export function snapshot(reader: { id: string; username: string; userHandle: string }, rpId: string) {
++  const keys = passkeyStore().list(reader.id, rpId);
++  return {
++    user: { username: reader.username, userId: reader.userHandle }, rpId,
++    passkeys: keys.map(({ id, displayName, createdAt, lastUsedAt }) => ({ id, displayName, createdAt, lastUsedAt })),
++  };
++}
++export async function route(action: () => Promise<Response>) {
++  try { return await action(); }
++  catch (error) {
++    if (error instanceof AccountError) return json({ error: error.message }, error.status);
++    console.error('Account request failed:', error instanceof Error ? error.message : 'Unknown error');
++    return json({ error: 'Unable to complete this request. Please try again.' }, 500);
++  }
++}
+diff --git a/src/lib/server/passkey-store.ts b/src/lib/server/passkey-store.ts
+new file mode 100644
+index 0000000..43f2fcf
+--- /dev/null
++++ b/src/lib/server/passkey-store.ts
+@@ -0,0 +1,66 @@
++import { DatabaseSync } from 'node:sqlite';
++import { mkdirSync } from 'node:fs';
++import { dirname } from 'node:path';
++import { randomBytes } from 'node:crypto';
++
++export interface Reader { id: string; username: string; userHandle: string }
++export interface StoredPasskey {
++  id: string; readerId: string; rpId: string; displayName: string;
++  publicKey: string; counter: number; transports: string[];
++  createdAt: string; lastUsedAt: string | null;
++}
++
++// Open lazily: building/importing modules must not create a database.
++export function createPasskeyStore(filename: string) {
++  if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true, mode: 0o700 });
++  const db = new DatabaseSync(filename);
++  db.exec(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;
++    CREATE TABLE IF NOT EXISTS readers (
++      id TEXT PRIMARY KEY, username TEXT NOT NULL, userHandle TEXT NOT NULL UNIQUE
++    );
++    CREATE TABLE IF NOT EXISTS passkeys (
++      id TEXT PRIMARY KEY, readerId TEXT NOT NULL REFERENCES readers(id), rpId TEXT NOT NULL,
++      displayName TEXT NOT NULL, publicKey TEXT NOT NULL, counter INTEGER NOT NULL,
++      transports TEXT NOT NULL, createdAt TEXT NOT NULL, lastUsedAt TEXT
++    );`);
++  const decode = (row: any): StoredPasskey | undefined => row && ({ ...row, transports: JSON.parse(row.transports) });
++  return {
++    reader(id: string): Reader | undefined {
++      return db.prepare('SELECT * FROM readers WHERE id = ?').get(id) as Reader | undefined;
++    },
++    ensureReader(id: string, username: string): Reader {
++      db.prepare('INSERT INTO readers VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET username = excluded.username')
++        .run(id, username, randomBytes(32).toString('base64url'));
++      return this.reader(id)!;
++    },
++    list(readerId: string, rpId: string): StoredPasskey[] {
++      return db.prepare('SELECT * FROM passkeys WHERE readerId = ? AND rpId = ? ORDER BY createdAt DESC')
++        .all(readerId, rpId).map(row => decode(row)!);
++    },
++    find(id: string): StoredPasskey | undefined {
++      return decode(db.prepare('SELECT * FROM passkeys WHERE id = ?').get(id));
++    },
++    add(key: StoredPasskey) {
++      db.prepare('INSERT INTO passkeys VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
++        .run(key.id, key.readerId, key.rpId, key.displayName, key.publicKey, key.counter,
++          JSON.stringify(key.transports), key.createdAt, key.lastUsedAt);
++    },
++    rename(readerId: string, rpId: string, id: string, name: string): boolean {
++      return db.prepare('UPDATE passkeys SET displayName = ? WHERE readerId = ? AND rpId = ? AND id = ?')
++        .run(name, readerId, rpId, id).changes === 1;
++    },
++    remove(readerId: string, rpId: string, id: string): boolean {
++      return db.prepare('DELETE FROM passkeys WHERE readerId = ? AND rpId = ? AND id = ?')
++        .run(readerId, rpId, id).changes === 1;
++    },
++    use(id: string, oldCounter: number, newCounter: number): boolean {
++      return db.prepare('UPDATE passkeys SET counter = ?, lastUsedAt = ? WHERE id = ? AND counter = ?')
++        .run(newCounter, new Date().toISOString(), id, oldCounter).changes === 1;
++    },
++    close() { db.close(); },
++  };
++}
++let store: ReturnType<typeof createPasskeyStore> | undefined;
++export function passkeyStore() {
++  return store ??= createPasskeyStore(process.env.PASSKEY_DB_PATH || './.data/passkeys.sqlite');
++}
+diff --git a/src/pages/account/settings.astro b/src/pages/account/settings.astro
+new file mode 100644
+index 0000000..83986bd
+--- /dev/null
++++ b/src/pages/account/settings.astro
+@@ -0,0 +1,27 @@
++---
++import Layout from '../../layouts/Layout.astro';
++import PasskeySettings from '../../components/PasskeySettings';
++import SignOutButton from '../../components/SignOutButton';
++import { requireReader } from '../../lib/server/account';
++let reader;
++try { reader = await requireReader(Astro); }
++catch { return Astro.redirect(`${import.meta.env.BASE_URL}signin`); }
++Astro.response.headers.set('Cache-Control', 'no-store');
++---
++<Layout title="Account settings | The DevTools Times">
++  <div class="mx-auto max-w-5xl px-5 py-10 sm:px-10 sm:py-14">
++    <a href={import.meta.env.BASE_URL} class="text-xs text-gray-500 hover:text-gray-900">← Back to the Times</a>
++    <div class="mt-6 border-b-2 border-gray-900 pb-7">
++      <p class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Your account</p>
++      <h1 class="font-brand text-4xl sm:text-5xl">Account settings</h1>
++      <p class="mt-3 text-sm text-gray-500">A little housekeeping for a better reading experience.</p>
++    </div>
++    <div class="grid gap-8 pt-8 md:grid-cols-[200px_1fr] md:gap-12">
++      <aside>
++        <nav aria-label="Account settings"><a href="#security" aria-current="page" class="flex items-center gap-3 border-l-2 border-gray-900 bg-gray-50 px-4 py-3 text-sm font-semibold"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Z"/><path d="m8 12 3 3 5-6"/></svg>Sign-in & security</a></nav>
++        <div class="mt-7 border-t border-gray-200 pt-5"><p class="text-xs text-gray-500">Signed in as</p><p class="mt-1 mb-3 break-words text-sm font-semibold">{reader.username}</p><SignOutButton client:load /></div>
++      </aside>
++      <div id="security" class="min-w-0"><PasskeySettings client:load /></div>
++    </div>
++  </div>
++</Layout>
+diff --git a/src/pages/api/account/login.ts b/src/pages/api/account/login.ts
+new file mode 100644
+index 0000000..cfba751
+--- /dev/null
++++ b/src/pages/api/account/login.ts
+@@ -0,0 +1,25 @@
++import type { APIRoute } from 'astro';
++import { AccountError, body, json, requireSameOrigin, route } from '../../../lib/server/account';
++import { passkeyStore } from '../../../lib/server/passkey-store';
++
++export const POST: APIRoute = context => route(async () => {
++  requireSameOrigin(context.request);
++  const { username, password } = await body(context.request);
++  if (typeof username !== 'string' || !username.trim() || typeof password !== 'string' || !password) {
++    throw new AccountError(400, 'Enter your username and password.');
++  }
++  const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
++    method: 'POST', headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ username: username.trim(), password }), signal: AbortSignal.timeout(15000),
++  });
++  if (!response.ok) throw new AccountError(response.status === 429 ? 429 : 401, 'Sign-in failed. Check your username and password and try again.');
++  const data = await response.json();
++  if (data.error || typeof data.token !== 'string' || !data.token) throw new AccountError(401, 'Sign-in failed. Please try again.');
++  // Use the upstream immutable subject when available. The demo service's fallback is its unique username.
++  const subject = data.user?.id ?? data.userId ?? data.user?.username ?? data.username ?? username.trim();
++  const name = data.user?.username ?? data.username ?? username.trim();
++  const reader = passkeyStore().ensureReader(String(subject), String(name));
++  await context.session!.regenerate();
++  await context.session!.set('readerId', reader.id, { ttl: 60 * 60 * 24 });
++  return json({ success: true });
++});
+diff --git a/src/pages/api/account/logout.ts b/src/pages/api/account/logout.ts
+new file mode 100644
+index 0000000..eca1115
+--- /dev/null
++++ b/src/pages/api/account/logout.ts
+@@ -0,0 +1,7 @@
++import type { APIRoute } from 'astro';
++import { json, requireSameOrigin, route } from '../../../lib/server/account';
++export const POST: APIRoute = context => route(async () => {
++  requireSameOrigin(context.request);
++  await context.session?.destroy();
++  return json({ success: true });
++});
+diff --git a/src/pages/api/account/passkey-login.ts b/src/pages/api/account/passkey-login.ts
+new file mode 100644
+index 0000000..764abd2
+--- /dev/null
++++ b/src/pages/api/account/passkey-login.ts
+@@ -0,0 +1,34 @@
++import type { APIRoute } from 'astro';
++import { generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
++import { AccountError, body, json, relyingParty, requireSameOrigin, route } from '../../../lib/server/account';
++import { passkeyStore } from '../../../lib/server/passkey-store';
++
++export const POST: APIRoute = context => route(async () => {
++  requireSameOrigin(context.request);
++  const data = await body(context.request);
++  const { origin, rpId } = relyingParty(context.request);
++  if (data.action === 'options') {
++    const options = await generateAuthenticationOptions({ rpID: rpId, userVerification: 'required' });
++    await context.session!.set('authenticationChallenge', options.challenge, { ttl: 300 });
++    return json(options);
++  }
++  const challenge = await context.session!.get('authenticationChallenge');
++  await context.session!.delete('authenticationChallenge');
++  const credential = data.credential;
++  const key = typeof credential?.id === 'string' ? passkeyStore().find(credential.id) : undefined;
++  if (!challenge || !key || key.rpId !== rpId) throw new AccountError(401, 'Unable to sign in with this passkey. Try another passkey or your password.');
++  const reader = passkeyStore().reader(key.readerId)!;
++  if (credential.response?.userHandle !== reader.userHandle) throw new AccountError(401, 'Unable to sign in with this passkey.');
++  let result;
++  try {
++    result = await verifyAuthenticationResponse({ response: credential, expectedChallenge: challenge,
++      expectedOrigin: origin, expectedRPID: rpId, requireUserVerification: true,
++      credential: { id: key.id, publicKey: new Uint8Array(Buffer.from(key.publicKey, 'base64url')), counter: key.counter, transports: key.transports } });
++  } catch { throw new AccountError(401, 'Unable to verify this passkey. Please try again.'); }
++  if (!result.verified || !passkeyStore().use(key.id, key.counter, result.authenticationInfo.newCounter)) {
++    throw new AccountError(401, 'Unable to sign in with this passkey. Please try again.');
++  }
++  await context.session!.regenerate();
++  await context.session!.set('readerId', reader.id, { ttl: 60 * 60 * 24 });
++  return json({ success: true });
++});
+diff --git a/src/pages/api/account/passkeys.ts b/src/pages/api/account/passkeys.ts
+new file mode 100644
+index 0000000..053c781
+--- /dev/null
++++ b/src/pages/api/account/passkeys.ts
+@@ -0,0 +1,23 @@
++import type { APIRoute } from 'astro';
++import { AccountError, body, displayName, json, relyingParty, requireReader, requireSameOrigin, route, snapshot } from '../../../lib/server/account';
++import { passkeyStore } from '../../../lib/server/passkey-store';
++
++export const GET: APIRoute = context => route(async () => {
++  const reader = await requireReader(context);
++  return json(snapshot(reader, relyingParty(context.request).rpId));
++});
++const mutate: APIRoute = context => route(async () => {
++  requireSameOrigin(context.request);
++  const reader = await requireReader(context);
++  const { id, displayName: name } = await body(context.request);
++  if (typeof id !== 'string' || !id) throw new AccountError(400, 'A passkey is required.');
++  const { rpId } = relyingParty(context.request);
++  const store = passkeyStore();
++  const changed = context.request.method === 'PATCH'
++    ? store.rename(reader.id, rpId, id, displayName(name))
++    : store.remove(reader.id, rpId, id);
++  if (!changed) throw new AccountError(404, 'This passkey was not found. Refresh the list and try again.');
++  return json(snapshot(reader, rpId));
++});
++export const PATCH = mutate;
++export const DELETE = mutate;
+diff --git a/src/pages/api/account/register-passkey.ts b/src/pages/api/account/register-passkey.ts
+new file mode 100644
+index 0000000..e50dd05
+--- /dev/null
++++ b/src/pages/api/account/register-passkey.ts
+@@ -0,0 +1,38 @@
++import type { APIRoute } from 'astro';
++import { generateRegistrationOptions, verifyRegistrationResponse } from '@simplewebauthn/server';
++import { AccountError, body, displayName, json, relyingParty, requireReader, requireSameOrigin, route, snapshot } from '../../../lib/server/account';
++import { passkeyStore } from '../../../lib/server/passkey-store';
++
++export const POST: APIRoute = context => route(async () => {
++  requireSameOrigin(context.request);
++  const reader = await requireReader(context);
++  const data = await body(context.request);
++  const { origin, rpId } = relyingParty(context.request);
++  if (data.action === 'options') {
++    const name = displayName(data.displayName);
++    const options = await generateRegistrationOptions({
++      rpName: 'The DevTools Times', rpID: rpId, userName: reader.username,
++      userID: new Uint8Array(Buffer.from(reader.userHandle, 'base64url')), userDisplayName: reader.username,
++      excludeCredentials: passkeyStore().list(reader.id, rpId).map(key => ({ id: key.id, transports: key.transports })),
++      authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
++    });
++    await context.session!.set('registration', { challenge: options.challenge, readerId: reader.id, name }, { ttl: 300 });
++    return json(options);
++  }
++  const pending = await context.session!.get('registration');
++  await context.session!.delete('registration');
++  if (!pending || pending.readerId !== reader.id || !data.credential) {
++    throw new AccountError(400, 'Passkey setup expired. Please start again.');
++  }
++  let result;
++  try {
++    result = await verifyRegistrationResponse({ response: data.credential, expectedChallenge: pending.challenge,
++      expectedOrigin: origin, expectedRPID: rpId, requireUserVerification: true });
++  } catch { throw new AccountError(400, 'The passkey could not be verified. Please try again.'); }
++  if (!result.verified) throw new AccountError(400, 'The passkey could not be verified.');
++  const { credential } = result.registrationInfo;
++  passkeyStore().add({ id: credential.id, readerId: reader.id, rpId, displayName: pending.name,
++    publicKey: Buffer.from(credential.publicKey).toString('base64url'), counter: credential.counter,
++    transports: credential.transports ?? [], createdAt: new Date().toISOString(), lastUsedAt: null });
++  return json(snapshot(reader, rpId));
++});
+diff --git a/tests/passkeys.test.ts b/tests/passkeys.test.ts
+new file mode 100644
+index 0000000..dd6fae5
+--- /dev/null
++++ b/tests/passkeys.test.ts
+@@ -0,0 +1,112 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { mkdtempSync, rmSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { createPasskeyStore, passkeyStore, type StoredPasskey } from '../src/lib/server/passkey-store';
++import { AccountError, displayName, requireReader, requireSameOrigin, snapshot } from '../src/lib/server/account';
++import { syncAuthenticator, type PasskeySnapshot } from '../src/lib/passkeys';
++
++const key = (id: string, readerId: string, rpId = 'times.example'): StoredPasskey => ({
++  id, readerId, rpId, displayName: 'Laptop', publicKey: 'private-server-metadata', counter: 0,
++  transports: ['internal'], createdAt: '2026-11-13T00:00:00.000Z', lastUsedAt: null,
++});
++
++test('passkey writes enforce reader ownership and RP isolation; deleted keys cannot authenticate', () => {
++  const store = createPasskeyStore(':memory:');
++  try {
++    store.ensureReader('alice', 'Alice'); store.ensureReader('bob', 'Bob');
++    store.add(key('alice-key', 'alice')); store.add(key('bob-key', 'bob'));
++    store.add(key('other-rp', 'alice', 'other.example'));
++    assert.equal(store.rename('bob', 'times.example', 'alice-key', 'Stolen'), false);
++    assert.equal(store.remove('bob', 'times.example', 'alice-key'), false);
++    assert.equal(store.remove('alice', 'other.example', 'alice-key'), false);
++    assert.deepEqual(store.list('alice', 'times.example').map(k => k.id), ['alice-key']);
++    assert.equal(store.rename('alice', 'times.example', 'alice-key', 'Work laptop'), true);
++    assert.equal(store.find('alice-key')?.displayName, 'Work laptop');
++    assert.equal(store.use('alice-key', 0, 1), true);
++    assert.equal(store.use('alice-key', 0, 2), false);
++    assert.ok(store.find('alice-key')?.lastUsedAt);
++    assert.equal(store.remove('alice', 'times.example', 'alice-key'), true);
++    assert.equal(store.find('alice-key'), undefined);
++    assert.equal(store.use('alice-key', 1, 2), false);
++    assert.equal(store.find('bob-key')?.readerId, 'bob');
++  } finally { store.close(); }
++});
++
++test('credentials and the stable WebAuthn user handle persist when storage reopens', () => {
++  const dir = mkdtempSync(join(tmpdir(), 'times-passkey-'));
++  const filename = join(dir, 'passkeys.sqlite');
++  try {
++    let store = createPasskeyStore(filename);
++    const reader = store.ensureReader('alice', 'Alice');
++    assert.equal(Buffer.from(reader.userHandle, 'base64url').length, 32);
++    store.add(key('key', 'alice')); store.close();
++    store = createPasskeyStore(filename);
++    assert.equal(store.ensureReader('alice', 'New account name').userHandle, reader.userHandle);
++    assert.equal(store.find('key')?.displayName, 'Laptop');
++    store.close();
++  } finally { rmSync(dir, { recursive: true, force: true }); }
++});
++
++test('names are trimmed and blank or oversized values are rejected', () => {
++  assert.equal(displayName('  Work laptop  '), 'Work laptop');
++  for (const name of ['', '  ', 'a'.repeat(65), null, {}, 12]) {
++    assert.throws(() => displayName(name), error => error instanceof AccountError && error.status === 400);
++  }
++});
++
++test('account mutations reject cross-origin and missing-Origin requests', () => {
++  const old = process.env.WEBAUTHN_ORIGIN;
++  process.env.WEBAUTHN_ORIGIN = 'https://times.example';
++  try {
++    assert.doesNotThrow(() => requireSameOrigin(new Request('http://internal/api', { headers: { Origin: 'https://times.example' } })));
++    for (const headers of [new Headers(), new Headers({ Origin: 'https://evil.example' })]) {
++      assert.throws(() => requireSameOrigin(new Request('https://times.example/api', { headers })), error => error instanceof AccountError && error.status === 403);
++    }
++  } finally {
++    if (old === undefined) delete process.env.WEBAUTHN_ORIGIN; else process.env.WEBAUTHN_ORIGIN = old;
++  }
++});
++
++test('signed-out access is rejected and snapshots omit credential verification material', async () => {
++  await assert.rejects(requireReader({ session: undefined } as any), error => error instanceof AccountError && error.status === 401);
++  process.env.PASSKEY_DB_PATH = ':memory:';
++  const store = passkeyStore();
++  const reader = store.ensureReader('reader', 'Reader');
++  store.add(key('credential', 'reader'));
++  const result = snapshot(reader, 'times.example');
++  assert.equal(result.user.userId, reader.userHandle);
++  assert.equal('publicKey' in result.passkeys[0], false);
++  assert.equal('readerId' in result.passkeys[0], false);
++  assert.deepEqual(result.passkeys.map(k => k.id), ['credential']);
++});
++
++const state: PasskeySnapshot = {
++  rpId: 'times.example', user: { username: 'Reader', userId: 'dXNlcg' },
++  passkeys: [{ id: 'a2V5', displayName: 'My laptop', createdAt: '2026-11-13', lastUsedAt: null }],
++};
++test('browser sync sends the complete list and the account name, never the passkey label', async () => {
++  const calls: unknown[] = [];
++  assert.equal(await syncAuthenticator(state, {
++    async signalAllAcceptedCredentials(options) { calls.push(options); },
++    async signalCurrentUserDetails(options) { calls.push(options); },
++  }), 'synced');
++  assert.deepEqual(calls, [
++    { rpId: 'times.example', userId: 'dXNlcg', allAcceptedCredentialIds: ['a2V5'] },
++    { rpId: 'times.example', userId: 'dXNlcg', name: 'Reader', displayName: 'Reader' },
++  ]);
++});
++test('removing the final key signals an empty accepted list', async () => {
++  let accepted: string[] | undefined;
++  await syncAuthenticator({ ...state, passkeys: [] }, {
++    async signalAllAcceptedCredentials(options) { accepted = options.allAcceptedCredentialIds; },
++  });
++  assert.deepEqual(accepted, []);
++});
++test('unsupported and failing browser signals preserve successful account changes', async () => {
++  assert.equal(await syncAuthenticator(state, undefined), 'unsupported');
++  assert.equal(await syncAuthenticator(state, {}), 'unsupported');
++  assert.equal(await syncAuthenticator(state, { async signalAllAcceptedCredentials() { throw new Error('Browser unavailable'); } }), 'failed');
++  assert.deepEqual(state.passkeys.map(k => k.id), ['a2V5']);
++});

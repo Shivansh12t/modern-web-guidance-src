@@ -1,0 +1,176 @@
+diff --git a/src/components/TopStoriesCarousel.tsx b/src/components/TopStoriesCarousel.tsx
+new file mode 100644
+index 0000000..4f0bbbd
+--- /dev/null
++++ b/src/components/TopStoriesCarousel.tsx
+@@ -0,0 +1,99 @@
++import { useState } from 'react';
++import type { KeyboardEvent } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++export interface TopStory {
++  id: string;
++  title: string;
++  summary?: string;
++  date: string;
++  href: string;
++}
++
++interface Props {
++  stories: TopStory[];
++}
++
++type Direction = 'next' | 'prev';
++
++export default function TopStoriesCarousel({ stories }: Props) {
++  const [index, setIndex] = useState(0);
++  // null until the first interaction so the initial render isn't animated.
++  const [direction, setDirection] = useState<Direction | null>(null);
++  // Bumped on every change so the slide remounts and the animation replays.
++  const [changeCount, setChangeCount] = useState(0);
++
++  const count = stories.length;
++  if (count === 0) return null;
++
++  const go = (dir: Direction) => {
++    setDirection(dir);
++    setIndex((i) => (dir === 'next' ? (i + 1) % count : (i - 1 + count) % count));
++    setChangeCount((c) => c + 1);
++  };
++
++  const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
++    if (count < 2) return;
++    if (e.key === 'ArrowRight') {
++      e.preventDefault();
++      go('next');
++    } else if (e.key === 'ArrowLeft') {
++      e.preventDefault();
++      go('prev');
++    }
++  };
++
++  const story = stories[index];
++  const animationClass =
++    direction === 'next' ? 'top-story-slide-from-right' : direction === 'prev' ? 'top-story-slide-from-left' : '';
++
++  const buttonClass =
++    'shrink-0 rounded-full border border-gray-300 p-2 text-gray-700 hover:border-amber-400 hover:text-amber-400 ' +
++    'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors';
++
++  return (
++    <section
++      aria-roledescription="carousel"
++      aria-label="Top stories"
++      onKeyDown={onKeyDown}
++      className="flex items-center gap-4"
++    >
++      {count > 1 && (
++        <button type="button" onClick={() => go('prev')} className={buttonClass} aria-label="Previous story">
++          <ChevronLeftIcon className="h-5 w-5" />
++        </button>
++      )}
++
++      <div className="relative flex-1 min-w-0 overflow-hidden" aria-live="polite" aria-atomic="true">
++        <div
++          key={changeCount}
++          className={animationClass}
++          role="group"
++          aria-roledescription="slide"
++          aria-label={`${index + 1} of ${count}`}
++        >
++          <a href={story.href}>
++            <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer truncate">{story.title}</h3>
++          </a>
++          <div className="flex items-center gap-2 text-xs text-gray-500">
++            <span>{story.date}</span>
++            {count > 1 && (
++              <>
++                <span aria-hidden="true">·</span>
++                <span>
++                  {index + 1} / {count}
++                </span>
++              </>
++            )}
++          </div>
++        </div>
++      </div>
++
++      {count > 1 && (
++        <button type="button" onClick={() => go('next')} className={buttonClass} aria-label="Next story">
++          <ChevronRightIcon className="h-5 w-5" />
++        </button>
++      )}
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..cb08794 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -4,6 +4,7 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
++import TopStoriesCarousel from '../components/TopStoriesCarousel';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
+ 
+@@ -41,16 +42,12 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
++            <TopStoriesCarousel client:load stories={topStories.map(article => ({
++                id: article.id,
++                title: article.data.title,
++                date: article.data.date.toLocaleDateString(),
++                href: `${import.meta.env.BASE_URL}articles/${article.id}`,
++            }))} />
+         </div>
+     </div>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..72403bb 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,29 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Top Stories carousel: slide direction mirrors navigation direction */
++@keyframes top-story-in-from-right {
++  from { transform: translateX(100%); opacity: 0; }
++  to { transform: translateX(0); opacity: 1; }
++}
++
++@keyframes top-story-in-from-left {
++  from { transform: translateX(-100%); opacity: 0; }
++  to { transform: translateX(0); opacity: 1; }
++}
++
++.top-story-slide-from-right {
++  animation: top-story-in-from-right 350ms cubic-bezier(0.22, 1, 0.36, 1) both;
++}
++
++.top-story-slide-from-left {
++  animation: top-story-in-from-left 350ms cubic-bezier(0.22, 1, 0.36, 1) both;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .top-story-slide-from-right,
++  .top-story-slide-from-left {
++    animation-duration: 1ms;
++  }
++}

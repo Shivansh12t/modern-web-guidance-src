@@ -1,0 +1,71 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -300,7 +300,66 @@
+     regenBtn.addEventListener('click', renderCards);
+ 
+ 
+   </script>
++
++  <!-- Core Web Vitals monitoring -->
++  <script type="module">
++    import { onCLS, onINP, onLCP } from 'https://unpkg.com/web-vitals@5?module';
++
++    const ENDPOINT = '/path/to/analytics/endpoint';
++    const queue = new Map();
++
++    // Keep only the latest value per metric instance (keyed by id, so a
++    // bfcache restore — which starts new metric instances — is tracked too).
++    function addToQueue(metric) {
++      queue.set(metric.id, {
++        name: metric.name,
++        value: metric.value,
++        rating: metric.rating,
++        delta: metric.delta,
++        id: metric.id,
++        navigationType: metric.navigationType,
++      });
++    }
++
++    function flushQueue() {
++      if (queue.size === 0) return;
++
++      const body = JSON.stringify({
++        page: location.href,
++        timestamp: Date.now(),
++        metrics: [...queue.values()],
++      });
++      queue.clear();
++
++      // sendBeacon survives page unload; fall back to keepalive fetch.
++      const sent = navigator.sendBeacon &&
++        navigator.sendBeacon(ENDPOINT, new Blob([body], { type: 'application/json' }));
++      if (!sent) {
++        fetch(ENDPOINT, {
++          method: 'POST',
++          body,
++          headers: { 'Content-Type': 'application/json' },
++          keepalive: true,
++        }).catch(() => {});
++      }
++    }
++
++    // Register metric listeners first so web-vitals finalizes values on
++    // visibilitychange before our flush listener runs.
++    onCLS(addToQueue);
++    onINP(addToQueue);
++    onLCP(addToQueue);
++
++    // Send when the page is hidden (tab close, navigation, app switch).
++    // Avoids `unload`/`beforeunload`, which block the back/forward cache.
++    addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'hidden') flushQueue();
++    });
++    // Fallback for older Safari, which doesn't always fire visibilitychange
++    // on navigation. `pagehide` is bfcache-safe.
++    addEventListener('pagehide', flushQueue);
++  </script>
+ </body>
+ 
+ </html>
+\ No newline at end of file

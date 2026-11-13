@@ -1,0 +1,339 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,126 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .customizer {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
++      align-items: center;
++      gap: 24px;
++      margin-top: 48px;
++      padding: 32px;
++      border: 1px solid #e5d8cb;
++      border-radius: 16px;
++      background: #f5ede3;
++    }
++
++    .customizer-kicker {
++      color: #79543b;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.15em;
++      text-transform: uppercase;
++    }
++
++    .customizer h2 {
++      margin: 12px 0;
++      font-size: clamp(1.8rem, 4vw, 2.5rem);
++      line-height: 1.2;
++    }
++
++    .customizer-copy > p:last-of-type {
++      max-width: 32ch;
++      color: #745b50;
++    }
++
++    .customizer-note {
++      display: block;
++      margin-top: 24px;
++      color: #745b50;
++      font-size: 0.8rem;
++    }
++
++    .cup-stage {
++      position: relative;
++      width: 100%;
++      max-width: 480px;
++      height: 540px;
++      margin-inline: auto;
++    }
++
++    #canvas {
++      display: block;
++      width: 100%;
++      height: 100%;
++    }
++
++    .cup-controls {
++      width: 60%;
++      color: var(--text);
++      font: 14px/1.4 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    }
++
++    .cup-stage > .cup-controls {
++      position: absolute;
++      top: 184px;
++      left: 20%;
++    }
++
++    .cup-controls label {
++      display: block;
++      margin-bottom: 10px;
++      font-size: 11px;
++      font-weight: 700;
++      letter-spacing: 0.06em;
++      text-transform: uppercase;
++    }
++
++    .cup-controls input,
++    .cup-controls select {
++      display: block;
++      width: 100%;
++      min-height: 40px;
++      margin-top: 4px;
++      padding: 7px 10px;
++      border: 1px solid #c6b09b;
++      border-radius: 5px;
++      background: #fffaf3;
++      color: var(--text);
++      font: 16px/1.3 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      letter-spacing: normal;
++    }
++
++    .cup-controls :is(input, select):focus-visible {
++      outline: 3px solid #9a5e26;
++      outline-offset: 2px;
++    }
++
++    .cup-summary {
++      display: block;
++      margin-top: 14px;
++      text-align: center;
++      font-size: 12px;
++      overflow-wrap: anywhere;
++    }
++
++    .cup-summary strong {
++      display: block;
++      font-size: 16px;
++    }
++
++    @media (max-width: 700px) {
++      .customizer {
++        grid-template-columns: minmax(0, 1fr);
++        padding: 24px 12px 8px;
++        gap: 0;
++      }
++
++      .customizer-copy {
++        padding-inline: 12px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +312,49 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customizer-heading">
++      <div class="customizer-copy">
++        <p class="customizer-kicker">Made just for you</p>
++        <h2 id="customizer-heading">Your cup.<br>Your signature.</h2>
++        <p id="customizer-help">A little more you in every sip. Put a name on your cup, then choose your favorite milk and syrup.</p>
++        <small class="customizer-note">Edit right on the cup to create your perfect latte.</small>
++      </div>
++      <div class="cup-stage">
++        <canvas id="canvas" content="drawable" width="480" height="540">
++          <div class="cup-controls" id="cup-controls" drawable role="group" aria-label="Customize your latte" aria-describedby="customizer-help">
++            <label for="cup-name">Cup name
++              <input id="cup-name" name="cup-name" type="text" value="Alex" placeholder="Your name" maxlength="24" autocomplete="given-name">
++            </label>
++            <label for="cup-milk">Milk
++              <select id="cup-milk" name="milk">
++                <option value="oat">Oat milk</option>
++                <option value="whole">Whole milk</option>
++                <option value="almond">Almond milk</option>
++                <option value="soy">Soy milk</option>
++                <option value="none">No milk</option>
++              </select>
++            </label>
++            <label for="cup-syrup">Syrup
++              <select id="cup-syrup" name="syrup">
++                <option value="maple">Maple</option>
++                <option value="vanilla">Vanilla</option>
++                <option value="caramel">Caramel</option>
++                <option value="hazelnut">Hazelnut</option>
++                <option value="none">No syrup</option>
++              </select>
++            </label>
++            <output class="cup-summary" for="cup-name cup-milk cup-syrup" aria-live="polite" aria-atomic="true">
++              <strong id="cup-title">Alex’s latte</strong>
++              <span id="cup-recipe">Oat milk · Maple</span>
++            </output>
++          </div>
++        </canvas>
++      </div>
++      <noscript>Enable JavaScript to see your personalized coffee cup.</noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +365,158 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const canvas = document.getElementById('canvas');
++      const stage = canvas.parentElement;
++      const controls = document.getElementById('cup-controls');
++      const name = document.getElementById('cup-name');
++      const milk = document.getElementById('cup-milk');
++      const syrup = document.getElementById('cup-syrup');
++      const ctx = canvas.getContext('2d');
++      let nativeHTML = Boolean(ctx && 'content' in HTMLCanvasElement.prototype &&
++        typeof ctx.drawElementImage === 'function' && typeof canvas.requestPaint === 'function');
++
++      // Move the same controls, preserving native input, select, and keyboard behavior.
++      function useOverlay() {
++        nativeHTML = false;
++        canvas.onpaint = null;
++        canvas.removeAttribute('content');
++        canvas.setAttribute('aria-hidden', 'true');
++        stage.append(controls);
++      }
++
++      if (!nativeHTML) useOverlay();
++      if (!ctx) return;
++
++      let width = 480;
++      let height = 540;
++      const milkColors = { oat: '#bd9066', whole: '#d5ad82', almond: '#bb8a59', soy: '#c5a17b', none: '#593726' };
++
++      function drawCup() {
++        // Work in CSS pixels; only the backing store uses physical display pixels.
++        ctx.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
++        ctx.clearRect(0, 0, width, height);
++        const center = width / 2;
++        ctx.fillStyle = '#e2d3c2';
++        ctx.beginPath();
++        ctx.ellipse(center, 506, width * 0.36, 13, 0, 0, Math.PI * 2);
++        ctx.fill();
++
++        ctx.strokeStyle = '#c4ad97';
++        ctx.lineWidth = 3;
++        ctx.lineCap = 'round';
++        for (const offset of [-28, 0, 28]) {
++          ctx.beginPath();
++          ctx.moveTo(center + offset, 80);
++          ctx.bezierCurveTo(center + offset - 15, 64, center + offset + 15, 53, center + offset, 36);
++          ctx.stroke();
++        }
++
++        const paper = ctx.createLinearGradient(width * 0.1, 0, width * 0.9, 0);
++        paper.addColorStop(0, '#e5cdb0');
++        paper.addColorStop(0.45, '#fff3df');
++        paper.addColorStop(1, '#e5cdb0');
++        ctx.fillStyle = paper;
++        ctx.strokeStyle = '#c8ad8b';
++        ctx.lineWidth = 2;
++        ctx.beginPath();
++        ctx.moveTo(width * 0.1, 126);
++        ctx.lineTo(width * 0.18, 478);
++        ctx.quadraticCurveTo(center, 507, width * 0.82, 478);
++        ctx.lineTo(width * 0.9, 126);
++        ctx.closePath();
++        ctx.fill();
++        ctx.stroke();
++
++        ctx.fillStyle = '#fff8ec';
++        ctx.beginPath();
++        ctx.ellipse(center, 126, width * 0.4, 26, 0, 0, Math.PI * 2);
++        ctx.fill();
++        ctx.stroke();
++        ctx.fillStyle = milkColors[milk.value];
++        ctx.beginPath();
++        ctx.ellipse(center, 126, width * 0.365, 18, 0, 0, Math.PI * 2);
++        ctx.fill();
++        if (syrup.value !== 'none') {
++          ctx.strokeStyle = syrup.value === 'caramel' ? '#9b5926' : '#805439';
++          ctx.lineWidth = 2;
++          ctx.beginPath();
++          ctx.ellipse(center, 126, width * 0.18, 7, 0, 0, Math.PI * 2);
++          ctx.stroke();
++        }
++      }
++
++      function render() {
++        drawCup();
++        if (nativeHTML) {
++          try {
++            // drawElementImage also maps hit testing and focus to these coordinates.
++            ctx.drawElementImage(controls, width * 0.2, 184);
++          } catch {
++            // A partial API implementation must still leave the form usable.
++            useOverlay();
++            drawCup();
++          }
++        }
++      }
++
++      function requestRender() {
++        if (nativeHTML) canvas.requestPaint();
++        else render();
++      }
++
++      function updateOrder() {
++        const cupName = name.value.trim();
++        document.getElementById('cup-title').textContent = cupName ? `${cupName}’s latte` : 'Your latte';
++        document.getElementById('cup-recipe').textContent =
++          `${milk.selectedOptions[0].textContent} · ${syrup.selectedOptions[0].textContent}`;
++        requestRender();
++      }
++
++      if (nativeHTML) canvas.onpaint = render;
++      controls.addEventListener('input', updateOrder);
++      controls.addEventListener('change', updateOrder);
++      // Repaint native focus rings, text selections, and open-control styling too.
++      for (const event of ['focusin', 'focusout', 'pointerup', 'keyup']) {
++        controls.addEventListener(event, requestRender);
++      }
++
++      function resize(entry) {
++        const bounds = canvas.getBoundingClientRect();
++        width = bounds.width;
++        height = bounds.height;
++        if (!width || !height) return;
++        const pixels = entry?.devicePixelContentBoxSize?.[0];
++        const dpr = window.devicePixelRatio || 1;
++        canvas.width = pixels ? pixels.inlineSize : Math.round(width * dpr);
++        canvas.height = pixels ? pixels.blockSize : Math.round(height * dpr);
++        controls.style.width = `${width * 0.6}px`;
++        requestRender();
++      }
++
++      const observer = new ResizeObserver(([entry]) => resize(entry));
++      const supportsDevicePixels = typeof ResizeObserverEntry !== 'undefined' &&
++        'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
++      observer.observe(canvas, supportsDevicePixels ? { box: 'device-pixel-content-box' } : {});
++      // Also cover zoom and moving between displays with different pixel densities.
++      let densityQuery;
++      function watchDensity() {
++        densityQuery?.removeEventListener('change', onDensityChange);
++        densityQuery = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
++        densityQuery.addEventListener('change', onDensityChange);
++      }
++      function onDensityChange() {
++        resize();
++        watchDensity();
++      }
++      window.addEventListener('resize', () => resize());
++      watchDensity();
++      resize();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

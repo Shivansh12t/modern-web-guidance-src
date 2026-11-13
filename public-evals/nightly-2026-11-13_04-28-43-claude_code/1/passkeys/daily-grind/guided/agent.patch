@@ -1,0 +1,1362 @@
+diff --git a/docs/passkeys-api.md b/docs/passkeys-api.md
+new file mode 100644
+index 0000000..9b7b855
+--- /dev/null
++++ b/docs/passkeys-api.md
+@@ -0,0 +1,70 @@
++# Passkeys API contract (My Account)
++
++`js/account.js` calls these same-origin endpoints with cookie sessions. All
++WebAuthn options and responses use the standard WebAuthn JSON encoding
++(Base64URL, no padding). On the server, use a vetted library such as
++[SimpleWebAuthn](https://github.com/MasterKale/SimpleWebAuthn) to generate options and
++verify responses. Don't hand-roll the crypto.
++
++`RP_ID` is a fixed server constant (for example `dailygrind.example`). The client
++never works out the RP ID from `location.hostname`.
++
++| Method | Path | Auth | Request | Success response |
++| --- | --- | --- | --- | --- |
++| GET | `/api/session` | – | – | `200 { user: { name, displayName } }`, or `401` when signed out |
++| POST | `/api/signin/options` | – | – | `PublicKeyCredentialRequestOptionsJSON` with `rpId`, `allowCredentials: []`, `userVerification: "preferred"` |
++| POST | `/api/signin/verify` | – | `credential.toJSON()` | `200 { user }` and a session is set. **`404`** if the credential ID is unknown |
++| POST | `/api/register/options` | `flow:"add"` needs a session | `{ flow: "signup", name, displayName }` or `{ flow: "add" }` | `PublicKeyCredentialCreationOptionsJSON` (see below) |
++| POST | `/api/register/verify` | – | `credential.toJSON()` | `200 { user }`. A signup also creates the account and the session |
++| GET | `/api/passkeys` | session | – | `{ rpId, userId, credentials: StoredPasskeyCredential[] }` |
++| PATCH | `/api/passkeys/:id` | session | `{ name }` | `200` updated credential |
++| DELETE | `/api/passkeys/:id` | session + **recent reauth** | – | `200 { success: true }` |
++| PUT | `/api/user` | session + **recent reauth** | `{ name, displayName }` | `{ name, displayName, rpId, userId }` |
++| POST | `/api/reauth/options` | session | – | Request options with `allowCredentials` = the signed-in user's credentials only |
++| POST | `/api/reauth/verify` | session | `credential.toJSON()` | `200` and a short-lived "recently verified" flag is set in the session (for example 5 min). `404` if the credential is unknown. Reject the request if the credential belongs to a different user |
++
++Errors use the shape `{ error: string, message?: string }`. `message` is shown to the user.
++
++## Reauthentication
++
++When an endpoint marked **recent reauth** is called without a fresh
++verification, it must respond with `403 { "error": "reauth_required" }`. The client
++then runs the passkey reauthentication ceremony and retries the request once.
++The server always enforces this check. The client never decides it.
++
++## Registration options
++
++- `rp: { id: RP_ID, name: "The Daily Grind" }`. `rp.id` is required, because the client uses it for Signal API cleanup.
++- `user.id`: a random Base64URL user handle (`passkeyUserId`). `user.name` is the email and `user.displayName` is the name.
++- `excludeCredentials`: the user's existing credentials, including their `transports`.
++- `authenticatorSelection: { residentKey: "required", requireResidentKey: true, userVerification: "preferred" }`. Omit `authenticatorAttachment` so security keys still work.
++- `pubKeyCredParams`: alg `-7` and `-257`.
++- Store the challenge in the session. For `signup`, hold the pending `{ name, displayName }` in the session too, and create the user only after verification succeeds. Reject emails that are already registered.
++- Verify with `requireUserVerification: false` (because the options ask for UV `"preferred"`) and require user presence.
++
++## Stored credential
++
++```ts
++interface StoredPasskeyCredential {
++  id: string;                 // Base64URL credential ID
++  passkeyUserId: string;      // Base64URL user handle
++  credentialPublicKey: string;
++  credentialType: "public-key";
++  credentialDeviceType: "singleDevice" | "multiDevice";
++  credentialBackedUp: boolean;
++  aaguid: string;
++  providerIcon?: string;      // data: URI from the AAGUID registry (UX hint only)
++  name: string;               // AAGUID provider name, or a user-chosen nickname
++  transports: string[];
++  lastUsedAt?: number;        // epoch ms
++  registeredAt: number;       // epoch ms
++  counter: number;
++}
++```
++
++Fill in `name`/`providerIcon` from
++<https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/refs/heads/main/combined_aaguid.json>.
++Skip the lookup when the AAGUID is all zeros and use "Unknown passkey provider" instead.
++Never use the AAGUID for security decisions.
++
++`GET /api/passkeys` should leave `credentialPublicKey` and `counter` out of its response. The client doesn't need them.
+diff --git a/index.html b/index.html
+index 66c9173..9863993 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,224 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* My Account dialog */
++    dialog {
++      border: none;
++      border-radius: 10px;
++      padding: 0;
++      color: var(--text);
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
++    }
++
++    #account-dialog {
++      width: min(560px, calc(100vw - 2rem));
++      max-height: calc(100dvh - 2rem);
++    }
++
++    .small-dialog {
++      width: min(420px, calc(100vw - 2rem));
++    }
++
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      background-color: rgba(30, 20, 15, 0.6);
++      backdrop-filter: blur(2px);
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 1rem;
++      background: var(--primary);
++      color: white;
++      padding: 1rem 1.5rem;
++    }
++
++    .dialog-header h2 {
++      font-size: 1.25rem;
++    }
++
++    .dialog-body {
++      padding: 1.5rem;
++      display: grid;
++      gap: 1.5rem;
++    }
++
++    .icon-btn {
++      background: transparent;
++      border: 1px solid transparent;
++      color: inherit;
++      font-size: 1.5rem;
++      line-height: 1;
++      padding: 0.1rem 0.5rem;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    .icon-btn:hover,
++    .icon-btn:focus-visible {
++      border-color: var(--accent);
++    }
++
++    .account-panel h3 {
++      color: var(--primary);
++      margin-bottom: 0.5rem;
++    }
++
++    .account-panel+.account-panel {
++      border-top: 1px solid var(--secondary);
++      padding-top: 1.5rem;
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .field {
++      display: grid;
++      gap: 0.25rem;
++      margin-bottom: 0.75rem;
++    }
++
++    .field label {
++      font-weight: 600;
++      font-size: 0.9rem;
++    }
++
++    .field input {
++      font: inherit;
++      padding: 0.55rem 0.7rem;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++    }
++
++    .field input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++      margin-top: 0;
++    }
++
++    button.btn:disabled {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--primary) !important;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-danger {
++      background: #b71c1c;
++    }
++
++    .btn-danger:hover {
++      background: #7f0000;
++    }
++
++    .btn-small {
++      padding: 4px 10px;
++      font-size: 0.85rem;
++    }
++
++    .button-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem;
++      justify-content: flex-end;
++    }
++
++    .status {
++      border-radius: 5px;
++      padding: 0.6rem 0.9rem;
++      font-size: 0.9rem;
++    }
++
++    .status:empty {
++      display: none;
++    }
++
++    .status[data-tone="error"] {
++      background: #ffebee;
++      color: #b71c1c;
++    }
++
++    .status[data-tone="success"] {
++      background: #e8f5e9;
++      color: #1b5e20;
++    }
++
++    .status[data-tone="info"] {
++      background: #fff3e0;
++      color: #5d4037;
++    }
++
++    .passkey-list {
++      list-style: none;
++      display: grid;
++      gap: 0.75rem;
++      margin: 0.75rem 0;
++    }
++
++    .passkey-item {
++      display: grid;
++      grid-template-columns: 40px 1fr auto;
++      align-items: center;
++      gap: 0.75rem;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 0.75rem;
++    }
++
++    .passkey-item img,
++    .passkey-item .passkey-icon-fallback {
++      width: 32px;
++      height: 32px;
++    }
++
++    .passkey-icon-fallback {
++      fill: var(--primary);
++    }
++
++    .passkey-name {
++      font-weight: 600;
++      overflow-wrap: anywhere;
++    }
++
++    .passkey-meta {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .passkey-actions {
++      display: flex;
++      gap: 0.4rem;
++      flex-wrap: wrap;
++      justify-content: flex-end;
++    }
++
++    .empty-state {
++      font-style: italic;
++      color: #6d4c41;
++    }
+   </style>
+ </head>
+ 
+@@ -163,8 +381,8 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/account" id="account-link">My Account</a></li>
++      <li><a href="/logout" class="logout-link" id="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +425,135 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- My Account: passkey sign-in, registration and management -->
++  <dialog id="account-dialog" aria-labelledby="account-title" closedby="any">
++    <div class="dialog-header">
++      <h2 id="account-title">My Account</h2>
++      <form method="dialog">
++        <button class="icon-btn" aria-label="Close My Account">&times;</button>
++      </form>
++    </div>
++
++    <div class="dialog-body">
++      <p class="status" id="account-status" role="status" aria-live="polite"></p>
++
++      <!-- Signed-out view -->
++      <div id="signed-out-view">
++        <section class="account-panel" aria-labelledby="signin-heading">
++          <h3 id="signin-heading">Sign in with a passkey</h3>
++          <p class="hint" id="signin-hint">Use your fingerprint, face, or screen lock. Pick your passkey from the
++            suggestions on the email field, or press the button.</p>
++          <form id="signin-form">
++            <div class="field">
++              <label for="signin-username">Email</label>
++              <input type="email" id="signin-username" name="username" autocomplete="username webauthn"
++                aria-describedby="signin-heading signin-hint" autofocus>
++            </div>
++            <div class="button-row">
++              <button type="submit" class="btn" id="signin-button">Sign in with passkey</button>
++            </div>
++          </form>
++        </section>
++
++        <section class="account-panel" aria-labelledby="register-heading">
++          <h3 id="register-heading">New customer? Create an account</h3>
++          <p class="hint" id="register-hint">No password needed. We'll create a passkey stored securely on your
++            device or password manager.</p>
++          <form id="register-form">
++            <div class="field">
++              <label for="register-email">Email</label>
++              <input type="email" id="register-email" name="name" autocomplete="username" required
++                aria-describedby="register-hint">
++            </div>
++            <div class="field">
++              <label for="register-display-name">Your name</label>
++              <input type="text" id="register-display-name" name="displayName" autocomplete="name" required>
++            </div>
++            <div class="button-row">
++              <button type="submit" class="btn" id="register-button">Create account with passkey</button>
++            </div>
++          </form>
++          <p class="hint" id="passkey-unsupported" hidden>This browser doesn't support passkeys. Please
++            <a href="/account">use our standard account page</a> instead.</p>
++        </section>
++      </div>
++
++      <!-- Signed-in view -->
++      <div id="signed-in-view" hidden>
++        <section class="account-panel" aria-labelledby="profile-heading">
++          <h3 id="profile-heading">Profile</h3>
++          <p class="hint">Hi <strong id="profile-greeting"></strong>! Changes to your profile require
++            confirming it's you with a passkey.</p>
++          <form id="profile-form">
++            <div class="field">
++              <label for="profile-email">Email</label>
++              <input type="email" id="profile-email" name="name" autocomplete="username" required>
++            </div>
++            <div class="field">
++              <label for="profile-display-name">Your name</label>
++              <input type="text" id="profile-display-name" name="displayName" autocomplete="name" required>
++            </div>
++            <div class="button-row">
++              <button type="submit" class="btn">Save profile</button>
++            </div>
++          </form>
++        </section>
++
++        <section class="account-panel" aria-labelledby="passkeys-heading">
++          <h3 id="passkeys-heading">Your passkeys</h3>
++          <p class="hint">Passkeys let you sign in to The Daily Grind without a password.</p>
++          <ul class="passkey-list" id="passkey-list" aria-labelledby="passkeys-heading"></ul>
++          <p class="empty-state" id="passkey-empty" hidden>No passkeys found.</p>
++          <div class="button-row">
++            <button type="button" class="btn" id="create-passkey" hidden>Create a passkey</button>
++          </div>
++        </section>
++
++        <section class="account-panel">
++          <div class="button-row">
++            <a href="/logout" class="btn btn-secondary">Sign out</a>
++          </div>
++        </section>
++      </div>
++    </div>
++  </dialog>
++
++  <dialog id="rename-dialog" class="small-dialog" aria-labelledby="rename-title" closedby="any">
++    <form method="dialog" id="rename-form">
++      <div class="dialog-header">
++        <h2 id="rename-title">Rename passkey</h2>
++      </div>
++      <div class="dialog-body">
++        <div class="field">
++          <label for="rename-input">Passkey name</label>
++          <input type="text" id="rename-input" name="passkeyName" maxlength="64" required autofocus>
++        </div>
++        <div class="button-row">
++          <button type="submit" class="btn btn-secondary" value="cancel" formnovalidate>Cancel</button>
++          <button type="submit" class="btn" value="save">Save</button>
++        </div>
++      </div>
++    </form>
++  </dialog>
++
++  <dialog id="delete-dialog" class="small-dialog" aria-labelledby="delete-title"
++    aria-describedby="delete-description">
++    <form method="dialog">
++      <div class="dialog-header">
++        <h2 id="delete-title">Delete passkey?</h2>
++      </div>
++      <div class="dialog-body">
++        <p id="delete-description">You won't be able to sign in with <strong id="delete-name"></strong>
++          anymore. You'll be asked to confirm it's you first.</p>
++        <div class="button-row">
++          <button class="btn btn-danger" value="delete">Delete</button>
++          <button class="btn btn-secondary" value="cancel" autofocus>Keep passkey</button>
++        </div>
++      </div>
++    </form>
++  </dialog>
++
++  <script type="module" src="/js/account.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/js/account.js b/js/account.js
+new file mode 100644
+index 0000000..98f1331
+--- /dev/null
++++ b/js/account.js
+@@ -0,0 +1,687 @@
++// The Daily Grind — "My Account" passkey flows.
++//
++// Covers: customer registration with a passkey, passkey sign-in (button +
++// conditional/autofill UI), saved passkey management (list / rename / delete /
++// create), profile updates, and passkey reauthentication before sensitive
++// actions. All WebAuthn calls use the native browser APIs; the server contract
++// is documented in /docs/passkeys-api.md.
++
++// Load the JSON-serialization / getClientCapabilities polyfill (self-hosted)
++// only when WebAuthn exists but those newer helpers are missing.
++if (
++  window.PublicKeyCredential &&
++  (!PublicKeyCredential.getClientCapabilities ||
++    !PublicKeyCredential.parseCreationOptionsFromJSON ||
++    !PublicKeyCredential.parseRequestOptionsFromJSON ||
++    !PublicKeyCredential.prototype.toJSON)
++) {
++  try {
++    await import("../vendor/webauthn-polyfills-0.1.7.mjs");
++  } catch (e) {
++    console.warn("WebAuthn polyfill failed to load:", e);
++  }
++}
++
++// ---------------------------------------------------------------------------
++// DOM references
++// ---------------------------------------------------------------------------
++const $ = (id) => document.getElementById(id);
++
++const accountDialog = $("account-dialog");
++const accountLink = $("account-link");
++const logoutLink = $("logout-link");
++const statusEl = $("account-status");
++
++const signedOutView = $("signed-out-view");
++const signedInView = $("signed-in-view");
++
++const signinForm = $("signin-form");
++const signinButton = $("signin-button");
++const registerForm = $("register-form");
++const registerButton = $("register-button");
++const unsupportedNote = $("passkey-unsupported");
++
++const profileForm = $("profile-form");
++const profileGreeting = $("profile-greeting");
++const passkeyList = $("passkey-list");
++const passkeyEmpty = $("passkey-empty");
++const createPasskeyButton = $("create-passkey");
++
++const renameDialog = $("rename-dialog");
++const renameInput = $("rename-input");
++const deleteDialog = $("delete-dialog");
++const deleteName = $("delete-name");
++
++// ---------------------------------------------------------------------------
++// Helpers
++// ---------------------------------------------------------------------------
++const ZERO_AAGUID = "00000000-0000-0000-0000-000000000000";
++const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
++
++function setStatus(message, tone = "info") {
++  statusEl.textContent = message;
++  statusEl.dataset.tone = tone;
++}
++
++function clearStatus() {
++  statusEl.textContent = "";
++  delete statusEl.dataset.tone;
++}
++
++// Valid unpadded Base64URL: non-empty, [A-Za-z0-9_-] only, no '=', length % 4 !== 1
++function isValidBase64Url(value) {
++  return (
++    typeof value === "string" &&
++    value.length > 0 &&
++    value.length % 4 !== 1 &&
++    /^[A-Za-z0-9_-]+$/.test(value)
++  );
++}
++
++async function api(path, { method = "GET", body } = {}) {
++  return fetch(path, {
++    method,
++    credentials: "same-origin",
++    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
++    body: body !== undefined ? JSON.stringify(body) : undefined,
++  });
++}
++
++async function readError(response, fallback) {
++  try {
++    const data = await response.clone().json();
++    return data.message || data.error || fallback;
++  } catch {
++    return fallback;
++  }
++}
++
++function withBusy(button, fn) {
++  return async (...args) => {
++    if (button) button.disabled = true;
++    try {
++      return await fn(...args);
++    } finally {
++      if (button) button.disabled = false;
++    }
++  };
++}
++
++let capabilities = {};
++async function loadCapabilities() {
++  if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) return {};
++  try {
++    return await PublicKeyCredential.getClientCapabilities();
++  } catch {
++    return {};
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Signal API (progressive enhancement — never fatal)
++// ---------------------------------------------------------------------------
++async function signalUnknownCredential(rpId, credentialId) {
++  if (!window.PublicKeyCredential || !PublicKeyCredential.signalUnknownCredential) return;
++  if (!rpId || !isValidBase64Url(credentialId)) return;
++  try {
++    // rpId always comes from the server-provided options, never location.hostname
++    await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId });
++  } catch (e) {
++    console.warn("signalUnknownCredential sync warning:", e);
++  }
++}
++
++async function signalAllAcceptedCredentials(rpId, userId, credentials) {
++  if (!window.PublicKeyCredential || !PublicKeyCredential.signalAllAcceptedCredentials) return;
++  const allAcceptedCredentialIds = credentials.map((c) => c.id);
++  if (!rpId || !isValidBase64Url(userId) || !allAcceptedCredentialIds.every(isValidBase64Url)) {
++    console.warn("signalAllAcceptedCredentials skipped: invalid rpId, userId or credential IDs.");
++    return;
++  }
++  try {
++    await PublicKeyCredential.signalAllAcceptedCredentials({ rpId, userId, allAcceptedCredentialIds });
++  } catch (e) {
++    console.warn("signalAllAcceptedCredentials sync warning:", e);
++  }
++}
++
++async function signalCurrentUserDetails(rpId, userId, name, displayName) {
++  if (!window.PublicKeyCredential || !PublicKeyCredential.signalCurrentUserDetails) return;
++  if (!rpId || !isValidBase64Url(userId)) {
++    console.warn("signalCurrentUserDetails skipped: invalid rpId or userId.");
++    return;
++  }
++  try {
++    await PublicKeyCredential.signalCurrentUserDetails({ rpId, userId, name, displayName });
++  } catch (e) {
++    console.warn("signalCurrentUserDetails sync warning:", e);
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Sign-in (conditional autofill + explicit button)
++// ---------------------------------------------------------------------------
++let autofillAbortController = new AbortController();
++
++function abortAutofill() {
++  autofillAbortController.abort();
++  autofillAbortController = new AbortController();
++}
++
++async function fetchSigninOptions() {
++  const response = await api("/api/signin/options", { method: "POST" });
++  if (!response.ok) throw new Error(await readError(response, "Couldn't start passkey sign-in."));
++  return PublicKeyCredential.parseRequestOptionsFromJSON(await response.json());
++}
++
++async function verifySignin(publicKey, credential) {
++  const encoded = credential.toJSON();
++  let response;
++  try {
++    response = await api("/api/signin/verify", { method: "POST", body: encoded });
++  } catch (e) {
++    console.error("Sign-in verification request failed:", e);
++    setStatus("We couldn't reach the server. Please try again.", "error");
++    return false;
++  }
++
++  if (response.ok) {
++    const { user } = await response.json();
++    setStatus(`Welcome back, ${user.displayName}!`, "success");
++    await showSignedIn(user);
++    return true;
++  }
++
++  if (response.status === 404) {
++    // Passkey isn't recognized by the server (deleted / never registered).
++    // We're unauthenticated here, so it's safe to tell the passkey provider.
++    await signalUnknownCredential(publicKey.rpId, encoded.id);
++    setStatus(
++      "That passkey is no longer registered with The Daily Grind. Try another passkey or create an account.",
++      "error",
++    );
++  } else {
++    setStatus(await readError(response, "Sign-in failed. Please try again."), "error");
++  }
++  return false;
++}
++
++async function startConditionalSignin() {
++  if (capabilities.conditionalGet !== true) return;
++  const { signal } = autofillAbortController;
++  let publicKey;
++  try {
++    publicKey = await fetchSigninOptions();
++  } catch (e) {
++    console.warn("Conditional sign-in unavailable:", e);
++    return;
++  }
++  if (signal.aborted) return;
++
++  let credential;
++  try {
++    credential = await navigator.credentials.get({ publicKey, signal, mediation: "conditional" });
++  } catch (err) {
++    if (["NotAllowedError", "AbortError"].includes(err.name)) return;
++    console.error("Unexpected conditional sign-in error:", err);
++    return;
++  }
++  if (!credential) return;
++
++  const signedIn = await verifySignin(publicKey, credential);
++  if (!signedIn) startConditionalSignin();
++}
++
++const signinWithButton = withBusy(signinButton, async () => {
++  clearStatus();
++  // Cancel pending autofill request to avoid colliding passkey prompts
++  abortAutofill();
++
++  let publicKey;
++  try {
++    publicKey = await fetchSigninOptions();
++  } catch (e) {
++    setStatus(e.message, "error");
++    startConditionalSignin();
++    return;
++  }
++
++  let credential;
++  try {
++    credential = await navigator.credentials.get({ publicKey, signal: autofillAbortController.signal });
++  } catch (err) {
++    if (err.name === "NotAllowedError") {
++      setStatus("Passkey sign-in was cancelled.", "info");
++    } else if (err.name === "SecurityError") {
++      setStatus("Passkeys aren't available on this connection.", "error");
++    } else if (err.name !== "AbortError") {
++      console.error("Passkey sign-in error:", err);
++      setStatus("Something went wrong with your passkey. Please try again.", "error");
++    }
++    startConditionalSignin(); // re-arm autofill suggestions
++    return;
++  }
++
++  const signedIn = await verifySignin(publicKey, credential);
++  if (!signedIn) startConditionalSignin();
++});
++
++// ---------------------------------------------------------------------------
++// Registration (new customer sign-up, or adding a passkey while signed in)
++// ---------------------------------------------------------------------------
++/**
++ * @param {object} body  { flow: "signup", name, displayName } | { flow: "add" }
++ * @returns {Promise<object|null>} verify response payload on success
++ */
++async function registerPasskey(body) {
++  abortAutofill();
++
++  const optionsResponse = await api("/api/register/options", { method: "POST", body });
++  if (!optionsResponse.ok) {
++    setStatus(await readError(optionsResponse, "Couldn't start passkey creation."), "error");
++    return null;
++  }
++  const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(await optionsResponse.json());
++
++  let credential;
++  try {
++    credential = await navigator.credentials.create({ publicKey });
++  } catch (err) {
++    if (err.name === "InvalidStateError") {
++      setStatus("You already have a passkey for this account in this password manager.", "info");
++    } else if (err.name === "NotAllowedError") {
++      setStatus("Passkey creation was cancelled.", "info");
++    } else if (err.name === "SecurityError") {
++      console.error("RP ID or secure-context configuration error:", err);
++      setStatus("Passkeys aren't available on this connection.", "error");
++    } else if (err.name !== "AbortError") {
++      console.error("Passkey creation error:", err);
++      setStatus("Something went wrong creating your passkey.", "error");
++    }
++    return null; // Standard WebAuthn cancels: don't signal unknown credential
++  }
++
++  const encoded = credential.toJSON();
++  try {
++    const response = await api("/api/register/verify", { method: "POST", body: encoded });
++    if (!response.ok) {
++      // Server rejected the credential — remove the orphan from the provider
++      await signalUnknownCredential(publicKey.rp.id, encoded.id);
++      setStatus(await readError(response, "We couldn't save your passkey. Please try again."), "error");
++      return null;
++    }
++    return await response.json();
++  } catch (e) {
++    console.error("Registration verification request failed:", e);
++    await signalUnknownCredential(publicKey.rp.id, encoded.id);
++    setStatus("We couldn't reach the server. Please try again.", "error");
++    return null;
++  }
++}
++
++const registerNewCustomer = withBusy(registerButton, async (event) => {
++  event.preventDefault();
++  clearStatus();
++  const data = new FormData(registerForm);
++  const result = await registerPasskey({
++    flow: "signup",
++    name: String(data.get("name")).trim(),
++    displayName: String(data.get("displayName")).trim(),
++  });
++  if (result?.user) {
++    registerForm.reset();
++    setStatus(`Welcome to The Daily Grind, ${result.user.displayName}! Your passkey is ready.`, "success");
++    await showSignedIn(result.user);
++  } else {
++    startConditionalSignin();
++  }
++});
++
++const addPasskey = withBusy(createPasskeyButton, async () => {
++  clearStatus();
++  const result = await registerPasskey({ flow: "add" });
++  if (result) {
++    setStatus("Passkey created.", "success");
++    await loadPasskeys();
++  }
++});
++
++// ---------------------------------------------------------------------------
++// Reauthentication (step-up before sensitive actions)
++// ---------------------------------------------------------------------------
++async function reauthenticate() {
++  const optionsResponse = await api("/api/reauth/options", { method: "POST" });
++  if (!optionsResponse.ok) {
++    setStatus(await readError(optionsResponse, "Couldn't start verification."), "error");
++    return false;
++  }
++  // Server restricts allowCredentials to the signed-in user's passkeys
++  const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(await optionsResponse.json());
++
++  let credential;
++  try {
++    credential = await navigator.credentials.get({ publicKey });
++  } catch (err) {
++    if (err.name === "NotAllowedError") {
++      setStatus("Verification was cancelled, so no changes were made.", "info");
++    } else if (err.name !== "AbortError") {
++      console.error("Reauthentication error:", err);
++      setStatus("We couldn't verify it's you. No changes were made.", "error");
++    }
++    return false;
++  }
++
++  const encoded = credential.toJSON();
++  try {
++    const response = await api("/api/reauth/verify", { method: "POST", body: encoded });
++    if (response.ok) return true;
++    if (response.status === 404) await signalUnknownCredential(publicKey.rpId, encoded.id);
++    setStatus(await readError(response, "We couldn't verify it's you. No changes were made."), "error");
++  } catch (e) {
++    console.error("Reauthentication request failed:", e);
++    setStatus("We couldn't reach the server. No changes were made.", "error");
++  }
++  return false;
++}
++
++/**
++ * Run a sensitive request. If the server answers 403 { error: "reauth_required" },
++ * verify the user with a passkey and retry once.
++ */
++async function withReauth(request) {
++  let response = await request();
++  if (response.status === 403) {
++    const data = await response.clone().json().catch(() => ({}));
++    if (data.error === "reauth_required") {
++      setStatus("Please confirm it's you with your passkey.", "info");
++      if (!(await reauthenticate())) return null;
++      response = await request();
++    }
++  }
++  return response;
++}
++
++// ---------------------------------------------------------------------------
++// Profile
++// ---------------------------------------------------------------------------
++let currentUser = null;
++
++function renderProfile(user) {
++  currentUser = user;
++  profileGreeting.textContent = user.displayName;
++  profileForm.elements.name.value = user.name;
++  profileForm.elements.displayName.value = user.displayName;
++}
++
++const saveProfile = withBusy(profileForm.querySelector("button[type=submit]"), async (event) => {
++  event.preventDefault();
++  clearStatus();
++  const data = new FormData(profileForm);
++  const name = String(data.get("name")).trim();
++  const displayName = String(data.get("displayName")).trim();
++  if (name === currentUser?.name && displayName === currentUser?.displayName) {
++    setStatus("No changes to save.", "info");
++    return;
++  }
++
++  let response;
++  try {
++    response = await withReauth(() => api("/api/user", { method: "PUT", body: { name, displayName } }));
++  } catch (e) {
++    console.error("Profile update failed:", e);
++    setStatus("We couldn't reach the server. Please try again.", "error");
++    return;
++  }
++  if (!response) return;
++  if (!response.ok) {
++    setStatus(await readError(response, "We couldn't update your profile."), "error");
++    return;
++  }
++
++  const updated = await response.json();
++  renderProfile({ name: updated.name, displayName: updated.displayName });
++  setStatus("Profile updated.", "success");
++  // Keep the saved passkeys' username / display name in sync in password managers
++  await signalCurrentUserDetails(updated.rpId, updated.userId, updated.name, updated.displayName);
++});
++
++// ---------------------------------------------------------------------------
++// Passkey management
++// ---------------------------------------------------------------------------
++const KEY_ICON =
++  '<svg class="passkey-icon-fallback" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.65 10A6 6 0 1 0 12.65 14H17v4h4v-4h2v-4H12.65zM7 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
++
++function renderPasskeys(credentials) {
++  passkeyList.replaceChildren();
++  passkeyEmpty.hidden = credentials.length > 0;
++
++  for (const cred of credentials) {
++    const item = document.createElement("li");
++    item.className = "passkey-item";
++
++    // Provider icon (AAGUID-derived on the server; UX hint only)
++    if (typeof cred.providerIcon === "string" && cred.providerIcon.startsWith("data:image/") && cred.aaguid !== ZERO_AAGUID) {
++      const img = document.createElement("img");
++      img.src = cred.providerIcon;
++      img.alt = "";
++      img.width = 32;
++      img.height = 32;
++      item.append(img);
++    } else {
++      item.insertAdjacentHTML("beforeend", KEY_ICON);
++    }
++
++    const info = document.createElement("div");
++    const name = document.createElement("div");
++    name.className = "passkey-name";
++    name.textContent = cred.name || "Unknown passkey provider";
++    const meta = document.createElement("div");
++    meta.className = "passkey-meta";
++    const parts = [`Created ${dateFormatter.format(new Date(cred.registeredAt))}`];
++    parts.push(cred.lastUsedAt ? `Last used ${dateFormatter.format(new Date(cred.lastUsedAt))}` : "Never used");
++    if (cred.credentialBackedUp) parts.push("Synced");
++    meta.textContent = parts.join(" · ");
++    info.append(name, meta);
++
++    const actions = document.createElement("div");
++    actions.className = "passkey-actions";
++    const label = cred.name || "passkey";
++
++    const renameBtn = document.createElement("button");
++    renameBtn.type = "button";
++    renameBtn.className = "btn btn-secondary btn-small";
++    renameBtn.textContent = "Rename";
++    renameBtn.setAttribute("aria-label", `Rename ${label}`);
++    renameBtn.addEventListener("click", () => openRename(cred));
++
++    const deleteBtn = document.createElement("button");
++    deleteBtn.type = "button";
++    deleteBtn.className = "btn btn-danger btn-small";
++    deleteBtn.textContent = "Delete";
++    deleteBtn.setAttribute("aria-label", `Delete ${label}`);
++    deleteBtn.addEventListener("click", () => openDelete(cred));
++
++    actions.append(renameBtn, deleteBtn);
++    item.append(info, actions);
++    passkeyList.append(item);
++  }
++}
++
++async function loadPasskeys() {
++  let response;
++  try {
++    response = await api("/api/passkeys");
++  } catch (e) {
++    console.error("Failed to load passkeys:", e);
++    setStatus("We couldn't load your passkeys.", "error");
++    return null;
++  }
++  if (!response.ok) {
++    setStatus(await readError(response, "We couldn't load your passkeys."), "error");
++    return null;
++  }
++  const { rpId, userId, credentials } = await response.json();
++  renderPasskeys(credentials);
++  // Keep password managers in lockstep with the server's accepted credentials
++  await signalAllAcceptedCredentials(rpId, userId, credentials);
++  return credentials;
++}
++
++// Rename (server-side label only; no Signal API call needed)
++let renameTarget = null;
++function openRename(cred) {
++  renameTarget = cred;
++  renameInput.value = cred.name || "";
++  renameDialog.returnValue = "";
++  renameDialog.showModal();
++}
++
++renameDialog.addEventListener("close", async () => {
++  const choice = renameDialog.returnValue;
++  renameDialog.returnValue = "";
++  const cred = renameTarget;
++  renameTarget = null;
++  if (choice !== "save" || !cred) return;
++
++  const name = renameInput.value.trim();
++  if (!name || name === cred.name) return;
++  clearStatus();
++  try {
++    const response = await api(`/api/passkeys/${encodeURIComponent(cred.id)}`, {
++      method: "PATCH",
++      body: { name },
++    });
++    if (!response.ok) {
++      setStatus(await readError(response, "We couldn't rename that passkey."), "error");
++      return;
++    }
++    setStatus("Passkey renamed.", "success");
++    await loadPasskeys();
++  } catch (e) {
++    console.error("Rename failed:", e);
++    setStatus("We couldn't reach the server. Please try again.", "error");
++  }
++});
++
++// Delete (requires reauthentication)
++let deleteTarget = null;
++function openDelete(cred) {
++  deleteTarget = cred;
++  deleteName.textContent = cred.name || "this passkey";
++  deleteDialog.returnValue = "";
++  deleteDialog.showModal();
++}
++
++deleteDialog.addEventListener("close", async () => {
++  const choice = deleteDialog.returnValue;
++  deleteDialog.returnValue = "";
++  const cred = deleteTarget;
++  deleteTarget = null;
++  if (choice !== "delete" || !cred) return;
++
++  clearStatus();
++  let response;
++  try {
++    response = await withReauth(() =>
++      api(`/api/passkeys/${encodeURIComponent(cred.id)}`, { method: "DELETE" }),
++    );
++  } catch (e) {
++    console.error("Delete failed:", e);
++    setStatus("We couldn't reach the server. Please try again.", "error");
++    return;
++  }
++  if (!response) return;
++  if (!response.ok) {
++    setStatus(await readError(response, "We couldn't delete that passkey."), "error");
++    return;
++  }
++  setStatus("Passkey deleted.", "success");
++  // Reload and signalAllAcceptedCredentials so the provider drops the passkey too
++  await loadPasskeys();
++});
++
++// ---------------------------------------------------------------------------
++// View switching
++// ---------------------------------------------------------------------------
++async function showSignedIn(user) {
++  abortAutofill();
++  signedOutView.hidden = true;
++  signedInView.hidden = false;
++  logoutLink.hidden = false;
++  renderProfile(user);
++  createPasskeyButton.hidden = !capabilities.passkeyPlatformAuthenticator;
++  await loadPasskeys();
++}
++
++function showSignedOut() {
++  currentUser = null;
++  signedInView.hidden = true;
++  signedOutView.hidden = false;
++  logoutLink.hidden = true;
++
++  const passkeysSupported = Boolean(
++    window.PublicKeyCredential && capabilities.passkeyPlatformAuthenticator && capabilities.conditionalGet,
++  );
++  registerButton.disabled = !passkeysSupported;
++  unsupportedNote.hidden = passkeysSupported;
++  signinButton.disabled = !window.PublicKeyCredential;
++
++  startConditionalSignin();
++}
++
++// ---------------------------------------------------------------------------
++// Dialog wiring
++// ---------------------------------------------------------------------------
++function openAccount() {
++  if (!accountDialog.open) accountDialog.showModal();
++}
++
++accountLink.addEventListener("click", (event) => {
++  event.preventDefault();
++  openAccount();
++});
++
++// Light-dismiss fallback where <dialog closedby> is unsupported
++if (!("closedBy" in HTMLDialogElement.prototype)) {
++  const outside = (e, dialog) => {
++    const r = dialog.getBoundingClientRect();
++    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++  };
++  for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
++    let pressedOutside = false;
++    dialog.addEventListener("pointerdown", (e) => {
++      pressedOutside = outside(e, dialog);
++    });
++    dialog.addEventListener("pointerup", (e) => {
++      if (pressedOutside && outside(e, dialog)) dialog.close();
++    });
++  }
++}
++
++signinForm.addEventListener("submit", (event) => {
++  event.preventDefault();
++  signinWithButton();
++});
++registerForm.addEventListener("submit", registerNewCustomer);
++profileForm.addEventListener("submit", saveProfile);
++createPasskeyButton.addEventListener("click", addPasskey);
++
++// ---------------------------------------------------------------------------
++// Init
++// ---------------------------------------------------------------------------
++capabilities = await loadCapabilities();
++
++try {
++  const response = await api("/api/session");
++  if (response.ok) {
++    const { user } = await response.json();
++    await showSignedIn(user);
++  } else {
++    showSignedOut();
++  }
++} catch (e) {
++  console.warn("Session check failed:", e);
++  showSignedOut();
++}
++
++if (location.hash === "#account") openAccount();
+diff --git a/vendor/webauthn-polyfills-0.1.7.mjs b/vendor/webauthn-polyfills-0.1.7.mjs
+new file mode 100644
+index 0000000..20f09ee
+--- /dev/null
++++ b/vendor/webauthn-polyfills-0.1.7.mjs
+@@ -0,0 +1,3 @@
++/* esm.sh - webauthn-polyfills@0.1.7 */
++var Be=Object.create;var Se=Object.defineProperty;var Le=Object.getOwnPropertyDescriptor;var qe=Object.getOwnPropertyNames;var De=Object.getPrototypeOf,Ie=Object.prototype.hasOwnProperty;var Ve=(o,n)=>()=>{try{return n||o((n={exports:{}}).exports,n),n.exports}catch(s){throw n=0,s}};var Ke=(o,n,s,w)=>{if(n&&typeof n=="object"||typeof n=="function")for(let u of qe(n))!Ie.call(o,u)&&u!==s&&Se(o,u,{get:()=>n[u],enumerable:!(w=Le(n,u))||w.enumerable});return o};var Fe=(o,n,s)=>(s=o!=null?Be(De(o)):{},Ke(n||!o||!o.__esModule?Se(s,"default",{value:o,enumerable:!0}):s,o));var Ce=Ve((V,Y)=>{(function(o,n){"use strict";var s="1.0.41",w="",u="?",g="function",x="undefined",N="object",T="string",_="major",i="model",r="name",e="type",t="vendor",a="version",S="architecture",U="console",b="mobile",c="tablet",v="smarttv",k="wearable",j="embedded",Q=500,K="Amazon",R="Apple",ce="ASUS",de="BlackBerry",F="Browser",G="Chrome",Re="Edge",H="Firefox",J="Google",we="Honor",ue="Huawei",Me="Lenovo",W="LG",ee="Microsoft",ie="Motorola",te="Nvidia",pe="OnePlus",z="Opera",re="OPPO",B="Samsung",me="Sharp",L="Sony",oe="Xiaomi",ae="Zebra",fe="Facebook",he="Chromium OS",ge="Mac OS",ve=" Browser",Ue=function(p,m){var d={};for(var h in p)m[h]&&m[h].length%2===0?d[h]=m[h].concat(p[h]):d[h]=p[h];return d},$=function(p){for(var m={},d=0;d<p.length;d++)m[p[d].toUpperCase()]=p[d];return m},ye=function(p,m){return typeof p===T?q(m).indexOf(q(p))!==-1:!1},q=function(p){return p.toLowerCase()},je=function(p){return typeof p===T?p.replace(/[^\d\.]/g,w).split(".")[0]:n},ne=function(p,m){if(typeof p===T)return p=p.replace(/^\s\s*/,w),typeof m===x?p:p.substring(0,Q)},D=function(p,m){for(var d=0,h,P,C,f,l,A;d<m.length&&!l;){var se=m[d],Oe=m[d+1];for(h=P=0;h<se.length&&!l&&se[h];)if(l=se[h++].exec(p),l)for(C=0;C<Oe.length;C++)A=l[++P],f=Oe[C],typeof f===N&&f.length>0?f.length===2?typeof f[1]==g?this[f[0]]=f[1].call(this,A):this[f[0]]=f[1]:f.length===3?typeof f[1]===g&&!(f[1].exec&&f[1].test)?this[f[0]]=A?f[1].call(this,A,f[2]):n:this[f[0]]=A?A.replace(f[1],f[2]):n:f.length===4&&(this[f[0]]=A?f[3].call(this,A.replace(f[1],f[2])):n):this[f]=A||n;d+=2}},I=function(p,m){for(var d in m)if(typeof m[d]===N&&m[d].length>0){for(var h=0;h<m[d].length;h++)if(ye(m[d][h],p))return d===u?n:d}else if(ye(m[d],p))return d===u?n:d;return m.hasOwnProperty("*")?m["*"]:p},ze={"1.0":"/8","1.2":"/1","1.3":"/3","2.0":"/412","2.0.2":"/416","2.0.3":"/417","2.0.4":"/419","?":"/"},xe={ME:"4.90","NT 3.11":"NT3.51","NT 4.0":"NT4.0",2e3:"NT 5.0",XP:["NT 5.1","NT 5.2"],Vista:"NT 6.0",7:"NT 6.1",8:"NT 6.2","8.1":"NT 6.3",10:["NT 6.4","NT 10.0"],RT:"ARM"},ke={browser:[[/\b(?:crmo|crios)\/([\w\.]+)/i],[a,[r,"Chrome"]],[/edg(?:e|ios|a)?\/([\w\.]+)/i],[a,[r,"Edge"]],[/(opera mini)\/([-\w\.]+)/i,/(opera [mobiletab]{3,6})\b.+version\/([-\w\.]+)/i,/(opera)(?:.+version\/|[\/ ]+)([\w\.]+)/i],[r,a],[/opios[\/ ]+([\w\.]+)/i],[a,[r,z+" Mini"]],[/\bop(?:rg)?x\/([\w\.]+)/i],[a,[r,z+" GX"]],[/\bopr\/([\w\.]+)/i],[a,[r,z]],[/\bb[ai]*d(?:uhd|[ub]*[aekoprswx]{5,6})[\/ ]?([\w\.]+)/i],[a,[r,"Baidu"]],[/\b(?:mxbrowser|mxios|myie2)\/?([-\w\.]*)\b/i],[a,[r,"Maxthon"]],[/(kindle)\/([\w\.]+)/i,/(lunascape|maxthon|netfront|jasmine|blazer|sleipnir)[\/ ]?([\w\.]*)/i,/(avant|iemobile|slim(?:browser|boat|jet))[\/ ]?([\d\.]*)/i,/(?:ms|\()(ie) ([\w\.]+)/i,/(flock|rockmelt|midori|epiphany|silk|skyfire|ovibrowser|bolt|iron|vivaldi|iridium|phantomjs|bowser|qupzilla|falkon|rekonq|puffin|brave|whale(?!.+naver)|qqbrowserlite|duckduckgo|klar|helio|(?=comodo_)?dragon)\/([-\w\.]+)/i,/(heytap|ovi|115)browser\/([\d\.]+)/i,/(weibo)__([\d\.]+)/i],[r,a],[/quark(?:pc)?\/([-\w\.]+)/i],[a,[r,"Quark"]],[/\bddg\/([\w\.]+)/i],[a,[r,"DuckDuckGo"]],[/(?:\buc? ?browser|(?:juc.+)ucweb)[\/ ]?([\w\.]+)/i],[a,[r,"UC"+F]],[/microm.+\bqbcore\/([\w\.]+)/i,/\bqbcore\/([\w\.]+).+microm/i,/micromessenger\/([\w\.]+)/i],[a,[r,"WeChat"]],[/konqueror\/([\w\.]+)/i],[a,[r,"Konqueror"]],[/trident.+rv[: ]([\w\.]{1,9})\b.+like gecko/i],[a,[r,"IE"]],[/ya(?:search)?browser\/([\w\.]+)/i],[a,[r,"Yandex"]],[/slbrowser\/([\w\.]+)/i],[a,[r,"Smart Lenovo "+F]],[/(avast|avg)\/([\w\.]+)/i],[[r,/(.+)/,"$1 Secure "+F],a],[/\bfocus\/([\w\.]+)/i],[a,[r,H+" Focus"]],[/\bopt\/([\w\.]+)/i],[a,[r,z+" Touch"]],[/coc_coc\w+\/([\w\.]+)/i],[a,[r,"Coc Coc"]],[/dolfin\/([\w\.]+)/i],[a,[r,"Dolphin"]],[/coast\/([\w\.]+)/i],[a,[r,z+" Coast"]],[/miuibrowser\/([\w\.]+)/i],[a,[r,"MIUI"+ve]],[/fxios\/([\w\.-]+)/i],[a,[r,H]],[/\bqihoobrowser\/?([\w\.]*)/i],[a,[r,"360"]],[/\b(qq)\/([\w\.]+)/i],[[r,/(.+)/,"$1Browser"],a],[/(oculus|sailfish|huawei|vivo|pico)browser\/([\w\.]+)/i],[[r,/(.+)/,"$1"+ve],a],[/samsungbrowser\/([\w\.]+)/i],[a,[r,B+" Internet"]],[/metasr[\/ ]?([\d\.]+)/i],[a,[r,"Sogou Explorer"]],[/(sogou)mo\w+\/([\d\.]+)/i],[[r,"Sogou Mobile"],a],[/(electron)\/([\w\.]+) safari/i,/(tesla)(?: qtcarbrowser|\/(20\d\d\.[-\w\.]+))/i,/m?(qqbrowser|2345(?=browser|chrome|explorer))\w*[\/ ]?v?([\w\.]+)/i],[r,a],[/(lbbrowser|rekonq)/i,/\[(linkedin)app\]/i],[r],[/ome\/([\w\.]+) \w* ?(iron) saf/i,/ome\/([\w\.]+).+qihu (360)[es]e/i],[a,r],[/((?:fban\/fbios|fb_iab\/fb4a)(?!.+fbav)|;fbav\/([\w\.]+);)/i],[[r,fe],a],[/(Klarna)\/([\w\.]+)/i,/(kakao(?:talk|story))[\/ ]([\w\.]+)/i,/(naver)\(.*?(\d+\.[\w\.]+).*\)/i,/(daum)apps[\/ ]([\w\.]+)/i,/safari (line)\/([\w\.]+)/i,/\b(line)\/([\w\.]+)\/iab/i,/(alipay)client\/([\w\.]+)/i,/(twitter)(?:and| f.+e\/([\w\.]+))/i,/(chromium|instagram|snapchat)[\/ ]([-\w\.]+)/i],[r,a],[/\bgsa\/([\w\.]+) .*safari\//i],[a,[r,"GSA"]],[/musical_ly(?:.+app_?version\/|_)([\w\.]+)/i],[a,[r,"TikTok"]],[/headlesschrome(?:\/([\w\.]+)| )/i],[a,[r,G+" Headless"]],[/ wv\).+(chrome)\/([\w\.]+)/i],[[r,G+" WebView"],a],[/droid.+ version\/([\w\.]+)\b.+(?:mobile safari|safari)/i],[a,[r,"Android "+F]],[/(chrome|omniweb|arora|[tizenoka]{5} ?browser)\/v?([\w\.]+)/i],[r,a],[/version\/([\w\.\,]+) .*mobile\/\w+ (safari)/i],[a,[r,"Mobile Safari"]],[/version\/([\w(\.|\,)]+) .*(mobile ?safari|safari)/i],[a,r],[/webkit.+?(mobile ?safari|safari)(\/[\w\.]+)/i],[r,[a,I,ze]],[/(webkit|khtml)\/([\w\.]+)/i],[r,a],[/(navigator|netscape\d?)\/([-\w\.]+)/i],[[r,"Netscape"],a],[/(wolvic|librewolf)\/([\w\.]+)/i],[r,a],[/mobile vr; rv:([\w\.]+)\).+firefox/i],[a,[r,H+" Reality"]],[/ekiohf.+(flow)\/([\w\.]+)/i,/(swiftfox)/i,/(icedragon|iceweasel|camino|chimera|fennec|maemo browser|minimo|conkeror)[\/ ]?([\w\.\+]+)/i,/(seamonkey|k-meleon|icecat|iceape|firebird|phoenix|palemoon|basilisk|waterfox)\/([-\w\.]+)$/i,/(firefox)\/([\w\.]+)/i,/(mozilla)\/([\w\.]+) .+rv\:.+gecko\/\d+/i,/(amaya|dillo|doris|icab|ladybird|lynx|mosaic|netsurf|obigo|polaris|w3m|(?:go|ice|up)[\. ]?browser)[-\/ ]?v?([\w\.]+)/i,/\b(links) \(([\w\.]+)/i],[r,[a,/_/g,"."]],[/(cobalt)\/([\w\.]+)/i],[r,[a,/master.|lts./,""]]],cpu:[[/\b((amd|x|x86[-_]?|wow|win)64)\b/i],[[S,"amd64"]],[/(ia32(?=;))/i,/\b((i[346]|x)86)(pc)?\b/i],[[S,"ia32"]],[/\b(aarch64|arm(v?[89]e?l?|_?64))\b/i],[[S,"arm64"]],[/\b(arm(v[67])?ht?n?[fl]p?)\b/i],[[S,"armhf"]],[/( (ce|mobile); ppc;|\/[\w\.]+arm\b)/i],[[S,"arm"]],[/((ppc|powerpc)(64)?)( mac|;|\))/i],[[S,/ower/,w,q]],[/ sun4\w[;\)]/i],[[S,"sparc"]],[/\b(avr32|ia64(?=;)|68k(?=\))|\barm(?=v([1-7]|[5-7]1)l?|;|eabi)|(irix|mips|sparc)(64)?\b|pa-risc)/i],[[S,q]]],device:[[/\b(sch-i[89]0\d|shw-m380s|sm-[ptx]\w{2,4}|gt-[pn]\d{2,4}|sgh-t8[56]9|nexus 10)/i],[i,[t,B],[e,c]],[/\b((?:s[cgp]h|gt|sm)-(?![lr])\w+|sc[g-]?[\d]+a?|galaxy nexus)/i,/samsung[- ]((?!sm-[lr])[-\w]+)/i,/sec-(sgh\w+)/i],[i,[t,B],[e,b]],[/(?:\/|\()(ip(?:hone|od)[\w, ]*)(?:\/|;)/i],[i,[t,R],[e,b]],[/\((ipad);[-\w\),; ]+apple/i,/applecoremedia\/[\w\.]+ \((ipad)/i,/\b(ipad)\d\d?,\d\d?[;\]].+ios/i],[i,[t,R],[e,c]],[/(macintosh);/i],[i,[t,R]],[/\b(sh-?[altvz]?\d\d[a-ekm]?)/i],[i,[t,me],[e,b]],[/\b((?:brt|eln|hey2?|gdi|jdn)-a?[lnw]09|(?:ag[rm]3?|jdn2|kob2)-a?[lw]0[09]hn)(?: bui|\)|;)/i],[i,[t,we],[e,c]],[/honor([-\w ]+)[;\)]/i],[i,[t,we],[e,b]],[/\b((?:ag[rs][2356]?k?|bah[234]?|bg[2o]|bt[kv]|cmr|cpn|db[ry]2?|jdn2|got|kob2?k?|mon|pce|scm|sht?|[tw]gr|vrd)-[ad]?[lw][0125][09]b?|605hw|bg2-u03|(?:gem|fdr|m2|ple|t1)-[7a]0[1-4][lu]|t1-a2[13][lw]|mediapad[\w\. ]*(?= bui|\)))\b(?!.+d\/s)/i],[i,[t,ue],[e,c]],[/(?:huawei)([-\w ]+)[;\)]/i,/\b(nexus 6p|\w{2,4}e?-[atu]?[ln][\dx][012359c][adn]?)\b(?!.+d\/s)/i],[i,[t,ue],[e,b]],[/oid[^\)]+; (2[\dbc]{4}(182|283|rp\w{2})[cgl]|m2105k81a?c)(?: bui|\))/i,/\b((?:red)?mi[-_ ]?pad[\w- ]*)(?: bui|\))/i],[[i,/_/g," "],[t,oe],[e,c]],[/\b(poco[\w ]+|m2\d{3}j\d\d[a-z]{2})(?: bui|\))/i,/\b; (\w+) build\/hm\1/i,/\b(hm[-_ ]?note?[_ ]?(?:\d\w)?) bui/i,/\b(redmi[\-_ ]?(?:note|k)?[\w_ ]+)(?: bui|\))/i,/oid[^\)]+; (m?[12][0-389][01]\w{3,6}[c-y])( bui|; wv|\))/i,/\b(mi[-_ ]?(?:a\d|one|one[_ ]plus|note lte|max|cc)?[_ ]?(?:\d?\w?)[_ ]?(?:plus|se|lite|pro)?)(?: bui|\))/i,/ ([\w ]+) miui\/v?\d/i],[[i,/_/g," "],[t,oe],[e,b]],[/; (\w+) bui.+ oppo/i,/\b(cph[12]\d{3}|p(?:af|c[al]|d\w|e[ar])[mt]\d0|x9007|a101op)\b/i],[i,[t,re],[e,b]],[/\b(opd2(\d{3}a?))(?: bui|\))/i],[i,[t,I,{OnePlus:["304","403","203"],"*":re}],[e,c]],[/vivo (\w+)(?: bui|\))/i,/\b(v[12]\d{3}\w?[at])(?: bui|;)/i],[i,[t,"Vivo"],[e,b]],[/\b(rmx[1-3]\d{3})(?: bui|;|\))/i],[i,[t,"Realme"],[e,b]],[/\b(milestone|droid(?:[2-4x]| (?:bionic|x2|pro|razr))?:?( 4g)?)\b[\w ]+build\//i,/\bmot(?:orola)?[- ](\w*)/i,/((?:moto(?! 360)[\w\(\) ]+|xt\d{3,4}|nexus 6)(?= bui|\)))/i],[i,[t,ie],[e,b]],[/\b(mz60\d|xoom[2 ]{0,2}) build\//i],[i,[t,ie],[e,c]],[/((?=lg)?[vl]k\-?\d{3}) bui| 3\.[-\w; ]{10}lg?-([06cv9]{3,4})/i],[i,[t,W],[e,c]],[/(lm(?:-?f100[nv]?|-[\w\.]+)(?= bui|\))|nexus [45])/i,/\blg[-e;\/ ]+((?!browser|netcast|android tv|watch)\w+)/i,/\blg-?([\d\w]+) bui/i],[i,[t,W],[e,b]],[/(ideatab[-\w ]+|602lv|d-42a|a101lv|a2109a|a3500-hv|s[56]000|pb-6505[my]|tb-?x?\d{3,4}(?:f[cu]|xu|[av])|yt\d?-[jx]?\d+[lfmx])( bui|;|\)|\/)/i,/lenovo ?(b[68]0[08]0-?[hf]?|tab(?:[\w- ]+?)|tb[\w-]{6,7})( bui|;|\)|\/)/i],[i,[t,Me],[e,c]],[/(nokia) (t[12][01])/i],[t,i,[e,c]],[/(?:maemo|nokia).*(n900|lumia \d+|rm-\d+)/i,/nokia[-_ ]?(([-\w\. ]*))/i],[[i,/_/g," "],[e,b],[t,"Nokia"]],[/(pixel (c|tablet))\b/i],[i,[t,J],[e,c]],[/droid.+; (pixel[\daxl ]{0,6})(?: bui|\))/i],[i,[t,J],[e,b]],[/droid.+; (a?\d[0-2]{2}so|[c-g]\d{4}|so[-gl]\w+|xq-a\w[4-7][12])(?= bui|\).+chrome\/(?![1-6]{0,1}\d\.))/i],[i,[t,L],[e,b]],[/sony tablet [ps]/i,/\b(?:sony)?sgp\w+(?: bui|\))/i],[[i,"Xperia Tablet"],[t,L],[e,c]],[/ (kb2005|in20[12]5|be20[12][59])\b/i,/(?:one)?(?:plus)? (a\d0\d\d)(?: b|\))/i],[i,[t,pe],[e,b]],[/(alexa)webm/i,/(kf[a-z]{2}wi|aeo(?!bc)\w\w)( bui|\))/i,/(kf[a-z]+)( bui|\)).+silk\//i],[i,[t,K],[e,c]],[/((?:sd|kf)[0349hijorstuw]+)( bui|\)).+silk\//i],[[i,/(.+)/g,"Fire Phone $1"],[t,K],[e,b]],[/(playbook);[-\w\),; ]+(rim)/i],[i,t,[e,c]],[/\b((?:bb[a-f]|st[hv])100-\d)/i,/\(bb10; (\w+)/i],[i,[t,de],[e,b]],[/(?:\b|asus_)(transfo[prime ]{4,10} \w+|eeepc|slider \w+|nexus 7|padfone|p00[cj])/i],[i,[t,ce],[e,c]],[/ (z[bes]6[027][012][km][ls]|zenfone \d\w?)\b/i],[i,[t,ce],[e,b]],[/(nexus 9)/i],[i,[t,"HTC"],[e,c]],[/(htc)[-;_ ]{1,2}([\w ]+(?=\)| bui)|\w+)/i,/(zte)[- ]([\w ]+?)(?: bui|\/|\))/i,/(alcatel|geeksphone|nexian|panasonic(?!(?:;|\.))|sony(?!-bra))[-_ ]?([-\w]*)/i],[t,[i,/_/g," "],[e,b]],[/droid [\w\.]+; ((?:8[14]9[16]|9(?:0(?:48|60|8[01])|1(?:3[27]|66)|2(?:6[69]|9[56])|466))[gqswx])\w*(\)| bui)/i],[i,[t,"TCL"],[e,c]],[/(itel) ((\w+))/i],[[t,q],i,[e,I,{tablet:["p10001l","w7001"],"*":"mobile"}]],[/droid.+; ([ab][1-7]-?[0178a]\d\d?)/i],[i,[t,"Acer"],[e,c]],[/droid.+; (m[1-5] note) bui/i,/\bmz-([-\w]{2,})/i],[i,[t,"Meizu"],[e,b]],[/; ((?:power )?armor(?:[\w ]{0,8}))(?: bui|\))/i],[i,[t,"Ulefone"],[e,b]],[/; (energy ?\w+)(?: bui|\))/i,/; energizer ([\w ]+)(?: bui|\))/i],[i,[t,"Energizer"],[e,b]],[/; cat (b35);/i,/; (b15q?|s22 flip|s48c|s62 pro)(?: bui|\))/i],[i,[t,"Cat"],[e,b]],[/((?:new )?andromax[\w- ]+)(?: bui|\))/i],[i,[t,"Smartfren"],[e,b]],[/droid.+; (a(?:015|06[35]|142p?))/i],[i,[t,"Nothing"],[e,b]],[/; (x67 5g|tikeasy \w+|ac[1789]\d\w+)( b|\))/i,/archos ?(5|gamepad2?|([\w ]*[t1789]|hello) ?\d+[\w ]*)( b|\))/i],[i,[t,"Archos"],[e,c]],[/archos ([\w ]+)( b|\))/i,/; (ac[3-6]\d\w{2,8})( b|\))/i],[i,[t,"Archos"],[e,b]],[/(imo) (tab \w+)/i,/(infinix) (x1101b?)/i],[t,i,[e,c]],[/(blackberry|benq|palm(?=\-)|sonyericsson|acer|asus(?! zenw)|dell|jolla|meizu|motorola|polytron|infinix|tecno|micromax|advan)[-_ ]?([-\w]*)/i,/; (hmd|imo) ([\w ]+?)(?: bui|\))/i,/(hp) ([\w ]+\w)/i,/(microsoft); (lumia[\w ]+)/i,/(lenovo)[-_ ]?([-\w ]+?)(?: bui|\)|\/)/i,/(oppo) ?([\w ]+) bui/i],[t,i,[e,b]],[/(kobo)\s(ereader|touch)/i,/(hp).+(touchpad(?!.+tablet)|tablet)/i,/(kindle)\/([\w\.]+)/i,/(nook)[\w ]+build\/(\w+)/i,/(dell) (strea[kpr\d ]*[\dko])/i,/(le[- ]+pan)[- ]+(\w{1,9}) bui/i,/(trinity)[- ]*(t\d{3}) bui/i,/(gigaset)[- ]+(q\w{1,9}) bui/i,/(vodafone) ([\w ]+)(?:\)| bui)/i],[t,i,[e,c]],[/(surface duo)/i],[i,[t,ee],[e,c]],[/droid [\d\.]+; (fp\du?)(?: b|\))/i],[i,[t,"Fairphone"],[e,b]],[/(u304aa)/i],[i,[t,"AT&T"],[e,b]],[/\bsie-(\w*)/i],[i,[t,"Siemens"],[e,b]],[/\b(rct\w+) b/i],[i,[t,"RCA"],[e,c]],[/\b(venue[\d ]{2,7}) b/i],[i,[t,"Dell"],[e,c]],[/\b(q(?:mv|ta)\w+) b/i],[i,[t,"Verizon"],[e,c]],[/\b(?:barnes[& ]+noble |bn[rt])([\w\+ ]*) b/i],[i,[t,"Barnes & Noble"],[e,c]],[/\b(tm\d{3}\w+) b/i],[i,[t,"NuVision"],[e,c]],[/\b(k88) b/i],[i,[t,"ZTE"],[e,c]],[/\b(nx\d{3}j) b/i],[i,[t,"ZTE"],[e,b]],[/\b(gen\d{3}) b.+49h/i],[i,[t,"Swiss"],[e,b]],[/\b(zur\d{3}) b/i],[i,[t,"Swiss"],[e,c]],[/\b((zeki)?tb.*\b) b/i],[i,[t,"Zeki"],[e,c]],[/\b([yr]\d{2}) b/i,/\b(dragon[- ]+touch |dt)(\w{5}) b/i],[[t,"Dragon Touch"],i,[e,c]],[/\b(ns-?\w{0,9}) b/i],[i,[t,"Insignia"],[e,c]],[/\b((nxa|next)-?\w{0,9}) b/i],[i,[t,"NextBook"],[e,c]],[/\b(xtreme\_)?(v(1[045]|2[015]|[3469]0|7[05])) b/i],[[t,"Voice"],i,[e,b]],[/\b(lvtel\-)?(v1[12]) b/i],[[t,"LvTel"],i,[e,b]],[/\b(ph-1) /i],[i,[t,"Essential"],[e,b]],[/\b(v(100md|700na|7011|917g).*\b) b/i],[i,[t,"Envizen"],[e,c]],[/\b(trio[-\w\. ]+) b/i],[i,[t,"MachSpeed"],[e,c]],[/\btu_(1491) b/i],[i,[t,"Rotor"],[e,c]],[/((?:tegranote|shield t(?!.+d tv))[\w- ]*?)(?: b|\))/i],[i,[t,te],[e,c]],[/(sprint) (\w+)/i],[t,i,[e,b]],[/(kin\.[onetw]{3})/i],[[i,/\./g," "],[t,ee],[e,b]],[/droid.+; (cc6666?|et5[16]|mc[239][23]x?|vc8[03]x?)\)/i],[i,[t,ae],[e,c]],[/droid.+; (ec30|ps20|tc[2-8]\d[kx])\)/i],[i,[t,ae],[e,b]],[/smart-tv.+(samsung)/i],[t,[e,v]],[/hbbtv.+maple;(\d+)/i],[[i,/^/,"SmartTV"],[t,B],[e,v]],[/(nux; netcast.+smarttv|lg (netcast\.tv-201\d|android tv))/i],[[t,W],[e,v]],[/(apple) ?tv/i],[t,[i,R+" TV"],[e,v]],[/crkey/i],[[i,G+"cast"],[t,J],[e,v]],[/droid.+aft(\w+)( bui|\))/i],[i,[t,K],[e,v]],[/(shield \w+ tv)/i],[i,[t,te],[e,v]],[/\(dtv[\);].+(aquos)/i,/(aquos-tv[\w ]+)\)/i],[i,[t,me],[e,v]],[/(bravia[\w ]+)( bui|\))/i],[i,[t,L],[e,v]],[/(mi(tv|box)-?\w+) bui/i],[i,[t,oe],[e,v]],[/Hbbtv.*(technisat) (.*);/i],[t,i,[e,v]],[/\b(roku)[\dx]*[\)\/]((?:dvp-)?[\d\.]*)/i,/hbbtv\/\d+\.\d+\.\d+ +\([\w\+ ]*; *([\w\d][^;]*);([^;]*)/i],[[t,ne],[i,ne],[e,v]],[/droid.+; ([\w- ]+) (?:android tv|smart[- ]?tv)/i],[i,[e,v]],[/\b(android tv|smart[- ]?tv|opera tv|tv; rv:)\b/i],[[e,v]],[/(ouya)/i,/(nintendo) ([wids3utch]+)/i],[t,i,[e,U]],[/droid.+; (shield)( bui|\))/i],[i,[t,te],[e,U]],[/(playstation \w+)/i],[i,[t,L],[e,U]],[/\b(xbox(?: one)?(?!; xbox))[\); ]/i],[i,[t,ee],[e,U]],[/\b(sm-[lr]\d\d[0156][fnuw]?s?|gear live)\b/i],[i,[t,B],[e,k]],[/((pebble))app/i,/(asus|google|lg|oppo) ((pixel |zen)?watch[\w ]*)( bui|\))/i],[t,i,[e,k]],[/(ow(?:19|20)?we?[1-3]{1,3})/i],[i,[t,re],[e,k]],[/(watch)(?: ?os[,\/]|\d,\d\/)[\d\.]+/i],[i,[t,R],[e,k]],[/(opwwe\d{3})/i],[i,[t,pe],[e,k]],[/(moto 360)/i],[i,[t,ie],[e,k]],[/(smartwatch 3)/i],[i,[t,L],[e,k]],[/(g watch r)/i],[i,[t,W],[e,k]],[/droid.+; (wt63?0{2,3})\)/i],[i,[t,ae],[e,k]],[/droid.+; (glass) \d/i],[i,[t,J],[e,k]],[/(pico) (4|neo3(?: link|pro)?)/i],[t,i,[e,k]],[/; (quest( \d| pro)?)/i],[i,[t,fe],[e,k]],[/(tesla)(?: qtcarbrowser|\/[-\w\.]+)/i],[t,[e,j]],[/(aeobc)\b/i],[i,[t,K],[e,j]],[/(homepod).+mac os/i],[i,[t,R],[e,j]],[/windows iot/i],[[e,j]],[/droid .+?; ([^;]+?)(?: bui|; wv\)|\) applew).+? mobile safari/i],[i,[e,b]],[/droid .+?; ([^;]+?)(?: bui|\) applew).+?(?! mobile) safari/i],[i,[e,c]],[/\b((tablet|tab)[;\/]|focus\/\d(?!.+mobile))/i],[[e,c]],[/(phone|mobile(?:[;\/]| [ \w\/\.]*safari)|pda(?=.+windows ce))/i],[[e,b]],[/droid .+?; ([\w\. -]+)( bui|\))/i],[i,[t,"Generic"]]],engine:[[/windows.+ edge\/([\w\.]+)/i],[a,[r,Re+"HTML"]],[/(arkweb)\/([\w\.]+)/i],[r,a],[/webkit\/537\.36.+chrome\/(?!27)([\w\.]+)/i],[a,[r,"Blink"]],[/(presto)\/([\w\.]+)/i,/(webkit|trident|netfront|netsurf|amaya|lynx|w3m|goanna|servo)\/([\w\.]+)/i,/ekioh(flow)\/([\w\.]+)/i,/(khtml|tasman|links)[\/ ]\(?([\w\.]+)/i,/(icab)[\/ ]([23]\.[\d\.]+)/i,/\b(libweb)/i],[r,a],[/ladybird\//i],[[r,"LibWeb"]],[/rv\:([\w\.]{1,9})\b.+(gecko)/i],[a,r]],os:[[/microsoft (windows) (vista|xp)/i],[r,a],[/(windows (?:phone(?: os)?|mobile|iot))[\/ ]?([\d\.\w ]*)/i],[r,[a,I,xe]],[/windows nt 6\.2; (arm)/i,/windows[\/ ]([ntce\d\. ]+\w)(?!.+xbox)/i,/(?:win(?=3|9|n)|win 9x )([nt\d\.]+)/i],[[a,I,xe],[r,"Windows"]],[/[adehimnop]{4,7}\b(?:.*os ([\w]+) like mac|; opera)/i,/(?:ios;fbsv\/|iphone.+ios[\/ ])([\d\.]+)/i,/cfnetwork\/.+darwin/i],[[a,/_/g,"."],[r,"iOS"]],[/(mac os x) ?([\w\. ]*)/i,/(macintosh|mac_powerpc\b)(?!.+haiku)/i],[[r,ge],[a,/_/g,"."]],[/droid ([\w\.]+)\b.+(android[- ]x86|harmonyos)/i],[a,r],[/(ubuntu) ([\w\.]+) like android/i],[[r,/(.+)/,"$1 Touch"],a],[/(android|bada|blackberry|kaios|maemo|meego|openharmony|qnx|rim tablet os|sailfish|series40|symbian|tizen|webos)\w*[-\/; ]?([\d\.]*)/i],[r,a],[/\(bb(10);/i],[a,[r,de]],[/(?:symbian ?os|symbos|s60(?=;)|series ?60)[-\/ ]?([\w\.]*)/i],[a,[r,"Symbian"]],[/mozilla\/[\d\.]+ \((?:mobile|tablet|tv|mobile; [\w ]+); rv:.+ gecko\/([\w\.]+)/i],[a,[r,H+" OS"]],[/web0s;.+rt(tv)/i,/\b(?:hp)?wos(?:browser)?\/([\w\.]+)/i],[a,[r,"webOS"]],[/watch(?: ?os[,\/]|\d,\d\/)([\d\.]+)/i],[a,[r,"watchOS"]],[/crkey\/([\d\.]+)/i],[a,[r,G+"cast"]],[/(cros) [\w]+(?:\)| ([\w\.]+)\b)/i],[[r,he],a],[/panasonic;(viera)/i,/(netrange)mmh/i,/(nettv)\/(\d+\.[\w\.]+)/i,/(nintendo|playstation) ([wids345portablevuch]+)/i,/(xbox); +xbox ([^\);]+)/i,/\b(joli|palm)\b ?(?:os)?\/?([\w\.]*)/i,/(mint)[\/\(\) ]?(\w*)/i,/(mageia|vectorlinux)[; ]/i,/([kxln]?ubuntu|debian|suse|opensuse|gentoo|arch(?= linux)|slackware|fedora|mandriva|centos|pclinuxos|red ?hat|zenwalk|linpus|raspbian|plan 9|minix|risc os|contiki|deepin|manjaro|elementary os|sabayon|linspire)(?: gnu\/linux)?(?: enterprise)?(?:[- ]linux)?(?:-gnu)?[-\/ ]?(?!chrom|package)([-\w\.]*)/i,/(hurd|linux)(?: arm\w*| x86\w*| ?)([\w\.]*)/i,/(gnu) ?([\w\.]*)/i,/\b([-frentopcghs]{0,5}bsd|dragonfly)[\/ ]?(?!amd|[ix346]{1,2}86)([\w\.]*)/i,/(haiku) (\w+)/i],[r,a],[/(sunos) ?([\w\.\d]*)/i],[[r,"Solaris"],a],[/((?:open)?solaris)[-\/ ]?([\w\.]*)/i,/(aix) ((\d)(?=\.|\)| )[\w\.])*/i,/\b(beos|os\/2|amigaos|morphos|openvms|fuchsia|hp-ux|serenityos)/i,/(unix) ?([\w\.]*)/i],[r,a]]},O=function(p,m){if(typeof p===N&&(m=p,p=n),!(this instanceof O))return new O(p,m).getResult();var d=typeof o!==x&&o.navigator?o.navigator:n,h=p||(d&&d.userAgent?d.userAgent:w),P=d&&d.userAgentData?d.userAgentData:n,C=m?Ue(ke,m):ke,f=d&&d.userAgent==h;return this.getBrowser=function(){var l={};return l[r]=n,l[a]=n,D.call(l,h,C.browser),l[_]=je(l[a]),f&&d&&d.brave&&typeof d.brave.isBrave==g&&(l[r]="Brave"),l},this.getCPU=function(){var l={};return l[S]=n,D.call(l,h,C.cpu),l},this.getDevice=function(){var l={};return l[t]=n,l[i]=n,l[e]=n,D.call(l,h,C.device),f&&!l[e]&&P&&P.mobile&&(l[e]=b),f&&l[i]=="Macintosh"&&d&&typeof d.standalone!==x&&d.maxTouchPoints&&d.maxTouchPoints>2&&(l[i]="iPad",l[e]=c),l},this.getEngine=function(){var l={};return l[r]=n,l[a]=n,D.call(l,h,C.engine),l},this.getOS=function(){var l={};return l[r]=n,l[a]=n,D.call(l,h,C.os),f&&!l[r]&&P&&P.platform&&P.platform!="Unknown"&&(l[r]=P.platform.replace(/chrome os/i,he).replace(/macos/i,ge)),l},this.getResult=function(){return{ua:this.getUA(),browser:this.getBrowser(),engine:this.getEngine(),os:this.getOS(),device:this.getDevice(),cpu:this.getCPU()}},this.getUA=function(){return h},this.setUA=function(l){return h=typeof l===T&&l.length>Q?ne(l,Q):l,this},this.setUA(h),this};O.VERSION=s,O.BROWSER=$([r,a,_]),O.CPU=$([S]),O.DEVICE=$([i,t,e,U,b,v,c,k,j]),O.ENGINE=O.OS=$([r,a]),typeof V!==x?(typeof Y!==x&&Y.exports&&(V=Y.exports=O),V.UAParser=O):typeof define===g&&define.amd?define(function(){return O}):typeof o!==x&&(o.UAParser=O);var M=typeof o!==x&&(o.jQuery||o.Zepto);if(M&&!M.ua){var X=new O;M.ua=X.getResult(),M.ua.get=function(){return X.getUA()},M.ua.set=function(p){X.setUA(p);var m=X.getResult();for(var d in m)M.ua[d]=m[d]}}})(typeof window=="object"?window:V)});var y=class{static encode(n){return globalThis.btoa(String.fromCharCode(...new Uint8Array(n))).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_")}static decode(n){let s=n.replace(/-/g,"+").replace(/_/g,"/"),w=globalThis.atob(s),u=new Uint8Array(w.length);for(let g=0;g<w.length;g++)u[g]=w.charCodeAt(g);return u.buffer}};function Ge(o){return!(typeof o!="object"||o?.authenticatorData===void 0||typeof o?.authenticatorData!="object")}function He(o){return!(typeof o!="object"||o?.attestationObject===void 0||typeof o?.attestationObject!="object")}function Je(o){let n={...o.user,id:y.decode(o.user.id)},s=y.decode(o.challenge),w=o.excludeCredentials?.map(g=>({...g,id:y.decode(g.id),transports:g.transports}))??[];return{...o,user:n,challenge:s,excludeCredentials:w}}function We(o){let n=y.decode(o.challenge),s=o.allowCredentials?.map(u=>({...u,id:y.decode(u.id),transports:u.transports}))??[];return{...o,allowCredentials:s,challenge:n}}function $e(){try{let o=this.id,n=y.encode(this.rawId),s=this.authenticatorAttachment,w={},u=this.type;if(Ge(this.response))return{id:o,rawId:n,response:{authenticatorData:y.encode(this.response.authenticatorData),clientDataJSON:y.encode(this.response.clientDataJSON),signature:y.encode(this.response.signature),userHandle:this.response.userHandle?y.encode(this.response.userHandle):void 0},authenticatorAttachment:s,clientExtensionResults:w,type:u};if(He(this.response))return{id:o,rawId:n,response:{clientDataJSON:y.encode(this.response.clientDataJSON),attestationObject:y.encode(this.response.attestationObject),transports:this.response?.getTransports()||[]},authenticatorAttachment:s,clientExtensionResults:w,type:u};throw new Error("Unexpected object.")}catch(o){throw console.error(o),o}}globalThis.PublicKeyCredential&&(PublicKeyCredential.parseCreationOptionsFromJSON||Object.defineProperty(PublicKeyCredential,"parseCreationOptionsFromJSON",{value:Je}),PublicKeyCredential.parseRequestOptionsFromJSON||Object.defineProperty(PublicKeyCredential,"parseRequestOptionsFromJSON",{value:We}),PublicKeyCredential.prototype.toJSON||Object.defineProperty(PublicKeyCredential.prototype,"toJSON",{value:$e}));var _e=Fe(Ce(),1);var Xe=/^[v^~<>=]*?(\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+))?(?:-([\da-z\-]+(?:\.[\da-z\-]+)*))?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?)?)?$/i,le=o=>{if(typeof o!="string")throw new TypeError("Invalid argument expected string");let n=o.match(Xe);if(!n)throw new Error(`Invalid argument not valid semver ('${o}' received)`);return n.shift(),n},Ae=o=>o==="*"||o==="x"||o==="X",Pe=o=>{let n=parseInt(o,10);return isNaN(n)?o:n},Ye=(o,n)=>typeof o!=typeof n?[String(o),String(n)]:[o,n],Ze=(o,n)=>{if(Ae(o)||Ae(n))return 0;let[s,w]=Ye(Pe(o),Pe(n));return s>w?1:s<w?-1:0},be=(o,n)=>{for(let s=0;s<Math.max(o.length,n.length);s++){let w=Ze(o[s]||"0",n[s]||"0");if(w!==0)return w}return 0};var Ee=(o,n)=>{let s=le(o),w=le(n),u=s.pop(),g=w.pop(),x=be(s,w);return x!==0?x:u&&g?be(u.split("."),g.split(".")):u||g?u?-1:1:0};var E=(o,n,s)=>{Qe(s);let w=Ee(o,n);return Ne[s].includes(w)},Ne={">":[1],">=":[0,1],"=":[0],"<=":[-1,0],"<":[-1],"!=":[-1,1]},Te=Object.keys(Ne),Qe=o=>{if(typeof o!="string")throw new TypeError(`Invalid operator type, expected string but got ${typeof o}`);if(Te.indexOf(o)===-1)throw new Error(`Invalid operator, expected one of ${Te.join("|")}`)};var Z=class{constructor(n){Object.defineProperty(this,"iOS174To183",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"safari174To183",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"iOS18OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"desktopBlink128OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"desktopBlink135OrLater",{enumerable:!0,configurable:!0,writable:!0,value:void 0});let{browser:s,engine:w,os:u}=(0,_e.UAParser)(n);if(!s?.version||!s?.name)throw new Error("Browser version not found.");if(!w?.version||!w?.name)throw new Error("Engine version not found.");if(!u?.version||!u?.name)throw new Error("OS version not found.");this.iOS174To183=u.name==="iOS"&&E(u.version,"17.4",">=")&&E(u.version,"18.4","<"),this.safari174To183=u.name==="Mac OS"&&s.name==="Safari"&&E(s.version,"17.4",">=")&&E(s.version,"18.4","<"),this.iOS18OrLater=u.name==="iOS"&&E(u.version,"18",">="),this.desktopBlink128OrLater=w.name==="Blink"&&["Mac OS","Windows","Linux","Chrome OS"].includes(u.name)&&E(w.version,"128",">="),this.desktopBlink135OrLater=w.name==="Blink"&&["macOS","Windows","Linux","Chrome OS"].includes(u.name)&&E(w.version,"135",">=")}};function ei(o){let n=PublicKeyCredential?.getClientCapabilities;return async function(){let s=!1,w=!1,u,g,x=!1,N=!1,T=!1,_=!1,i=!1;if((o.safari174To183||o.iOS174To183)&&n){let r=await n();s=r?.conditionalCreate,w=r?.conditionalMediation,u=r?.hybridTransport,g=r?.passkeyPlatformAuthenticator,x=r?.relatedOrigins,N=r?.signalAllAcceptedCredentials,T=r?.signalCurrentUserDetails,_=r?.signalUnknownCredential,i=r?.userVerifyingPlatformAuthenticator}else PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable&&(i=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()),PublicKeyCredential?.isConditionalMediationAvailable&&(w=await PublicKeyCredential.isConditionalMediationAvailable()),PublicKeyCredential?.signalAllAcceptedCredentials&&(N=!0),PublicKeyCredential?.signalCurrentUserDetails&&(T=!0),PublicKeyCredential?.signalUnknownCredential&&(_=!0),s=o.desktopBlink135OrLater||o.iOS18OrLater,x=o.desktopBlink128OrLater||o.iOS18OrLater;return Promise.resolve({conditionalCreate:s,conditionalGet:w,hybridTransport:u,passkeyPlatformAuthenticator:g,relatedOrigins:x,signalAllAcceptedCredentials:N,signalCurrentUserDetails:T,signalUnknownCredential:_,userVerifyingPlatformAuthenticator:i})}}function ii(o=""){if(!globalThis.PublicKeyCredential)return;let n;try{n=new Z(o)}catch{console.info("expected exception for the test.");return}let s=ei(n);(!PublicKeyCredential.getClientCapabilities||n.safari174To183||n.iOS174To183)&&Object.defineProperty(PublicKeyCredential,"getClientCapabilities",{value:s})}ii();
++//# sourceMappingURL=webauthn-polyfills.bundle.mjs.map
+\ No newline at end of file
+diff --git a/vendor/webauthn-polyfills.LICENSE b/vendor/webauthn-polyfills.LICENSE
+new file mode 100644
+index 0000000..261eeb9
+--- /dev/null
++++ b/vendor/webauthn-polyfills.LICENSE
+@@ -0,0 +1,201 @@
++                                 Apache License
++                           Version 2.0, January 2004
++                        http://www.apache.org/licenses/
++
++   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
++
++   1. Definitions.
++
++      "License" shall mean the terms and conditions for use, reproduction,
++      and distribution as defined by Sections 1 through 9 of this document.
++
++      "Licensor" shall mean the copyright owner or entity authorized by
++      the copyright owner that is granting the License.
++
++      "Legal Entity" shall mean the union of the acting entity and all
++      other entities that control, are controlled by, or are under common
++      control with that entity. For the purposes of this definition,
++      "control" means (i) the power, direct or indirect, to cause the
++      direction or management of such entity, whether by contract or
++      otherwise, or (ii) ownership of fifty percent (50%) or more of the
++      outstanding shares, or (iii) beneficial ownership of such entity.
++
++      "You" (or "Your") shall mean an individual or Legal Entity
++      exercising permissions granted by this License.
++
++      "Source" form shall mean the preferred form for making modifications,
++      including but not limited to software source code, documentation
++      source, and configuration files.
++
++      "Object" form shall mean any form resulting from mechanical
++      transformation or translation of a Source form, including but
++      not limited to compiled object code, generated documentation,
++      and conversions to other media types.
++
++      "Work" shall mean the work of authorship, whether in Source or
++      Object form, made available under the License, as indicated by a
++      copyright notice that is included in or attached to the work
++      (an example is provided in the Appendix below).
++
++      "Derivative Works" shall mean any work, whether in Source or Object
++      form, that is based on (or derived from) the Work and for which the
++      editorial revisions, annotations, elaborations, or other modifications
++      represent, as a whole, an original work of authorship. For the purposes
++      of this License, Derivative Works shall not include works that remain
++      separable from, or merely link (or bind by name) to the interfaces of,
++      the Work and Derivative Works thereof.
++
++      "Contribution" shall mean any work of authorship, including
++      the original version of the Work and any modifications or additions
++      to that Work or Derivative Works thereof, that is intentionally
++      submitted to Licensor for inclusion in the Work by the copyright owner
++      or by an individual or Legal Entity authorized to submit on behalf of
++      the copyright owner. For the purposes of this definition, "submitted"
++      means any form of electronic, verbal, or written communication sent
++      to the Licensor or its representatives, including but not limited to
++      communication on electronic mailing lists, source code control systems,
++      and issue tracking systems that are managed by, or on behalf of, the
++      Licensor for the purpose of discussing and improving the Work, but
++      excluding communication that is conspicuously marked or otherwise
++      designated in writing by the copyright owner as "Not a Contribution."
++
++      "Contributor" shall mean Licensor and any individual or Legal Entity
++      on behalf of whom a Contribution has been received by Licensor and
++      subsequently incorporated within the Work.
++
++   2. Grant of Copyright License. Subject to the terms and conditions of
++      this License, each Contributor hereby grants to You a perpetual,
++      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
++      copyright license to reproduce, prepare Derivative Works of,
++      publicly display, publicly perform, sublicense, and distribute the
++      Work and such Derivative Works in Source or Object form.
++
++   3. Grant of Patent License. Subject to the terms and conditions of
++      this License, each Contributor hereby grants to You a perpetual,
++      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
++      (except as stated in this section) patent license to make, have made,
++      use, offer to sell, sell, import, and otherwise transfer the Work,
++      where such license applies only to those patent claims licensable
++      by such Contributor that are necessarily infringed by their
++      Contribution(s) alone or by combination of their Contribution(s)
++      with the Work to which such Contribution(s) was submitted. If You
++      institute patent litigation against any entity (including a
++      cross-claim or counterclaim in a lawsuit) alleging that the Work
++      or a Contribution incorporated within the Work constitutes direct
++      or contributory patent infringement, then any patent licenses
++      granted to You under this License for that Work shall terminate
++      as of the date such litigation is filed.
++
++   4. Redistribution. You may reproduce and distribute copies of the
++      Work or Derivative Works thereof in any medium, with or without
++      modifications, and in Source or Object form, provided that You
++      meet the following conditions:
++
++      (a) You must give any other recipients of the Work or
++          Derivative Works a copy of this License; and
++
++      (b) You must cause any modified files to carry prominent notices
++          stating that You changed the files; and
++
++      (c) You must retain, in the Source form of any Derivative Works
++          that You distribute, all copyright, patent, trademark, and
++          attribution notices from the Source form of the Work,
++          excluding those notices that do not pertain to any part of
++          the Derivative Works; and
++
++      (d) If the Work includes a "NOTICE" text file as part of its
++          distribution, then any Derivative Works that You distribute must
++          include a readable copy of the attribution notices contained
++          within such NOTICE file, excluding those notices that do not
++          pertain to any part of the Derivative Works, in at least one
++          of the following places: within a NOTICE text file distributed
++          as part of the Derivative Works; within the Source form or
++          documentation, if provided along with the Derivative Works; or,
++          within a display generated by the Derivative Works, if and
++          wherever such third-party notices normally appear. The contents
++          of the NOTICE file are for informational purposes only and
++          do not modify the License. You may add Your own attribution
++          notices within Derivative Works that You distribute, alongside
++          or as an addendum to the NOTICE text from the Work, provided
++          that such additional attribution notices cannot be construed
++          as modifying the License.
++
++      You may add Your own copyright statement to Your modifications and
++      may provide additional or different license terms and conditions
++      for use, reproduction, or distribution of Your modifications, or
++      for any such Derivative Works as a whole, provided Your use,
++      reproduction, and distribution of the Work otherwise complies with
++      the conditions stated in this License.
++
++   5. Submission of Contributions. Unless You explicitly state otherwise,
++      any Contribution intentionally submitted for inclusion in the Work
++      by You to the Licensor shall be under the terms and conditions of
++      this License, without any additional terms or conditions.
++      Notwithstanding the above, nothing herein shall supersede or modify
++      the terms of any separate license agreement you may have executed
++      with Licensor regarding such Contributions.
++
++   6. Trademarks. This License does not grant permission to use the trade
++      names, trademarks, service marks, or product names of the Licensor,
++      except as required for reasonable and customary use in describing the
++      origin of the Work and reproducing the content of the NOTICE file.
++
++   7. Disclaimer of Warranty. Unless required by applicable law or
++      agreed to in writing, Licensor provides the Work (and each
++      Contributor provides its Contributions) on an "AS IS" BASIS,
++      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
++      implied, including, without limitation, any warranties or conditions
++      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
++      PARTICULAR PURPOSE. You are solely responsible for determining the
++      appropriateness of using or redistributing the Work and assume any
++      risks associated with Your exercise of permissions under this License.
++
++   8. Limitation of Liability. In no event and under no legal theory,
++      whether in tort (including negligence), contract, or otherwise,
++      unless required by applicable law (such as deliberate and grossly
++      negligent acts) or agreed to in writing, shall any Contributor be
++      liable to You for damages, including any direct, indirect, special,
++      incidental, or consequential damages of any character arising as a
++      result of this License or out of the use or inability to use the
++      Work (including but not limited to damages for loss of goodwill,
++      work stoppage, computer failure or malfunction, or any and all
++      other commercial damages or losses), even if such Contributor
++      has been advised of the possibility of such damages.
++
++   9. Accepting Warranty or Additional Liability. While redistributing
++      the Work or Derivative Works thereof, You may choose to offer,
++      and charge a fee for, acceptance of support, warranty, indemnity,
++      or other liability obligations and/or rights consistent with this
++      License. However, in accepting such obligations, You may act only
++      on Your own behalf and on Your sole responsibility, not on behalf
++      of any other Contributor, and only if You agree to indemnify,
++      defend, and hold each Contributor harmless for any liability
++      incurred by, or claims asserted against, such Contributor by reason
++      of your accepting any such warranty or additional liability.
++
++   END OF TERMS AND CONDITIONS
++
++   APPENDIX: How to apply the Apache License to your work.
++
++      To apply the Apache License to your work, attach the following
++      boilerplate notice, with the fields enclosed by brackets "[]"
++      replaced with your own identifying information. (Don't include
++      the brackets!)  The text should be enclosed in the appropriate
++      comment syntax for the file format. We also recommend that a
++      file or class name and description of purpose be included on the
++      same "printed page" as the copyright notice for easier
++      identification within third-party archives.
++
++   Copyright [yyyy] [name of copyright owner]
++
++   Licensed under the Apache License, Version 2.0 (the "License");
++   you may not use this file except in compliance with the License.
++   You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++   Unless required by applicable law or agreed to in writing, software
++   distributed under the License is distributed on an "AS IS" BASIS,
++   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++   See the License for the specific language governing permissions and
++   limitations under the License.

@@ -1,0 +1,1091 @@
+diff --git a/index.html b/index.html
+index 66c9173..f724747 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,17 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-soft: #fff3e0;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --card-bg: #ffffff;
++      --border: #e0d6d2;
++      --danger: #c62828;
++      --danger-bg: #ffebee;
+     }
+ 
+     * {
+@@ -27,7 +34,7 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Sticky Navigation - remains interactive during scoped view transitions */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -38,6 +45,7 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+     }
+ 
+     .logo {
+@@ -49,6 +57,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+@@ -100,24 +109,388 @@
+       padding: 0 20px;
+     }
+ 
++    .seasonal-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .seasonal-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .seasonal-subtitle {
++      color: var(--text-muted);
++      font-size: 0.95rem;
++      max-width: 650px;
++      margin: 0 auto 18px;
++    }
++
++    /* Section Controls Toolbar */
++    .seasonal-controls {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 10px;
++      margin-bottom: 20px;
++    }
++
++    .control-btn {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      padding: 8px 15px;
++      border-radius: 6px;
++      font-size: 0.88rem;
++      font-weight: 600;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      transition: background 0.2s, border-color 0.2s, transform 0.15s, box-shadow 0.2s;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
++    }
++
++    .control-btn:hover:not(:disabled) {
++      background: var(--accent-soft);
++      border-color: var(--accent);
++      transform: translateY(-1px);
++      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
++    }
++
++    .control-btn:active:not(:disabled) {
++      transform: translateY(0);
++    }
++
++    .control-btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .control-btn.primary-action {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .control-btn.primary-action:hover:not(:disabled) {
++      background: var(--primary-dark);
++      border-color: var(--primary-dark);
++    }
++
++    /* Removed Drinks Restore Bar */
++    .removed-tray {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++      margin-bottom: 16px;
++      min-height: 0;
++    }
++
++    .removed-tray:empty {
++      display: none;
++    }
++
++    .removed-label {
++      font-size: 0.85rem;
++      color: var(--text-muted);
++      font-weight: 600;
++    }
++
++    .restore-pill {
++      background: var(--accent-soft);
++      color: var(--primary-dark);
++      border: 1px dashed var(--accent);
++      padding: 4px 12px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, transform 0.15s;
++    }
++
++    .restore-pill:hover {
++      background: var(--accent);
++      color: var(--primary-dark);
++      transform: scale(1.03);
++    }
++
++    /* Scoped View Transition Grid Container */
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
++      position: relative;
++      contain: layout;
++      view-transition-scope: all;
++      view-transition-group: contain;
+     }
+ 
++    /* Drink Card - Participates in grid transitions AND serves as its own scoped transition root */
+     .card {
+-      background: white;
++      background: var(--card-bg);
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      position: relative;
++      border: 1px solid var(--border);
++      contain: layout;
++      view-transition-name: match-element;
++      view-transition-name: var(--card-vt-name, match-element);
++      view-transition-class: drink-card;
++      view-transition-group: contain;
++      transition: box-shadow 0.25s, border-color 0.25s;
++    }
++
++    /* When a card itself is the active scoped transition root, let it self-participate as root */
++    .card:active-view-transition {
++      view-transition-name: root;
++      border-color: var(--accent);
++      box-shadow: 0 6px 18px rgba(255, 171, 64, 0.22);
++    }
++
++    .card-top-bar {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 12px;
++      gap: 8px;
++    }
++
++    .price-badge {
++      background: var(--accent-soft);
++      color: var(--primary-dark);
++      font-weight: 700;
++      font-size: 0.82rem;
++      padding: 3px 10px;
++      border-radius: 999px;
++      border: 1px solid rgba(255, 171, 64, 0.4);
++    }
++
++    .card-actions {
++      display: flex;
++      align-items: center;
++      gap: 5px;
++    }
++
++    .icon-btn {
++      background: var(--light);
++      color: var(--primary);
++      border: 1px solid var(--border);
++      width: 30px;
++      height: 30px;
++      border-radius: 6px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      font-size: 0.85rem;
++      font-weight: bold;
++      transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.15s;
++    }
++
++    .icon-btn:hover:not(:disabled) {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .icon-btn.remove-card-btn:hover {
++      background: var(--danger);
++      color: white;
++      border-color: var(--danger);
++    }
++
++    .card-image-wrap {
++      width: 100%;
++      height: 160px;
++      border-radius: 8px;
++      overflow: hidden;
++      margin-bottom: 14px;
++      background: var(--secondary);
++    }
++
++    .card-image-wrap img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.35s ease;
++    }
++
++    .card:hover .card-image-wrap img {
++      transform: scale(1.04);
+     }
+ 
+     .card h3 {
++      margin-bottom: 8px;
++      color: var(--primary);
++      font-size: 1.3rem;
++    }
++
++    .card-desc {
++      color: var(--text-muted);
++      font-size: 0.92rem;
++      margin-bottom: 14px;
++    }
++
++    /* Within-Card Customizations Component */
++    .customization-box {
++      background: var(--light);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 12px;
++      margin: 6px 0 14px;
++      text-align: left;
++      contain: layout;
++    }
++
++    .customization-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++      font-size: 0.8rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--text-muted);
++    }
++
++    .mini-action-btn {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++      border-radius: 4px;
++      padding: 2px 7px;
++      font-size: 0.74rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .mini-action-btn:hover {
++      background: var(--accent-soft);
++      border-color: var(--accent);
++    }
++
++    .customizations-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      min-height: 36px;
+       margin-bottom: 10px;
++      contain: layout;
++    }
++
++    .custom-item {
++      background: white;
++      border: 1px solid var(--border);
++      border-radius: 6px;
++      padding: 5px 8px;
++      font-size: 0.84rem;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 6px;
++      view-transition-name: match-element;
++      view-transition-name: var(--item-vt-name, match-element);
++      view-transition-class: custom-item;
++    }
++
++    .custom-item-label {
++      font-weight: 500;
++      color: var(--text);
++      overflow: hidden;
++      text-overflow: ellipsis;
++      white-space: nowrap;
++    }
++
++    .custom-item-controls {
++      display: inline-flex;
++      gap: 3px;
++      flex-shrink: 0;
++    }
++
++    .item-btn {
++      background: var(--light);
++      border: 1px solid var(--border);
++      color: var(--text-muted);
++      width: 22px;
++      height: 22px;
++      border-radius: 4px;
++      font-size: 0.72rem;
++      line-height: 1;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      cursor: pointer;
++      transition: background 0.15s, color 0.15s;
++    }
++
++    .item-btn:hover {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .item-btn.remove-item-btn:hover {
++      background: var(--danger);
++      color: white;
++      border-color: var(--danger);
++    }
++
++    .custom-empty {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++      font-style: italic;
++      text-align: center;
++      padding: 6px 0;
++    }
++
++    .add-ons-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 5px;
++      padding-top: 6px;
++      border-top: 1px dashed var(--border);
++    }
++
++    .add-item-btn {
++      background: white;
+       color: var(--primary);
++      border: 1px dashed var(--primary);
++      border-radius: 999px;
++      padding: 3px 9px;
++      font-size: 0.75rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s, transform 0.15s;
++    }
++
++    .add-item-btn:hover {
++      background: var(--primary);
++      color: white;
++      transform: translateY(-1px);
++    }
++
++    .empty-grid-state {
++      grid-column: 1 / -1;
++      background: white;
++      border: 2px dashed var(--secondary);
++      border-radius: 12px;
++      padding: 40px 20px;
++      text-align: center;
++      color: var(--text-muted);
+     }
+ 
+     .btn {
+@@ -127,14 +500,71 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-top: auto;
+       transition: background 0.3s;
++      font-weight: 600;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* View Transition Animations (Scoped & Concurrent) */
++    ::view-transition {
++      pointer-events: none;
++    }
++
++    ::view-transition-group(*) {
++      animation-duration: 360ms;
++      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    ::view-transition-group(.drink-card) {
++      animation-duration: 420ms;
++      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    ::view-transition-group(.custom-item) {
++      animation-duration: 300ms;
++      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
++    }
++
++    ::view-transition-group-children(root) {
++      overflow: clip;
++    }
++
++    @keyframes vt-card-enter {
++      from {
++        opacity: 0;
++        transform: scale(0.88) translateY(12px);
++      }
++      to {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++    }
++
++    @keyframes vt-card-exit {
++      from {
++        opacity: 1;
++        transform: scale(1) translateY(0);
++      }
++      to {
++        opacity: 0;
++        transform: scale(0.86) translateY(-12px);
++      }
++    }
++
++    ::view-transition-new(.drink-card):only-child,
++    ::view-transition-new(.custom-item):only-child {
++      animation: vt-card-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
++    }
++
++    ::view-transition-old(.drink-card):only-child,
++    ::view-transition-old(.custom-item):only-child {
++      animation: vt-card-exit 260ms cubic-bezier(0.4, 0, 1, 1) both;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,26 +601,207 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" style="margin-top: 15px;">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
++      <div class="seasonal-header">
++        <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++        <p class="seasonal-subtitle">
++          Reorder or remove drink cards, or customize ingredients inside any cup—powered by self-contained, concurrent transitions.
++        </p>
++
++        <div class="seasonal-controls" role="toolbar" aria-label="Seasonal Favorites Controls">
++          <button type="button" class="control-btn" id="shuffle-cards-btn" title="Randomly reorder drink cards">
++            ⇄ Shuffle Cards
++          </button>
++          <button type="button" class="control-btn" id="sort-cards-btn" title="Sort drink cards alphabetically">
++            ↓↑ Sort A–Z
++          </button>
++          <button type="button" class="control-btn" id="concurrent-custom-btn" title="Run independent transitions on all drink cards simultaneously">
++            ✦ Shuffle All Cup Mixes
++          </button>
++          <button type="button" class="control-btn primary-action" id="reset-cards-btn" title="Restore all default seasonal drinks and customizations">
++            ↺ Reset Favorites
++          </button>
++        </div>
++
++        <div id="removed-drinks-tray" class="removed-tray" aria-live="polite"></div>
++      </div>
++
++      <div class="grid" id="seasonal-grid">
++        <!-- Card 1: Maple Oat Latte -->
++        <div class="card" data-drink-id="maple-oat-latte" style="--card-vt-name: card-maple-oat-latte;">
++          <div>
++            <div class="card-top-bar">
++              <span class="price-badge">$5.75</span>
++              <div class="card-actions">
++                <button type="button" class="icon-btn move-left-btn" title="Move card left" aria-label="Move Maple Oat Latte left">←</button>
++                <button type="button" class="icon-btn move-right-btn" title="Move card right" aria-label="Move Maple Oat Latte right">→</button>
++                <button type="button" class="icon-btn remove-card-btn" title="Remove drink card" aria-label="Remove Maple Oat Latte">✕</button>
++              </div>
++            </div>
++            <div class="card-image-wrap">
++              <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Maple Oat Latte">
++            </div>
++            <h3>Maple Oat Latte</h3>
++            <p class="card-desc">Creamy oat milk with a hint of Vermont maple syrup.</p>
++
++            <div class="customization-box">
++              <div class="customization-header">
++                <span>Cup Customizations</span>
++                <button type="button" class="mini-action-btn shuffle-items-btn" title="Shuffle items in this cup">⇄ Mix</button>
++              </div>
++              <ul class="customizations-list">
++                <li class="custom-item" data-item-id="maple-oat-milk" style="--item-vt-name: item-maple-oat-milk;">
++                  <span class="custom-item-label">Barista Oat Milk</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move Barista Oat Milk up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move Barista Oat Milk down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove Barista Oat Milk">×</button>
++                  </span>
++                </li>
++                <li class="custom-item" data-item-id="maple-syrup" style="--item-vt-name: item-maple-syrup;">
++                  <span class="custom-item-label">Vermont Maple Syrup</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move Vermont Maple Syrup up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move Vermont Maple Syrup down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove Vermont Maple Syrup">×</button>
++                  </span>
++                </li>
++                <li class="custom-item" data-item-id="maple-cinnamon" style="--item-vt-name: item-maple-cinnamon;">
++                  <span class="custom-item-label">Cinnamon Dusting</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move Cinnamon Dusting up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move Cinnamon Dusting down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove Cinnamon Dusting">×</button>
++                  </span>
++                </li>
++              </ul>
++              <div class="add-ons-bar">
++                <button type="button" class="add-item-btn" data-addon="Extra Espresso Shot">+ Extra Shot</button>
++                <button type="button" class="add-item-btn" data-addon="Vanilla Cold Foam">+ Cold Foam</button>
++                <button type="button" class="add-item-btn" data-addon="Nutmeg Sprinkle">+ Nutmeg</button>
++              </div>
++            </div>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++
++        <!-- Card 2: Dark Roast Espresso -->
++        <div class="card" data-drink-id="dark-roast-espresso" style="--card-vt-name: card-dark-roast-espresso;">
++          <div>
++            <div class="card-top-bar">
++              <span class="price-badge">$3.95</span>
++              <div class="card-actions">
++                <button type="button" class="icon-btn move-left-btn" title="Move card left" aria-label="Move Dark Roast Espresso left">←</button>
++                <button type="button" class="icon-btn move-right-btn" title="Move card right" aria-label="Move Dark Roast Espresso right">→</button>
++                <button type="button" class="icon-btn remove-card-btn" title="Remove drink card" aria-label="Remove Dark Roast Espresso">✕</button>
++              </div>
++            </div>
++            <div class="card-image-wrap">
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Dark Roast Espresso">
++            </div>
++            <h3>Dark Roast Espresso</h3>
++            <p class="card-desc">Bold, smokey, and perfect for a morning boost.</p>
++
++            <div class="customization-box">
++              <div class="customization-header">
++                <span>Cup Customizations</span>
++                <button type="button" class="mini-action-btn shuffle-items-btn" title="Shuffle items in this cup">⇄ Mix</button>
++              </div>
++              <ul class="customizations-list">
++                <li class="custom-item" data-item-id="espresso-ristretto" style="--item-vt-name: item-espresso-ristretto;">
++                  <span class="custom-item-label">Double Ristretto Pull</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move Double Ristretto Pull up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move Double Ristretto Pull down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove Double Ristretto Pull">×</button>
++                  </span>
++                </li>
++                <li class="custom-item" data-item-id="espresso-demerara" style="--item-vt-name: item-espresso-demerara;">
++                  <span class="custom-item-label">Raw Demerara Sugar</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move Raw Demerara Sugar up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move Raw Demerara Sugar down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove Raw Demerara Sugar">×</button>
++                  </span>
++                </li>
++                <li class="custom-item" data-item-id="espresso-lemon" style="--item-vt-name: item-espresso-lemon;">
++                  <span class="custom-item-label">Fresh Lemon Twist</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move Fresh Lemon Twist up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move Fresh Lemon Twist down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove Fresh Lemon Twist">×</button>
++                  </span>
++                </li>
++              </ul>
++              <div class="add-ons-bar">
++                <button type="button" class="add-item-btn" data-addon="Splash of Oat Milk">+ Oat Splash</button>
++                <button type="button" class="add-item-btn" data-addon="Dark Cocoa Dust">+ Cocoa Dust</button>
++                <button type="button" class="add-item-btn" data-addon="Caramel Drizzle">+ Caramel</button>
++              </div>
++            </div>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++
++        <!-- Card 3: Cold Brew -->
++        <div class="card" data-drink-id="cold-brew" style="--card-vt-name: card-cold-brew;">
++          <div>
++            <div class="card-top-bar">
++              <span class="price-badge">$4.85</span>
++              <div class="card-actions">
++                <button type="button" class="icon-btn move-left-btn" title="Move card left" aria-label="Move Cold Brew left">←</button>
++                <button type="button" class="icon-btn move-right-btn" title="Move card right" aria-label="Move Cold Brew right">→</button>
++                <button type="button" class="icon-btn remove-card-btn" title="Remove drink card" aria-label="Remove Cold Brew">✕</button>
++              </div>
++            </div>
++            <div class="card-image-wrap">
++              <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Cold Brew">
++            </div>
++            <h3>Cold Brew</h3>
++            <p class="card-desc">Steeped for 18 hours for maximum smoothness.</p>
++
++            <div class="customization-box">
++              <div class="customization-header">
++                <span>Cup Customizations</span>
++                <button type="button" class="mini-action-btn shuffle-items-btn" title="Shuffle items in this cup">⇄ Mix</button>
++              </div>
++              <ul class="customizations-list">
++                <li class="custom-item" data-item-id="coldbrew-steep" style="--item-vt-name: item-coldbrew-steep;">
++                  <span class="custom-item-label">18-Hour Reserve Steep</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move 18-Hour Reserve Steep up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move 18-Hour Reserve Steep down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove 18-Hour Reserve Steep">×</button>
++                  </span>
++                </li>
++                <li class="custom-item" data-item-id="coldbrew-ice" style="--item-vt-name: item-coldbrew-ice;">
++                  <span class="custom-item-label">Crystal Artisanal Ice</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move Crystal Artisanal Ice up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move Crystal Artisanal Ice down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove Crystal Artisanal Ice">×</button>
++                  </span>
++                </li>
++                <li class="custom-item" data-item-id="coldbrew-cream" style="--item-vt-name: item-coldbrew-cream;">
++                  <span class="custom-item-label">Sweet Cream Float</span>
++                  <span class="custom-item-controls">
++                    <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move Sweet Cream Float up">↑</button>
++                    <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move Sweet Cream Float down">↓</button>
++                    <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove Sweet Cream Float">×</button>
++                  </span>
++                </li>
++              </ul>
++              <div class="add-ons-bar">
++                <button type="button" class="add-item-btn" data-addon="Maple Cold Foam">+ Maple Foam</button>
++                <button type="button" class="add-item-btn" data-addon="Madagascar Vanilla">+ Vanilla</button>
++                <button type="button" class="add-item-btn" data-addon="Cinnamon Stick">+ Cinnamon</button>
++              </div>
++            </div>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+@@ -207,6 +818,355 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const seasonalGrid = document.getElementById('seasonal-grid');
++      const removedTray = document.getElementById('removed-drinks-tray');
++      const shuffleCardsBtn = document.getElementById('shuffle-cards-btn');
++      const sortCardsBtn = document.getElementById('sort-cards-btn');
++      const concurrentCustomBtn = document.getElementById('concurrent-custom-btn');
++      const resetCardsBtn = document.getElementById('reset-cards-btn');
++
++      // Store initial HTML snapshot for full reset and card restoration
++      const initialGridHTML = seasonalGrid.innerHTML;
++      const removedCardsMap = new Map();
++      let sortAscending = true;
++      let uniqueItemCounter = 100;
++
++      /**
++       * Runs an element-scoped view transition on `scopeElement` so only that subtree
++       * animates while the sticky navigation bar and rest of the page remain interactive,
++       * and sibling transitions can run concurrently.
++       * Falls back to a scoped Web Animations FLIP transition if `element.startViewTransition`
++       * is unavailable in the current browser.
++       */
++      function runScopedTransition(scopeElement, updateCallback) {
++        if (!scopeElement) {
++          updateCallback();
++          return null;
++        }
++
++        if (typeof scopeElement.startViewTransition === 'function') {
++          return scopeElement.startViewTransition(() => {
++            updateCallback();
++          });
++        }
++
++        // Non-blocking scoped FLIP fallback using Web Animations API
++        const trackedSelector = scopeElement === seasonalGrid ? '.card' : '.custom-item';
++        const beforeElements = Array.from(scopeElement.querySelectorAll(trackedSelector));
++        const beforeRects = new Map();
++        beforeElements.forEach((el) => {
++          beforeRects.set(el, el.getBoundingClientRect());
++        });
++
++        updateCallback();
++
++        const afterElements = Array.from(scopeElement.querySelectorAll(trackedSelector));
++        afterElements.forEach((el) => {
++          const prevRect = beforeRects.get(el);
++          const nextRect = el.getBoundingClientRect();
++          if (prevRect) {
++            const dx = prevRect.left - nextRect.left;
++            const dy = prevRect.top - nextRect.top;
++            if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
++              el.animate(
++                [
++                  { transform: `translate(${dx}px, ${dy}px)` },
++                  { transform: 'translate(0, 0)' }
++                ],
++                {
++                  duration: 360,
++                  easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
++                }
++              );
++            }
++          } else {
++            el.animate(
++              [
++                { opacity: 0, transform: 'scale(0.88) translateY(10px)' },
++                { opacity: 1, transform: 'scale(1) translateY(0)' }
++              ],
++              {
++                duration: 300,
++                easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
++              }
++            );
++          }
++        });
++
++        return null;
++      }
++
++      function renderRemovedTray() {
++        removedTray.innerHTML = '';
++        if (removedCardsMap.size === 0) {
++          return;
++        }
++
++        const label = document.createElement('span');
++        label.className = 'removed-label';
++        label.textContent = 'Removed drinks (click to restore):';
++        removedTray.appendChild(label);
++
++        removedCardsMap.forEach((cardEl, drinkId) => {
++          const title = cardEl.querySelector('h3')?.textContent || drinkId;
++          const pill = document.createElement('button');
++          pill.type = 'button';
++          pill.className = 'restore-pill';
++          pill.dataset.restoreId = drinkId;
++          pill.textContent = `+ Restore ${title}`;
++          pill.addEventListener('click', () => restoreCard(drinkId));
++          removedTray.appendChild(pill);
++        });
++      }
++
++      function updateEmptyGridState() {
++        const cards = seasonalGrid.querySelectorAll('.card');
++        const existingEmpty = seasonalGrid.querySelector('.empty-grid-state');
++        if (cards.length === 0 && !existingEmpty) {
++          const emptyDiv = document.createElement('div');
++          emptyDiv.className = 'empty-grid-state';
++          emptyDiv.innerHTML = '<p>All seasonal drink cards have been removed. Use the restore buttons above or click <strong>Reset Favorites</strong> to bring them back.</p>';
++          seasonalGrid.appendChild(emptyDiv);
++        } else if (cards.length > 0 && existingEmpty) {
++          existingEmpty.remove();
++        }
++      }
++
++      function restoreCard(drinkId) {
++        const cardEl = removedCardsMap.get(drinkId);
++        if (!cardEl) return;
++
++        runScopedTransition(seasonalGrid, () => {
++          removedCardsMap.delete(drinkId);
++          seasonalGrid.appendChild(cardEl);
++          updateEmptyGridState();
++          renderRemovedTray();
++        });
++      }
++
++      function createCustomItemElement(label, drinkId) {
++        uniqueItemCounter += 1;
++        const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
++        const itemId = `${drinkId}-${slug}-${uniqueItemCounter}`;
++        const li = document.createElement('li');
++        li.className = 'custom-item';
++        li.dataset.itemId = itemId;
++        li.style.setProperty('--item-vt-name', `item-${itemId}`);
++        li.innerHTML = `
++          <span class="custom-item-label"></span>
++          <span class="custom-item-controls">
++            <button type="button" class="item-btn move-item-up-btn" title="Move item up" aria-label="Move ${label} up">↑</button>
++            <button type="button" class="item-btn move-item-down-btn" title="Move item down" aria-label="Move ${label} down">↓</button>
++            <button type="button" class="item-btn remove-item-btn" title="Remove item" aria-label="Remove ${label}">×</button>
++          </span>
++        `;
++        li.querySelector('.custom-item-label').textContent = label;
++        return li;
++      }
++
++      function syncEmptyCustomizationMessage(listEl) {
++        const items = listEl.querySelectorAll('.custom-item');
++        const emptyMsg = listEl.querySelector('.custom-empty');
++        if (items.length === 0 && !emptyMsg) {
++          const msg = document.createElement('li');
++          msg.className = 'custom-empty';
++          msg.textContent = 'Standard recipe — add customizations below.';
++          listEl.appendChild(msg);
++        } else if (items.length > 0 && emptyMsg) {
++          emptyMsg.remove();
++        }
++      }
++
++      // Event delegation within #seasonal-grid for card & customization actions
++      seasonalGrid.addEventListener('click', (event) => {
++        const button = event.target.closest('button');
++        if (!button) return;
++
++        const card = button.closest('.card');
++        if (!card) return;
++
++        // 1. Reorder Card Left
++        if (button.classList.contains('move-left-btn')) {
++          const cards = Array.from(seasonalGrid.querySelectorAll('.card'));
++          if (cards.length < 2) return;
++          const idx = cards.indexOf(card);
++          runScopedTransition(seasonalGrid, () => {
++            if (idx === 0) {
++              seasonalGrid.appendChild(card);
++            } else {
++              seasonalGrid.insertBefore(card, cards[idx - 1]);
++            }
++          });
++          return;
++        }
++
++        // 2. Reorder Card Right
++        if (button.classList.contains('move-right-btn')) {
++          const cards = Array.from(seasonalGrid.querySelectorAll('.card'));
++          if (cards.length < 2) return;
++          const idx = cards.indexOf(card);
++          runScopedTransition(seasonalGrid, () => {
++            if (idx === cards.length - 1) {
++              seasonalGrid.insertBefore(card, cards[0]);
++            } else {
++              seasonalGrid.insertBefore(cards[idx + 1], card);
++            }
++          });
++          return;
++        }
++
++        // 3. Remove Drink Card
++        if (button.classList.contains('remove-card-btn')) {
++          const drinkId = card.dataset.drinkId;
++          runScopedTransition(seasonalGrid, () => {
++            removedCardsMap.set(drinkId, card);
++            card.remove();
++            updateEmptyGridState();
++            renderRemovedTray();
++          });
++          return;
++        }
++
++        // 4. Within-card customization actions (scoped to the individual card)
++        const listEl = card.querySelector('.customizations-list');
++        if (!listEl) return;
++
++        if (button.classList.contains('move-item-up-btn')) {
++          const item = button.closest('.custom-item');
++          const items = Array.from(listEl.querySelectorAll('.custom-item'));
++          if (!item || items.length < 2) return;
++          const idx = items.indexOf(item);
++          runScopedTransition(card, () => {
++            if (idx === 0) {
++              listEl.appendChild(item);
++            } else {
++              listEl.insertBefore(item, items[idx - 1]);
++            }
++          });
++          return;
++        }
++
++        if (button.classList.contains('move-item-down-btn')) {
++          const item = button.closest('.custom-item');
++          const items = Array.from(listEl.querySelectorAll('.custom-item'));
++          if (!item || items.length < 2) return;
++          const idx = items.indexOf(item);
++          runScopedTransition(card, () => {
++            if (idx === items.length - 1) {
++              listEl.insertBefore(item, items[0]);
++            } else {
++              listEl.insertBefore(items[idx + 1], item);
++            }
++          });
++          return;
++        }
++
++        if (button.classList.contains('remove-item-btn')) {
++          const item = button.closest('.custom-item');
++          if (!item) return;
++          runScopedTransition(card, () => {
++            item.remove();
++            syncEmptyCustomizationMessage(listEl);
++          });
++          return;
++        }
++
++        if (button.classList.contains('add-item-btn')) {
++          const addonLabel = button.dataset.addon;
++          if (!addonLabel) return;
++          const drinkId = card.dataset.drinkId || 'cup';
++          runScopedTransition(card, () => {
++            const newItem = createCustomItemElement(addonLabel, drinkId);
++            listEl.appendChild(newItem);
++            syncEmptyCustomizationMessage(listEl);
++          });
++          return;
++        }
++
++        if (button.classList.contains('shuffle-items-btn')) {
++          const items = Array.from(listEl.querySelectorAll('.custom-item'));
++          if (items.length < 2) return;
++          runScopedTransition(card, () => {
++            const shuffled = [...items];
++            for (let i = shuffled.length - 1; i > 0; i--) {
++              const j = Math.floor(Math.random() * (i + 1));
++              [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
++            }
++            // Ensure order actually changes when possible
++            if (shuffled.every((el, idx) => el === items[idx])) {
++              shuffled.push(shuffled.shift());
++            }
++            shuffled.forEach((el) => listEl.appendChild(el));
++          });
++        }
++      });
++
++      // Section Toolbar Actions
++      shuffleCardsBtn.addEventListener('click', () => {
++        const cards = Array.from(seasonalGrid.querySelectorAll('.card'));
++        if (cards.length < 2) return;
++
++        runScopedTransition(seasonalGrid, () => {
++          const shuffled = [...cards];
++          for (let i = shuffled.length - 1; i > 0; i--) {
++            const j = Math.floor(Math.random() * (i + 1));
++            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
++          }
++          if (shuffled.every((el, idx) => el === cards[idx])) {
++            shuffled.push(shuffled.shift());
++          }
++          shuffled.forEach((c) => seasonalGrid.appendChild(c));
++        });
++      });
++
++      sortCardsBtn.addEventListener('click', () => {
++        const cards = Array.from(seasonalGrid.querySelectorAll('.card'));
++        if (cards.length < 2) return;
++
++        runScopedTransition(seasonalGrid, () => {
++          const sorted = [...cards].sort((a, b) => {
++            const titleA = a.querySelector('h3')?.textContent.trim() || '';
++            const titleB = b.querySelector('h3')?.textContent.trim() || '';
++            return sortAscending
++              ? titleA.localeCompare(titleB)
++              : titleB.localeCompare(titleA);
++          });
++          sortAscending = !sortAscending;
++          sortCardsBtn.textContent = sortAscending ? '↓↑ Sort A–Z' : '↑↓ Sort Z–A';
++          sorted.forEach((c) => seasonalGrid.appendChild(c));
++        });
++      });
++
++      // Trigger concurrent scoped transitions across all visible cards at the same time
++      concurrentCustomBtn.addEventListener('click', () => {
++        const cards = Array.from(seasonalGrid.querySelectorAll('.card'));
++        cards.forEach((card) => {
++          const listEl = card.querySelector('.customizations-list');
++          if (!listEl) return;
++          const items = Array.from(listEl.querySelectorAll('.custom-item'));
++          if (items.length < 2) return;
++
++          runScopedTransition(card, () => {
++            const rotated = [...items.slice(1), items[0]];
++            rotated.forEach((el) => listEl.appendChild(el));
++          });
++        });
++      });
++
++      resetCardsBtn.addEventListener('click', () => {
++        runScopedTransition(seasonalGrid, () => {
++          removedCardsMap.clear();
++          seasonalGrid.innerHTML = initialGridHTML;
++          sortAscending = true;
++          sortCardsBtn.textContent = '↓↑ Sort A–Z';
++          renderRemovedTray();
++        });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

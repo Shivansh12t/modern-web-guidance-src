@@ -1,0 +1,316 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,108 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.95rem;
++    }
++
++    button.btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    /* Roaster's Journal Section */
++    .journal-section {
++      margin-top: 60px;
++      background: white;
++      padding: 36px 40px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .journal-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 15px;
++      border-bottom: 2px solid var(--secondary);
++      padding-bottom: 16px;
++      margin-bottom: 24px;
++    }
++
++    .journal-header h2 {
++      color: var(--primary);
++      font-size: 1.8rem;
++    }
++
++    .journal-subtitle {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      margin-top: 2px;
++    }
++
++    .journal-header .btn {
++      margin-top: 0;
++    }
++
++    .journal-article p {
++      margin-bottom: 16px;
++      font-size: 1.02rem;
++      color: var(--text);
++    }
++
++    .journal-article p:last-child {
++      margin-bottom: 0;
++    }
++
++    .journal-summary-box {
++      display: none;
++      background: #fdfbf9;
++      border-left: 4px solid var(--accent);
++      padding: 20px 24px;
++      border-radius: 4px;
++      margin-bottom: 24px;
++    }
++
++    .journal-summary-box.visible {
++      display: block;
++    }
++
++    .journal-summary-box h3 {
++      color: var(--primary);
++      font-size: 1.1rem;
++      margin-bottom: 10px;
++    }
++
++    .journal-summary-box ul {
++      padding-left: 20px;
++      margin: 0;
++    }
++
++    .journal-summary-box li {
++      margin-bottom: 8px;
++    }
++
++    .journal-summary-box li:last-child {
++      margin-bottom: 0;
++    }
++
++    .summary-status {
++      font-size: 0.9rem;
++      color: #6d4c41;
++      font-style: italic;
++    }
++
++    .summary-error {
++      color: #b71c1c;
++      font-style: normal;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +294,38 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="roasters-journal" class="journal-section" aria-labelledby="journal-heading">
++      <div class="journal-header">
++        <div>
++          <h2 id="journal-heading">Roaster's Journal</h2>
++          <p class="journal-subtitle">Field Notes: How We Source Our Beans From Seed to Cup</p>
++        </div>
++        <button type="button" id="summarize-btn" class="btn">Summarize</button>
++      </div>
++
++      <div id="journal-summary" class="journal-summary-box" aria-live="polite">
++        <h3>Key Takeaways</h3>
++        <div id="journal-summary-content"></div>
++      </div>
++
++      <article id="journal-text" class="journal-article">
++        <p>
++          Every great cup of coffee begins long before the roaster warms up. At The Daily Grind, our bean sourcing process is built on multi-year, direct-trade partnerships with smallholder farmers and cooperatives across high-altitude coffee-growing regions in Ethiopia, Colombia, Guatemala, and Sumatra. Rather than buying anonymous commodity lots through brokers, our head roaster travels to origin during harvest seasons to walk the shade-grown plots, inspect soil health, and cup freshly milled parchment lots right alongside the producers who cultivated them.
++        </p>
++        <p>
++          Elevation and microclimate play a defining role in flavor development. We specifically seek out Arabica varietals—such as Heirloom, Bourbon, Caturra, and Geisha—grown between 1,400 and 2,100 meters above sea level. At these cooler mountain elevations, coffee cherries mature slowly over several months, allowing complex sugars and vibrant organic acids to concentrate inside the seed. Pickers harvest only fully ripe, deep-crimson cherries by hand over multiple passes through the trees, ensuring unripe or overripe fruit never dulls the clarity of the final harvest.
++        </p>
++        <p>
++          Once picked, post-harvest processing at the local washing station determines the character of the green bean. For our crisp, floral single-origin offerings, cherries are pulped within hours of picking, fermented in clean mountain spring water to gently break down the mucilage, and sun-dried on raised African beds where air circulates evenly. For our fruit-forward natural and honey-processed micro-lots, whole or partially pulped cherries are turned hourly on drying patios for up to three weeks until they reach an ideal moisture content of exactly 10.5 to 11.5 percent.
++        </p>
++        <p>
++          Sustainability and transparency anchor every contract we sign. We pay a minimum of 40 percent above Fair Trade baseline prices, with quality premiums paid directly to the farming families and washing station workers when lots score 86 points or higher on the Specialty Coffee Association scale. Before a single burlap GrainPro bag is loaded onto a vessel, we roast sample batches to check for water activity, density, and zero primary defects—guaranteeing that every bean arriving at our roastery honors the land and hands that produced it.
++        </p>
++      </article>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +336,164 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const summarizeBtn = document.getElementById('summarize-btn');
++    const summaryBox = document.getElementById('journal-summary');
++    const summaryContent = document.getElementById('journal-summary-content');
++    const journalTextEl = document.getElementById('journal-text');
++
++    function renderBulletPoints(text) {
++      const lines = text
++        .split(/\r?\n/)
++        .map((line) => line.trim())
++        .filter(Boolean);
++
++      const bulletItems = [];
++      for (const line of lines) {
++        const cleaned = line
++          .replace(/^([*\-•+]|\d+[.)])\s*/, '')
++          .replace(/\*\*(.*?)\*\*/g, '$1')
++          .trim();
++        if (cleaned) {
++          bulletItems.push(cleaned);
++        }
++      }
++
++      summaryContent.innerHTML = '';
++      if (bulletItems.length > 0) {
++        const ul = document.createElement('ul');
++        for (const item of bulletItems) {
++          const li = document.createElement('li');
++          li.textContent = item;
++          ul.appendChild(li);
++        }
++        summaryContent.appendChild(ul);
++      } else {
++        const p = document.createElement('p');
++        p.textContent = text;
++        summaryContent.appendChild(p);
++      }
++    }
++
++    function showStatus(message, isError = false) {
++      summaryBox.classList.add('visible');
++      summaryContent.innerHTML = '';
++      const p = document.createElement('p');
++      p.className = isError ? 'summary-status summary-error' : 'summary-status';
++      p.textContent = message;
++      summaryContent.appendChild(p);
++    }
++
++    async function summarizeWithNativeAI(sourceText) {
++      const summarizerOptions = {
++        type: 'key-points',
++        format: 'markdown',
++        length: 'short',
++        sharedContext: 'An artisanal coffee roaster journal article explaining ethical coffee bean sourcing, high-altitude harvesting, processing, and quality standards.',
++        monitor(m) {
++          m.addEventListener('downloadprogress', (e) => {
++            if (typeof e.loaded === 'number') {
++              const pct = Math.round(e.loaded * 100);
++              showStatus(`Downloading on-device AI model (${pct}%)...`);
++            }
++          });
++        }
++      };
++
++      // 1. Standard Chrome Built-in AI Summarizer API (window.Summarizer)
++      if ('Summarizer' in self && self.Summarizer) {
++        if (typeof self.Summarizer.availability === 'function') {
++          const availability = await self.Summarizer.availability();
++          if (availability === 'unavailable' || availability === 'no') {
++            throw new Error('The browser Summarizer AI model is unavailable on this device.');
++          }
++        }
++        const summarizer = await self.Summarizer.create(summarizerOptions);
++        try {
++          return await summarizer.summarize(sourceText);
++        } finally {
++          if (typeof summarizer.destroy === 'function') {
++            summarizer.destroy();
++          }
++        }
++      }
++
++      // 2. Legacy window.ai.summarizer namespace
++      if (self.ai && self.ai.summarizer) {
++        if (typeof self.ai.summarizer.capabilities === 'function') {
++          const caps = await self.ai.summarizer.capabilities();
++          if (caps && caps.available === 'no') {
++            throw new Error('The browser Summarizer AI model is unavailable on this device.');
++          }
++        }
++        const summarizer = await self.ai.summarizer.create(summarizerOptions);
++        try {
++          return await summarizer.summarize(sourceText);
++        } finally {
++          if (typeof summarizer.destroy === 'function') {
++            summarizer.destroy();
++          }
++        }
++      }
++
++      // 3. Built-in Prompt API (LanguageModel / window.ai.languageModel) fallback
++      const promptInput = `Summarize the following coffee bean sourcing article into 3 to 4 concise bullet points:\n\n${sourceText}`;
++      if ('LanguageModel' in self && self.LanguageModel) {
++        const session = await self.LanguageModel.create();
++        try {
++          return await session.prompt(promptInput);
++        } finally {
++          if (typeof session.destroy === 'function') {
++            session.destroy();
++          }
++        }
++      }
++
++      if (self.ai && self.ai.languageModel) {
++        const session = await self.ai.languageModel.create();
++        try {
++          return await session.prompt(promptInput);
++        } finally {
++          if (typeof session.destroy === 'function') {
++            session.destroy();
++          }
++        }
++      }
++
++      throw new Error(
++        'Browser native AI (Summarizer API) is not supported or enabled in this browser.'
++      );
++    }
++
++    summarizeBtn.addEventListener('click', async () => {
++      const sourceText = journalTextEl.innerText.trim();
++      if (!sourceText) return;
++
++      summarizeBtn.disabled = true;
++      const originalLabel = summarizeBtn.textContent;
++      summarizeBtn.textContent = 'Summarizing...';
++      showStatus('Generating bullet-point summary with browser AI...');
++
++      try {
++        const summaryResult = await summarizeWithNativeAI(sourceText);
++        summaryBox.classList.add('visible');
++        renderBulletPoints(summaryResult);
++        summarizeBtn.textContent = 'Re-summarize';
++      } catch (err) {
++        showStatus(
++          err && err.message
++            ? err.message
++            : 'Unable to summarize using browser native AI.',
++          true
++        );
++        summarizeBtn.textContent = originalLabel;
++      } finally {
++        summarizeBtn.disabled = false;
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

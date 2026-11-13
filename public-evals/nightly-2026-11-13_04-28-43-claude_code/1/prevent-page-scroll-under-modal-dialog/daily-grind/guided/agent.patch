@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..c92faa8 100644
+--- a/index.html
++++ b/index.html
+@@ -153,17 +153,55 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
+-      overflow: hidden;
+-      position: fixed;
++    /* Seasonal notice (native modal dialog) */
++    .notice-dialog {
++      max-width: min(32rem, calc(100% - 2rem));
++      margin: auto;
++      padding: 0;
++      border: none;
++      border-radius: 8px;
++      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
++      color: var(--text);
++      background: white;
++    }
++
++    .notice-dialog img {
++      display: block;
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 8px 8px 0 0;
++    }
++
++    .notice-body {
++      padding: 24px;
++      text-align: center;
+     }
+ 
+-    dialog {
+-      overflow: visible;
++    .notice-body h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .notice-body button {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .notice-body button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Keep the page underneath from scrolling while the modal is open */
++    dialog:modal {
++      overscroll-behavior: contain;
+     }
+ 
+     dialog::backdrop {
+-      overflow: visible;
++      overflow: hidden;
++      overscroll-behavior: contain;
+       background: rgba(0, 0, 0, 0.5);
+     }
+   </style>
+@@ -212,10 +250,17 @@
+   </main>
+ 
+ 
+-  <dialog id="notice-dialog">
+-    <h2>Special Notice</h2>
+-    <p>Our patio is open for the season.</p>
+-    <button type="button" id="close-notice" class="btn">Close</button>
++  <dialog id="notice-dialog" class="notice-dialog" aria-labelledby="notice-title">
++    <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80"
++      alt="Outdoor café patio with tables and chairs" width="800" height="360">
++    <div class="notice-body">
++      <h2 id="notice-title">Our Patio Is Open for the Season</h2>
++      <p>Enjoy your favorite brew outdoors! Our heated patio is open daily from 7am to 6pm,
++        weather permitting. Grab a blanket and a Maple Oat Latte.</p>
++      <form method="dialog">
++        <button type="submit" class="btn" autofocus>Close</button>
++      </form>
++    </div>
+   </dialog>
+ 
+   <footer>
+@@ -230,10 +275,8 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
+-    if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
++    if (noticeDialog && !noticeDialog.open) {
++      noticeDialog.showModal();
+     }
+   </script>
+ </body>

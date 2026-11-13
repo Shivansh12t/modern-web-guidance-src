@@ -1,0 +1,422 @@
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..b4764b0
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,323 @@
++/**
++ * <coffee-card> — an autonomous custom element for a menu item.
++ *
++ * Attributes (all reflected to same-named properties):
++ *   name      string   Drink name, rendered as the card heading.
++ *   href      string   URL for the "View Details" link.
++ *   image     string   Photo URL. Decorative, so it gets empty alt text.
++ *   currency  string   ISO 4217 code used to format the price (default "USD").
++ *   price     number   Price. A missing or non-numeric value hides the price.
++ *   featured  boolean  Shows a "Seasonal pick" badge.
++ *   sold-out  boolean  Shows "Sold out" and disables "Add to order" (property: soldOut).
++ *
++ * The description goes in the default slot, so it stays in the light DOM.
++ *
++ * Events:
++ *   coffee-select  Bubbles and is composed. detail: { name, price, currency }.
++ */
++
++const sheet = new CSSStyleSheet();
++sheet.replaceSync(`
++  :host {
++    display: flex;
++    flex-direction: column;
++    background: white;
++    border-radius: 8px;
++    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    text-align: center;
++    overflow: hidden;
++    position: relative;
++  }
++  :host([hidden]) { display: none; }
++  :host([featured]) { outline: 2px solid var(--accent, #ffab40); }
++
++  img {
++    display: block;
++    inline-size: 100%;
++    aspect-ratio: 3 / 2;
++    object-fit: cover;
++    background: var(--secondary, #d7ccc8);
++  }
++  img:not([src]) { display: none; }
++  :host([sold-out]) img { filter: grayscale(1); opacity: 0.7; }
++
++  .body {
++    display: flex;
++    flex-direction: column;
++    flex: 1;
++    padding: 20px;
++  }
++  h3 { margin: 0 0 10px; color: var(--primary, #4e342e); }
++
++  .badges {
++    position: absolute;
++    inset-block-start: 10px;
++    inset-inline-start: 10px;
++    display: flex;
++    gap: 6px;
++  }
++  .badge {
++    font-size: 0.75rem;
++    font-weight: bold;
++    text-transform: uppercase;
++    letter-spacing: 0.5px;
++    padding: 2px 8px;
++    border-radius: 999px;
++  }
++  .badge[hidden] { display: none; }
++  .featured { background: var(--accent, #ffab40); color: var(--text, #3e2723); }
++  .sold-out { background: var(--text, #3e2723); color: white; }
++
++  .price {
++    margin-block-start: 10px;
++    font-weight: bold;
++    font-size: 1.1rem;
++    color: var(--primary, #4e342e);
++  }
++  .price[hidden] { display: none; }
++  :host([sold-out]) .price { text-decoration: line-through; opacity: 0.6; }
++
++  .actions {
++    margin-block-start: auto;
++    display: flex;
++    flex-wrap: wrap;
++    gap: 10px;
++    justify-content: center;
++    padding-block-start: 15px;
++  }
++  .btn {
++    display: inline-block;
++    font: inherit;
++    font-size: 0.95rem;
++    background: var(--primary, #4e342e);
++    color: white;
++    padding: 10px 20px;
++    border: 2px solid var(--primary, #4e342e);
++    border-radius: 5px;
++    text-decoration: none;
++    cursor: pointer;
++    transition: background 0.3s;
++  }
++  .btn:hover { background: var(--text, #3e2723); }
++  .btn:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 2px; }
++  .btn.secondary { background: transparent; color: var(--primary, #4e342e); }
++  .btn.secondary:hover { background: var(--secondary, #d7ccc8); }
++  .btn:disabled { cursor: not-allowed; opacity: 0.5; background: var(--primary, #4e342e); }
++  a.btn:not([href]) { display: none; }
++`);
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <img alt="" loading="lazy" decoding="async">
++  <div class="badges">
++    <span class="badge featured" hidden>Seasonal pick</span>
++    <span class="badge sold-out" hidden>Sold out</span>
++  </div>
++  <div class="body">
++    <h3></h3>
++    <slot></slot>
++    <p class="price" hidden></p>
++    <div class="actions">
++      <a class="btn">View Details</a>
++      <button class="btn secondary" type="button">Add to order</button>
++    </div>
++  </div>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'href', 'image', 'currency', 'price', 'featured', 'sold-out'];
++
++  #els;
++  #lifecycle = null; // AbortController for document/window listeners, live only while connected
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.adoptedStyleSheets = [sheet];
++    root.append(template.content.cloneNode(true));
++
++    this.#els = {
++      img: root.querySelector('img'),
++      heading: root.querySelector('h3'),
++      featured: root.querySelector('.badge.featured'),
++      soldOut: root.querySelector('.badge.sold-out'),
++      price: root.querySelector('.price'),
++      link: root.querySelector('a'),
++      order: root.querySelector('button'),
++    };
++
++    // These listeners are on nodes the element owns, so they're removed along with it.
++    this.#els.order.addEventListener('click', () => this.#select());
++  }
++
++  // ---- string attributes ----------------------------------------------------
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(v) { this.#setString('name', v); }
++
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(v) { this.#setString('href', v); }
++
++  get image() { return this.getAttribute('image') ?? ''; }
++  set image(v) { this.#setString('image', v); }
++
++  get currency() { return (this.getAttribute('currency') || 'USD').toUpperCase(); }
++  set currency(v) { this.#setString('currency', v); }
++
++  // ---- numeric attribute ----------------------------------------------------
++  /** Returns null when the attribute is missing or not a finite number. */
++  get price() {
++    const raw = this.getAttribute('price');
++    if (raw === null || raw.trim() === '') return null;
++    const n = Number(raw);
++    return Number.isFinite(n) ? n : null;
++  }
++  set price(v) {
++    const n = v === null || v === undefined || v === '' ? NaN : Number(v);
++    Number.isFinite(n) ? this.setAttribute('price', String(n)) : this.removeAttribute('price');
++  }
++
++  // ---- boolean attributes ---------------------------------------------------
++  get featured() { return this.hasAttribute('featured'); }
++  set featured(on) { this.toggleAttribute('featured', Boolean(on)); }
++
++  get soldOut() { return this.hasAttribute('sold-out'); }
++  set soldOut(on) { this.toggleAttribute('sold-out', Boolean(on)); }
++
++  // ---- lifecycle ------------------------------------------------------------
++  connectedCallback() {
++    // A property may have been set on the element before this class was defined.
++    // Re-run it through the setter now so it's reflected.
++    for (const prop of ['name', 'href', 'image', 'currency', 'price', 'featured', 'soldOut']) {
++      this.#upgradeProperty(prop);
++    }
++
++    // This runs on every insertion. Only add listeners if none are active.
++    if (!this.#lifecycle) {
++      this.#lifecycle = new AbortController();
++      // The price format depends on the user's locale, so re-render if it changes.
++      window.addEventListener('languagechange', () => this.#renderPrice(), {
++        signal: this.#lifecycle.signal,
++      });
++    }
++
++    this.#render();
++  }
++
++  disconnectedCallback() {
++    // Remove global listeners. The element may be re-inserted later, and
++    // connectedCallback will add them again.
++    this.#lifecycle?.abort();
++    this.#lifecycle = null;
++  }
++
++  // On a Node.moveBefore() move, this replaces the disconnect/connect pair,
++  // so listeners and focus are kept.
++  connectedMoveCallback() {}
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    switch (name) {
++      case 'name': this.#renderName(); break;
++      case 'href': this.#renderLink(); break;
++      case 'image': this.#renderImage(); break;
++      case 'currency':
++      case 'price': this.#renderPrice(); break;
++      case 'featured': this.#renderFeatured(); break;
++      case 'sold-out': this.#renderSoldOut(); break;
++    }
++  }
++
++  // ---- rendering: update only the nodes that changed ------------------------
++  #render() {
++    this.#renderName();
++    this.#renderLink();
++    this.#renderImage();
++    this.#renderPrice();
++    this.#renderFeatured();
++    this.#renderSoldOut();
++  }
++
++  #renderName() {
++    this.#els.heading.textContent = this.name;
++    this.#renderLabels();
++  }
++
++  #renderLink() {
++    const { link } = this.#els;
++    this.href ? link.setAttribute('href', this.href) : link.removeAttribute('href');
++  }
++
++  #renderImage() {
++    const { img } = this.#els;
++    this.image ? img.setAttribute('src', this.image) : img.removeAttribute('src');
++  }
++
++  #renderPrice() {
++    const { price } = this.#els;
++    const value = this.price;
++    price.hidden = value === null;
++    price.textContent = value === null ? '' : this.#formatPrice(value);
++  }
++
++  #renderFeatured() {
++    this.#els.featured.hidden = !this.featured;
++  }
++
++  #renderSoldOut() {
++    const { soldOut, order } = this.#els;
++    soldOut.hidden = !this.soldOut;
++    // Use the native disabled state so screen readers announce it and clicks are ignored.
++    order.disabled = this.soldOut;
++    order.textContent = this.soldOut ? 'Sold out' : 'Add to order';
++    this.#renderLabels();
++  }
++
++  // Each card has the same button text, so add the drink name to the
++  // accessible names to tell them apart.
++  #renderLabels() {
++    const { link, order } = this.#els;
++    const name = this.name;
++    if (name) {
++      link.setAttribute('aria-label', `View details for ${name}`);
++      order.setAttribute('aria-label', this.soldOut ? `${name} is sold out` : `Add ${name} to order`);
++    } else {
++      link.removeAttribute('aria-label');
++      order.removeAttribute('aria-label');
++    }
++  }
++
++  #formatPrice(value) {
++    try {
++      return new Intl.NumberFormat(navigator.language, { style: 'currency', currency: this.currency }).format(value);
++    } catch {
++      // Intl throws a RangeError for an invalid currency code.
++      return value.toFixed(2);
++    }
++  }
++
++  // ---- helpers --------------------------------------------------------------
++  #select() {
++    if (this.soldOut) return;
++    this.dispatchEvent(new CustomEvent('coffee-select', {
++      bubbles: true,
++      composed: true,
++      detail: { name: this.name, price: this.price, currency: this.currency },
++    }));
++  }
++
++  #setString(attr, v) {
++    v === null || v === undefined || v === '' ? this.removeAttribute(attr) : this.setAttribute(attr, String(v));
++  }
++
++  #upgradeProperty(prop) {
++    if (Object.hasOwn(this, prop)) {
++      const value = this[prop];
++      delete this[prop];
++      this[prop] = value;
++    }
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..8ce80f9 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,26 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    /* Hide cards until they're defined, but show them after 2s anyway
++       so a slow or failed script can't hide them for good. */
++    coffee-card:not(:defined) {
++      visibility: hidden;
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    @keyframes defined-fallback {
++      to {
++        visibility: visible;
++        opacity: 1;
++      }
++    }
++
++    .order-status {
++      text-align: center;
++      min-height: 1.6em;
++      margin-top: 10px;
++      font-weight: 600;
+     }
+ 
+     .btn {
+@@ -178,22 +187,20 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <coffee-card name="Maple Oat Latte" href="/menu/seasonal" price="5.75" featured
++          image="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80">
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        </coffee-card>
++        <coffee-card name="Dark Roast Espresso" href="/menu/espresso" price="3.25"
++          image="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80">
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        </coffee-card>
++        <coffee-card name="Cold Brew" href="/menu/cold-brew" price="4.50" sold-out
++          image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80">
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </coffee-card>
+       </div>
++      <p class="order-status" role="status" id="order-status"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +214,19 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import './coffee-card.js';
++
++    // Cards dispatch coffee-select from inside their shadow roots. The event
++    // is composed, so one listener on the grid catches it from every card.
++    const status = document.getElementById('order-status');
++    let count = 0;
++    document.querySelector('.grid').addEventListener('coffee-select', (event) => {
++      count += 1;
++      status.textContent = `Added ${event.detail.name} to your order (${count} item${count === 1 ? '' : 's'}).`;
++    });
++  </script>
++
+ </body>
+ 
+ </html>

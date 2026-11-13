@@ -1,0 +1,220 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,99 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    nav ul {
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 8px 0;
++    }
++
++    nav {
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    #trigger-btn {
++      anchor-name: --options-trigger;
++      border: 1px solid var(--accent);
++      border-radius: 4px;
++      padding: 5px 12px;
++      background: transparent;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    #trigger-btn:hover,
++    #trigger-btn[aria-expanded="true"] {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    #action-panel {
++      position: fixed;
++      width: 220px;
++      max-width: calc(100vw - 16px);
++      max-height: calc(100dvh - 16px);
++      overflow: auto;
++      padding: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 24px rgb(62 39 35 / 20%);
++      z-index: 2147483647;
++    }
++
++    @supports (position-area: block-end span-inline-end) and (position-try-fallbacks: flip-block) {
++      #action-panel {
++        position-anchor: --options-trigger;
++        inset: auto;
++        margin: 0;
++        position-area: block-end span-inline-end;
++        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      }
++    }
++
++    #action-panel.manual-position {
++      inset: auto;
++      margin: 0;
++      position-area: none;
++    }
++
++    #action-panel.legacy-popover {
++      display: none;
++    }
++
++    #action-panel.legacy-popover.is-open {
++      display: block;
++    }
++
++    #action-panel button {
++      display: block;
++      width: 100%;
++      border: 0;
++      border-radius: 3px;
++      padding: 10px 12px;
++      background: transparent;
++      color: inherit;
++      font: inherit;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    #action-panel button:hover {
++      background: #f5efec;
++    }
++
++    #trigger-btn:focus-visible,
++    #action-panel button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -163,12 +254,19 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
++      <li><button id="trigger-btn" type="button" popovertarget="action-panel" aria-controls="action-panel" aria-expanded="false">Options <span aria-hidden="true">▾</span></button></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <div id="action-panel" popover="auto" role="group" aria-label="Options">
++    <button type="button" data-href="/menu/seasonal">Seasonal offers</button>
++    <button type="button" data-href="/account">Account settings</button>
++    <button type="button" data-href="/contact">Support</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +304,96 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const trigger = document.getElementById('trigger-btn');
++    const panel = document.getElementById('action-panel');
++    const nativePopover = 'popover' in HTMLElement.prototype;
++    const nativeAnchors = CSS.supports('anchor-name: --options-trigger') &&
++      CSS.supports('position-area: block-end span-inline-end') &&
++      CSS.supports('position-try-fallbacks: flip-block');
++    const isOpen = () => nativePopover
++      ? panel.matches(':popover-open')
++      : panel.classList.contains('is-open');
++
++    function positionPanel() {
++      if (!isOpen()) return;
++      const viewport = window.visualViewport;
++      const left = (viewport?.offsetLeft ?? 0) + 8;
++      const top = (viewport?.offsetTop ?? 0) + 8;
++      const right = left + (viewport?.width ?? document.documentElement.clientWidth) - 16;
++      const bottom = top + (viewport?.height ?? document.documentElement.clientHeight) - 16;
++      panel.style.maxWidth = `${Math.max(0, right - left)}px`;
++      panel.style.maxHeight = `${Math.max(0, bottom - top)}px`;
++      const bounds = panel.getBoundingClientRect();
++      if (nativeAnchors && !panel.classList.contains('manual-position') &&
++          bounds.left >= left && bounds.right <= right &&
++          bounds.top >= top && bounds.bottom <= bottom) return;
++
++      // Also clamp unusually small viewports where neither native flip can fit.
++      panel.classList.add('manual-position');
++      const anchor = trigger.getBoundingClientRect();
++      const below = Math.max(0, bottom - anchor.bottom);
++      const above = Math.max(0, anchor.top - top);
++      const openAbove = panel.scrollHeight > below && above > below;
++      panel.style.maxHeight = `${openAbove ? above : below}px`;
++      const size = panel.getBoundingClientRect();
++      const x = anchor.left + size.width <= right ? anchor.left : anchor.right - size.width;
++      const y = openAbove ? anchor.top - size.height : anchor.bottom;
++      panel.style.left = `${Math.max(left, Math.min(x, right - size.width))}px`;
++      panel.style.top = `${Math.max(top, Math.min(y, bottom - size.height))}px`;
++    }
++
++    function syncPanel() {
++      const open = isOpen();
++      trigger.setAttribute('aria-expanded', String(open));
++      if (open) {
++        panel.classList.remove('manual-position');
++        panel.style.removeProperty('left');
++        panel.style.removeProperty('top');
++        positionPanel();
++      }
++    }
++
++    function closePanel() {
++      if (nativePopover) panel.hidePopover();
++      else {
++        panel.classList.remove('is-open');
++        syncPanel();
++      }
++    }
++
++    if (nativePopover) {
++      panel.addEventListener('toggle', syncPanel);
++    } else {
++      panel.classList.add('legacy-popover');
++      trigger.addEventListener('click', () => {
++        panel.classList.toggle('is-open');
++        syncPanel();
++      });
++      document.addEventListener('click', (event) => {
++        if (isOpen() && !panel.contains(event.target) && !trigger.contains(event.target)) closePanel();
++      });
++      document.addEventListener('keydown', (event) => {
++        if (event.key === 'Escape' && isOpen()) {
++          closePanel();
++          trigger.focus();
++        }
++      });
++    }
++
++    panel.addEventListener('click', (event) => {
++      const action = event.target.closest('button[data-href]');
++      if (action) {
++        closePanel();
++        window.location.assign(action.dataset.href);
++      }
++    });
++    window.addEventListener('resize', positionPanel);
++    document.addEventListener('scroll', positionPanel, { capture: true, passive: true });
++    window.visualViewport?.addEventListener('resize', positionPanel);
++    window.visualViewport?.addEventListener('scroll', positionPanel);
++  </script>
+ </body>
+ 
+ </html>

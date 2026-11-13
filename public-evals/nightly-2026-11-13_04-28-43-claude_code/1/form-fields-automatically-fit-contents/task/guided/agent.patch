@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,94 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Order form: fields auto-size to their content */
++    .order-form-section {
++      margin-top: 60px;
++    }
++
++    .order-form-section h2 {
++      text-align: center;
++    }
++
++    .order-form-section .intro {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .order-form {
++      background: white;
++      max-width: 640px;
++      margin: 0 auto;
++      padding: 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 0.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .field label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++    }
++
++    .order-form :is(input, textarea, select) {
++      font: inherit;
++      font-size: max(1rem, 1em);
++      color: var(--text);
++      background: white;
++      padding: 0.5rem 0.75rem;
++      min-block-size: 48px;
++      border: 1px solid #767676;
++      border-radius: 5px;
++      /* Size each control to its content (progressive enhancement) */
++      field-sizing: content;
++    }
++
++    .order-form :is(input, textarea, select):focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-form input {
++      width: auto;
++      min-inline-size: 15ch;
++      max-inline-size: 100%;
++    }
++
++    .order-form textarea {
++      /* Stable width; grows vertically as content wraps */
++      width: 100%;
++      height: auto;
++      min-block-size: 3lh;
++      max-block-size: 10lh;
++      resize: vertical;
++    }
++
++    .order-form select {
++      max-inline-size: 100%;
++      cursor: pointer;
++    }
++
++    .order-form button {
++      font: inherit;
++      border: 0;
++      cursor: pointer;
++      min-block-size: 48px;
++      margin-top: 0;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +280,40 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="order-form-section" aria-labelledby="order-form-title">
++      <h2 id="order-form-title">Place a Pickup Order</h2>
++      <p class="intro">Tell us what you&rsquo;re craving and we&rsquo;ll have it ready.</p>
++      <form class="order-form" action="/order-online" method="POST">
++        <div class="field">
++          <label for="order-name">Name for the cup <span aria-hidden="true">*</span></label>
++          <input type="text" id="order-name" name="name" autocomplete="name" placeholder="e.g. Sam" maxlength="60" required>
++        </div>
++
++        <div class="field">
++          <label for="order-drink">Drink</label>
++          <select id="order-drink" name="drink">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++            <option value="cappuccino">Cappuccino</option>
++            <option value="flat-white">Flat White</option>
++            <option value="chai">Chai Latte</option>
++            <option value="drip">House Drip Coffee</option>
++          </select>
++        </div>
++
++        <div class="field">
++          <label for="order-notes">Special instructions</label>
++          <textarea id="order-notes" name="notes" maxlength="500" aria-describedby="order-notes-hint" placeholder="Extra hot, half sweet, oat milk&hellip;"></textarea>
++          <span id="order-notes-hint" class="hint">Optional. Up to 500 characters.</span>
++        </div>
++
++        <button type="submit" class="btn">Place order</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

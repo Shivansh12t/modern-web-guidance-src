@@ -1,0 +1,69 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1,64 @@
++# The Daily Grind
++
++The static homepage loads `assets/inp.js`, a locally bundled copy of the
++`web-vitals/attribution` INP monitor. No runtime CDN dependency is needed.
++
++Install with `pnpm install --frozen-lockfile`, run `pnpm test`, and regenerate the
++checked-in browser asset with `pnpm build` after changing monitoring code or
++dependencies. Deploy `index.html` and `assets/` together.
++
++## Field collection
++
++The `web-vitals-endpoint` meta tag in `index.html` defaults to
++`/analytics/web-vitals`. **This repository has no backend: provision that POST
++route in your hosting/analytics infrastructure, or change the tag to your actual
++collector URL, before deployment.** A static file host alone will not store the
++reports. Set the tag's content to an empty string to disable transmission.
++
++The collector must accept JSON in a `text/plain` POST body and respond with a
++success status (for example, 204). Cross-origin collectors need suitable CORS
++headers for the fetch fallback; allow the collector in CSP `connect-src`.
++Reports use `sendBeacon`, falling back to `fetch` with `keepalive` when beacon
++queueing fails. Delivery is best effort, with no retries or local storage.
++
++Reports include all INP ratings, rather than only slow scores, so the collector
++can calculate an unbiased field distribution. Upsert by `(page, id)`, keeping the
++latest `reportedAt` report: candidate updates are snapshots of one page visit,
++not independent samples. The library also reports on page hiding and starts a
++new metric ID after a back/forward cache restore. Visits without interactions
++or browsers without Event Timing support do not produce an INP score.
++Calculate p75 across the final values for each visit, separating mobile and
++desktop using collector context. Group scores above 200 ms by target, phase,
++script URL/function/character position, and navigation type to find slow paths.
++
++## Attribution fields
++
++- `inputDelay`, `processingDuration`, `presentationDelay`: INP phase durations.
++- `interactionTarget`: stable `data-inp-target` label for each homepage link;
++  other elements use their tag name. No input values or link text are collected.
++- `longestScript`: script URL, function, character position, invoker type,
++  duration, overlapping INP duration and phase (`subpart`). Use this to locate
++  the largest observed script contributor, including third-party scripts.
++- `forcedStyleDuration` and `forcedLayoutDuration` inside `longestScript`:
++  synchronous style/layout work within that script. Older browsers can provide
++  the combined `forcedStyleAndLayoutDuration` instead.
++- `renderStyleDuration` and `renderLayoutDuration`: sums of the separate
++  rendering-phase timings across intersecting Long Animation Frames (LoAFs).
++- `totalStyleAndLayoutDuration`: library combined fallback, including both
++  end-of-frame and forced style/layout. Do not add it to the separate timings.
++- `totalScriptDuration`, `totalPaintDuration`, `totalUnattributedDuration`:
++  additional library estimates for the interaction.
++
++All durations are milliseconds. Optional timings are `null` when unavailable,
++including browsers lacking LoAF or separate style/layout timings. A measured
++zero remains zero. LoAF only attributes long frames and scripts above its
++reporting threshold; missing script attribution does not prove that no script
++caused a delay. Rendering totals describe intersecting frames, not exact
++per-phase slices, and paint is an estimate rather than a full GPU trace.
++Only the longest script is retained to keep beacon payloads small.
++
++Page and script URL query strings/fragments are omitted. Reports contain no raw
++DOM or PerformanceEntry objects. There is no console logging or visible UI.
++
++Implementation follows [Google's INP attribution guidance](https://developer.chrome.com/docs/modern-web-guidance/guides/performance/identify-inp-causes)
++and the [web-vitals library](https://github.com/GoogleChrome/web-vitals).

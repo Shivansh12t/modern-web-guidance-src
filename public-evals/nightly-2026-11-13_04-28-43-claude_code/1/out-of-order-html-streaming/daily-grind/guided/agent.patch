@@ -1,0 +1,485 @@
+diff --git a/index.html b/index.html
+index 66c9173..cb46cd7 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,151 @@
+       background: #3e2723;
+     }
+ 
++    /* Seasonal Favorites: streamed / refreshable region */
++    .seasonal-heading {
++      text-align: center;
++    }
++
++    .seasonal-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
++      gap: 30px;
++      margin-top: 20px;
++    }
++
++    @media (max-width: 800px) {
++      .seasonal-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .seasonal-layout .grid {
++      margin-top: 0;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++    }
++
++    .card {
++      display: flex;
++      flex-direction: column;
++      min-height: 360px; /* reserve space so placeholder -> real swap doesn't shift layout */
++    }
++
++    .card img {
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 12px;
++      background: var(--secondary);
++    }
++
++    .card p {
++      flex: 1;
++    }
++
++    .card .btn {
++      align-self: center;
++    }
++
++    /* Skeleton placeholders */
++    .skeleton {
++      pointer-events: none;
++    }
++
++    .skeleton .sk-img,
++    .skeleton .sk-line {
++      background: linear-gradient(90deg, #eee 25%, #f6f6f6 50%, #eee 75%);
++      background-size: 200% 100%;
++      border-radius: 6px;
++      animation: shimmer 1.4s linear infinite;
++    }
++
++    .skeleton .sk-img {
++      aspect-ratio: 4 / 3;
++      margin-bottom: 12px;
++    }
++
++    .skeleton .sk-line {
++      height: 1em;
++      margin: 10px auto;
++      width: 80%;
++    }
++
++    .skeleton .sk-line.short {
++      width: 50%;
++    }
++
++    @keyframes shimmer {
++      to {
++        background-position: -200% 0;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .skeleton .sk-img,
++      .skeleton .sk-line {
++        animation: none;
++      }
++    }
++
++    .seasonal-aside {
++      display: flex;
++      flex-direction: column;
++      gap: 20px;
++    }
++
++    .reviews,
++    .promo {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++      min-height: 160px;
++    }
++
++    .reviews h3,
++    .promo h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .reviews ul {
++      list-style: none;
++      display: grid;
++      gap: 12px;
++    }
++
++    .reviews blockquote {
++      border-left: 3px solid var(--accent);
++      padding-left: 10px;
++      font-style: italic;
++    }
++
++    .reviews cite {
++      display: block;
++      font-size: 0.85rem;
++      font-style: normal;
++      opacity: 0.8;
++    }
++
++    .promo {
++      background: var(--primary);
++      color: white;
++    }
++
++    .promo h3 {
++      color: var(--accent);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,6 +298,14 @@
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!--
++    Declarative partial updates (<?start>/<?end> + <template for>) are native in
++    Chromium 150+. This polyfill self-detects ("htmlFor" in HTMLTemplateElement.prototype)
++    and is a no-op there. It must be a classic, parser-blocking script so it is
++    watching before the streamed <template for> elements arrive.
++  -->
++  <script src="https://unpkg.com/template-for-polyfill@0.1.1/dist/template-for-polyfill.js"></script>
+ </head>
+ 
+ <body>
+@@ -175,24 +328,64 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-heading" data-refresh-src="/partials/seasonal-favorites">
++      <h2 id="seasonal-heading" class="seasonal-heading" tabindex="-1">Seasonal Favorites</h2>
++
++      <!--
++        Progress text lives OUTSIDE the aria-busy regions (a live region nested inside
++        aria-busy="true" isn't announced until loading completes). Only this short
++        status text is live — never the cards themselves.
++      -->
++      <p id="seasonal-status" class="visually-hidden" role="status" aria-live="polite">Loading seasonal favorites…</p>
++
++      <div class="seasonal-layout">
++        <!-- Coffee cards: first-party HTML from our server. -->
++        <div id="seasonal-cards" class="grid" aria-busy="true">
++          <?start name="seasonal-cards">
++          <div class="card skeleton" aria-hidden="true">
++            <div class="sk-img"></div>
++            <div class="sk-line short"></div>
++            <div class="sk-line"></div>
++            <div class="sk-line"></div>
++          </div>
++          <div class="card skeleton" aria-hidden="true">
++            <div class="sk-img"></div>
++            <div class="sk-line short"></div>
++            <div class="sk-line"></div>
++            <div class="sk-line"></div>
++          </div>
++          <div class="card skeleton" aria-hidden="true">
++            <div class="sk-img"></div>
++            <div class="sk-line short"></div>
++            <div class="sk-line"></div>
++            <div class="sk-line"></div>
++          </div>
++          <?end>
+         </div>
++
++        <aside class="seasonal-aside" aria-label="Seasonal extras">
++          <!-- Customer reviews: UNTRUSTED user-generated content. -->
++          <div id="seasonal-reviews" class="reviews" aria-busy="true">
++            <?start name="seasonal-reviews">
++              <h3>What customers are saying</h3>
++              <div class="skeleton" aria-hidden="true">
++                <div class="sk-line"></div>
++                <div class="sk-line short"></div>
++                <div class="sk-line"></div>
++              </div>
++            <?end>
++          </div>
++
++          <!-- Promo: trusted HTML from our own CMS, including its widget script. -->
++          <div id="seasonal-promo" class="promo" aria-busy="true">
++            <?start name="seasonal-promo">
++              <div class="skeleton" aria-hidden="true">
++                <div class="sk-line short"></div>
++                <div class="sk-line"></div>
++              </div>
++            <?end>
++          </div>
++        </aside>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +400,231 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!--
++    ===================================================================
++    Out-of-order streamed content.
++    The server flushes the page shell above immediately, then emits these
++    <template for> blocks later in the SAME response as each data source
++    resolves. The browser swaps each into its matching <?start>…<?end>
++    range, replacing the skeletons. Order between templates is not
++    guaranteed — each one is independent.
++    ===================================================================
++  -->
++
++  <template for="seasonal-cards">
++    <article class="card" data-item="maple-oat-latte">
++      <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=70"
++        alt="Barista pouring steamed milk into a latte" width="600" height="450" loading="lazy" decoding="async">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </article>
++    <article class="card" data-item="dark-roast-espresso">
++      <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=70"
++        alt="Top-down view of an espresso in a white cup" width="600" height="450" loading="lazy" decoding="async">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </article>
++    <article class="card" data-item="cold-brew">
++      <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=70"
++        alt="Glass of iced cold brew with cream" width="600" height="450" loading="lazy" decoding="async">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </article>
++  </template>
++
++  <!--
++    Reviews are user-submitted. Declarative <template for> does NOT sanitize, so the
++    server MUST escape/sanitize review text before emitting this block (the client
++    refresh path below additionally sanitizes with the Sanitizer API).
++  -->
++  <template for="seasonal-reviews">
++    <h3>What customers are saying</h3>
++    <ul>
++      <li>
++        <blockquote>
++          <p>The Maple Oat Latte tastes like autumn in a cup. <strong>Obsessed.</strong></p>
++          <cite>— Priya S.</cite>
++        </blockquote>
++      </li>
++      <li>
++        <blockquote>
++          <p>Smoothest cold brew in town, no contest.</p>
++          <cite>— Marcus T.</cite>
++        </blockquote>
++      </li>
++    </ul>
++  </template>
++
++  <!-- Promo from our CMS. Its widget script runs when the template is patched in. -->
++  <template for="seasonal-promo">
++    <h3>Pumpkin Spice Week</h3>
++    <p>Members get a free size upgrade on any seasonal drink through Sunday.</p>
++    <div class="promo-widget" data-campaign="pumpkin-week-2026"></div>
++    <script src="https://cms.thedailygrind.example/widgets/promo-countdown.js" async></script>
++  </template>
++
++  <script>
++    // Mark the declaratively streamed regions as ready once the document has finished.
++    // (Templates may patch in any order; DOMContentLoaded fires after all have arrived.)
++    document.addEventListener('DOMContentLoaded', () => {
++      for (const id of ['seasonal-cards', 'seasonal-reviews', 'seasonal-promo']) {
++        document.getElementById(id)?.setAttribute('aria-busy', 'false');
++      }
++      const status = document.getElementById('seasonal-status');
++      if (status) status.textContent = 'Seasonal favorites loaded.';
++    });
++  </script>
++
++  <script type="module">
++    // ===================================================================
++    // Live refresh: whenever the menu changes, pull fresh HTML for each part
++    // of the Seasonal Favorites section from the server and update in place.
++    //   - Cards   -> streamHTML()      (safe; first-party but needs no scripts)
++    //   - Reviews -> streamHTML() with a strict Sanitizer (untrusted UGC)
++    //   - Promo   -> setHTMLUnsafe({ runScripts: true }) (trusted CMS + widget)
++    // ===================================================================
++
++    const section = document.getElementById('seasonal-favorites');
++    const base = section.dataset.refreshSrc;
++    const status = document.getElementById('seasonal-status');
++    const heading = document.getElementById('seasonal-heading');
++    const regions = {
++      cards: document.getElementById('seasonal-cards'),
++      reviews: document.getElementById('seasonal-reviews'),
++      promo: document.getElementById('seasonal-promo'),
++    };
++
++    // Strict allowlist for customer reviews. Elements outside `elements` are removed
++    // with their content; `div`/`span` wrappers are unwrapped so text survives.
++    const REVIEW_SANITIZER = {
++      elements: ['h3', 'ul', 'li', 'blockquote', 'p', 'cite', 'strong', 'em', 'b', 'i', 'br'],
++      attributes: [],
++      replaceWithChildrenElements: ['div', 'span'],
++    };
++    // Cards: default safe sanitizer + allow the attributes the card markup uses.
++    const CARD_SANITIZER = {
++      elements: ['article', 'img', 'h3', 'p', 'a', 'strong', 'em'],
++      attributes: ['class', 'href', 'src', 'alt', 'width', 'height', 'loading', 'decoding', 'data-item'],
++    };
++
++    // Load the HTML setters polyfill (streamHTML, setHTMLUnsafe runScripts, …) only
++    // where the native methods are missing.
++    function loadScript(src) {
++      return new Promise((resolve, reject) => {
++        const s = document.createElement('script');
++        s.src = src;
++        s.onload = resolve;
++        s.onerror = reject;
++        document.head.append(s);
++      });
++    }
++    if (!('streamHTML' in Element.prototype)) {
++      await loadScript('https://unpkg.com/html-setters-polyfill@0.1.1/index.js');
++    }
++
++    // Safari has no native Sanitizer, and the setters polyfill can't do safe parsing
++    // without it — fall back to DOMPurify (loaded on demand) with matching rules.
++    let domPurifyPromise;
++    const loadDOMPurify = () =>
++      (domPurifyPromise ??= import('https://esm.sh/dompurify@3').then((m) => m.default ?? m));
++
++    async function safeStreamInto(el, response, sanitizer, signal) {
++      if ('setHTML' in Element.prototype) {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(el.streamHTML({ sanitizer }), { signal });
++        return;
++      }
++      const html = await response.text();
++      signal.throwIfAborted();
++      const DOMPurify = await loadDOMPurify();
++      const fragment = DOMPurify.sanitize(html, {
++        ALLOWED_TAGS: [...sanitizer.elements, '#text'],
++        ALLOWED_ATTR: sanitizer.attributes,
++        ALLOW_ARIA_ATTR: false,
++        ALLOW_DATA_ATTR: false, // explicitly listed data-* attrs (e.g. data-item) still pass
++        KEEP_CONTENT: Boolean(sanitizer.replaceWithChildrenElements),
++        RETURN_DOM_FRAGMENT: true,
++      });
++      el.replaceChildren(fragment);
++    }
++
++    async function fetchPart(part, signal) {
++      const res = await fetch(`${base}/${part}`, {
++        signal,
++        headers: { Accept: 'text/html' },
++        cache: 'no-store',
++      });
++      if (!res.ok) throw new Error(`${part}: HTTP ${res.status}`);
++      return res;
++    }
++
++    // Keep focus from being lost if the focused element is inside a region we replace.
++    function captureFocus() {
++      const active = document.activeElement;
++      if (!active || !section.contains(active)) return null;
++      const item = active.closest('[data-item]')?.dataset.item;
++      return { item };
++    }
++    function restoreFocus(saved) {
++      if (!saved || section.contains(document.activeElement)) return;
++      const target = saved.item
++        ? regions.cards.querySelector(`[data-item="${CSS.escape(saved.item)}"] a`)
++        : null;
++      (target ?? heading).focus({ preventScroll: true });
++    }
++
++    let controller;
++    async function refreshSeasonal() {
++      controller?.abort(); // a newer menu change supersedes an in-flight refresh
++      controller = new AbortController();
++      const { signal } = controller;
++      const savedFocus = captureFocus();
++
++      for (const el of Object.values(regions)) el.setAttribute('aria-busy', 'true');
++      status.textContent = 'Updating seasonal favorites…';
++
++      const tasks = {
++        cards: fetchPart('cards', signal).then((res) =>
++          safeStreamInto(regions.cards, res, CARD_SANITIZER, signal)),
++        reviews: fetchPart('reviews', signal).then((res) =>
++          safeStreamInto(regions.reviews, res, REVIEW_SANITIZER, signal)),
++        // Trusted, first-party CMS markup only: unsafe setter so the widget <script> runs.
++        promo: fetchPart('promo', signal)
++          .then((res) => res.text())
++          .then((html) => {
++            signal.throwIfAborted();
++            regions.promo.setHTMLUnsafe(html, { runScripts: true });
++          }),
++      };
++
++      const names = Object.keys(tasks);
++      const results = await Promise.allSettled(Object.values(tasks));
++      if (signal.aborted) return;
++
++      results.forEach((r, i) => {
++        regions[names[i]].setAttribute('aria-busy', 'false');
++        if (r.status === 'rejected') console.error('Seasonal refresh failed:', r.reason);
++      });
++      restoreFocus(savedFocus);
++      status.textContent = results.every((r) => r.status === 'fulfilled')
++        ? 'Seasonal favorites updated.'
++        : 'Some seasonal favorites could not be updated.';
++    }
++
++    // The server pushes a "menu-changed" event whenever the menu is edited.
++    const events = new EventSource('/api/menu/events');
++    events.addEventListener('menu-changed', refreshSeasonal);
++
++    // Same-origin tabs (e.g. an admin editing the menu) can also trigger a refresh.
++    new BroadcastChannel('daily-grind-menu').addEventListener('message', (e) => {
++      if (e.data?.type === 'menu-changed') refreshSeasonal();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

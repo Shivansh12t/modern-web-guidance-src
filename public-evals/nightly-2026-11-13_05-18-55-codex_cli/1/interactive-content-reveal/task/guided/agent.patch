@@ -1,0 +1,155 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -5,8 +5,20 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @property --inner-size {
++      syntax: "<length-percentage>";
++      inherits: true;
++      initial-value: 0px;
++    }
++
++    @property --outer-size {
++      syntax: "<length-percentage>";
++      inherits: true;
++      initial-value: 0px;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+@@ -119,8 +131,65 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .product-card {
++      position: relative;
++      --mouse-x: 50%;
++      --mouse-y: 50%;
++      --inner-size: 0px;
++      --outer-size: 0px;
++      transition: --inner-size 0.25s ease, --outer-size 0.25s ease;
++    }
++
++    .product-detail {
++      margin-top: 15px;
++      padding: 10px;
++      border-radius: 5px;
++      background: #faf6f1;
++      font-size: 0.9rem;
++    }
++
++    /* Only this decorative copy is masked; the original stays readable. */
++    .product-spotlight {
++      display: none;
++      position: absolute;
++      inset: 0;
++      padding: 20px;
++      border-radius: inherit;
++      pointer-events: none;
++      background: rgba(255, 171, 64, 0.06);
++      -webkit-mask-image: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), black var(--inner-size, 0px), transparent var(--outer-size, 0px));
++      mask-image: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), black var(--inner-size, 0px), transparent var(--outer-size, 0px));
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .product-spotlight .product-detail {
++      margin-top: 0;
++      background: #ffe3b8;
++    }
++
++    @supports (mask-image: radial-gradient(black, transparent)) or (-webkit-mask-image: radial-gradient(black, transparent)) {
++      .product-spotlight {
++        display: grid;
++        align-items: end;
++      }
++    }
++
++    @media (hover: hover) and (pointer: fine) {
++      .product-card[data-spotlight-active] {
++        --inner-size: 85px;
++        --outer-size: 130px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .product-card {
++        transition: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -177,22 +246,34 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="product-detail">Maple sweetness &middot; Creamy oat milk</p>
++          <div class="product-spotlight" aria-hidden="true">
++            <p class="product-detail">Maple sweetness &middot; Creamy oat milk</p>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="product-detail">Dark roast &middot; Bold, smoky flavor</p>
++          <div class="product-spotlight" aria-hidden="true">
++            <p class="product-detail">Dark roast &middot; Bold, smoky flavor</p>
++          </div>
+         </div>
+-        <div class="card">
++        <div class="card product-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="product-detail">18-hour steep &middot; Smooth finish</p>
++          <div class="product-spotlight" aria-hidden="true">
++            <p class="product-detail">18-hour steep &middot; Smooth finish</p>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +287,26 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.product-card').forEach((card) => {
++      const updateSpotlight = (event) => {
++        if (event.pointerType === 'touch') return;
++
++        // Read current bounds so scrolling and layout changes cannot stale them.
++        const rect = card.getBoundingClientRect();
++        card.style.setProperty('--mouse-x', `${event.clientX - rect.left}px`);
++        card.style.setProperty('--mouse-y', `${event.clientY - rect.top}px`);
++        card.setAttribute('data-spotlight-active', '');
++      };
++
++      const resetSpotlight = () => card.removeAttribute('data-spotlight-active');
++      card.addEventListener('pointerenter', updateSpotlight);
++      card.addEventListener('pointermove', updateSpotlight);
++      card.addEventListener('pointerleave', resetSpotlight);
++      card.addEventListener('pointercancel', resetSpotlight);
++    });
++  </script>
+ </body>
+ 
+ </html>

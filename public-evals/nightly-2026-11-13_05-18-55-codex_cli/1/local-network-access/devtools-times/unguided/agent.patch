@@ -1,0 +1,228 @@
+diff --git a/README.md b/README.md
+index 4479b53..34e7f02 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,35 @@ pnpm install && pnpm run start
+ 
+ The application will now be running on `http://localhost:11224`.
+ 
++## Developer diagnostics widget
++
++The homepage includes independent browser-side health checks for a hardware test
++device and a local companion CLI. Defaults are examples and can be edited:
++
++- Hardware: `http://192.168.1.100:8080/health` (private IPv4 LAN addresses).
++- CLI: `http://127.0.0.1:4318/health` (loopback IPv4, `localhost`, or `[::1]`).
++
++The services must expose a read-only GET endpoint returning a 2xx status; no
++response body format is required. The device must listen on its LAN interface,
++and the companion must listen on loopback. This repository does not install or
++start either service. Configure each service to return
++`Access-Control-Allow-Origin` with the exact website origin (scheme, host, and
++port; no path), including on error responses. Requests omit credentials and do
++not follow redirects. No application proxy or network discovery is involved.
++
++Serve the site in a secure context (HTTPS or localhost). The fetch requests set
++`targetAddressSpace` to `local` for hardware and `loopback` for the CLI. Supporting
++browsers may prompt for network permissions; denied access can be changed in site
++settings. Browser support and mixed-content handling vary, so a trusted HTTPS
++service endpoint may be required. See the
++[Chrome Local Network Access guidance](https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access).
++
++Checks run only after user interaction and time out after 10 seconds. “Reachable”
++means the last check succeeded, not that a persistent connection is open.
++Disconnect clears that result, and Cancel aborts an in-flight check. Failed HTTP
++responses are distinguished from timeouts; browser network and CORS errors share
++troubleshooting guidance because fetch does not reliably distinguish them.
++
+ ## Tech Stack
+ 
+ - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
+diff --git a/src/components/DiagnosticsConnections.tsx b/src/components/DiagnosticsConnections.tsx
+new file mode 100644
+index 0000000..ceb6a39
+--- /dev/null
++++ b/src/components/DiagnosticsConnections.tsx
+@@ -0,0 +1,155 @@
++import { useEffect, useRef, useState } from 'react';
++import type { FormEvent } from 'react';
++
++type Target = 'local' | 'loopback';
++type Status = 'idle' | 'connecting' | 'connected' | 'error';
++
++function validateEndpoint(value: string, target: Target): URL {
++  let url: URL;
++  try {
++    url = new URL(value);
++  } catch {
++    throw new Error('Enter a full HTTP or HTTPS URL, including the port and health-check path.');
++  }
++  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) {
++    throw new Error('Use HTTP or HTTPS without credentials or a URL fragment.');
++  }
++  const parts = url.hostname.split('.').map(Number);
++  const ipv4 = parts.length === 4 && parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255);
++  const loopback = ipv4 && parts[0] === 127;
++  const privateLan = ipv4 && (parts[0] === 10 || (parts[0] === 192 && parts[1] === 168) ||
++    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31));
++  if (target === 'local' && !privateLan) {
++    throw new Error('Use a private LAN IPv4 address: 192.168.x.x, 10.x.x.x, or 172.16–31.x.x.');
++  }
++  if (target === 'loopback' && !loopback && url.hostname !== 'localhost' && url.hostname !== '[::1]') {
++    throw new Error('Use a loopback address on this machine: 127.0.0.1, localhost, or [::1].');
++  }
++  return url;
++}
++
++function ConnectionCard({ target, title, description, initialUrl }: {
++  target: Target; title: string; description: string; initialUrl: string;
++}) {
++  const [endpoint, setEndpoint] = useState(initialUrl);
++  const [status, setStatus] = useState<Status>('idle');
++  const [message, setMessage] = useState('Ready when you are.');
++  const controllerRef = useRef<AbortController | null>(null);
++  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
++  const id = `diagnostics-${target}`;
++
++  useEffect(() => () => {
++    controllerRef.current?.abort();
++    if (timeoutRef.current) clearTimeout(timeoutRef.current);
++  }, []);
++
++  function disconnect() {
++    controllerRef.current?.abort();
++    controllerRef.current = null;
++    if (timeoutRef.current) clearTimeout(timeoutRef.current);
++    setStatus('idle');
++    setMessage('Disconnected. Connect whenever you’re ready.');
++  }
++
++  async function connect(event: FormEvent) {
++    event.preventDefault();
++    let url: URL;
++    try {
++      url = validateEndpoint(endpoint.trim(), target);
++      if (!window.isSecureContext) throw new Error('Open this page over HTTPS or on localhost to connect.');
++    } catch (error) {
++      setStatus('error');
++      setMessage((error as Error).message);
++      return;
++    }
++
++    controllerRef.current?.abort();
++    const controller = new AbortController();
++    controllerRef.current = controller;
++    let timedOut = false;
++    timeoutRef.current = setTimeout(() => { timedOut = true; controller.abort(); }, 10000);
++    setStatus('connecting');
++    setMessage('Checking endpoint… Allow browser network access if prompted.');
++
++    try {
++      // LNA-aware browsers use this hint to permit HTTP local-network requests
++      // from HTTPS pages, subject to the reader's browser permissions.
++      const options: RequestInit & { targetAddressSpace: Target } = {
++        method: 'GET', mode: 'cors', credentials: 'omit', cache: 'no-store',
++        redirect: 'error', signal: controller.signal, targetAddressSpace: target,
++      };
++      const started = performance.now();
++      const response = await fetch(url.href, options);
++      const elapsed = Math.round(performance.now() - started);
++      void response.body?.cancel().catch(() => {});
++      if (!response.ok) throw new Error(`Endpoint returned HTTP ${response.status}. Check its health-check path and service configuration.`);
++      if (controllerRef.current !== controller) return;
++      setStatus('connected');
++      setMessage(`HTTP ${response.status} · ${elapsed} ms · Checked at ${new Date().toLocaleTimeString()}`);
++    } catch (error) {
++      if (controllerRef.current !== controller) return;
++      setStatus('error');
++      setMessage(timedOut
++        ? 'No response within 10 seconds. Check the address, service, and network, then retry.'
++        : error instanceof TypeError
++          ? 'Could not connect. Check that the service is running, CORS allows this site, and browser network access is allowed. HTTP access may be blocked in this browser; try a trusted HTTPS endpoint.'
++          : (error as Error).message);
++    } finally {
++      if (controllerRef.current === controller) {
++        if (timeoutRef.current) clearTimeout(timeoutRef.current);
++        controllerRef.current = null;
++      }
++    }
++  }
++
++  const labels = { idle: 'Not connected', connecting: 'Connecting', connected: 'Reachable', error: 'Connection failed' };
++  const colors = { idle: 'bg-gray-100 text-gray-600', connecting: 'bg-amber-100 text-amber-900', connected: 'bg-emerald-100 text-emerald-800', error: 'bg-red-50 text-red-800' };
++
++  return (
++    <form onSubmit={connect} className="flex flex-col rounded-lg border border-gray-300 bg-white p-5">
++      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
++        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
++        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${colors[status]}`}>{labels[status]}</span>
++      </div>
++      <p className="mb-5 text-sm text-gray-600">{description}</p>
++      <label htmlFor={id} className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-700">Health-check URL</label>
++      <input id={id} type="url" required spellCheck={false} autoComplete="off" value={endpoint}
++        disabled={status === 'connecting'} aria-describedby={`${id}-status`}
++        onChange={(event) => { setEndpoint(event.target.value); setStatus('idle'); setMessage('Address updated. Connect to check it.'); }}
++        className="w-full rounded border border-gray-300 bg-gray-50 px-3 py-2.5 font-mono text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60" />
++      <p id={`${id}-status`} role="status" aria-live="polite" aria-atomic="true" className={`mt-3 mb-5 min-h-10 text-xs leading-relaxed ${status === 'error' ? 'text-red-700' : 'text-gray-600'}`}>{message}</p>
++      <div className="mt-auto flex gap-3">
++        <button type="submit" disabled={status === 'connecting'} className="rounded bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:cursor-wait disabled:opacity-60">
++          {status === 'connecting' ? 'Connecting…' : status === 'connected' ? 'Check again' : status === 'error' ? 'Retry connection' : 'Connect'}
++        </button>
++        {(status === 'connecting' || status === 'connected') && <button type="button" onClick={disconnect} className="rounded border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-amber-600">{status === 'connecting' ? 'Cancel' : 'Disconnect'}</button>}
++      </div>
++    </form>
++  );
++}
++
++export default function DiagnosticsConnections() {
++  return (
++    <section aria-labelledby="diagnostics-heading" className="mx-4 my-6 rounded-lg border border-gray-300 bg-gray-50 p-4 sm:mx-6 sm:p-6">
++      <div className="mb-6 border-b border-gray-300 pb-5">
++        <p className="mb-2 text-xs font-bold uppercase tracking-widest text-amber-700">The developer’s workbench</p>
++        <h2 id="diagnostics-heading" className="font-brand text-3xl text-gray-900">Developer diagnostics</h2>
++        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600">Connect your test device and companion CLI from this browser. Enter each service’s health-check URL, then connect to check its availability.</p>
++      </div>
++      <div className="grid gap-4 md:grid-cols-2">
++        <ConnectionCard target="local" title="Hardware test device" description="A device on your private Wi-Fi LAN. Join the same network before connecting." initialUrl="http://192.168.1.100:8080/health" />
++        <ConnectionCard target="loopback" title="Local companion CLI" description="Your companion service on this computer. Start the CLI before connecting." initialUrl="http://127.0.0.1:4318/health" />
++      </div>
++      <p className="mt-4 text-xs leading-relaxed text-gray-500">Connections run only when you click. “Reachable” records a successful health check; it is not a live connection. Each check times out after 10 seconds.</p>
++      <details className="mt-4 border-t border-gray-300 pt-4 text-sm text-gray-600">
++        <summary className="cursor-pointer font-semibold text-gray-800">Connection requirements &amp; troubleshooting</summary>
++        <div className="mt-3 space-y-2 text-xs leading-relaxed">
++          <p>Use this page over HTTPS (or localhost). Allow local network or loopback access if your browser prompts. If previously blocked, review this site’s permissions. Support varies by browser; a trusted HTTPS endpoint may be needed.</p>
++          <p>Both services need a GET health-check endpoint that returns a successful HTTP status and allows this site’s origin through CORS. The hardware service must listen on its LAN interface; the CLI must listen on loopback at the selected port. Redirects are not followed.</p>
++          <p>Requests go directly from your browser to the address you enter, without cookies or authentication credentials. This widget does not scan your network or send device responses to The DevTools Times.</p>
++          <a className="inline-block underline hover:text-gray-900" href="https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access" target="_blank" rel="noreferrer">Browser local network access guidance ↗</a>
++        </div>
++      </details>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..e00f853 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -6,6 +6,7 @@ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+ import type { RenderResult } from 'astro:content';
++import DiagnosticsConnections from '../components/DiagnosticsConnections';
+ 
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+@@ -55,6 +56,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
++    <DiagnosticsConnections client:load />
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+@@ -81,4 +83,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>

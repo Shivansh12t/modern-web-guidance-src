@@ -1,0 +1,135 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -71,8 +71,57 @@
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    #feature {
++      anchor-name: --rewards-link;
++    }
++
++    #tour-step {
++      position: fixed;
++      inset: auto;
++      margin: 0;
++      width: min(300px, calc(100vw - 24px));
++      max-height: calc(100dvh - 24px);
++      overflow: auto;
++      padding: 20px;
++      border: 2px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 28px rgb(0 0 0 / 20%);
++      z-index: 1001;
++      font-size: 1rem;
++    }
++
++    #tour-step[hidden] {
++      display: none;
++    }
++
++    @supports (anchor-name: --rewards-link) and (top: anchor(bottom)) {
++      #tour-step {
++        position-anchor: --rewards-link;
++        top: calc(anchor(bottom) + 14px);
++        right: clamp(12px, anchor(right), max(12px, calc(100vw - 312px)));
++      }
++    }
++
++    #tour-step h2 {
++      font-size: 1.15rem;
++      margin-bottom: 8px;
++    }
++
++    #tour-step button {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #tour-step button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -161,9 +210,17 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-title"
++          aria-describedby="tour-message" hidden>
++          <h2 id="tour-title">Your coffee comes with perks</h2>
++          <p id="tour-message">Earn points with every coffee and turn them into rewards. Find your points and perks here.</p>
++          <button type="button" class="btn" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++        </div>
++        <a id="feature" href="/rewards">Rewards</a>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -206,7 +263,54 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const rewardsLink = document.getElementById('feature');
++    const tourStep = document.getElementById('tour-step');
++    const closeTourButton = tourStep.querySelector('button');
++    const supportsPopover = 'popover' in HTMLElement.prototype;
++    const supportsAnchors = CSS.supports('anchor-name: --rewards-link') &&
++      CSS.supports('top: anchor(bottom)');
++
++    // Keep the tour tethered in browsers without CSS Anchor Positioning, too.
++    const positionTour = () => {
++      const bounds = rewardsLink.getBoundingClientRect();
++      const left = Math.max(12, Math.min(bounds.right - tourStep.offsetWidth,
++        document.documentElement.clientWidth - tourStep.offsetWidth - 12));
++      tourStep.style.left = `${left}px`;
++      tourStep.style.top = `${bounds.bottom + 14}px`;
++    };
++
++    let resizeObserver;
++    tourStep.hidden = false;
++    if (supportsPopover) tourStep.showPopover();
++    if (!supportsAnchors) {
++      positionTour();
++      window.addEventListener('resize', positionTour);
++      window.addEventListener('scroll', positionTour, true);
++      resizeObserver = new ResizeObserver(positionTour);
++      resizeObserver.observe(document.querySelector('nav'));
++      resizeObserver.observe(rewardsLink);
++      resizeObserver.observe(tourStep);
++    }
++    closeTourButton.focus({ preventScroll: true });
++
++    closeTourButton.addEventListener('click', () => {
++      if (supportsPopover && tourStep.matches(':popover-open')) tourStep.hidePopover();
++      tourStep.hidden = true;
++      resizeObserver?.disconnect();
++      window.removeEventListener('resize', positionTour);
++      window.removeEventListener('scroll', positionTour, true);
++      rewardsLink.focus({ preventScroll: true });
++    });
++
++    // Preserve the destination once the tour is dismissed, including middle-clicks.
++    const preventTourNavigation = (event) => {
++      if (!tourStep.hidden) event.preventDefault();
++    };
++    rewardsLink.addEventListener('click', preventTourNavigation);
++    rewardsLink.addEventListener('auxclick', preventTourNavigation);
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,118 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,114 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <title>Visually Stable Mixed Fonts</title>
++  <style>
++    :root {
++      color-scheme: light dark;
++    }
++
++    body {
++      margin: 0;
++      padding: 2rem;
++      font-family: system-ui, sans-serif;
++      line-height: 1.6;
++      max-inline-size: 70ch;
++      margin-inline: auto;
++    }
++
++    section {
++      margin-block: 2rem;
++      padding: 1.5rem;
++      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
++      border-radius: 0.75rem;
++    }
++
++    h2 {
++      margin-block-start: 0;
++      font-size: 1.25rem;
++    }
++
++    code {
++      padding: 0.1em 0.35em;
++      border-radius: 0.3em;
++      background: color-mix(in srgb, currentColor 10%, transparent);
++    }
++
++    /* 1. Mixed fonts: normalize inline code to the parent font's x-height automatically */
++    #mixed-fonts-container {
++      font-family: Georgia, "Times New Roman", serif;
++      font-size: 1.125rem;
++      /* Extract the x-height/font-size ratio from the primary font and apply it to descendants */
++      font-size-adjust: from-font;
++    }
++
++    #mixed-fonts-container code {
++      font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
++      /* Inherits the computed numeric aspect value from the container, so the
++         monospace x-height matches the surrounding serif text. */
++    }
++
++    /* 2. Independent theme: lock proportions with an explicit numeric override */
++    #independent-theme-container {
++      font-family: Verdana, Geneva, Tahoma, sans-serif;
++      font-size: 1rem;
++      background: color-mix(in srgb, Canvas 92%, rebeccapurple);
++      /* Lock the x-height to 0.5 × font-size, regardless of which font in the stack loads */
++      font-size-adjust: 0.5;
++    }
++
++    #independent-theme-container code {
++      font-family: "Courier New", Courier, monospace;
++    }
++
++    /* Fallback for browsers without font-size-adjust support */
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container code {
++        /* Monospace fonts typically render visually larger than serif text */
++        font-size: 0.9em;
++        line-height: 1;
++      }
++    }
++
++    @supports not (font-size-adjust: 0.5) {
++      #independent-theme-container {
++        /* Verdana has a large x-height (~0.545); scale down slightly to approximate 0.5 */
++        font-size: 0.92rem;
++        line-height: 1.7;
++      }
++
++      #independent-theme-container code {
++        /* Courier New has a small x-height (~0.42); scale up to match */
++        font-size: 1.15em;
++        line-height: 1;
++      }
++    }
++  </style>
++</head>
++<body>
++  <h1>Visually Stable Mixed Fonts</h1>
++
++  <section id="mixed-fonts-container">
++    <h2>Mixed font families</h2>
++    <p>
++      This paragraph is set in a serif typeface, but it also contains inline code such as
++      <code>document.querySelector("#app")</code> and <code>font-size-adjust: from-font</code>.
++      Thanks to <code>font-size-adjust</code>, the lowercase letters of the monospace code
++      share the same visual height as the surrounding serif text, so nothing looks oversized
++      or shrunken.
++    </p>
++  </section>
++
++  <section id="independent-theme-container">
++    <h2>Independent theme</h2>
++    <p>
++      This container represents a self-contained theme. Its proportions are locked with an
++      explicit numeric override, <code>font-size-adjust: 0.5</code>, so the x-height is always
++      half the font size, whether Verdana, Geneva, Tahoma, or a generic sans-serif ends up
++      rendering it.
++    </p>
++  </section>
++</body>
++</html>

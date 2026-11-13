@@ -1,0 +1,647 @@
+diff --git a/index.html b/index.html
+index 66c9173..6502170 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,298 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Quick Order floating panel */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .quick-order {
++      position: fixed;
++      right: 20px;
++      bottom: 20px;
++      z-index: 1100;
++      width: min(320px, calc(100vw - 24px));
++      max-height: calc(100vh - 24px);
++      display: flex;
++      flex-direction: column;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 10px 30px rgba(62, 39, 35, 0.3);
++      overflow: hidden;
++    }
++
++    .quick-order.positioned {
++      right: auto;
++      bottom: auto;
++    }
++
++    .quick-order-header {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      padding: 8px 10px;
++      background: var(--primary);
++      color: white;
++    }
++
++    .quick-order.js-ready .quick-order-header {
++      cursor: grab;
++      touch-action: none;
++      -webkit-user-select: none;
++      user-select: none;
++    }
++
++    .quick-order-header.dragging {
++      cursor: grabbing;
++    }
++
++    .quick-order.dragging-active {
++      box-shadow: 0 16px 40px rgba(62, 39, 35, 0.45);
++    }
++
++    .quick-order-header h2 {
++      flex: 1;
++      font-size: 1rem;
++      letter-spacing: 0.5px;
++    }
++
++    .qo-icon-btn {
++      background: transparent;
++      border: 1px solid transparent;
++      color: white;
++      border-radius: 6px;
++      width: 30px;
++      height: 30px;
++      display: inline-grid;
++      place-items: center;
++      font-size: 1rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .qo-icon-btn:hover {
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    .qo-icon-btn:focus-visible,
++    .quick-order button:focus-visible,
++    .quick-order select:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .qo-grip {
++      display: none;
++      cursor: grab;
++    }
++
++    .quick-order.js-ready .qo-grip {
++      display: inline-grid;
++    }
++
++    .qo-menu-wrap {
++      position: relative;
++    }
++
++    .qo-menu {
++      position: absolute;
++      top: calc(100% + 4px);
++      right: 0;
++      z-index: 2;
++      min-width: 150px;
++      background: white;
++      color: var(--text);
++      border-radius: 8px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
++      padding: 4px;
++      list-style: none;
++    }
++
++    .qo-menu[hidden] {
++      display: none;
++    }
++
++    .qo-menu button {
++      width: 100%;
++      text-align: left;
++      background: none;
++      border: 0;
++      padding: 6px 10px;
++      border-radius: 4px;
++      font: inherit;
++      font-size: 0.85rem;
++      color: inherit;
++      cursor: pointer;
++    }
++
++    .qo-menu button:hover,
++    .qo-menu button:focus-visible {
++      background: var(--secondary);
++    }
++
++    .qo-help {
++      background: #fff3e0;
++      font-size: 0.8rem;
++      padding: 8px 14px;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .qo-help[hidden] {
++      display: none;
++    }
++
++    .quick-order-body {
++      padding: 12px 14px;
++      overflow-y: auto;
++    }
++
++    .quick-order.collapsed .quick-order-body,
++    .quick-order.collapsed .qo-help {
++      display: none;
++    }
++
++    .qo-item {
++      display: grid;
++      grid-template-columns: 48px 1fr auto;
++      align-items: center;
++      gap: 10px;
++      padding: 8px 0;
++      border-bottom: 1px solid #eee;
++    }
++
++    .qo-item img {
++      width: 48px;
++      height: 48px;
++      object-fit: cover;
++      border-radius: 6px;
++    }
++
++    .qo-item-name {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .qo-item-price {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .qo-stepper {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .qo-stepper button {
++      width: 28px;
++      height: 28px;
++      border-radius: 50%;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      font-size: 1rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .qo-stepper button:hover:not(:disabled) {
++      background: var(--primary);
++      color: white;
++    }
++
++    .qo-stepper button:disabled {
++      opacity: 0.4;
++      cursor: not-allowed;
++    }
++
++    .qo-stepper output {
++      min-width: 1.2em;
++      text-align: center;
++      font-weight: 600;
++    }
++
++    .qo-options {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 10px;
++      margin: 12px 0;
++    }
++
++    .qo-options label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      gap: 4px;
++    }
++
++    .qo-options select {
++      font: inherit;
++      font-size: 0.85rem;
++      text-transform: none;
++      letter-spacing: normal;
++      font-weight: normal;
++      padding: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++    }
++
++    .qo-summary {
++      display: flex;
++      justify-content: space-between;
++      font-weight: 600;
++      margin-bottom: 10px;
++    }
++
++    .qo-submit {
++      width: 100%;
++      padding: 10px;
++      border: 0;
++      border-radius: 6px;
++      background: var(--accent);
++      color: var(--text);
++      font: inherit;
++      font-weight: 700;
++      cursor: pointer;
++      transition: background 0.2s;
++    }
++
++    .qo-submit:hover:not(:disabled) {
++      background: #ff9100;
++    }
++
++    .qo-submit:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .qo-status {
++      margin-top: 8px;
++      font-size: 0.85rem;
++      text-align: center;
++      color: #2e7d32;
++      min-height: 1.2em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .quick-order.animate-position {
++        transition: left 0.25s ease, top 0.25s ease;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -207,6 +499,343 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <aside class="quick-order" id="quick-order" data-draggable aria-labelledby="qo-title">
++    <div class="quick-order-header" data-drag-handle>
++      <button type="button" class="qo-icon-btn qo-grip" id="qo-grip"
++        aria-label="Quick order panel handle. Use arrow keys to move." title="Drag or use arrow keys to move">
++        <span aria-hidden="true">⠿</span>
++      </button>
++      <h2 id="qo-title">☕ Quick Order</h2>
++      <button type="button" class="qo-icon-btn" id="qo-help-toggle" aria-expanded="false" aria-controls="qo-help"
++        aria-label="How to move this panel" title="Help">
++        <span aria-hidden="true">?</span>
++      </button>
++      <div class="qo-menu-wrap">
++        <button type="button" class="qo-icon-btn" id="qo-menu-toggle" aria-haspopup="true" aria-expanded="false"
++          aria-controls="qo-menu" aria-label="Move panel" title="Move panel">
++          <span aria-hidden="true">⇱</span>
++        </button>
++        <ul class="qo-menu" id="qo-menu" hidden>
++          <li><button type="button" data-dock="top-left">Dock top left</button></li>
++          <li><button type="button" data-dock="top-right">Dock top right</button></li>
++          <li><button type="button" data-dock="bottom-left">Dock bottom left</button></li>
++          <li><button type="button" data-dock="bottom-right">Dock bottom right</button></li>
++          <li><button type="button" data-nudge="up">Move up</button></li>
++          <li><button type="button" data-nudge="down">Move down</button></li>
++          <li><button type="button" data-nudge="left">Move left</button></li>
++          <li><button type="button" data-nudge="right">Move right</button></li>
++        </ul>
++      </div>
++      <button type="button" class="qo-icon-btn" id="qo-collapse" aria-expanded="true" aria-controls="qo-body"
++        aria-label="Collapse quick order panel" title="Minimize">
++        <span aria-hidden="true">–</span>
++      </button>
++    </div>
++
++    <div class="qo-help" id="qo-help" hidden>
++      Drag the header to move this panel. Or focus the <strong>⠿</strong> handle and use the
++      <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> arrow keys (hold <kbd>Shift</kbd> for bigger steps).
++      The <strong>⇱</strong> button docks it to a corner.
++    </div>
++
++    <form class="quick-order-body" id="qo-body" action="/order-online" method="post">
++      <div class="qo-item" data-price="5.25">
++        <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=120&h=120&q=70"
++          alt="" width="48" height="48" loading="lazy">
++        <div>
++          <div class="qo-item-name" id="qo-name-latte">Maple Oat Latte</div>
++          <div class="qo-item-price">$5.25</div>
++        </div>
++        <div class="qo-stepper" role="group" aria-labelledby="qo-name-latte">
++          <button type="button" data-step="-1" aria-label="Remove one Maple Oat Latte">−</button>
++          <output aria-live="polite">0</output>
++          <input type="hidden" name="maple-oat-latte" value="0">
++          <button type="button" data-step="1" aria-label="Add one Maple Oat Latte">+</button>
++        </div>
++      </div>
++      <div class="qo-item" data-price="3.50">
++        <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=120&h=120&q=70"
++          alt="" width="48" height="48" loading="lazy">
++        <div>
++          <div class="qo-item-name" id="qo-name-espresso">Dark Roast Espresso</div>
++          <div class="qo-item-price">$3.50</div>
++        </div>
++        <div class="qo-stepper" role="group" aria-labelledby="qo-name-espresso">
++          <button type="button" data-step="-1" aria-label="Remove one Dark Roast Espresso">−</button>
++          <output aria-live="polite">0</output>
++          <input type="hidden" name="dark-roast-espresso" value="0">
++          <button type="button" data-step="1" aria-label="Add one Dark Roast Espresso">+</button>
++        </div>
++      </div>
++      <div class="qo-item" data-price="4.75">
++        <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=120&h=120&q=70"
++          alt="" width="48" height="48" loading="lazy">
++        <div>
++          <div class="qo-item-name" id="qo-name-coldbrew">Cold Brew</div>
++          <div class="qo-item-price">$4.75</div>
++        </div>
++        <div class="qo-stepper" role="group" aria-labelledby="qo-name-coldbrew">
++          <button type="button" data-step="-1" aria-label="Remove one Cold Brew">−</button>
++          <output aria-live="polite">0</output>
++          <input type="hidden" name="cold-brew" value="0">
++          <button type="button" data-step="1" aria-label="Add one Cold Brew">+</button>
++        </div>
++      </div>
++
++      <div class="qo-options">
++        <label>Size
++          <select name="size" id="qo-size">
++            <option value="0">Small</option>
++            <option value="0.50" selected>Medium (+$0.50)</option>
++            <option value="1.00">Large (+$1.00)</option>
++          </select>
++        </label>
++        <label>Pickup
++          <select name="pickup">
++            <option>ASAP</option>
++            <option>In 15 min</option>
++            <option>In 30 min</option>
++          </select>
++        </label>
++      </div>
++
++      <div class="qo-summary">
++        <span>Total (<span id="qo-count">0</span> items)</span>
++        <output id="qo-total" for="qo-size">$0.00</output>
++      </div>
++      <button type="submit" class="qo-submit" id="qo-submit">Place Order</button>
++      <p class="qo-status" id="qo-status" role="status"></p>
++    </form>
++  </aside>
++  <div class="visually-hidden" aria-live="polite" id="qo-announcer"></div>
++
++  <script>
++    (() => {
++      const panel = document.querySelector('[data-draggable]');
++      const handle = panel.querySelector('[data-drag-handle]');
++      const grip = panel.querySelector('#qo-grip');
++      const announcer = document.getElementById('qo-announcer');
++      const EDGE = 12;
++      const STEP = 15;
++      const DRAG_THRESHOLD = 4;
++      panel.classList.add('js-ready');
++
++      /* ---------- Positioning ---------- */
++      function moveTo(left, top) {
++        const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
++        panel.classList.add('positioned');
++        panel.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
++        panel.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
++      }
++
++      function savePosition() {
++        try {
++          localStorage.setItem('dg-quick-order-pos', JSON.stringify({
++            left: panel.offsetLeft, top: panel.offsetTop
++          }));
++        } catch { /* storage unavailable */ }
++      }
++
++      let announceTimer;
++      function announce(msg) {
++        announcer.textContent = `Quick order panel ${msg}`;
++        clearTimeout(announceTimer);
++        announceTimer = setTimeout(() => { announcer.textContent = ''; }, 1000);
++      }
++
++      try {
++        const saved = JSON.parse(localStorage.getItem('dg-quick-order-pos'));
++        if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) moveTo(saved.left, saved.top);
++      } catch { /* ignore */ }
++
++      /* ---------- Pointer dragging ---------- */
++      let offsetX = 0, offsetY = 0, startX = 0, startY = 0, dragging = false;
++
++      handle.addEventListener('pointerdown', (event) => {
++        const control = event.target.closest('button, input, select, textarea, a');
++        if (event.button !== 0 || (control && control !== grip)) return;
++        const rect = panel.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        startX = event.clientX;
++        startY = event.clientY;
++        dragging = false;
++        panel.classList.remove('animate-position');
++        handle.setPointerCapture(event.pointerId);
++      });
++
++      handle.addEventListener('pointermove', (event) => {
++        if (!handle.hasPointerCapture(event.pointerId)) return;
++        if (!dragging) {
++          if (Math.hypot(event.clientX - startX, event.clientY - startY) < DRAG_THRESHOLD) return;
++          dragging = true;
++          handle.classList.add('dragging');
++          panel.classList.add('dragging-active');
++          closeMenu();
++        }
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', () => {
++        handle.classList.remove('dragging');
++        panel.classList.remove('dragging-active');
++        if (dragging) {
++          savePosition();
++          announce('moved');
++        }
++        dragging = false;
++      });
++
++      /* ---------- Keyboard movement ---------- */
++      const KEY_DIRS = {
++        ArrowUp: [0, -1, 'up'], ArrowDown: [0, 1, 'down'],
++        ArrowLeft: [-1, 0, 'left'], ArrowRight: [1, 0, 'right']
++      };
++
++      function nudge(dx, dy, label, step = STEP) {
++        moveTo(panel.offsetLeft + dx * step, panel.offsetTop + dy * step);
++        savePosition();
++        announce(`moved ${label}`);
++      }
++
++      grip.addEventListener('keydown', (event) => {
++        const dir = KEY_DIRS[event.key];
++        if (!dir) return;
++        event.preventDefault();
++        panel.classList.remove('animate-position');
++        nudge(dir[0], dir[1], dir[2], event.shiftKey ? STEP * 4 : STEP);
++      });
++
++      /* ---------- Reposition menu (single-pointer alternative) ---------- */
++      const menuToggle = panel.querySelector('#qo-menu-toggle');
++      const menu = panel.querySelector('#qo-menu');
++
++      function openMenu() {
++        menu.hidden = false;
++        menuToggle.setAttribute('aria-expanded', 'true');
++        menu.querySelector('button').focus();
++      }
++      function closeMenu(returnFocus = false) {
++        if (menu.hidden) return;
++        menu.hidden = true;
++        menuToggle.setAttribute('aria-expanded', 'false');
++        if (returnFocus) menuToggle.focus();
++      }
++
++      menuToggle.addEventListener('click', () => (menu.hidden ? openMenu() : closeMenu()));
++      menu.addEventListener('keydown', (event) => {
++        const items = [...menu.querySelectorAll('button')];
++        const i = items.indexOf(document.activeElement);
++        if (event.key === 'Escape') { event.preventDefault(); closeMenu(true); }
++        else if (event.key === 'ArrowDown') { event.preventDefault(); items[(i + 1) % items.length].focus(); }
++        else if (event.key === 'ArrowUp') { event.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
++        else if (event.key === 'Home') { event.preventDefault(); items[0].focus(); }
++        else if (event.key === 'End') { event.preventDefault(); items.at(-1).focus(); }
++      });
++      document.addEventListener('pointerdown', (event) => {
++        if (!event.target.closest('.qo-menu-wrap')) closeMenu();
++      });
++
++      menu.addEventListener('click', (event) => {
++        const btn = event.target.closest('button');
++        if (!btn) return;
++        panel.classList.add('animate-position');
++        if (btn.dataset.dock) {
++          const [v, h] = btn.dataset.dock.split('-');
++          const navH = document.querySelector('nav')?.offsetHeight ?? 0;
++          const left = h === 'left' ? EDGE : window.innerWidth - panel.offsetWidth - EDGE;
++          const top = v === 'top' ? navH + EDGE : window.innerHeight - panel.offsetHeight - EDGE;
++          moveTo(left, top);
++          savePosition();
++          announce(`docked ${v} ${h}`);
++        } else {
++          const dir = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[btn.dataset.nudge];
++          nudge(dir[0], dir[1], btn.dataset.nudge, STEP * 4);
++        }
++        closeMenu(true);
++      });
++
++      /* ---------- Help & collapse ---------- */
++      const helpToggle = panel.querySelector('#qo-help-toggle');
++      const help = panel.querySelector('#qo-help');
++      helpToggle.addEventListener('click', () => {
++        help.hidden = !help.hidden;
++        helpToggle.setAttribute('aria-expanded', String(!help.hidden));
++      });
++
++      const collapseBtn = panel.querySelector('#qo-collapse');
++      collapseBtn.addEventListener('click', () => {
++        const collapsed = panel.classList.toggle('collapsed');
++        collapseBtn.setAttribute('aria-expanded', String(!collapsed));
++        collapseBtn.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} quick order panel`);
++        collapseBtn.querySelector('span').textContent = collapsed ? '+' : '–';
++        if (panel.classList.contains('positioned')) moveTo(panel.offsetLeft, panel.offsetTop);
++      });
++
++      /* Keep panel reachable after viewport/size changes */
++      const reclamp = () => {
++        if (panel.classList.contains('positioned')) moveTo(panel.offsetLeft, panel.offsetTop);
++      };
++      window.addEventListener('resize', reclamp);
++      new ResizeObserver(reclamp).observe(panel);
++
++      /* ---------- Cart logic ---------- */
++      const form = panel.querySelector('#qo-body');
++      const sizeSelect = form.querySelector('#qo-size');
++      const totalEl = form.querySelector('#qo-total');
++      const countEl = form.querySelector('#qo-count');
++      const submitBtn = form.querySelector('#qo-submit');
++      const statusEl = form.querySelector('#qo-status');
++      const items = [...form.querySelectorAll('.qo-item')];
++      const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++      const MAX_QTY = 9;
++
++      function update() {
++        const sizeExtra = parseFloat(sizeSelect.value);
++        let count = 0, total = 0;
++        for (const item of items) {
++          const qty = Number(item.querySelector('input').value);
++          count += qty;
++          total += qty * (parseFloat(item.dataset.price) + sizeExtra);
++          const [minus, plus] = item.querySelectorAll('button');
++          minus.disabled = qty <= 0;
++          plus.disabled = qty >= MAX_QTY;
++        }
++        countEl.textContent = count;
++        totalEl.textContent = fmt.format(total);
++        submitBtn.disabled = count === 0;
++      }
++
++      form.addEventListener('click', (event) => {
++        const btn = event.target.closest('[data-step]');
++        if (!btn) return;
++        const item = btn.closest('.qo-item');
++        const input = item.querySelector('input');
++        const qty = Math.max(0, Math.min(MAX_QTY, Number(input.value) + Number(btn.dataset.step)));
++        input.value = qty;
++        item.querySelector('output').textContent = qty;
++        statusEl.textContent = '';
++        update();
++      });
++      sizeSelect.addEventListener('change', update);
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const count = countEl.textContent;
++        const total = totalEl.textContent;
++        statusEl.textContent = `Order placed! ${count} item${count === '1' ? '' : 's'} · ${total}. See you soon ☕`;
++        for (const item of items) {
++          item.querySelector('input').value = 0;
++          item.querySelector('output').textContent = 0;
++        }
++        update();
++      });
++
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

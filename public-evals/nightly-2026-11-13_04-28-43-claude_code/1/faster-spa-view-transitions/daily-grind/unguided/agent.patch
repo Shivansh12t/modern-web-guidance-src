@@ -1,0 +1,991 @@
+diff --git a/account/index.html b/account/index.html
+new file mode 100644
+index 0000000..8aeaee6
+--- /dev/null
++++ b/account/index.html
+@@ -0,0 +1,5 @@
++<!DOCTYPE html>
++<html lang="en"><head><meta charset="UTF-8"><title>The Daily Grind</title>
++<script>location.replace('/?view=account' + location.hash);</script>
++<meta http-equiv="refresh" content="0; url=/?view=account">
++</head><body><a href="/?view=account">Continue to The Daily Grind</a></body></html>
+diff --git a/index.html b/index.html
+index 66c9173..642b5c2 100644
+--- a/index.html
++++ b/index.html
+@@ -152,50 +152,550 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    nav a[aria-current="page"] {
++      color: var(--accent);
++      border-bottom: 2px solid var(--accent);
++    }
++
++    .logo a {
++      color: inherit;
++      border: 0;
++    }
++
++    /* ---------- SPA views ---------- */
++    #app {
++      position: relative;
++    }
++
++    .view {
++      outline: none;
++    }
++
++    /* Inactive views stay in the DOM (state preserved) but are taken out of
++       layout and their rendering work is skipped by the browser. */
++    .view.is-inactive {
++      content-visibility: hidden;
++      position: absolute;
++      top: 0;
++      left: 0;
++      right: 0;
++      height: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    .page-header {
++      background: var(--primary);
++      color: white;
++      padding: 50px 20px 40px;
++      text-align: center;
++    }
++
++    .page-header h1 {
++      font-size: 2.2rem;
++    }
++
++    .toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .chips {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .chip {
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      border-radius: 999px;
++      padding: 6px 14px;
++      cursor: pointer;
++      font: inherit;
++      font-size: 0.9rem;
++    }
++
++    .chip[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    input[type="search"],
++    input[type="text"],
++    input[type="email"],
++    input[type="tel"],
++    select {
++      font: inherit;
++      padding: 8px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: white;
++      width: 100%;
++    }
++
++    .toolbar input[type="search"] {
++      max-width: 280px;
++    }
++
++    .menu-card {
++      padding: 0;
++      overflow: hidden;
++      text-align: left;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .menu-card img {
++      width: 100%;
++      height: 160px;
++      object-fit: cover;
++      background: var(--secondary);
++      display: block;
++    }
++
++    .menu-card .body {
++      padding: 16px 20px 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .menu-card .row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: auto;
++      padding-top: 12px;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    button.btn {
++      border: 0;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    .btn.small {
++      padding: 6px 14px;
++      font-size: 0.9rem;
++    }
++
++    .btn.accent {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn[disabled] {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .cart-bar {
++      margin-top: 24px;
++      padding: 14px 20px;
++      background: var(--secondary);
++      border-radius: 8px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .empty {
++      text-align: center;
++      padding: 30px;
++      color: #6d4c41;
++    }
++
++    .locations-layout {
++      display: grid;
++      grid-template-columns: 1fr 1.3fr;
++      gap: 24px;
++      margin-top: 20px;
++    }
++
++    .location-list {
++      list-style: none;
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++      max-height: 460px;
++      overflow-y: auto;
++      padding-right: 4px;
++    }
++
++    .location-list button {
++      width: 100%;
++      text-align: left;
++      background: white;
++      border: 1px solid #e0d6d2;
++      border-radius: 8px;
++      padding: 12px 16px;
++      cursor: pointer;
++      font: inherit;
++      color: inherit;
++    }
++
++    .location-list button[aria-selected="true"] {
++      border-color: var(--accent);
++      box-shadow: 0 0 0 2px var(--accent);
++    }
++
++    .location-detail {
++      text-align: left;
++      padding: 0;
++      overflow: hidden;
++    }
++
++    .location-detail img {
++      width: 100%;
++      height: 220px;
++      object-fit: cover;
++      background: var(--secondary);
++      display: block;
++    }
++
++    .location-detail .body {
++      padding: 20px;
++    }
++
++    .badge {
++      display: inline-block;
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 999px;
++      background: #c8e6c9;
++      color: #1b5e20;
++      margin-left: 6px;
++    }
++
++    .badge.closed {
++      background: #ffcdd2;
++      color: #b71c1c;
++    }
++
++    .rewards-summary {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++      gap: 20px;
++    }
++
++    .points {
++      font-size: 2.6rem;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .progress {
++      height: 12px;
++      background: var(--secondary);
++      border-radius: 999px;
++      overflow: hidden;
++      margin-top: 10px;
++    }
++
++    .progress span {
++      display: block;
++      height: 100%;
++      background: var(--accent);
++      transition: width 0.4s;
++    }
++
++    .history {
++      list-style: none;
++      text-align: left;
++      margin-top: 10px;
++    }
++
++    .history li {
++      display: flex;
++      justify-content: space-between;
++      padding: 6px 0;
++      border-bottom: 1px dashed #d7ccc8;
++      font-size: 0.9rem;
++    }
++
++    .account-layout {
++      display: grid;
++      grid-template-columns: 200px 1fr;
++      gap: 24px;
++    }
++
++    .tabs {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .tabs button {
++      text-align: left;
++      background: white;
++      border: 1px solid #e0d6d2;
++      border-radius: 6px;
++      padding: 10px 14px;
++      cursor: pointer;
++      font: inherit;
++      color: inherit;
++    }
++
++    .tabs button[aria-selected="true"] {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    .panel {
++      text-align: left;
++    }
++
++    .form-grid {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 14px;
++      margin-top: 14px;
++    }
++
++    .form-grid label {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      font-size: 0.9rem;
++    }
++
++    .form-grid .full {
++      grid-column: 1 / -1;
++    }
++
++    .check {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-top: 10px;
++    }
++
++    .status {
++      margin-left: 12px;
++      color: #2e7d32;
++      font-size: 0.9rem;
++    }
++
++    .order-table {
++      width: 100%;
++      border-collapse: collapse;
++      margin-top: 14px;
++    }
++
++    .order-table th,
++    .order-table td {
++      padding: 8px;
++      border-bottom: 1px solid #eee;
++      text-align: left;
++    }
++
++    @media (max-width: 760px) {
++      nav {
++        flex-direction: column;
++        gap: 8px;
++      }
++
++      nav ul li {
++        margin: 0 8px;
++      }
++
++      .locations-layout,
++      .account-layout,
++      .form-grid {
++        grid-template-columns: 1fr;
++      }
++
++      .tabs {
++        flex-direction: row;
++        flex-wrap: wrap;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><a href="/" data-route="home">THE DAILY GRIND</a></div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-route="menu">Menu</a></li>
++      <li><a href="/locations" data-route="locations">Locations</a></li>
++      <li><a href="/rewards" data-route="rewards">Rewards</a></li>
++      <li><a href="/account" data-route="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
++  <div id="app">
++    <!-- Home view is server-rendered; other views are instantiated lazily
++         from <template>s on first visit and then kept alive offscreen. -->
++    <div class="view" data-view="home" tabindex="-1">
++      <header class="hero">
++        <h1>Wake Up Your Senses</h1>
++        <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++        <a href="/order-online" class="btn">Order Now</a>
++      </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <main class="container">
++        <section>
++          <h2 style="text-align: center;">Seasonal Favorites</h2>
++          <div class="grid">
++            <div class="card">
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++              <a href="/menu/seasonal" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++              <a href="/menu/espresso" class="btn">View Details</a>
++            </div>
++            <div class="card">
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++              <a href="/menu/cold-brew" class="btn">View Details</a>
++            </div>
++          </div>
++        </section>
++      </main>
++    </div>
++  </div>
++
++  <!-- ===================== View templates ===================== -->
++  <template id="tpl-menu">
++    <header class="page-header">
++      <h1>Our Menu</h1>
++      <p>Handcrafted drinks and fresh-baked treats, made to order.</p>
++    </header>
++    <main class="container">
++      <div class="toolbar">
++        <div class="chips" role="group" aria-label="Filter by category">
++          <button class="chip" data-cat="all" aria-pressed="true">All</button>
++          <button class="chip" data-cat="espresso" aria-pressed="false">Espresso</button>
++          <button class="chip" data-cat="cold" aria-pressed="false">Cold</button>
++          <button class="chip" data-cat="tea" aria-pressed="false">Tea</button>
++          <button class="chip" data-cat="bakery" aria-pressed="false">Bakery</button>
+         </div>
++        <input type="search" placeholder="Search the menu…" aria-label="Search the menu" data-ref="search">
++      </div>
++      <div class="grid" data-ref="items"></div>
++      <p class="empty" data-ref="empty" hidden>No items match your search.</p>
++      <div class="cart-bar">
++        <span data-ref="cart">Your order is empty.</span>
++        <a href="/order-online" class="btn small accent">Checkout</a>
++      </div>
++    </main>
++  </template>
++
++  <template id="tpl-locations">
++    <header class="page-header">
++      <h1>Find a Daily Grind</h1>
++      <p>Neighborhood cafés with free Wi-Fi and plenty of outlets.</p>
++    </header>
++    <main class="container">
++      <div class="toolbar">
++        <input type="search" placeholder="Search by city or neighborhood…" aria-label="Search locations" data-ref="search">
++        <label class="check"><input type="checkbox" data-ref="openOnly"> Open now only</label>
++      </div>
++      <div class="locations-layout">
++        <ul class="location-list" role="listbox" aria-label="Locations" data-ref="list"></ul>
++        <div class="card location-detail" data-ref="detail"></div>
++      </div>
++    </main>
++  </template>
++
++  <template id="tpl-rewards">
++    <header class="page-header">
++      <h1>Grind Rewards</h1>
++      <p>Earn 10 stars for every dollar. Redeem them for free goodies.</p>
++    </header>
++    <main class="container">
++      <div class="rewards-summary">
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <h3>Your Stars</h3>
++          <div class="points" data-ref="points">0</div>
++          <div class="progress" aria-hidden="true"><span data-ref="bar"></span></div>
++          <p data-ref="next" style="margin-top:8px;font-size:0.9rem"></p>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <h3>Recent Activity</h3>
++          <ul class="history" data-ref="history"></ul>
+         </div>
+       </div>
+-    </section>
+-  </main>
++      <h2 style="text-align:center;margin-top:40px">Redeem</h2>
++      <div class="grid" data-ref="perks"></div>
++    </main>
++  </template>
++
++  <template id="tpl-account">
++    <header class="page-header">
++      <h1>My Account</h1>
++      <p>Welcome back, Alex.</p>
++    </header>
++    <main class="container">
++      <div class="account-layout">
++        <div class="tabs" role="tablist" aria-label="Account sections">
++          <button role="tab" data-tab="profile" aria-selected="true">Profile</button>
++          <button role="tab" data-tab="orders" aria-selected="false">Order History</button>
++          <button role="tab" data-tab="prefs" aria-selected="false">Preferences</button>
++        </div>
++        <div>
++          <section class="card panel" role="tabpanel" data-panel="profile">
++            <h3>Profile</h3>
++            <form data-ref="profileForm">
++              <div class="form-grid">
++                <label>First name <input type="text" name="first" value="Alex" autocomplete="given-name"></label>
++                <label>Last name <input type="text" name="last" value="Rivera" autocomplete="family-name"></label>
++                <label class="full">Email <input type="email" name="email" value="alex@example.com" autocomplete="email"></label>
++                <label>Phone <input type="tel" name="phone" value="(555) 010-2233" autocomplete="tel"></label>
++                <label>Home store
++                  <select name="store">
++                    <option>Downtown</option>
++                    <option>Riverside</option>
++                    <option>Old Town</option>
++                    <option>University</option>
++                  </select>
++                </label>
++              </div>
++              <button class="btn" type="submit" style="margin-top:16px">Save changes</button>
++              <span class="status" data-ref="saved" role="status"></span>
++            </form>
++          </section>
++          <section class="card panel" role="tabpanel" data-panel="orders" hidden>
++            <h3>Order History</h3>
++            <table class="order-table">
++              <thead><tr><th>Date</th><th>Items</th><th>Total</th></tr></thead>
++              <tbody>
++                <tr><td>Nov 11, 2026</td><td>Maple Oat Latte, Almond Croissant</td><td>$9.75</td></tr>
++                <tr><td>Nov 8, 2026</td><td>Cold Brew (L)</td><td>$4.95</td></tr>
++                <tr><td>Nov 3, 2026</td><td>Dark Roast Espresso ×2</td><td>$6.50</td></tr>
++                <tr><td>Oct 29, 2026</td><td>Chai Latte, Blueberry Muffin</td><td>$8.40</td></tr>
++              </tbody>
++            </table>
++          </section>
++          <section class="card panel" role="tabpanel" data-panel="prefs" hidden>
++            <h3>Preferences</h3>
++            <label class="check"><input type="checkbox" checked> Email me about seasonal drinks</label>
++            <label class="check"><input type="checkbox"> Text me when my order is ready</label>
++            <label class="check"><input type="checkbox" checked> Default to oat milk</label>
++          </section>
++        </div>
++      </div>
++    </main>
++  </template>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +707,365 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      'use strict';
++
++      const IMG = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=600&q=70`;
++      const $ = (root, ref) => root.querySelector(`[data-ref="${ref}"]`);
++      const esc = (str) => String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++
++      /* ------------------------------------------------------------------
++       * View definitions. `init` runs exactly once, when the view is first
++       * visited. After that the view's DOM (form input, filters, scroll
++       * position, selections) is kept alive offscreen and simply re-shown.
++       * ---------------------------------------------------------------- */
++      const views = {
++        home: { path: '/', title: 'The Daily Grind | Artisanal Coffee' },
++
++        menu: {
++          path: '/menu',
++          title: 'Menu | The Daily Grind',
++          template: 'tpl-menu',
++          init(root) {
++            const items = [
++              { name: 'Maple Oat Latte', cat: 'espresso', price: 5.25, desc: 'Creamy oat milk with a hint of Vermont maple syrup.', img: '1461023058943-07fcbe16d735' },
++              { name: 'Dark Roast Espresso', cat: 'espresso', price: 3.25, desc: 'Bold, smokey, and perfect for a morning boost.', img: '1510591509098-f4fdc6d0ff04' },
++              { name: 'Cappuccino', cat: 'espresso', price: 4.50, desc: 'Equal parts espresso, steamed milk, and velvety foam.', img: '1509042239860-f550ce710b93' },
++              { name: 'Cold Brew', cat: 'cold', price: 4.95, desc: 'Steeped for 18 hours for maximum smoothness.', img: '1517701604599-bb29b565090c' },
++              { name: 'Iced Vanilla Latte', cat: 'cold', price: 5.45, desc: 'House vanilla, espresso, and cold milk over ice.', img: '1461023058943-07fcbe16d735' },
++              { name: 'Chai Latte', cat: 'tea', price: 4.75, desc: 'Spiced black tea simmered with steamed milk.', img: '1571934811356-5cc061b6821f' },
++              { name: 'Matcha Latte', cat: 'tea', price: 5.25, desc: 'Ceremonial-grade matcha whisked with your choice of milk.', img: '1515823064-d6e0c04616a7' },
++              { name: 'Almond Croissant', cat: 'bakery', price: 4.50, desc: 'Flaky, buttery, and filled with almond frangipane.', img: '1555507036-ab1f4038808a' },
++              { name: 'Blueberry Muffin', cat: 'bakery', price: 3.65, desc: 'Bursting with wild Maine blueberries.', img: '1607958996333-41aef7caefaa' },
++            ];
++            const grid = $(root, 'items');
++            const empty = $(root, 'empty');
++            const search = $(root, 'search');
++            const cartLabel = $(root, 'cart');
++            const cart = new Map();
++            let cat = 'all';
++
++            grid.innerHTML = items.map((it, i) => `
++              <article class="card menu-card" data-i="${i}">
++                <img src="${IMG(it.img)}" alt="${esc(it.name)}" loading="lazy" decoding="async" width="600" height="160">
++                <div class="body">
++                  <h3>${esc(it.name)}</h3>
++                  <p>${esc(it.desc)}</p>
++                  <div class="row">
++                    <span class="price">$${it.price.toFixed(2)}</span>
++                    <button class="btn small" data-add="${i}">Add</button>
++                  </div>
++                </div>
++              </article>`).join('');
++            const cards = [...grid.children];
++
++            const filter = () => {
++              const q = search.value.trim().toLowerCase();
++              let shown = 0;
++              cards.forEach((card, i) => {
++                const it = items[i];
++                const ok = (cat === 'all' || it.cat === cat) &&
++                  (!q || it.name.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q));
++                card.hidden = !ok;
++                if (ok) shown++;
++              });
++              empty.hidden = shown > 0;
++            };
++
++            const renderCart = () => {
++              let count = 0, total = 0;
++              cart.forEach((qty, i) => { count += qty; total += qty * items[i].price; });
++              cartLabel.textContent = count
++                ? `${count} item${count > 1 ? 's' : ''} in your order · $${total.toFixed(2)}`
++                : 'Your order is empty.';
++            };
++
++            root.querySelector('.chips').addEventListener('click', (e) => {
++              const chip = e.target.closest('.chip');
++              if (!chip) return;
++              cat = chip.dataset.cat;
++              root.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
++              filter();
++            });
++            search.addEventListener('input', filter);
++            grid.addEventListener('click', (e) => {
++              const btn = e.target.closest('[data-add]');
++              if (!btn) return;
++              const i = Number(btn.dataset.add);
++              cart.set(i, (cart.get(i) || 0) + 1);
++              renderCart();
++            });
++          },
++        },
++
++        locations: {
++          path: '/locations',
++          title: 'Locations | The Daily Grind',
++          template: 'tpl-locations',
++          init(root) {
++            const locs = [
++              { name: 'Downtown', addr: '120 Main St', hours: [6, 21], phone: '(555) 010-1000', img: '1501339847302-ac426a4a7cbb', perks: 'Drive-thru · Patio seating' },
++              { name: 'Riverside', addr: '48 Water St', hours: [7, 19], phone: '(555) 010-2000', img: '1554118811-1e0d58224f24', perks: 'River views · Dog friendly' },
++              { name: 'Old Town', addr: '9 Cobblestone Ln', hours: [7, 17], phone: '(555) 010-3000', img: '1453614512568-c4024d13c247', perks: 'Historic building · Roastery tours' },
++              { name: 'University', addr: '300 College Ave', hours: [6, 23], phone: '(555) 010-4000', img: '1445116572660-236099ec97a0', perks: 'Late hours · Study rooms' },
++              { name: 'Harbor Point', addr: '77 Pier Rd', hours: [8, 18], phone: '(555) 010-5000', img: '1521017432531-fbd92d768814', perks: 'Waterfront · Live music Fridays' },
++            ];
++            const list = $(root, 'list');
++            const detail = $(root, 'detail');
++            const search = $(root, 'search');
++            const openOnly = $(root, 'openOnly');
++            let selected = 0;
++
++            const isOpen = (l) => { const h = new Date().getHours(); return h >= l.hours[0] && h < l.hours[1]; };
++            const fmt = (h) => `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
++
++            list.innerHTML = locs.map((l, i) => `
++              <li><button role="option" data-i="${i}" aria-selected="${i === selected}">
++                <strong>${esc(l.name)}</strong>
++                <span class="badge" data-badge></span><br>
++                <small>${esc(l.addr)} · ${fmt(l.hours[0])}–${fmt(l.hours[1])}</small>
++              </button></li>`).join('');
++            const rows = [...list.children];
++
++            const refreshBadges = () => rows.forEach((li, i) => {
++              const b = li.querySelector('[data-badge]');
++              const open = isOpen(locs[i]);
++              b.textContent = open ? 'Open' : 'Closed';
++              b.classList.toggle('closed', !open);
++            });
++
++            const renderDetail = () => {
++              const l = locs[selected];
++              detail.innerHTML = `
++                <img src="${IMG(l.img)}" alt="${esc(l.name)} café interior" decoding="async" width="600" height="220">
++                <div class="body">
++                  <h3>${esc(l.name)}</h3>
++                  <p>${esc(l.addr)}</p>
++                  <p>Hours: ${fmt(l.hours[0])} – ${fmt(l.hours[1])} daily</p>
++                  <p>Phone: ${esc(l.phone)}</p>
++                  <p><em>${esc(l.perks)}</em></p>
++                  <a class="btn small" target="_blank" rel="noopener"
++                     href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.addr)}">Get directions</a>
++                </div>`;
++            };
++
++            const filter = () => {
++              const q = search.value.trim().toLowerCase();
++              rows.forEach((li, i) => {
++                const l = locs[i];
++                li.hidden = !((!q || `${l.name} ${l.addr}`.toLowerCase().includes(q)) && (!openOnly.checked || isOpen(l)));
++              });
++            };
++
++            list.addEventListener('click', (e) => {
++              const btn = e.target.closest('button[data-i]');
++              if (!btn) return;
++              selected = Number(btn.dataset.i);
++              list.querySelectorAll('button').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
++              renderDetail();
++            });
++            search.addEventListener('input', filter);
++            openOnly.addEventListener('change', filter);
++
++            refreshBadges();
++            renderDetail();
++            // Open/closed status is time-dependent: refresh cheaply on every re-show
++            // instead of rebuilding the view.
++            return { onShow() { refreshBadges(); filter(); } };
++          },
++        },
++
++        rewards: {
++          path: '/rewards',
++          title: 'Rewards | The Daily Grind',
++          template: 'tpl-rewards',
++          init(root) {
++            const perks = [
++              { name: 'Extra Shot or Syrup', cost: 25 },
++              { name: 'Any Bakery Item', cost: 100 },
++              { name: 'Any Handcrafted Drink', cost: 150 },
++              { name: 'Bag of Whole Beans', cost: 400 },
++            ];
++            let points = 235;
++            const history = [
++              ['Nov 11 · Maple Oat Latte', '+52'],
++              ['Nov 8 · Cold Brew', '+49'],
++              ['Nov 3 · Redeemed Bakery Item', '−100'],
++            ];
++            const pointsEl = $(root, 'points');
++            const bar = $(root, 'bar');
++            const next = $(root, 'next');
++            const histEl = $(root, 'history');
++            const perksEl = $(root, 'perks');
++
++            perksEl.innerHTML = perks.map((p, i) => `
++              <div class="card">
++                <h3>${esc(p.name)}</h3>
++                <p>${p.cost} stars</p>
++                <button class="btn small accent" data-redeem="${i}" style="margin-top:12px">Redeem</button>
++              </div>`).join('');
++            const buttons = [...perksEl.querySelectorAll('[data-redeem]')];
++
++            const render = () => {
++              pointsEl.textContent = points;
++              const goal = perks.find((p) => p.cost > points);
++              bar.style.width = goal ? `${Math.round((points / goal.cost) * 100)}%` : '100%';
++              next.textContent = goal
++                ? `${goal.cost - points} stars until ${goal.name}`
++                : 'You can redeem any reward!';
++              histEl.innerHTML = history.slice(0, 6)
++                .map(([label, delta]) => `<li><span>${esc(label)}</span><strong>${esc(delta)}</strong></li>`).join('');
++              buttons.forEach((b, i) => { b.disabled = perks[i].cost > points; });
++            };
++
++            perksEl.addEventListener('click', (e) => {
++              const btn = e.target.closest('[data-redeem]');
++              if (!btn || btn.disabled) return;
++              const p = perks[Number(btn.dataset.redeem)];
++              points -= p.cost;
++              history.unshift([`Today · Redeemed ${p.name}`, `−${p.cost}`]);
++              render();
++            });
++            render();
++          },
++        },
++
++        account: {
++          path: '/account',
++          title: 'My Account | The Daily Grind',
++          template: 'tpl-account',
++          init(root) {
++            const tabs = [...root.querySelectorAll('[role="tab"]')];
++            const panels = [...root.querySelectorAll('[role="tabpanel"]')];
++            root.querySelector('.tabs').addEventListener('click', (e) => {
++              const tab = e.target.closest('[role="tab"]');
++              if (!tab) return;
++              tabs.forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
++              panels.forEach((p) => { p.hidden = p.dataset.panel !== tab.dataset.tab; });
++            });
++            const form = $(root, 'profileForm');
++            const saved = $(root, 'saved');
++            form.addEventListener('submit', (e) => {
++              e.preventDefault();
++              saved.textContent = 'Saved ✓';
++              setTimeout(() => { saved.textContent = ''; }, 2500);
++            });
++            form.addEventListener('input', () => { saved.textContent = ''; });
++          },
++        },
++      };
++
++      /* ------------------------------------------------------------------
++       * Router with a keep-alive view cache.
++       * ---------------------------------------------------------------- */
++      const app = document.getElementById('app');
++      const navLinks = [...document.querySelectorAll('a[data-route]')];
++      const cache = new Map();            // name -> { el, hooks, scrollY }
++      let current = null;
++
++      // Home is already in the DOM.
++      cache.set('home', { el: app.querySelector('[data-view="home"]'), hooks: null, scrollY: 0 });
++
++      const routeFromPath = (path) => {
++        const clean = path.replace(/\/+$/, '') || '/';
++        return Object.keys(views).find((k) => views[k].path === clean) || null;
++      };
++
++      const getView = (name) => {
++        let entry = cache.get(name);
++        if (entry) return entry;
++        const def = views[name];
++        const el = document.createElement('div');
++        el.className = 'view is-inactive';
++        el.dataset.view = name;
++        el.tabIndex = -1;
++        el.inert = true;
++        el.appendChild(document.getElementById(def.template).content.cloneNode(true));
++        app.appendChild(el);
++        entry = { el, hooks: def.init ? def.init(el) || null : null, scrollY: 0 };
++        cache.set(name, entry);
++        return entry;
++      };
++
++      const show = (name, { restoreScroll = false } = {}) => {
++        if (name === current) return;
++        const next = getView(name);
++
++        if (current) {
++          const prev = cache.get(current);
++          prev.scrollY = window.scrollY;     // remember where the user was
++          prev.el.classList.add('is-inactive');
++          prev.el.inert = true;              // no focus / AT access while offscreen
++          prev.hooks?.onHide?.();
++        }
++
++        next.el.classList.remove('is-inactive');
++        next.el.inert = false;
++        next.hooks?.onShow?.();
++        current = name;
++
++        document.title = views[name].title;
++        navLinks.forEach((a) => {
++          if (a.dataset.route === name) a.setAttribute('aria-current', 'page');
++          else a.removeAttribute('aria-current');
++        });
++
++        window.scrollTo(0, restoreScroll ? next.scrollY : 0);
++        next.el.focus({ preventScroll: true });
++      };
++
++      const navigate = (name) => {
++        if (name === current) return;
++        // Persist scroll of the view we're leaving into its history entry too.
++        history.replaceState({ ...(history.state || {}), view: current, scrollY: window.scrollY }, '');
++        history.pushState({ view: name }, '', views[name].path);
++        show(name);
++      };
++
++      // Intercept internal SPA links (nav + logo).
++      document.addEventListener('click', (e) => {
++        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
++        const a = e.target.closest('a[href]');
++        if (!a || a.target === '_blank' || a.origin !== location.origin) return;
++        const name = routeFromPath(a.pathname);
++        if (!name) return;                    // non-SPA link: let the browser handle it
++        e.preventDefault();
++        navigate(name);
++      });
++
++      window.addEventListener('popstate', (e) => {
++        const name = e.state?.view || routeFromPath(location.pathname) || 'home';
++        show(name, { restoreScroll: true });
++      });
++
++      // Warm up views during idle time so even the first visit is instant.
++      const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
++      const prefetch = (name) => { if (!cache.has(name)) getView(name); };
++      navLinks.forEach((a) => {
++        const name = a.dataset.route;
++        a.addEventListener('pointerenter', () => prefetch(name), { once: true });
++        a.addEventListener('focus', () => prefetch(name), { once: true });
++      });
++
++      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
++
++      // Initial route (supports deep links when the server falls back to index.html).
++      // Static hosts without SPA fallback serve /menu/index.html etc., which
++      // redirect to /?view=menu; normalise that back to the clean URL.
++      const viewParam = new URLSearchParams(location.search).get('view');
++      const initial = (viewParam in views && viewParam) || routeFromPath(location.pathname) || 'home';
++      if (initial !== 'home') {
++        const home = cache.get('home').el;
++        home.classList.add('is-inactive');
++        home.inert = true;
++      }
++      history.replaceState({ view: initial }, '', views[initial].path + location.hash);
++      show(initial);
++      idle(() => Object.keys(views).forEach((n) => idle(() => prefetch(n))));
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/locations/index.html b/locations/index.html
+new file mode 100644
+index 0000000..54a80b8
+--- /dev/null
++++ b/locations/index.html
+@@ -0,0 +1,5 @@
++<!DOCTYPE html>
++<html lang="en"><head><meta charset="UTF-8"><title>The Daily Grind</title>
++<script>location.replace('/?view=locations' + location.hash);</script>
++<meta http-equiv="refresh" content="0; url=/?view=locations">
++</head><body><a href="/?view=locations">Continue to The Daily Grind</a></body></html>
+diff --git a/menu/index.html b/menu/index.html
+new file mode 100644
+index 0000000..77d1ffc
+--- /dev/null
++++ b/menu/index.html
+@@ -0,0 +1,5 @@
++<!DOCTYPE html>
++<html lang="en"><head><meta charset="UTF-8"><title>The Daily Grind</title>
++<script>location.replace('/?view=menu' + location.hash);</script>
++<meta http-equiv="refresh" content="0; url=/?view=menu">
++</head><body><a href="/?view=menu">Continue to The Daily Grind</a></body></html>
+diff --git a/rewards/index.html b/rewards/index.html
+new file mode 100644
+index 0000000..9454651
+--- /dev/null
++++ b/rewards/index.html
+@@ -0,0 +1,5 @@
++<!DOCTYPE html>
++<html lang="en"><head><meta charset="UTF-8"><title>The Daily Grind</title>
++<script>location.replace('/?view=rewards' + location.hash);</script>
++<meta http-equiv="refresh" content="0; url=/?view=rewards">
++</head><body><a href="/?view=rewards">Continue to The Daily Grind</a></body></html>

@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+index 66c9173..604728b 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <!-- Hero poster is above the fold: fetch it early so it paints before the video is ready -->
++  <link rel="preload" as="image"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -74,11 +77,10 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      overflow: hidden;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,11 +90,124 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-video,
++    .hero::after {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++    }
++
++    .hero-video {
++      object-fit: cover;
++      z-index: 0;
++    }
++
++    .hero::after {
++      content: "";
++      background: rgba(0, 0, 0, 0.5);
++      z-index: 1;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 2;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Media Section (below the fold) */
++    .media-section {
++      margin-top: 60px;
++    }
++
++    .media-section > h2,
++    .media-section > .section-intro {
++      text-align: center;
++    }
++
++    .section-intro {
++      max-width: 640px;
++      margin: 0 auto;
++    }
++
++    .media-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 24px;
++      margin-top: 24px;
++      align-items: start;
++    }
++
++    .media-card {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .media-card .media-body {
++      padding: 20px;
++    }
++
++    .media-card h3 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .roast-video {
++      display: block;
++      width: 100%;
++      aspect-ratio: 16 / 9;
++      height: auto;
++      background: var(--secondary);
++      object-fit: cover;
++    }
++
++    .podcast {
++      display: flex;
++      gap: 16px;
++      align-items: center;
++      margin-bottom: 16px;
++    }
++
++    .podcast-cover {
++      flex: 0 0 auto;
++      width: 120px;
++      height: 120px;
++      border-radius: 6px;
++      object-fit: cover;
++      background: var(--secondary);
++    }
++
++    .episode {
++      border-top: 1px solid var(--secondary);
++      padding-top: 14px;
++      margin-top: 14px;
++    }
++
++    .episode h4 {
++      font-size: 0.95rem;
++      margin-bottom: 6px;
++    }
++
++    .episode audio {
++      width: 100%;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .hero-video {
++        display: none;
++      }
++
++      .hero {
++        background: url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80') center / cover;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,9 +284,16 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <!-- Above the fold: load eagerly and autoplay (muted + playsinline are required for autoplay) -->
++    <video class="hero-video" autoplay muted loop playsinline preload="auto" aria-hidden="true"
++      poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80">
++      <source src="https://videos.pexels.com/video-files/3191572/3191572-hd_1280_720_25fps.mp4" type="video/mp4">
++    </video>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+@@ -195,6 +317,65 @@
+         </div>
+       </div>
+     </section>
++
++    <!--
++      Below the fold: nothing here downloads on page load.
++      - Video/audio use preload="none" and keep their URLs in data-src / data-poster,
++        so neither the media bytes, the metadata, nor the poster image are requested.
++      - A small IntersectionObserver script swaps them in once the player is within
++        ~300px of the viewport, then applies the desired preload level (data-preload).
++      - Images use native loading="lazy".
++    -->
++    <section class="media-section" id="behind-the-beans">
++      <h2>Behind the Beans</h2>
++      <p class="section-intro">Watch our head roaster at work, then pull up a chair for the latest episode of our podcast.</p>
++
++      <div class="media-grid">
++        <article class="media-card">
++          <video class="roast-video lazy-media" controls playsinline preload="none" data-preload="metadata"
++            width="1280" height="720"
++            data-poster="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1200&q=80"
++            aria-label="Small-batch roasting at The Daily Grind roastery">
++            <source data-src="https://assets.mixkit.co/videos/4421/4421-720.mp4" type="video/mp4">
++            <p>Your browser doesn't support HTML video. <a href="https://assets.mixkit.co/videos/4421/4421-720.mp4">Download the video</a>.</p>
++          </video>
++          <div class="media-body">
++            <h3>From Green Bean to Your Cup</h3>
++            <p>Every batch is roasted in small lots at our roastery and cupped before it ever reaches the counter.</p>
++          </div>
++        </article>
++
++        <article class="media-card">
++          <div class="media-body">
++            <div class="podcast">
++              <img class="podcast-cover" loading="lazy" decoding="async" width="120" height="120"
++                src="https://images.unsplash.com/photo-1478737270239-2f02b77fc618?auto=format&fit=crop&w=240&h=240&q=80"
++                alt="Studio microphone for The Grind Sessions podcast">
++              <div>
++                <h3>The Grind Sessions</h3>
++                <p>Conversations with farmers, roasters, and baristas about what goes into your morning cup.</p>
++              </div>
++            </div>
++
++            <div class="episode">
++              <h4>Ep. 12 &mdash; Light vs. Dark: Finding Your Roast</h4>
++              <audio class="lazy-media" controls preload="none" data-preload="metadata">
++                <source data-src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
++                <a href="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">Download episode 12</a>
++              </audio>
++            </div>
++
++            <div class="episode">
++              <h4>Ep. 11 &mdash; Meet the Growers of Huila, Colombia</h4>
++              <audio class="lazy-media" controls preload="none" data-preload="metadata">
++                <source data-src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" type="audio/mpeg">
++                <a href="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">Download episode 11</a>
++              </audio>
++            </div>
++          </div>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +388,67 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var lazyMedia = document.querySelectorAll('.lazy-media');
++
++      // Swap deferred URLs into place, then let the browser fetch them.
++      function hydrate(el) {
++        if (el.dataset.poster) {
++          el.poster = el.dataset.poster;
++          el.removeAttribute('data-poster');
++        }
++        var sources = el.querySelectorAll('source[data-src]');
++        for (var i = 0; i < sources.length; i++) {
++          sources[i].src = sources[i].dataset.src;
++          sources[i].removeAttribute('data-src');
++        }
++        if (el.dataset.src) {
++          el.src = el.dataset.src;
++          el.removeAttribute('data-src');
++        }
++        el.preload = el.dataset.preload || 'metadata';
++        el.load();
++        el.classList.remove('lazy-media');
++      }
++
++      if (!('IntersectionObserver' in window)) {
++        for (var i = 0; i < lazyMedia.length; i++) hydrate(lazyMedia[i]);
++        return;
++      }
++
++      var observer = new IntersectionObserver(function (entries) {
++        entries.forEach(function (entry) {
++          if (entry.isIntersecting) {
++            observer.unobserve(entry.target);
++            hydrate(entry.target);
++          }
++        });
++      }, { rootMargin: '300px 0px' });
++
++      lazyMedia.forEach(function (el) {
++        observer.observe(el);
++        // If a user somehow hits play before hydration (e.g. keyboard), load immediately.
++        el.addEventListener('play', function onPlay() {
++          el.removeEventListener('play', onPlay);
++          if (el.classList.contains('lazy-media')) {
++            observer.unobserve(el);
++            hydrate(el);
++            el.play();
++          }
++        });
++      });
++
++      // Pause the decorative hero loop for users who prefer reduced motion.
++      var hero = document.querySelector('.hero-video');
++      if (hero && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
++        hero.pause();
++        hero.removeAttribute('autoplay');
++        hero.preload = 'none';
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

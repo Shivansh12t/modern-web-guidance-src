@@ -1,0 +1,239 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,8 +26,138 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .collapsible {
++      display: grid;
++      grid-template-rows: 1fr;
++      overflow: hidden;
++      transition: grid-template-rows 0.35s ease;
++    }
++
++    .collapsible.is-collapsed {
++      grid-template-rows: 0fr;
++    }
++
++    .collapsible > .collapse-inner {
++      min-height: 0;
++      overflow: hidden;
++    }
++
++    .collapsible[hidden] {
++      display: none;
++    }
++
++    @supports (interpolate-size: allow-keywords) {
++      .collapsible {
++        display: block;
++        interpolate-size: allow-keywords;
++        block-size: auto;
++        transition: block-size 0.35s ease;
++      }
++
++      .collapsible.is-collapsed {
++        block-size: 0;
++      }
++    }
++
++    #promo-alert {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .promo-message {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 1rem;
++      padding: 10px 5%;
++      text-align: center;
++    }
++
++    #alert-dismiss {
++      flex-shrink: 0;
++      width: 44px;
++      height: 44px;
++      border: 0;
++      border-radius: 4px;
++      background: transparent;
++      color: inherit;
++      font-size: 1.5rem;
++      cursor: pointer;
++    }
++
++    #alert-dismiss:hover {
++      background: rgb(78 52 46 / 10%);
++    }
++
++    .faq {
++      margin-top: 40px;
++    }
++
++    .faq > h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-item {
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      overflow: hidden;
++    }
++
++    #faq-trigger {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      width: 100%;
++      border: 0;
++      padding: 20px;
++      background: transparent;
++      color: var(--primary);
++      font: inherit;
++      font-weight: 600;
++      text-align: left;
++      cursor: pointer;
++    }
++
++    #faq-trigger::before {
++      content: '';
++      width: 8px;
++      height: 8px;
++      flex-shrink: 0;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: rotate(-45deg);
++      transition: transform 0.35s ease;
++    }
++
++    #faq-trigger[aria-expanded="true"]::before {
++      transform: rotate(45deg);
++    }
++
++    #faq-trigger:hover {
++      background: var(--light);
++    }
++
++    #faq-trigger:focus-visible,
++    #alert-dismiss:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: -4px;
++    }
++
++    .faq-answer {
++      padding: 0 20px 20px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .collapsible,
++      #faq-trigger::before {
++        transition: none;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +286,19 @@
+ </head>
+ 
+ <body>
+ 
++  <aside id="promo-alert" class="collapsible" aria-label="Seasonal promotion">
++    <div class="collapse-inner">
++      <div class="promo-message">
++        <p><strong>A little sweetness for your morning.</strong> Try our seasonal Maple Oat Latte.</p>
++        <button id="alert-dismiss" type="button" aria-label="Dismiss promotion">
++          <span aria-hidden="true">&times;</span>
++        </button>
++      </div>
++    </div>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +335,26 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" aria-labelledby="faq-heading">
++      <h2 id="faq-heading">Frequently Asked Questions</h2>
++      <div class="faq-item">
++        <h3>
++          <button id="faq-trigger" type="button" aria-expanded="false" aria-controls="faq-content">
++            Do you offer dairy-free options?
++          </button>
++        </h3>
++        <div id="faq-content" class="collapsible is-collapsed" hidden inert>
++          <div class="collapse-inner">
++            <div class="faq-answer">
++              <p>Yes! Our Maple Oat Latte is made with creamy oat milk. Ask your barista about dairy-free options for your favorite drink when ordering.</p>
++            </div>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +365,49 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const faqTrigger = document.getElementById('faq-trigger');
++    const faqContent = document.getElementById('faq-content');
++    const promoAlert = document.getElementById('promo-alert');
++    const alertDismiss = document.getElementById('alert-dismiss');
++
++    function setCollapsed(element, collapsed) {
++      if (!collapsed) {
++        element.hidden = false;
++        // Establish the collapsed layout before transitioning to natural height.
++        element.getBoundingClientRect();
++      }
++
++      element.inert = collapsed;
++      element.classList.toggle('is-collapsed', collapsed);
++
++      if (collapsed) {
++        // Keep the content rendered until its closing transition has finished.
++        // With reduced motion there are no transitions, so hiding is immediate.
++        const transitions = element.getAnimations();
++        Promise.allSettled(transitions.map(transition => transition.finished)).then(() => {
++          // A quick reopen must not be hidden by an earlier closing animation.
++          if (element.classList.contains('is-collapsed')) element.hidden = true;
++        });
++      }
++    }
++
++    faqTrigger.addEventListener('click', () => {
++      const expanded = faqTrigger.getAttribute('aria-expanded') === 'true';
++      faqTrigger.setAttribute('aria-expanded', String(!expanded));
++      setCollapsed(faqContent, expanded);
++    });
++
++    alertDismiss.addEventListener('click', () => {
++      // Move focus to the next page control before making the alert inert.
++      if (promoAlert.contains(document.activeElement)) {
++        document.querySelector('nav a').focus({ preventScroll: true });
++      }
++      setCollapsed(promoAlert, true);
++    });
++  </script>
++
+ </body>
+ 
+ </html>

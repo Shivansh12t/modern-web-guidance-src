@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+index 66c9173..5342e86 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,130 @@
+       background: #3e2723;
+     }
+ 
++    /* Progress Bars */
++    .progress-section {
++      margin-bottom: 40px;
++    }
++
++    .progress-section h2 {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .progress-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 20px;
++    }
++
++    .progress-card {
++      background: white;
++      padding: 20px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .progress-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++      margin-bottom: 10px;
++    }
++
++    .progress-label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .progress-value {
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--text);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .progress {
++      position: relative;
++      height: 14px;
++      background: #efe7e4;
++      border-radius: 999px;
++      overflow: hidden;
++      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: var(--progress, 0%);
++      background: linear-gradient(90deg, var(--primary), #6d4c41);
++      border-radius: inherit;
++      transition: width 0.6s ease;
++    }
++
++    /* Indeterminate: a segment sweeps across the track */
++    .progress--indeterminate .progress-fill {
++      position: absolute;
++      top: 0;
++      left: 0;
++      width: 40%;
++      background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
++      animation: progress-sweep 1.6s ease-in-out infinite;
++    }
++
++    @keyframes progress-sweep {
++      0% {
++        transform: translateX(-100%);
++      }
++
++      100% {
++        transform: translateX(250%);
++      }
++    }
++
++    .progress-hint {
++      margin-top: 10px;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .progress-steps {
++      display: flex;
++      justify-content: space-between;
++      list-style: none;
++      margin-top: 10px;
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .progress-steps .done {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .progress-fill {
++        transition: none;
++      }
++
++      .progress--indeterminate .progress-fill {
++        animation: progress-pulse 2s ease-in-out infinite;
++        width: 100%;
++        transform: none;
++      }
++
++      @keyframes progress-pulse {
++
++        0%,
++        100% {
++          opacity: 0.45;
++        }
++
++        50% {
++          opacity: 0.9;
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,6 +299,41 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-labelledby="progress-heading">
++      <h2 id="progress-heading">Your Progress</h2>
++      <div class="progress-grid">
++        <!-- Determinate: known completion (rewards) -->
++        <div class="progress-card">
++          <div class="progress-header">
++            <span class="progress-label" id="rewards-label">Rewards: Free Drink</span>
++            <span class="progress-value" aria-hidden="true">7 / 10 stamps</span>
++          </div>
++          <div class="progress" role="progressbar" aria-labelledby="rewards-label"
++            aria-valuemin="0" aria-valuemax="10" aria-valuenow="7" aria-valuetext="7 of 10 stamps, 70% complete">
++            <div class="progress-fill" style="--progress: 70%;"></div>
++          </div>
++          <p class="progress-hint">Just 3 more visits until your next drink is on us.</p>
++        </div>
++
++        <!-- Indeterminate: in progress, completion time unknown (order) -->
++        <div class="progress-card">
++          <div class="progress-header">
++            <span class="progress-label" id="order-label">Order #1042</span>
++            <span class="progress-value" aria-hidden="true">Brewing&hellip;</span>
++          </div>
++          <div class="progress progress--indeterminate" role="progressbar" aria-labelledby="order-label"
++            aria-valuetext="Your order is being prepared" aria-busy="true">
++            <div class="progress-fill"></div>
++          </div>
++          <ol class="progress-steps" aria-label="Order stages">
++            <li class="done">Received</li>
++            <li class="done" aria-current="step">Preparing</li>
++            <li>Ready for pickup</li>
++          </ol>
++        </div>
++      </div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

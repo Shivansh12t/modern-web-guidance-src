@@ -1,0 +1,222 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..8ee10aa
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.dailygrind.example.com/": {
++    "allow_migration": true
++  }
++}
+diff --git a/MIGRATION.md b/MIGRATION.md
+new file mode 100644
+index 0000000..46fa742
+--- /dev/null
++++ b/MIGRATION.md
+@@ -0,0 +1,22 @@
++# Moving the installed app to a new origin
++
++Old origin: `https://dailygrind.example.com`, new origin: `https://app.dailygrind.example.com`.
++They share the registrable domain `example.com`, which the browser requires for a migration.
++
++| File | Deploy to | Purpose |
++| --- | --- | --- |
++| `manifest.webmanifest` (has `migrate_to`) | **old** origin | Lets installed copies find out about the move without visiting the new site first |
++| `.well-known/web-app-origin-association` | **old** origin | The old origin gives permission for `https://app.dailygrind.example.com/` to take over |
++| `new-origin/manifest.webmanifest` (has `migrate_from`) | **new** origin, served at `/manifest.webmanifest` | The new app names the old app as the one it replaces |
++| `index.html`, `icons/` | both | Same page on both origins; the script checks `location.origin` |
++
++The `.well-known` file must be served as JSON (`application/json`). Make sure the static host doesn't block dotfile paths.
++
++## What moves and what doesn't
++- **The browser moves it (Chrome/Edge 149+):** the installation itself, including OS shortcuts, taskbar/dock pins and home-screen icons.
++  `behavior: "suggest"` asks the user. Switch it to `"force"` to make it required: the user must update or remove the app.
++- **Not moved by the browser:** localStorage, IndexedDB, cookies and permissions.
++  User preferences (localStorage keys starting with `dg:`) go across in the URL fragment of the
++  "Open the new app" link on the old origin. The new origin imports them, never overwrites values it already has,
++  and removes the payload from the URL. Account data on the server stays with the account.
++- **Firefox/Safari:** the old origin shows a banner that links to the new origin, carrying the preferences.
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..41d68ac
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#4e342e"/><path d="M136 200h208v96a104 104 0 0 1-208 0z" fill="#ffab40"/><path d="M344 224h24a40 40 0 0 1 0 80h-28" fill="none" stroke="#ffab40" stroke-width="24"/><path d="M200 112c-16 24 16 40 0 64M264 112c-16 24 16 40 0 64" stroke="#d7ccc8" stroke-width="16" fill="none" stroke-linecap="round"/></svg>
+diff --git a/index.html b/index.html
+index 66c9173..8e0a3db 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <link rel="manifest" href="/manifest.webmanifest">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -135,6 +138,37 @@
+       background: #3e2723;
+     }
+ 
++    /* Origin migration banner (old origin only) */
++    .migration-banner {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px 16px;
++      align-items: center;
++      justify-content: center;
++      padding: 12px 5%;
++      background: var(--accent);
++      color: var(--text);
++      text-align: center;
++    }
++
++    .migration-banner[hidden] {
++      display: none;
++    }
++
++    .migration-banner .btn {
++      margin-top: 0;
++      padding: 6px 14px;
++    }
++
++    .migration-banner button {
++      background: none;
++      border: 0;
++      font: inherit;
++      color: inherit;
++      text-decoration: underline;
++      cursor: pointer;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,6 +191,12 @@
+ 
+ <body>
+ 
++  <aside class="migration-banner" id="migration-banner" hidden aria-label="App has moved">
++    <span>The Daily Grind app has moved to <strong>app.dailygrind.example.com</strong>. Your preferences will come with you.</span>
++    <a class="btn" id="migration-link" href="https://app.dailygrind.example.com/">Open the new app</a>
++    <button type="button" id="migration-dismiss">Not now</button>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -207,6 +247,62 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Web App Origin Migration: the browser moves the *installation* (shortcuts,
++    // icons) via manifest `migrate_to` / `migrate_from`, but origin-bound storage
++    // is NOT transferred. User configuration is handed over here explicitly.
++    (() => {
++      const OLD_ORIGIN = 'https://dailygrind.example.com';
++      const NEW_ORIGIN = 'https://app.dailygrind.example.com';
++      const PREF_PREFIX = 'dg:';          // localStorage keys holding user preferences
++      const HANDOFF_KEY = 'dg-migrate';   // URL fragment parameter (never sent to servers)
++      const DISMISS_KEY = 'dg:migration-dismissed';
++
++      const collectPrefs = () => {
++        const prefs = {};
++        for (let i = 0; i < localStorage.length; i++) {
++          const key = localStorage.key(i);
++          if (key.startsWith(PREF_PREFIX) && key !== DISMISS_KEY) prefs[key] = localStorage.getItem(key);
++        }
++        return prefs;
++      };
++
++      if (location.origin === OLD_ORIGIN) {
++        // Old origin: point users to the new origin, carrying their preferences.
++        const banner = document.getElementById('migration-banner');
++        const link = document.getElementById('migration-link');
++        const target = new URL(location.pathname + location.search, NEW_ORIGIN);
++        const prefs = collectPrefs();
++        if (Object.keys(prefs).length) {
++          target.hash = new URLSearchParams({ [HANDOFF_KEY]: JSON.stringify(prefs) }).toString();
++        }
++        link.href = target.href;
++        if (!sessionStorage.getItem(DISMISS_KEY)) banner.hidden = false;
++        document.getElementById('migration-dismiss').addEventListener('click', () => {
++          banner.hidden = true;
++          sessionStorage.setItem(DISMISS_KEY, '1');
++        });
++      } else if (location.hash.includes(HANDOFF_KEY)) {
++        // New origin: import handed-over preferences without overwriting newer local values.
++        const params = new URLSearchParams(location.hash.slice(1));
++        try {
++          const prefs = JSON.parse(params.get(HANDOFF_KEY) || '{}');
++          for (const [key, value] of Object.entries(prefs)) {
++            if (key.startsWith(PREF_PREFIX) && typeof value === 'string' && localStorage.getItem(key) === null) {
++              localStorage.setItem(key, value);
++            }
++          }
++        } catch (err) {
++          console.warn('Could not import migrated preferences', err);
++        }
++        // Strip the handoff payload from the address bar and history.
++        params.delete(HANDOFF_KEY);
++        const rest = params.toString();
++        history.replaceState(null, '', location.pathname + location.search + (rest ? '#' + rest : ''));
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..b07fd1d
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,17 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.example.com/",
++    "install_url": "https://app.dailygrind.example.com/"
++  }
++}
+diff --git a/new-origin/manifest.webmanifest b/new-origin/manifest.webmanifest
+new file mode 100644
+index 0000000..2ae7e7f
+--- /dev/null
++++ b/new-origin/manifest.webmanifest
+@@ -0,0 +1,19 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://dailygrind.example.com/",
++      "behavior": "suggest"
++    }
++  ]
++}

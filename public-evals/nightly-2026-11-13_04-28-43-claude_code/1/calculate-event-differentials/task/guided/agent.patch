@@ -1,0 +1,102 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,30 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .promo-timer {
++      margin-top: 12px;
++      padding: 10px;
++      border-radius: 6px;
++      background: #fff3e0;
++      border: 1px dashed var(--accent);
++      font-size: 0.9rem;
++    }
++
++    .promo-timer p {
++      margin: 2px 0;
++    }
++
++    .promo-timer strong {
++      color: var(--primary);
++    }
++
++    .promo-timer[data-state="ended"] {
++      background: var(--secondary);
++      border-color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,8 +202,14 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <!-- Dates are wall-clock times interpreted in the visitor's local time zone. -->
++          <div class="promo-timer" id="maple-promo-timer"
++               data-start="2025-11-01T00:00" data-end="2026-03-01T00:00">
++            <p class="promo-remaining" aria-live="polite">Limited-time offer</p>
++            <p class="promo-elapsed"></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +234,52 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Seasonal promo countdown: computed once on page load, in the visitor's local time zone.
++    if (typeof Temporal === 'undefined') {
++      const mod = await import('https://esm.sh/temporal-polyfill');
++      globalThis.Temporal = mod.Temporal;
++    }
++
++    const el = document.getElementById('maple-promo-timer');
++    if (el) {
++      const tz = Temporal.Now.timeZoneId();
++      const now = Temporal.Now.zonedDateTimeISO(tz);
++      const start = Temporal.PlainDateTime.from(el.dataset.start).toZonedDateTime(tz);
++      const end = Temporal.PlainDateTime.from(el.dataset.end).toZonedDateTime(tz);
++
++      const remainingEl = el.querySelector('.promo-remaining');
++      const elapsedEl = el.querySelector('.promo-elapsed');
++      const fmt = (d) => d.toLocaleString(undefined, { style: 'long' });
++      const dateFmt = { dateStyle: 'medium', timeStyle: 'short' };
++      const opts = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'floor' };
++      const setStrong = (target, prefix, value, suffix = '') => {
++        const strong = document.createElement('strong');
++        strong.textContent = value;
++        target.replaceChildren(prefix, strong, suffix);
++      };
++
++      if (Temporal.ZonedDateTime.compare(now, start) < 0) {
++        el.dataset.state = 'upcoming';
++        setStrong(remainingEl, 'Starts in ', fmt(now.until(start, opts)));
++        elapsedEl.textContent = `Runs until ${end.toLocaleString(undefined, dateFmt)}`;
++      } else if (Temporal.ZonedDateTime.compare(now, end) < 0) {
++        el.dataset.state = 'active';
++        const remaining = now.until(end, opts);
++        setStrong(remainingEl, '', remaining.blank ? 'Less than an hour' : fmt(remaining), ' left');
++        const elapsed = now.since(start, opts);
++        elapsedEl.textContent = `Running for ${elapsed.blank ? 'less than an hour' : fmt(elapsed)}`;
++      } else {
++        el.dataset.state = 'ended';
++        setStrong(remainingEl, 'Offer ended ', end.toLocaleString(undefined, dateFmt));
++        const ran = end.since(start, opts);
++        const ago = now.since(end, opts);
++        elapsedEl.textContent = `Ran for ${fmt(ran)} · ended ${fmt(ago)} ago`;
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

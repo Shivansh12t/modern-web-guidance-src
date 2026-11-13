@@ -1,0 +1,183 @@
+diff --git a/src/components/TopStoriesCarousel.tsx b/src/components/TopStoriesCarousel.tsx
+new file mode 100644
+index 0000000..b45dac0
+--- /dev/null
++++ b/src/components/TopStoriesCarousel.tsx
+@@ -0,0 +1,94 @@
++import React, { useState } from 'react';
++import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
++
++export interface TopStoryItem {
++  id: string;
++  title: string;
++  date: string;
++  category?: string;
++}
++
++interface TopStoriesCarouselProps {
++  stories: TopStoryItem[];
++  baseUrl?: string;
++}
++
++export default function TopStoriesCarousel({
++  stories,
++  baseUrl = import.meta.env.BASE_URL,
++}: TopStoriesCarouselProps) {
++  const [currentIndex, setCurrentIndex] = useState(0);
++  const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
++  const [animKey, setAnimKey] = useState(0);
++
++  if (!stories || stories.length === 0) {
++    return null;
++  }
++
++  const handlePrevious = () => {
++    setDirection('prev');
++    setCurrentIndex((prev) => (prev - 1 + stories.length) % stories.length);
++    setAnimKey((prev) => prev + 1);
++  };
++
++  const handleNext = () => {
++    setDirection('next');
++    setCurrentIndex((prev) => (prev + 1) % stories.length);
++    setAnimKey((prev) => prev + 1);
++  };
++
++  const currentStory = stories[currentIndex];
++  const animationClass =
++    direction === 'next'
++      ? 'animate-slide-in-right'
++      : direction === 'prev'
++        ? 'animate-slide-in-left'
++        : '';
++
++  return (
++    <section
++      aria-label="Top Stories"
++      aria-roledescription="carousel"
++      className="bg-white border-b border-gray-300"
++    >
++      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
++        <div className="flex items-center justify-between gap-4">
++          <button
++            type="button"
++            onClick={handlePrevious}
++            aria-label="Previous"
++            className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-amber-400 hover:text-gray-900 rounded transition-colors cursor-pointer flex-shrink-0"
++          >
++            <ChevronLeftIcon className="w-4 h-4" aria-hidden="true" />
++            <span>Previous</span>
++          </button>
++
++          <div className="flex-1 overflow-hidden text-center px-2">
++            <div
++              key={animKey}
++              data-direction={direction ?? undefined}
++              className={animationClass}
++            >
++              <a href={`${baseUrl}articles/${currentStory.id}`}>
++                <h3 className="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">
++                  {currentStory.title}
++                </h3>
++              </a>
++              <span className="text-xs text-gray-500">{currentStory.date}</span>
++            </div>
++          </div>
++
++          <button
++            type="button"
++            onClick={handleNext}
++            aria-label="Next"
++            className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-amber-400 hover:text-gray-900 rounded transition-colors cursor-pointer flex-shrink-0"
++          >
++            <span>Next</span>
++            <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
++          </button>
++        </div>
++      </div>
++    </section>
++  );
++}
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..cdcd304 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -2,6 +2,7 @@
+ import Layout from '../layouts/Layout.astro';
+ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
++import TopStoriesCarousel from '../components/TopStoriesCarousel';
+ import Ad from '../components/AdSlotBanner';
+ import { getCollection } from 'astro:content';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+@@ -39,20 +40,15 @@ politicsArticles[2] = {
+ 
+ <Layout title="The DevTools Times">
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
++    <TopStoriesCarousel
++        client:load
++        stories={topStories.map(article => ({
++            id: article.id,
++            title: article.data.title,
++            date: article.data.date.toLocaleDateString(),
++            category: article.data.category,
++        }))}
++    />
+ 
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..1111d71 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,34 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@keyframes slideInFromRight {
++  from {
++    transform: translateX(100%);
++    opacity: 0;
++  }
++  to {
++    transform: translateX(0);
++    opacity: 1;
++  }
++}
++
++@keyframes slideInFromLeft {
++  from {
++    transform: translateX(-100%);
++    opacity: 0;
++  }
++  to {
++    transform: translateX(0);
++    opacity: 1;
++  }
++}
++
++.animate-slide-in-right {
++  animation: slideInFromRight 350ms ease-out forwards;
++}
++
++.animate-slide-in-left {
++  animation: slideInFromLeft 350ms ease-out forwards;
++}

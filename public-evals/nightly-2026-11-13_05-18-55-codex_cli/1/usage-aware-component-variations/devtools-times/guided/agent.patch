@@ -1,0 +1,290 @@
+diff --git a/src/components/ArticleAction.astro b/src/components/ArticleAction.astro
+new file mode 100644
+index 0000000..529af5e
+--- /dev/null
++++ b/src/components/ArticleAction.astro
+@@ -0,0 +1,14 @@
++---
++interface Props {
++    slug: string;
++    title: string;
++}
++
++const { slug, title } = Astro.props;
++---
++
++<a
++    class="teaser-action"
++    href={`${import.meta.env.BASE_URL}articles/${slug}`}
++    aria-label={`Read article: ${title}`}
++>Read article <span aria-hidden="true">&rarr;</span></a>
+diff --git a/src/components/ArticleBadge.astro b/src/components/ArticleBadge.astro
+new file mode 100644
+index 0000000..3a416b1
+--- /dev/null
++++ b/src/components/ArticleBadge.astro
+@@ -0,0 +1 @@
++<span class="teaser-badge">Featured</span>
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..a12f269 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -3,6 +3,8 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
++import ArticleBadge from './ArticleBadge.astro';
++import ArticleAction from './ArticleAction.astro';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+@@ -20,6 +22,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
++                <ArticleBadge />
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+                     <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+@@ -29,6 +32,9 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         {article.data.summary}
+                     </p>
+                 </a>
++                <div class="mt-6">
++                    <ArticleAction slug={article.id} title={article.data.title} />
++                </div>
+                 <div class="flex justify-between items-center mt-6 text-gray-500">
+                     <span class="text-xs font-medium flex items-center">
+                         <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+@@ -64,6 +70,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
++            <ArticleBadge />
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+                 <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+@@ -71,6 +78,9 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
++            <div class="mt-auto pt-4">
++                <ArticleAction slug={article.id} title={article.data.title} />
++            </div>
+             <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+@@ -80,4 +90,4 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..af6b2e2 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,12 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    surface?: 'featured' | 'default';
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, surface = 'default' } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section class="p-4 md:p-6" data-surface={surface}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..569de81 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -3,14 +3,17 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
++import ArticleBadge from './ArticleBadge.astro';
++import ArticleAction from './ArticleAction.astro';
+ import { BookOpenIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    surface?: 'featured' | 'default';
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, surface = 'default' } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -26,7 +29,7 @@ const readingList = await Astro.session?.get('readingList') || [];
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section class="p-4 md:p-6" data-surface={surface}>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+@@ -35,6 +38,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
++                <ArticleBadge />
+                 <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                     {capitalizedCategory}
+                 </a>
+@@ -46,6 +50,9 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 <p class="text-gray-700 mb-4 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
++                <div class="mb-4">
++                    <ArticleAction slug={topArticle.id} title={topArticle.data.title} />
++                </div>
+                 <div class="flex items-center text-gray-500 text-sm">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+@@ -74,6 +81,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
++                        <ArticleBadge />
+                         <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                             {capitalizedBottomCategory}
+                         </a>
+@@ -87,6 +95,9 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                                 {article.data.summary}
+                             </p>
+                         )}
++                        <div class="mt-auto pt-4">
++                            <ArticleAction slug={article.id} title={article.data.title} />
++                        </div>
+                         <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+                             <span class="text-xs font-medium flex items-center">
+                                 <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..4bd2d8c 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6" data-surface="featured">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+@@ -65,7 +65,7 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} surface="featured" />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+@@ -81,4 +81,4 @@ politicsArticles[2] = {
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+         
+     </div>
+-</Layout>
+\ No newline at end of file
++</Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..29ed326 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,84 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@layer components {
++  /* Inherited fallback values also respect nested sections in older browsers. */
++  :where([data-surface="default"]) {
++    --surface: default;
++    --teaser-badge-display: none;
++    --teaser-action-background: transparent;
++    --teaser-action-color: var(--color-amber-800);
++  }
++
++  :where([data-surface="featured"]) {
++    --surface: featured;
++    --teaser-badge-display: inline-flex;
++    --teaser-action-background: var(--color-amber-800);
++    --teaser-action-color: white;
++  }
++
++  .teaser-badge {
++    display: var(--teaser-badge-display, none);
++    align-self: flex-start;
++    margin-block-end: 0.75rem;
++    padding: 0.25rem 0.625rem;
++    border-radius: 0.25rem;
++    background: var(--color-amber-100);
++    color: var(--color-amber-900);
++    font-size: 0.75rem;
++    font-weight: 700;
++    letter-spacing: 0.05em;
++    text-transform: uppercase;
++  }
++
++  .teaser-action {
++    display: inline-flex;
++    align-items: center;
++    justify-content: center;
++    gap: 0.5rem;
++    min-block-size: 2.75rem;
++    padding: 0.5rem 1rem;
++    border: 1px solid var(--color-amber-800);
++    border-radius: 0.25rem;
++    background: var(--teaser-action-background, transparent);
++    color: var(--teaser-action-color, var(--color-amber-800));
++    font-size: 0.875rem;
++    font-weight: 600;
++    text-decoration: none;
++  }
++
++  .teaser-action:hover {
++    text-decoration: underline;
++    text-underline-offset: 0.2em;
++  }
++
++  .teaser-action:focus-visible {
++    outline: 2px solid var(--color-amber-800);
++    outline-offset: 3px;
++  }
++
++  /* Components react to context without knowing which layout provides it. */
++  @container style(--surface: featured) {
++    .teaser-badge {
++      display: inline-flex;
++    }
++
++    .teaser-action {
++      background: var(--color-amber-800);
++      color: white;
++    }
++  }
++
++  @container style(--surface: default) {
++    .teaser-badge {
++      display: none;
++    }
++
++    .teaser-action {
++      background: transparent;
++      color: var(--color-amber-800);
++    }
++  }
++}

@@ -1,0 +1,369 @@
+diff --git a/index.html b/index.html
+index 66c9173..c9332c6 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,156 @@
+       color: var(--primary);
+     }
+ 
++    /* Coffee menu */
++    #coffee-menu {
++      scroll-margin-top: 100px;
++    }
++
++    .menu-heading {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .menu-heading h2 {
++      font-size: clamp(1.8rem, 4vw, 2.4rem);
++      color: var(--primary);
++    }
++
++    .menu-heading p {
++      color: #735e56;
++      margin-top: 6px;
++    }
++
++    .menu-navigation {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 10px;
++    }
++
++    .menu-tabs {
++      display: flex;
++      flex: 1;
++      min-width: 0;
++      gap: 8px;
++      overflow-x: auto;
++      overscroll-behavior-x: contain;
++      scrollbar-width: thin;
++      scrollbar-color: var(--secondary) transparent;
++      padding: 4px 3px 8px;
++    }
++
++    .menu-tab, .tab-scroll {
++      font: inherit;
++      cursor: pointer;
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++      background: white;
++      border-radius: 999px;
++      min-height: 44px;
++    }
++
++    .menu-tab {
++      flex: 0 0 auto;
++      padding: 10px 24px;
++      white-space: nowrap;
++      font-weight: 600;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .menu-tab:hover {
++      background: #eee6e1;
++    }
++
++    .menu-tab[aria-selected="true"] {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .tab-scroll {
++      flex: 0 0 44px;
++      font-size: 1.4rem;
++    }
++
++    .tab-scroll:disabled {
++      opacity: 0.35;
++      cursor: default;
++    }
++
++    [hidden] {
++      display: none !important;
++    }
++
++    .menu-tab:focus-visible, .tab-scroll:focus-visible,
++    .menu-panel:focus-visible {
++      outline: 3px solid #a85c00;
++      outline-offset: 2px;
++    }
++
++    .menu-panel {
++      padding-top: 24px;
++    }
++
++    .menu-panel h3 {
++      font-size: 1.1rem;
++    }
++
++    .menu-panel .grid {
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
++      margin-top: 16px;
++    }
++
++    .drink-card {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      padding: 28px 24px;
++      border-top: 3px solid var(--secondary);
++    }
++
++    .drink-card h4 {
++      font-size: 1.2rem;
++      margin-bottom: 10px;
++      color: var(--primary);
++    }
++
++    .drink-card p {
++      flex: 1;
++      color: #735e56;
++    }
++
++    @media (max-width: 640px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      .hero h1 {
++        font-size: 2.3rem;
++      }
++
++      .menu-tab {
++        padding-inline: 18px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .menu-tab {
++        transition: none;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -160,7 +310,7 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="#coffee-menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -175,23 +325,99 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++    <section id="coffee-menu" aria-labelledby="coffee-menu-title">
++      <div class="menu-heading">
++        <h2 id="coffee-menu-title">Find Your Daily Favorite</h2>
++        <p>From cozy seasonal sips to your everyday classics. Made with care, every cup.</p>
++      </div>
++      <div class="menu-navigation" hidden>
++        <button class="tab-scroll" type="button" data-direction="-1" aria-label="Scroll categories left" aria-controls="coffee-tabs" hidden>&lsaquo;</button>
++        <div class="menu-tabs" id="coffee-tabs" role="tablist" aria-label="Beverage categories">
++          <button class="menu-tab" id="tab-seasonal" type="button" role="tab" aria-controls="panel-seasonal" aria-selected="true" tabindex="0">Seasonal</button>
++          <button class="menu-tab" id="tab-espresso" type="button" role="tab" aria-controls="panel-espresso" aria-selected="false" tabindex="-1">Espresso</button>
++          <button class="menu-tab" id="tab-cold-brew" type="button" role="tab" aria-controls="panel-cold-brew" aria-selected="false" tabindex="-1">Cold Brew</button>
++          <button class="menu-tab" id="tab-tea" type="button" role="tab" aria-controls="panel-tea" aria-selected="false" tabindex="-1">Tea & More</button>
++        </div>
++        <button class="tab-scroll" type="button" data-direction="1" aria-label="Scroll categories right" aria-controls="coffee-tabs" hidden>&rsaquo;</button>
++      </div>
++      <div class="menu-panel" id="panel-seasonal" role="tabpanel" aria-labelledby="tab-seasonal" tabindex="0">
++        <h3>Seasonal Favorites</h3>
++        <div class="grid">
++          <article class="card drink-card">
++            <h4>Maple Oat Latte</h4>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn" aria-label="View details for Maple Oat Latte">View Details</a>
++          </article>
++          <article class="card drink-card">
++            <h4>Spiced Pumpkin Latte</h4>
++            <p>Espresso with pumpkin, warming spices, and silky steamed milk.</p>
++            <a href="/menu/seasonal" class="btn" aria-label="View details for Spiced Pumpkin Latte">View Details</a>
++          </article>
++          <article class="card drink-card">
++            <h4>Honey Cinnamon Latte</h4>
++            <p>A cozy blend of espresso, golden honey, and cinnamon.</p>
++            <a href="/menu/seasonal" class="btn" aria-label="View details for Honey Cinnamon Latte">View Details</a>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++      <div class="menu-panel" id="panel-espresso" role="tabpanel" aria-labelledby="tab-espresso" tabindex="0">
++        <h3>Espresso Classics</h3>
++        <div class="grid">
++          <article class="card drink-card">
++            <h4>Dark Roast Espresso</h4>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn" aria-label="View details for Dark Roast Espresso">View Details</a>
++          </article>
++          <article class="card drink-card">
++            <h4>Cappuccino</h4>
++            <p>Rich espresso topped with equal parts steamed milk and airy foam.</p>
++            <a href="/menu/espresso" class="btn" aria-label="View details for Cappuccino">View Details</a>
++          </article>
++          <article class="card drink-card">
++            <h4>Vanilla Latte</h4>
++            <p>Our signature espresso with steamed milk and a touch of vanilla.</p>
++            <a href="/menu/espresso" class="btn" aria-label="View details for Vanilla Latte">View Details</a>
++          </article>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>
++      <div class="menu-panel" id="panel-cold-brew" role="tabpanel" aria-labelledby="tab-cold-brew" tabindex="0">
++        <h3>Cold Brew & Iced Coffee</h3>
++        <div class="grid">
++          <article class="card drink-card">
++            <h4>Cold Brew</h4>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn" aria-label="View details for Cold Brew">View Details</a>
++          </article>
++          <article class="card drink-card">
++            <h4>Vanilla Cream Cold Brew</h4>
++            <p>Slow-steeped coffee finished with a cloud of vanilla cream.</p>
++            <a href="/menu/cold-brew" class="btn" aria-label="View details for Vanilla Cream Cold Brew">View Details</a>
++          </article>
++          <article class="card drink-card">
++            <h4>Iced Oat Latte</h4>
++            <p>Espresso and creamy oat milk poured over ice.</p>
++            <a href="/menu/cold-brew" class="btn" aria-label="View details for Iced Oat Latte">View Details</a>
++          </article>
++        </div>
++      </div>
++      <div class="menu-panel" id="panel-tea" role="tabpanel" aria-labelledby="tab-tea" tabindex="0">
++        <h3>Tea & More</h3>
++        <div class="grid">
++          <article class="card drink-card">
++            <h4>Matcha Latte</h4>
++            <p>Earthy green tea whisked smooth with your choice of milk.</p>
++            <a href="/menu/tea" class="btn" aria-label="View details for Matcha Latte">View Details</a>
++          </article>
++          <article class="card drink-card">
++            <h4>Chai Latte</h4>
++            <p>Black tea and fragrant spices blended with steamed milk.</p>
++            <a href="/menu/tea" class="btn" aria-label="View details for Chai Latte">View Details</a>
++          </article>
++          <article class="card drink-card">
++            <h4>Hot Chocolate</h4>
++            <p>Rich cocoa and steamed milk for a little everyday comfort.</p>
++            <a href="/menu/tea" class="btn" aria-label="View details for Hot Chocolate">View Details</a>
++          </article>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +433,83 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const menu = document.querySelector('#coffee-menu');
++      const navigation = menu.querySelector('.menu-navigation');
++      const tablist = menu.querySelector('[role="tablist"]');
++      const tabs = [...tablist.querySelectorAll('[role="tab"]')];
++      const panels = tabs.map(tab => document.getElementById(tab.getAttribute('aria-controls')));
++      const scrollButtons = [...navigation.querySelectorAll('.tab-scroll')];
++      const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const behavior = () => motion.matches ? 'instant' : 'smooth';
++
++      function updateScrollButtons() {
++        const maxScroll = tablist.scrollWidth - tablist.clientWidth;
++        scrollButtons.forEach(button => {
++          button.hidden = maxScroll <= 1;
++          button.disabled = Number(button.dataset.direction) < 0
++            ? tablist.scrollLeft <= 1
++            : tablist.scrollLeft >= maxScroll - 1;
++        });
++      }
++
++      function revealTab(tab, scrollBehavior = behavior()) {
++        const viewport = tablist.getBoundingClientRect();
++        const bounds = tab.getBoundingClientRect();
++        const offset = bounds.left < viewport.left + 4
++          ? bounds.left - viewport.left - 4
++          : bounds.right > viewport.right - 4
++            ? bounds.right - viewport.right + 4
++            : 0;
++        if (offset) tablist.scrollBy({ left: offset, behavior: scrollBehavior });
++      }
++
++      function selectTab(tab) {
++        tabs.forEach((item, index) => {
++          const selected = item === tab;
++          item.setAttribute('aria-selected', String(selected));
++          item.tabIndex = selected ? 0 : -1;
++          panels[index].hidden = !selected;
++        });
++        revealTab(tab);
++      }
++
++      tabs.forEach((tab, index) => {
++        tab.addEventListener('click', () => selectTab(tab));
++        tab.addEventListener('keydown', event => {
++          let next;
++          if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
++          if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
++          if (event.key === 'Home') next = 0;
++          if (event.key === 'End') next = tabs.length - 1;
++          if (next === undefined) return;
++          event.preventDefault();
++          tabs[next].focus({ preventScroll: true });
++          selectTab(tabs[next]);
++        });
++      });
++
++      scrollButtons.forEach(button => {
++        button.addEventListener('click', () => {
++          tablist.scrollBy({
++            left: Number(button.dataset.direction) * tablist.clientWidth * 0.75,
++            behavior: behavior()
++          });
++        });
++      });
++      tablist.addEventListener('scroll', updateScrollButtons, { passive: true });
++      navigation.hidden = false;
++      selectTab(tabs[0]);
++      updateScrollButtons();
++      // Observe the strip too: showing the arrows changes its available width.
++      const resizeObserver = new ResizeObserver(() => {
++        updateScrollButtons();
++        revealTab(tabs.find(tab => tab.getAttribute('aria-selected') === 'true'), 'instant');
++      });
++      resizeObserver.observe(tablist);
++    })();
++  </script>
+ </body>
+ 
+ </html>

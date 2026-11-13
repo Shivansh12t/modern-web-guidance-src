@@ -1,0 +1,137 @@
+diff --git a/index.html b/index.html
+index 66c9173..9e1480b 100644
+--- a/index.html
++++ b/index.html
+@@ -57,7 +57,6 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -67,6 +66,7 @@
+     }
+ 
+     .logout-link {
++      text-decoration: none;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -149,9 +149,106 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- Decorative text lines ----------
++       Native text-decoration so lines wrap with text, follow font metrics and
++       skip descenders (text-decoration-skip-ink: auto is the default).
++       text-decoration-inset trims/extends the line ends and drives the reveals;
++       browsers without it simply show the full line. */
++    :where(nav a:not(.logout-link), .footer-links a, .section-title, .card h3) {
++      text-decoration-line: underline;
++      text-decoration-style: solid;
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.08em);
++      text-underline-offset: 0.25em;
++    }
++
++    /* Nav: accent underline sweeps in from the left, with a slight end inset */
++    nav a:not(.logout-link) {
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: max(2px, 0.12em);
++      text-underline-offset: 0.35em;
++      text-decoration-inset: 0 0.1em;
++    }
++
++    /* Footer: soft line that firms up and thickens on hover/focus */
++    .footer-links a {
++      text-decoration-color: color-mix(in srgb, currentColor, transparent 60%);
++      text-underline-offset: 0.3em;
++      text-decoration-inset: 0.15em;
++      transition: text-decoration-color 0.25s ease-out, text-decoration-thickness 0.25s ease-out;
++    }
++
++    .footer-links a:is(:hover, :focus-visible) {
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    /* Section heading: decorative (non-link) wavy accent underline plus a thin
++       overline, both trimmed inward so they read as an ornament */
++    .section-title {
++      text-align: center;
++      text-decoration-line: underline overline;
++      text-decoration-style: wavy;
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: max(1px, 0.06em);
++      text-underline-offset: 0.3em;
++      text-decoration-inset: 0.75em;
++      text-decoration-skip-ink: all;
++    }
++
++    /* Card titles: thick accent underline, ink skips "p"/"y" descenders */
++    .card h3 {
++      text-decoration-color: var(--accent);
++      text-decoration-thickness: max(2px, 0.14em);
++      text-underline-offset: 0.12em;
++      text-decoration-inset: -0.1em 0.2em;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      /* Nav: grow from the start edge on hover/focus */
++      nav a:not(.logout-link) {
++        text-decoration-inset: 0 100%;
++        transition: color 0.3s, text-decoration-inset 0.25s ease-out;
++      }
++
++      nav a:not(.logout-link):is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0.1em;
++      }
++
++      /* Footer: grow outward from the center */
++      .footer-links a {
++        text-decoration-inset: 50%;
++        transition: text-decoration-inset 0.3s ease-out,
++          text-decoration-color 0.25s ease-out, text-decoration-thickness 0.25s ease-out;
++      }
++
++      .footer-links a:is(:hover, :focus-visible) {
++        text-decoration-inset: 0.15em;
++      }
++
++      /* Heading: draws in from the center once on page load */
++      .section-title {
++        animation: deco-reveal-center 0.9s 0.2s ease-out both;
++      }
++
++      /* Card titles: sweep in when the card is hovered or focused */
++      .card h3 {
++        text-decoration-inset: -0.1em 100%;
++        transition: text-decoration-inset 0.35s ease-out;
++      }
++
++      .card:is(:hover, :focus-within) h3 {
++        text-decoration-inset: -0.1em 0.2em;
++      }
++    }
++
++    @keyframes deco-reveal-center {
++      from { text-decoration-inset: 50%; }
++      to   { text-decoration-inset: 0.75em; }
++    }
+   </style>
+ </head>
+ 
+@@ -176,7 +273,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -1,0 +1,341 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,213 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Roast picker */
++    .order-form {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      margin-top: 1.5rem;
++    }
++
++    .roast-label {
++      font-size: 0.85rem;
++      letter-spacing: 1px;
++      text-transform: uppercase;
++      margin-bottom: 0.4rem;
++      color: var(--secondary);
++    }
++
++    .order-form .btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .roast-select,
++    .roast-trigger {
++      min-width: 240px;
++      padding: 10px 14px;
++      border: 2px solid var(--accent);
++      border-radius: 6px;
++      background: rgba(255, 255, 255, 0.95);
++      color: var(--text);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    /* Customizable <select> (appearance: base-select) */
++    @supports (appearance: base-select) {
++      .roast-select,
++      .roast-select::picker(select) {
++        appearance: base-select;
++      }
++
++      .roast-select {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        gap: 10px;
++      }
++
++      .roast-select::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.2s;
++      }
++
++      .roast-select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .roast-select selectedcontent {
++        display: flex;
++        align-items: center;
++        gap: 10px;
++      }
++
++      .roast-select selectedcontent .roast-desc {
++        display: none;
++      }
++
++      .roast-select selectedcontent img {
++        width: 28px;
++        height: 28px;
++        border-radius: 50%;
++        object-fit: cover;
++      }
++
++      .roast-select::picker(select) {
++        display: grid;
++        grid-template-columns: repeat(3, 1fr);
++        gap: 10px;
++        width: min(560px, 92vw);
++        padding: 12px;
++        margin-top: 6px;
++        border: none;
++        border-radius: 10px;
++        background: white;
++        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
++        position-area: bottom center;
++      }
++
++      .roast-select option {
++        display: flex;
++        flex-direction: column;
++        align-items: stretch;
++        padding: 0;
++      }
++
++      .roast-select option::checkmark {
++        display: none;
++      }
++    }
++
++    /* Shared grid card styles (native base-select + JS fallback) */
++    .roast-select option,
++    .roast-option {
++      overflow: hidden;
++      border: 2px solid transparent;
++      border-radius: 8px;
++      background: var(--light);
++      color: var(--text);
++      text-align: center;
++      cursor: pointer;
++      transition: border-color 0.2s, transform 0.2s;
++    }
++
++    .roast-option:hover,
++    .roast-option.is-active {
++      border-color: var(--secondary);
++      transform: translateY(-2px);
++      outline: none;
++    }
++
++    .roast-option[aria-selected="true"] {
++      border-color: var(--accent);
++      background: #fff3e0;
++    }
++
++    @supports (appearance: base-select) {
++      .roast-select option:hover,
++      .roast-select option:focus-visible {
++        border-color: var(--secondary);
++        transform: translateY(-2px);
++        outline: none;
++      }
++
++      .roast-select option:checked {
++        border-color: var(--accent);
++        background: #fff3e0;
++      }
++    }
++
++    .roast-card-img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .roast-name {
++      display: block;
++      font-weight: bold;
++      padding: 8px 6px 0;
++    }
++
++    .roast-desc {
++      display: block;
++      font-size: 0.75rem;
++      color: #6d4c41;
++      padding: 0 6px 8px;
++    }
++
++    /* JS fallback for browsers without base-select */
++    .roast-picker {
++      position: relative;
++    }
++
++    .roast-trigger {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 10px;
++    }
++
++    .roast-trigger::after {
++      content: "▾";
++      color: var(--primary);
++    }
++
++    .roast-grid {
++      position: absolute;
++      top: calc(100% + 6px);
++      left: 50%;
++      translate: -50% 0;
++      z-index: 10;
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 10px;
++      width: min(560px, 92vw);
++      padding: 12px;
++      border-radius: 10px;
++      background: white;
++      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
++    }
++
++    .roast-grid[hidden] {
++      display: none;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -170,9 +375,30 @@
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <form class="order-form" action="/order-online" method="get">
++      <label class="roast-label" for="roast">Choose your roast</label>
++      <select id="roast" name="roast" class="roast-select">
++        <button><selectedcontent></selectedcontent></button>
++        <option value="light" data-desc="Bright &amp; fruity" data-img="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=300&h=225&q=70">
++          <img class="roast-card-img" src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=300&h=225&q=70" alt="" loading="lazy">
++          <span class="roast-name">Light Roast</span>
++          <span class="roast-desc">Bright &amp; fruity</span>
++        </option>
++        <option value="medium" data-desc="Balanced &amp; nutty" data-img="https://images.unsplash.com/photo-1580933073521-dc49ac0d4e6a?auto=format&fit=crop&w=300&h=225&q=70" selected>
++          <img class="roast-card-img" src="https://images.unsplash.com/photo-1580933073521-dc49ac0d4e6a?auto=format&fit=crop&w=300&h=225&q=70" alt="" loading="lazy">
++          <span class="roast-name">Medium Roast</span>
++          <span class="roast-desc">Balanced &amp; nutty</span>
++        </option>
++        <option value="dark" data-desc="Bold &amp; smoky" data-img="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=300&h=225&q=70">
++          <img class="roast-card-img" src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=300&h=225&q=70" alt="" loading="lazy">
++          <span class="roast-name">Dark Roast</span>
++          <span class="roast-desc">Bold &amp; smoky</span>
++        </option>
++      </select>
++      <button type="submit" class="btn">Order Now</button>
++    </form>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -206,7 +432,91 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback grid picker for browsers that don't support customizable <select>.
++    (function () {
++      if (CSS.supports('appearance', 'base-select')) return;
++      var select = document.getElementById('roast');
++      var picker = document.createElement('div');
++      picker.className = 'roast-picker';
++      var trigger = document.createElement('button');
++      trigger.type = 'button';
++      trigger.className = 'roast-trigger';
++      trigger.setAttribute('aria-haspopup', 'listbox');
++      trigger.setAttribute('aria-expanded', 'false');
++      trigger.setAttribute('aria-labelledby', 'roast-label roast-trigger');
++      trigger.id = 'roast-trigger';
++      var grid = document.createElement('div');
++      grid.className = 'roast-grid';
++      grid.id = 'roast-grid';
++      grid.setAttribute('role', 'listbox');
++      grid.setAttribute('aria-labelledby', 'roast-label');
++      grid.tabIndex = -1;
++      grid.hidden = true;
++      trigger.setAttribute('aria-controls', grid.id);
++      document.querySelector('.roast-label').id = 'roast-label';
++
++      var items = Array.prototype.map.call(select.options, function (opt, i) {
++        var item = document.createElement('div');
++        item.className = 'roast-option';
++        item.id = 'roast-opt-' + opt.value;
++        item.setAttribute('role', 'option');
++        item.innerHTML = '<img class="roast-card-img" alt="" src="' + opt.dataset.img + '">' +
++          '<span class="roast-name"></span><span class="roast-desc"></span>';
++        item.querySelector('.roast-name').textContent = opt.querySelector('.roast-name') ?
++          opt.querySelector('.roast-name').textContent : opt.textContent.trim();
++        item.querySelector('.roast-desc').textContent = opt.dataset.desc;
++        item.addEventListener('click', function () { choose(i); close(); });
++        grid.appendChild(item);
++        return item;
++      });
++      var active = select.selectedIndex;
++
++      function render() {
++        items.forEach(function (item, i) {
++          item.setAttribute('aria-selected', String(i === select.selectedIndex));
++          item.classList.toggle('is-active', i === active && !grid.hidden);
++        });
++        trigger.textContent = items[select.selectedIndex].querySelector('.roast-name').textContent;
++        grid.setAttribute('aria-activedescendant', items[active].id);
++      }
++      function choose(i) { select.selectedIndex = i; active = i; render(); }
++      function open() {
++        grid.hidden = false; active = select.selectedIndex;
++        trigger.setAttribute('aria-expanded', 'true'); render(); grid.focus();
++      }
++      function close() {
++        grid.hidden = true; trigger.setAttribute('aria-expanded', 'false'); render(); trigger.focus();
++      }
++
++      trigger.addEventListener('click', function () { grid.hidden ? open() : close(); });
++      grid.addEventListener('keydown', function (e) {
++        var n = items.length;
++        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') active = (active + 1) % n;
++        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') active = (active - 1 + n) % n;
++        else if (e.key === 'Home') active = 0;
++        else if (e.key === 'End') active = n - 1;
++        else if (e.key === 'Enter' || e.key === ' ') { choose(active); close(); }
++        else if (e.key === 'Escape' || e.key === 'Tab') { close(); return; }
++        else return;
++        e.preventDefault(); render();
++      });
++      document.addEventListener('click', function (e) {
++        if (!grid.hidden && !picker.contains(e.target)) { grid.hidden = true; trigger.setAttribute('aria-expanded', 'false'); render(); }
++      });
++
++      select.classList.add('visually-hidden');
++      select.tabIndex = -1;
++      select.setAttribute('aria-hidden', 'true');
++      select.parentNode.insertBefore(picker, select);
++      picker.appendChild(trigger);
++      picker.appendChild(grid);
++      picker.appendChild(select);
++      render();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

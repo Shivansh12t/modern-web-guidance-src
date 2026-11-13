@@ -1,0 +1,286 @@
+diff --git a/index.html b/index.html
+index 66c9173..f122878 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,84 @@
+       background: #3e2723;
+     }
+ 
++    /* Section navigation targets */
++    .page-section {
++      /* Keep headings clear of the sticky nav when scrolled into view */
++      scroll-margin-top: 80px;
++      padding: 24px;
++      margin-bottom: 40px;
++      border-radius: 12px;
++      outline: 3px solid transparent;
++      outline-offset: 4px;
++    }
++
++    .page-section h2 {
++      text-align: center;
++    }
++
++    .page-section h2:focus {
++      outline: none;
++    }
++
++    .page-section h2:focus-visible {
++      outline: 2px dashed var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* Applied only after the smooth scroll has finished */
++    .page-section.is-arrived {
++      animation: section-arrive 1.6s ease-out;
++    }
++
++    .page-section.is-arrived .card {
++      animation: card-pop 0.6s ease-out backwards;
++    }
++
++    .page-section.is-arrived .card:nth-child(2) { animation-delay: 0.1s; }
++    .page-section.is-arrived .card:nth-child(3) { animation-delay: 0.2s; }
++
++    @keyframes section-arrive {
++      0% {
++        background-color: rgba(255, 171, 64, 0.25);
++        outline-color: var(--accent);
++      }
++      100% {
++        background-color: transparent;
++        outline-color: transparent;
++      }
++    }
++
++    @keyframes card-pop {
++      from {
++        transform: translateY(12px) scale(0.97);
++        opacity: 0.4;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .page-section.is-arrived,
++      .page-section.is-arrived .card {
++        animation-duration: 0.01s;
++      }
++      .page-section.is-arrived {
++        /* Static highlight instead of motion */
++        outline-color: var(--accent);
++      }
++    }
++
++    nav a[aria-current="location"] {
++      color: var(--accent);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -157,13 +235,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="#menu" data-scroll-target="menu">Menu</a></li>
++      <li><a href="#locations" data-scroll-target="locations">Locations</a></li>
++      <li><a href="#rewards" data-scroll-target="rewards">Rewards</a></li>
++      <li><a href="#account" data-scroll-target="account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -175,8 +253,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" class="page-section" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" tabindex="-1">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,8 +273,66 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" class="page-section" aria-labelledby="locations-heading">
++      <h2 id="locations-heading" tabindex="-1">Our Locations</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown</h3>
++          <p>142 Main Street<br>Mon&ndash;Fri 6am&ndash;7pm, Sat&ndash;Sun 7am&ndash;5pm</p>
++        </div>
++        <div class="card">
++          <h3>Riverside</h3>
++          <p>8 Harbor Walk<br>Daily 6:30am&ndash;6pm</p>
++        </div>
++        <div class="card">
++          <h3>University District</h3>
++          <p>2210 College Ave<br>Daily 6am&ndash;10pm</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="rewards" class="page-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading" tabindex="-1">Grind Rewards</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Earn Beans</h3>
++          <p>Collect 10 beans for every dollar you spend in-store or online.</p>
++        </div>
++        <div class="card">
++          <h3>Free Drinks</h3>
++          <p>Redeem 150 beans for any handcrafted drink, any size.</p>
++        </div>
++        <div class="card">
++          <h3>Birthday Treat</h3>
++          <p>Members get a free pastry and drink during their birthday week.</p>
++        </div>
++      </div>
++    </section>
++
++    <section id="account" class="page-section" aria-labelledby="account-heading">
++      <h2 id="account-heading" tabindex="-1">My Account</h2>
++      <div class="grid">
++        <div class="card">
++          <h3>Bean Balance</h3>
++          <p>You have <strong>320 beans</strong> &mdash; enough for two free drinks.</p>
++        </div>
++        <div class="card">
++          <h3>Recent Orders</h3>
++          <p>Maple Oat Latte &middot; Cold Brew &middot; Dark Roast Espresso</p>
++          <a href="/account/orders" class="btn">View History</a>
++        </div>
++        <div class="card">
++          <h3>Preferences</h3>
++          <p>Home store: Downtown. Milk: Oat. Notifications: On.</p>
++          <a href="/account/settings" class="btn">Edit Settings</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
++  <div id="scroll-announcer" class="visually-hidden" aria-live="polite"></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +343,99 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const links = document.querySelectorAll('nav a[href^="#"], nav a[data-scroll-target]');
++      const announcer = document.getElementById('scroll-announcer');
++      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
++      let currentScrollId = 0;
++
++      function getTargetId(link) {
++        return link.dataset.scrollTarget || decodeURIComponent(link.hash.slice(1));
++      }
++
++      // Resolves once the scroll has finished. Uses the Promise returned by
++      // scrollIntoView() where supported, otherwise falls back to scrollend
++      // plus an idle timeout (covers "already in view" and no-scrollend browsers).
++      function scrollIntoViewAsync(element, options, scroller = window) {
++        const result = element.scrollIntoView(options);
++        if (result instanceof Promise) return result;
++
++        return new Promise((resolve) => {
++          let timeoutId;
++          const finish = () => {
++            clearTimeout(timeoutId);
++            scroller.removeEventListener('scrollend', finish);
++            scroller.removeEventListener('scroll', onScroll);
++            resolve();
++          };
++          const onScroll = () => {
++            clearTimeout(timeoutId);
++            timeoutId = setTimeout(finish, 100);
++          };
++          scroller.addEventListener('scrollend', finish, { once: true });
++          scroller.addEventListener('scroll', onScroll, { passive: true });
++          timeoutId = setTimeout(finish, 100);
++        });
++      }
++
++      async function scrollToSection(target, { updateHistory = true } = {}) {
++        const scrollId = ++currentScrollId;
++        document.querySelectorAll('.page-section.is-arrived')
++          .forEach((sec) => sec.classList.remove('is-arrived'));
++
++        links.forEach((link) => {
++          if (getTargetId(link) === target.id) link.setAttribute('aria-current', 'location');
++          else link.removeAttribute('aria-current');
++        });
++
++        if (updateHistory && location.hash !== '#' + target.id) {
++          history.pushState(null, '', '#' + target.id);
++        }
++
++        await scrollIntoViewAsync(target, {
++          behavior: reducedMotion.matches ? 'auto' : 'smooth',
++          block: 'start',
++        });
++
++        // A newer navigation superseded this one; skip the follow-up effects.
++        if (scrollId !== currentScrollId) return;
++
++        // Post-scroll effects: restart the arrival animation and move focus.
++        void target.offsetWidth; // reflow so the animation replays on repeat clicks
++        target.classList.add('is-arrived');
++
++        const heading = target.querySelector('h2, h1, [tabindex="-1"]') || target;
++        if (!heading.hasAttribute('tabindex') && heading === target) target.setAttribute('tabindex', '-1');
++        heading.focus({ preventScroll: true });
++
++        announcer.textContent = '';
++        announcer.textContent = `Moved to ${heading.textContent.trim()}`;
++      }
++
++      document.querySelectorAll('.page-section').forEach((sec) => {
++        sec.addEventListener('animationend', (e) => {
++          if (e.target === sec) sec.classList.remove('is-arrived');
++        });
++      });
++
++      links.forEach((link) => {
++        link.addEventListener('click', (event) => {
++          const target = document.getElementById(getTargetId(link));
++          if (!target) return; // let the browser handle it normally
++          event.preventDefault();
++          scrollToSection(target);
++        });
++      });
++
++      // Back/forward between section hashes
++      window.addEventListener('popstate', () => {
++        const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
++        if (target) scrollToSection(target, { updateHistory: false });
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

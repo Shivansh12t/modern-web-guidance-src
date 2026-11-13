@@ -1,0 +1,1135 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..be5589d
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,10 @@
++{
++  "https://app.dailygrind.com/": {
++    "allow_migration": true,
++    "scope": "/"
++  },
++  "https://new.dailygrind.com/": {
++    "allow_migration": true,
++    "scope": "/"
++  }
++}
+diff --git a/.well-known/web-app-origin-association.json b/.well-known/web-app-origin-association.json
+new file mode 100644
+index 0000000..be5589d
+--- /dev/null
++++ b/.well-known/web-app-origin-association.json
+@@ -0,0 +1,10 @@
++{
++  "https://app.dailygrind.com/": {
++    "allow_migration": true,
++    "scope": "/"
++  },
++  "https://new.dailygrind.com/": {
++    "allow_migration": true,
++    "scope": "/"
++  }
++}
+diff --git a/icons/icon-192.svg b/icons/icon-192.svg
+new file mode 100644
+index 0000000..99ba35c
+--- /dev/null
++++ b/icons/icon-192.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
++  <rect width="192" height="192" rx="32" fill="#4e342e"/>
++  <path d="M48 72h76v44c0 20.987-17.013 38-38 38s-38-17.013-38-38V72z" fill="#d7ccc8"/>
++  <path d="M124 80h12c11.046 0 20 8.954 20 20s-8.954 20-20 20h-12V80z" fill="none" stroke="#ffab40" stroke-width="10" stroke-linecap="round"/>
++  <path d="M68 42c0 10 8 10 8 20M88 38c0 12 8 12 8 24M108 42c0 10 8 10 8 20" fill="none" stroke="#ffab40" stroke-width="6" stroke-linecap="round"/>
++</svg>
+diff --git a/icons/icon-512.svg b/icons/icon-512.svg
+new file mode 100644
+index 0000000..e1dc736
+--- /dev/null
++++ b/icons/icon-512.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
++  <rect width="512" height="512" rx="84" fill="#4e342e"/>
++  <path d="M128 192h200v116c0 55.228-44.772 100-100 100s-100-44.772-100-100V192z" fill="#d7ccc8"/>
++  <path d="M328 212h32c28.719 0 52 23.281 52 52s-23.281 52-52 52h-32V212z" fill="none" stroke="#ffab40" stroke-width="26" stroke-linecap="round"/>
++  <path d="M180 112c0 26 20 26 20 52M232 100c0 32 20 32 20 64M284 112c0 26 20 26 20 52" fill="none" stroke="#ffab40" stroke-width="16" stroke-linecap="round"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..82fda18 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
++  <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -152,6 +155,166 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Origin Migration & User Configuration Panel */
++    .migration-section {
++      margin-top: 48px;
++      background: white;
++      border-radius: 10px;
++      padding: 28px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      border-left: 5px solid var(--primary);
++    }
++
++    .migration-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-bottom: 16px;
++    }
++
++    .status-badge {
++      background: #e8f5e9;
++      color: #2e7d32;
++      font-size: 0.82rem;
++      font-weight: 600;
++      padding: 5px 12px;
++      border-radius: 999px;
++      border: 1px solid #a5d6a7;
++    }
++
++    .migration-banner {
++      background: #fff8e1;
++      border: 1px solid var(--accent);
++      color: var(--text);
++      padding: 12px 16px;
++      border-radius: 6px;
++      margin-bottom: 20px;
++      font-size: 0.92rem;
++    }
++
++    .migration-columns {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
++      margin-top: 16px;
++    }
++
++    .config-panel {
++      background: var(--light);
++      padding: 20px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++    }
++
++    .config-panel h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.1rem;
++    }
++
++    .form-group {
++      margin-bottom: 14px;
++      text-align: left;
++    }
++
++    .form-group label {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .form-group input[type="text"],
++    .form-group input[type="url"],
++    .form-group select {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .checkbox-group {
++      display: flex;
++      align-items: center;
++      gap: 8px;
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
++    .shortcuts-list {
++      list-style: none;
++      margin-top: 10px;
++    }
++
++    .shortcut-pill {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 8px 12px;
++      margin-bottom: 8px;
++      font-size: 0.88rem;
++    }
++
++    .badge-preserved {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-size: 0.75rem;
++      font-weight: 600;
++    }
++
++    .handshake-meta {
++      margin-top: 14px;
++      font-size: 0.83rem;
++      background: white;
++      padding: 12px;
++      border-radius: 6px;
++      border: 1px solid var(--secondary);
++    }
++
++    .handshake-meta div {
++      margin-bottom: 6px;
++    }
++
++    .action-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 14px;
++      align-items: center;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      cursor: pointer;
++      font-size: 0.9rem;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .payload-preview {
++      margin-top: 10px;
++      padding: 8px 10px;
++      background: #efebe9;
++      border-radius: 4px;
++      font-family: monospace;
++      font-size: 0.78rem;
++      word-break: break-all;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +358,83 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="migration-section" aria-labelledby="migration-heading">
++      <div class="migration-header">
++        <div>
++          <h2 id="migration-heading">Installed Web App Origin Migration</h2>
++          <p>Seamlessly transfer your installed PWA to our new origin while preserving user configuration and OS-level shortcuts.</p>
++        </div>
++        <span class="status-badge">Two-Way Handshake Active</span>
++      </div>
++
++      <div id="migration-status-banner" class="migration-banner" hidden></div>
++
++      <div class="migration-columns">
++        <div class="config-panel">
++          <h3>User Configuration</h3>
++          <form id="user-config-form">
++            <div class="form-group">
++              <label for="config-favorite-drink">Default Express Order</label>
++              <select id="config-favorite-drink" name="favoriteDrink">
++                <option value="Maple Oat Latte">Maple Oat Latte</option>
++                <option value="Dark Roast Espresso">Dark Roast Espresso</option>
++                <option value="Cold Brew">Cold Brew</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="config-milk-preference">Milk Preference</label>
++              <select id="config-milk-preference" name="milkPreference">
++                <option value="Oat Milk">Oat Milk</option>
++                <option value="Whole Milk">Whole Milk</option>
++                <option value="Almond Milk">Almond Milk</option>
++                <option value="Black / None">Black / None</option>
++              </select>
++            </div>
++            <div class="form-group">
++              <label for="config-default-location">Preferred Pickup Roastery</label>
++              <input type="text" id="config-default-location" name="defaultLocation" value="Downtown Roastery">
++            </div>
++            <div class="form-group">
++              <label for="config-target-origin">Target Origin</label>
++              <input type="url" id="config-target-origin" name="targetOrigin" value="https://app.dailygrind.com">
++            </div>
++            <div class="checkbox-group">
++              <input type="checkbox" id="config-notifications" name="orderNotifications" checked>
++              <label for="config-notifications">Preserve order status notifications &amp; standalone window layout</label>
++            </div>
++            <div class="action-row">
++              <button type="submit" class="btn" style="border: none; cursor: pointer;">Save Configuration</button>
++              <button type="button" id="trigger-origin-transfer-btn" class="btn btn-secondary">Stage Origin Transfer</button>
++            </div>
++          </form>
++          <div id="migration-payload-preview" class="payload-preview" hidden></div>
++        </div>
++
++        <div class="config-panel">
++          <h3>OS-Level Shortcuts &amp; Handshake</h3>
++          <p style="font-size: 0.88rem;">Registered Web App Manifest shortcuts carried over automatically during origin migration:</p>
++          <ul id="os-shortcuts-list" class="shortcuts-list">
++            <li class="shortcut-pill"><strong>Order Now</strong> <code>/order-online</code> <span class="badge-preserved">Preserved</span></li>
++            <li class="shortcut-pill"><strong>Browse Menu</strong> <code>/menu</code> <span class="badge-preserved">Preserved</span></li>
++            <li class="shortcut-pill"><strong>My Rewards</strong> <code>/rewards</code> <span class="badge-preserved">Preserved</span></li>
++            <li class="shortcut-pill"><strong>My Account</strong> <code>/account</code> <span class="badge-preserved">Preserved</span></li>
++          </ul>
++
++          <div class="handshake-meta">
++            <div><strong>Manifest ID:</strong> <code>/</code> (<a href="/manifest.json">manifest.json</a>)</div>
++            <div><strong>Proactive Target (<code>migrate_to</code>):</strong> <code>https://app.dailygrind.com/</code></div>
++            <div><strong>Predecessor Claim (<code>migrate_from</code>):</strong> <code>https://old.dailygrind.com/</code> (<code>behavior: "force"</code>)</div>
++            <div><strong>Origin Association:</strong> <a href="/.well-known/web-app-origin-association">/.well-known/web-app-origin-association</a> (<code>allow_migration: true</code>)</div>
++          </div>
++
++          <div class="action-row">
++            <a id="migration-transfer-link" href="https://app.dailygrind.com/" class="btn">Transfer to New Origin</a>
++            <a href="/install.html" class="btn btn-secondary">Manifest Install Endpoint</a>
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +447,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/migration.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/install.html b/install.html
+new file mode 100644
+index 0000000..565c1f2
+--- /dev/null
++++ b/install.html
+@@ -0,0 +1,73 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
++  <title>Install &amp; Migrate | The Daily Grind</title>
++  <link rel="manifest" href="/manifest.json">
++  <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg">
++  <style>
++    :root {
++      --primary: #4e342e;
++      --secondary: #d7ccc8;
++      --accent: #ffab40;
++      --text: #3e2723;
++      --light: #fafafa;
++    }
++
++    body {
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      color: var(--text);
++      background-color: var(--light);
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      min-height: 100vh;
++      margin: 0;
++      padding: 20px;
++    }
++
++    .install-card {
++      background: white;
++      max-width: 560px;
++      width: 100%;
++      padding: 32px;
++      border-radius: 10px;
++      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    .install-card h1 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .install-card p {
++      margin-bottom: 20px;
++      line-height: 1.6;
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary);
++      color: white;
++      padding: 10px 22px;
++      text-decoration: none;
++      border-radius: 5px;
++      font-weight: 600;
++    }
++  </style>
++</head>
++
++<body>
++  <main class="install-card">
++    <h1>The Daily Grind Web App</h1>
++    <p>This endpoint provides the Web App Manifest for seamless PWA Origin Migration, preserving your user configuration and OS-level shortcuts.</p>
++    <a href="/" class="btn">Launch Application</a>
++  </main>
++  <script src="/migration.js"></script>
++</body>
++
++</html>
+diff --git a/install/index.html b/install/index.html
+new file mode 100644
+index 0000000..4d333f1
+--- /dev/null
++++ b/install/index.html
+@@ -0,0 +1,18 @@
++<!DOCTYPE html>
++<html lang="en">
++
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="theme-color" content="#4e342e">
++  <title>Install &amp; Migrate | The Daily Grind</title>
++  <link rel="manifest" href="/manifest.json">
++  <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg">
++</head>
++
++<body>
++  <p>Web App Manifest endpoint for PWA Origin Migration.</p>
++  <script src="/migration.js"></script>
++</body>
++
++</html>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..1459b50
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,99 @@
++{
++  "id": "/",
++  "name": "The Daily Grind | Artisanal Coffee",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "display_override": [
++    "window-controls-overlay",
++    "standalone"
++  ],
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icons/icon-192.svg",
++      "sizes": "192x192",
++      "type": "image/svg+xml",
++      "purpose": "any maskable"
++    },
++    {
++      "src": "/icons/icon-512.svg",
++      "sizes": "512x512",
++      "type": "image/svg+xml",
++      "purpose": "any maskable"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Now",
++      "short_name": "Order",
++      "description": "Order freshly roasted artisanal coffee online",
++      "url": "/order-online",
++      "icons": [
++        {
++          "src": "/icons/icon-192.svg",
++          "sizes": "192x192",
++          "type": "image/svg+xml"
++        }
++      ]
++    },
++    {
++      "name": "Browse Menu",
++      "short_name": "Menu",
++      "description": "View seasonal favorites, espresso, and cold brew",
++      "url": "/menu",
++      "icons": [
++        {
++          "src": "/icons/icon-192.svg",
++          "sizes": "192x192",
++          "type": "image/svg+xml"
++        }
++      ]
++    },
++    {
++      "name": "My Rewards",
++      "short_name": "Rewards",
++      "description": "Check loyalty rewards and redeemed perks",
++      "url": "/rewards",
++      "icons": [
++        {
++          "src": "/icons/icon-192.svg",
++          "sizes": "192x192",
++          "type": "image/svg+xml"
++        }
++      ]
++    },
++    {
++      "name": "My Account",
++      "short_name": "Account",
++      "description": "Manage saved user configuration and preferences",
++      "url": "/account",
++      "icons": [
++        {
++          "src": "/icons/icon-192.svg",
++          "sizes": "192x192",
++          "type": "image/svg+xml"
++        }
++      ]
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.com/",
++    "install_url": "https://app.dailygrind.com/install.html"
++  },
++  "migrate_from": [
++    {
++      "id": "https://old.dailygrind.com/",
++      "install_url": "https://old.dailygrind.com/install.html",
++      "behavior": "force"
++    },
++    {
++      "id": "https://www.dailygrind.com/",
++      "install_url": "https://www.dailygrind.com/install.html",
++      "behavior": "suggest"
++    }
++  ]
++}
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..1459b50
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,99 @@
++{
++  "id": "/",
++  "name": "The Daily Grind | Artisanal Coffee",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "display_override": [
++    "window-controls-overlay",
++    "standalone"
++  ],
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    {
++      "src": "/icons/icon-192.svg",
++      "sizes": "192x192",
++      "type": "image/svg+xml",
++      "purpose": "any maskable"
++    },
++    {
++      "src": "/icons/icon-512.svg",
++      "sizes": "512x512",
++      "type": "image/svg+xml",
++      "purpose": "any maskable"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Now",
++      "short_name": "Order",
++      "description": "Order freshly roasted artisanal coffee online",
++      "url": "/order-online",
++      "icons": [
++        {
++          "src": "/icons/icon-192.svg",
++          "sizes": "192x192",
++          "type": "image/svg+xml"
++        }
++      ]
++    },
++    {
++      "name": "Browse Menu",
++      "short_name": "Menu",
++      "description": "View seasonal favorites, espresso, and cold brew",
++      "url": "/menu",
++      "icons": [
++        {
++          "src": "/icons/icon-192.svg",
++          "sizes": "192x192",
++          "type": "image/svg+xml"
++        }
++      ]
++    },
++    {
++      "name": "My Rewards",
++      "short_name": "Rewards",
++      "description": "Check loyalty rewards and redeemed perks",
++      "url": "/rewards",
++      "icons": [
++        {
++          "src": "/icons/icon-192.svg",
++          "sizes": "192x192",
++          "type": "image/svg+xml"
++        }
++      ]
++    },
++    {
++      "name": "My Account",
++      "short_name": "Account",
++      "description": "Manage saved user configuration and preferences",
++      "url": "/account",
++      "icons": [
++        {
++          "src": "/icons/icon-192.svg",
++          "sizes": "192x192",
++          "type": "image/svg+xml"
++        }
++      ]
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.dailygrind.com/",
++    "install_url": "https://app.dailygrind.com/install.html"
++  },
++  "migrate_from": [
++    {
++      "id": "https://old.dailygrind.com/",
++      "install_url": "https://old.dailygrind.com/install.html",
++      "behavior": "force"
++    },
++    {
++      "id": "https://www.dailygrind.com/",
++      "install_url": "https://www.dailygrind.com/install.html",
++      "behavior": "suggest"
++    }
++  ]
++}
+diff --git a/migration.js b/migration.js
+new file mode 100644
+index 0000000..88b8211
+--- /dev/null
++++ b/migration.js
+@@ -0,0 +1,247 @@
++(function () {
++  const STORAGE_KEY = 'dailyGrindUserConfig';
++
++  const DEFAULT_CONFIG = {
++    favoriteDrink: 'Maple Oat Latte',
++    milkPreference: 'Oat Milk',
++    defaultLocation: 'Downtown Roastery',
++    theme: 'roast-light',
++    orderNotifications: true,
++    preserveWindowPlacement: true,
++    shortcuts: [
++      { name: 'Order Now', url: '/order-online', enabled: true },
++      { name: 'Browse Menu', url: '/menu', enabled: true },
++      { name: 'My Rewards', url: '/rewards', enabled: true },
++      { name: 'My Account', url: '/account', enabled: true }
++    ],
++    migratedFromOrigin: null,
++    targetOrigin: 'https://app.dailygrind.com',
++    lastUpdated: new Date().toISOString()
++  };
++
++  function encodeConfigPayload(config) {
++    const json = JSON.stringify(config);
++    return btoa(encodeURIComponent(json));
++  }
++
++  function decodeConfigPayload(encoded) {
++    try {
++      const json = decodeURIComponent(atob(encoded));
++      const parsed = JSON.parse(json);
++      if (parsed && typeof parsed === 'object') {
++        return parsed;
++      }
++    } catch (_) {
++      // Ignore malformed payload
++    }
++    return null;
++  }
++
++  function loadUserConfig() {
++    try {
++      const raw = localStorage.getItem(STORAGE_KEY);
++      if (raw) {
++        return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
++      }
++    } catch (_) {
++      // Fallback to default config
++    }
++    return { ...DEFAULT_CONFIG };
++  }
++
++  function saveUserConfig(partialConfig) {
++    const current = loadUserConfig();
++    const updated = {
++      ...current,
++      ...partialConfig,
++      lastUpdated: new Date().toISOString()
++    };
++    try {
++      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
++    } catch (_) {
++      // Ignore storage quota errors
++    }
++    return updated;
++  }
++
++  function importConfigFromUrl() {
++    const params = new URLSearchParams(window.location.search);
++    const encoded = params.get('migrate_config');
++    const sourceOrigin = params.get('from_origin');
++
++    if (encoded) {
++      const imported = decodeConfigPayload(encoded);
++      if (imported) {
++        const merged = saveUserConfig({
++          ...imported,
++          migratedFromOrigin: sourceOrigin || imported.migratedFromOrigin || 'https://old.dailygrind.com'
++        });
++        params.delete('migrate_config');
++        params.delete('from_origin');
++        const cleanQuery = params.toString();
++        const cleanUrl =
++          window.location.pathname +
++          (cleanQuery ? '?' + cleanQuery : '') +
++          window.location.hash;
++        if (window.history && window.history.replaceState) {
++          window.history.replaceState({}, document.title, cleanUrl);
++        }
++        return { migrated: true, config: merged };
++      }
++    }
++    return { migrated: false, config: loadUserConfig() };
++  }
++
++  function buildMigrationUrl(targetOrigin, config) {
++    const currentConfig = config || loadUserConfig();
++    const base = (targetOrigin || currentConfig.targetOrigin || 'https://app.dailygrind.com').replace(/\/+$/, '');
++    const payload = encodeConfigPayload(currentConfig);
++    const url = new URL(base + '/');
++    url.searchParams.set('migrate_config', payload);
++    url.searchParams.set('from_origin', window.location.origin);
++    return url.toString();
++  }
++
++  // Listen for cross-origin configuration transfer handshake via postMessage
++  window.addEventListener('message', (event) => {
++    const data = event.data;
++    if (!data || typeof data !== 'object') return;
++
++    if (data.type === 'DAILY_GRIND_REQUEST_CONFIG') {
++      const config = loadUserConfig();
++      if (event.source && typeof event.source.postMessage === 'function') {
++        event.source.postMessage(
++          {
++            type: 'DAILY_GRIND_CONFIG_PAYLOAD',
++            origin: window.location.origin,
++            config
++          },
++          event.origin || '*'
++        );
++      }
++    } else if (data.type === 'DAILY_GRIND_CONFIG_PAYLOAD' && data.config) {
++      const merged = saveUserConfig({
++        ...data.config,
++        migratedFromOrigin: data.origin || 'https://old.dailygrind.com'
++      });
++      renderConfigUI(merged, 'Configuration synced from ' + (data.origin || 'previous origin') + '.');
++    }
++  });
++
++  function registerServiceWorker() {
++    if ('serviceWorker' in navigator) {
++      navigator.serviceWorker.register('/sw.js').catch(() => {});
++    }
++  }
++
++  function renderConfigUI(config, statusMessage) {
++    const drinkInput = document.getElementById('config-favorite-drink');
++    const milkInput = document.getElementById('config-milk-preference');
++    const locationInput = document.getElementById('config-default-location');
++    const targetOriginInput = document.getElementById('config-target-origin');
++    const notificationsInput = document.getElementById('config-notifications');
++    const statusEl = document.getElementById('migration-status-banner');
++    const migrationLinkEl = document.getElementById('migration-transfer-link');
++    const shortcutsListEl = document.getElementById('os-shortcuts-list');
++
++    if (drinkInput) drinkInput.value = config.favoriteDrink || DEFAULT_CONFIG.favoriteDrink;
++    if (milkInput) milkInput.value = config.milkPreference || DEFAULT_CONFIG.milkPreference;
++    if (locationInput) locationInput.value = config.defaultLocation || DEFAULT_CONFIG.defaultLocation;
++    if (targetOriginInput) targetOriginInput.value = config.targetOrigin || DEFAULT_CONFIG.targetOrigin;
++    if (notificationsInput) notificationsInput.checked = Boolean(config.orderNotifications);
++
++    if (migrationLinkEl) {
++      migrationLinkEl.href = buildMigrationUrl(config.targetOrigin, config);
++    }
++
++    if (shortcutsListEl && Array.isArray(config.shortcuts)) {
++      shortcutsListEl.innerHTML = config.shortcuts
++        .map(
++          (s) =>
++            `<li class="shortcut-pill"><strong>${s.name}</strong> <code>${s.url}</code> <span class="badge-preserved">Preserved</span></li>`
++        )
++        .join('');
++    }
++
++    if (statusEl && statusMessage) {
++      statusEl.textContent = statusMessage;
++      statusEl.hidden = false;
++    }
++  }
++
++  function initUI() {
++    registerServiceWorker();
++    const { migrated, config } = importConfigFromUrl();
++
++    if (!localStorage.getItem(STORAGE_KEY)) {
++      saveUserConfig(config);
++    }
++
++    renderConfigUI(
++      config,
++      migrated
++        ? `User configuration and OS-level shortcuts preserved from ${config.migratedFromOrigin || 'previous origin'}.`
++        : ''
++    );
++
++    const form = document.getElementById('user-config-form');
++    if (form) {
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        const drinkInput = document.getElementById('config-favorite-drink');
++        const milkInput = document.getElementById('config-milk-preference');
++        const locationInput = document.getElementById('config-default-location');
++        const targetOriginInput = document.getElementById('config-target-origin');
++        const notificationsInput = document.getElementById('config-notifications');
++
++        const updated = saveUserConfig({
++          favoriteDrink: drinkInput ? drinkInput.value : config.favoriteDrink,
++          milkPreference: milkInput ? milkInput.value : config.milkPreference,
++          defaultLocation: locationInput ? locationInput.value : config.defaultLocation,
++          targetOrigin: targetOriginInput ? targetOriginInput.value : config.targetOrigin,
++          orderNotifications: notificationsInput ? notificationsInput.checked : config.orderNotifications
++        });
++
++        renderConfigUI(
++          updated,
++          'User configuration saved locally and staged for Web App Origin Migration.'
++        );
++      });
++    }
++
++    const transferBtn = document.getElementById('trigger-origin-transfer-btn');
++    if (transferBtn) {
++      transferBtn.addEventListener('click', () => {
++        const latest = loadUserConfig();
++        const migrationUrl = buildMigrationUrl(latest.targetOrigin, latest);
++        const migrationLinkEl = document.getElementById('migration-transfer-link');
++        if (migrationLinkEl) {
++          migrationLinkEl.href = migrationUrl;
++        }
++        const payloadPreview = document.getElementById('migration-payload-preview');
++        if (payloadPreview) {
++          payloadPreview.textContent = migrationUrl;
++          payloadPreview.hidden = false;
++        }
++        renderConfigUI(
++          latest,
++          `Ready to transfer installed PWA and user configuration to ${latest.targetOrigin}.`
++        );
++      });
++    }
++  }
++
++  window.DailyGrindMigration = {
++    loadUserConfig,
++    saveUserConfig,
++    encodeConfigPayload,
++    decodeConfigPayload,
++    buildMigrationUrl
++  };
++
++  if (document.readyState === 'loading') {
++    document.addEventListener('DOMContentLoaded', initUI);
++  } else {
++    initUI();
++  }
++})();
+diff --git a/package.json b/package.json
+index 2bd4d77..1b5b840 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,9 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..4cf405a
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,117 @@
++import http from 'node:http';
++import fs from 'node:fs';
++import path from 'node:path';
++import os from 'node:os';
++import { parseArgs } from 'node:util';
++
++const MIME_TYPES = {
++  '.html': 'text/html; charset=utf-8',
++  '.js': 'application/javascript; charset=utf-8',
++  '.mjs': 'application/javascript; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.webmanifest': 'application/manifest+json; charset=utf-8',
++  '.svg': 'image/svg+xml',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.ico': 'image/x-icon',
++  '.txt': 'text/plain; charset=utf-8'
++};
++
++const { values, positionals } = parseArgs({
++  options: {
++    port: { type: 'string' },
++    expose: { type: 'boolean' },
++    cors: { type: 'boolean' },
++    coi: { type: 'boolean' },
++    csp: { type: 'string' },
++    help: { type: 'boolean' },
++    open: { type: 'boolean' }
++  },
++  allowPositionals: true,
++  strict: false
++});
++
++const rootDir = positionals[0] ? path.resolve(positionals[0]) : process.cwd();
++const rawPort = values.port ?? process.env.PORT ?? '11222';
++const initialPort = Number(rawPort) || 11222;
++
++const server = http.createServer((req, res) => {
++  res.setHeader('Access-Control-Allow-Origin', '*');
++  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
++  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
++
++  if (req.method === 'OPTIONS') {
++    res.writeHead(204);
++    res.end();
++    return;
++  }
++
++  const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
++  let pathname = decodeURIComponent(parsedUrl.pathname);
++
++  if (pathname.endsWith('/')) {
++    pathname += 'index.html';
++  }
++
++  const safePath = path.normalize(pathname).replace(/^(\.\.(\/|\\|$))+/, '');
++  let filePath = path.join(rootDir, safePath);
++
++  if (!filePath.startsWith(rootDir)) {
++    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Forbidden');
++    return;
++  }
++
++  if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
++    filePath = path.join(filePath, 'index.html');
++  } else if (!fs.existsSync(filePath) && fs.existsSync(filePath + '.html')) {
++    filePath = filePath + '.html';
++  }
++
++  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
++    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Not Found');
++    return;
++  }
++
++  let contentType = MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
++  if (
++    pathname === '/.well-known/web-app-origin-association' ||
++    pathname === '/.well-known/web-app-origin-association.json'
++  ) {
++    contentType = 'application/json; charset=utf-8';
++  } else if (pathname === '/manifest.json' || pathname === '/manifest.webmanifest') {
++    contentType = 'application/manifest+json; charset=utf-8';
++  }
++
++  res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-cache' });
++  if (req.method === 'HEAD') {
++    res.end();
++    return;
++  }
++  fs.createReadStream(filePath).pipe(res);
++});
++
++function startListening(port) {
++  server.listen(port, values.expose ? undefined : 'localhost', () => {
++    const addr = server.address();
++    const boundPort = addr && typeof addr === 'object' ? addr.port : port;
++    const url = `http://localhost:${boundPort}`;
++    const formattedPath = rootDir.replace(os.homedir(), '~');
++    const reset = '\x1b[0m';
++    const boldWhite = '\x1b[1m\x1b[37m';
++    const dimWhite = '\x1b[2m\x1b[37m';
++    console.log(
++      boldWhite,
++      `🤓 ${url}`,
++      reset,
++      `statikk serving ${values.expose ? 'up' : 'locally'}:`,
++      `${dimWhite}${formattedPath}`,
++      reset
++    );
++  });
++}
++
++startListening(initialPort);
+diff --git a/sw.js b/sw.js
+new file mode 100644
+index 0000000..5b426d8
+--- /dev/null
++++ b/sw.js
+@@ -0,0 +1,95 @@
++const CACHE_NAME = 'daily-grind-pwa-v1';
++const ASSETS = [
++  '/',
++  '/index.html',
++  '/install.html',
++  '/manifest.json',
++  '/manifest.webmanifest',
++  '/migration.js',
++  '/icons/icon-192.svg',
++  '/icons/icon-512.svg',
++  '/.well-known/web-app-origin-association'
++];
++
++const ORIGIN_ASSOCIATION_PAYLOAD = {
++  'https://app.dailygrind.com/': {
++    allow_migration: true,
++    scope: '/'
++  },
++  'https://new.dailygrind.com/': {
++    allow_migration: true,
++    scope: '/'
++  }
++};
++
++self.addEventListener('install', (event) => {
++  event.waitUntil(
++    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {})
++  );
++  self.skipWaiting();
++});
++
++self.addEventListener('activate', (event) => {
++  event.waitUntil(
++    caches.keys().then((keys) =>
++      Promise.all(
++        keys
++          .filter((key) => key !== CACHE_NAME)
++          .map((key) => caches.delete(key))
++      )
++    )
++  );
++  self.clients.claim();
++});
++
++self.addEventListener('fetch', (event) => {
++  const url = new URL(event.request.url);
++
++  if (
++    url.pathname === '/.well-known/web-app-origin-association' ||
++    url.pathname === '/.well-known/web-app-origin-association.json'
++  ) {
++    event.respondWith(
++      fetch(event.request)
++        .then((response) => {
++          if (response && response.ok) {
++            return response;
++          }
++          return new Response(JSON.stringify(ORIGIN_ASSOCIATION_PAYLOAD, null, 2), {
++            status: 200,
++            headers: {
++              'Content-Type': 'application/json; charset=utf-8',
++              'Access-Control-Allow-Origin': '*'
++            }
++          });
++        })
++        .catch(() =>
++          new Response(JSON.stringify(ORIGIN_ASSOCIATION_PAYLOAD, null, 2), {
++            status: 200,
++            headers: {
++              'Content-Type': 'application/json; charset=utf-8',
++              'Access-Control-Allow-Origin': '*'
++            }
++          })
++        )
++    );
++    return;
++  }
++
++  if (event.request.method !== 'GET') return;
++
++  event.respondWith(
++    caches.match(event.request).then((cached) => {
++      const networkFetch = fetch(event.request)
++        .then((response) => {
++          if (response && response.status === 200 && url.origin === self.location.origin) {
++            const clone = response.clone();
++            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
++          }
++          return response;
++        })
++        .catch(() => cached);
++      return cached || networkFetch;
++    })
++  );
++});

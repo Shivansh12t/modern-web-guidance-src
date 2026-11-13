@@ -1,0 +1,290 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,160 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    button {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    button.btn {
++      border: 0;
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .logout-dialog {
++      margin: auto;
++      width: min(440px, calc(100% - 32px));
++      max-height: calc(100dvh - 32px);
++      overflow: auto;
++      padding: 28px;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      color: var(--text);
++      background: var(--light);
++      box-shadow: 0 20px 60px #0003;
++    }
++
++    .logout-dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    .logout-dialog h2 {
++      padding-right: 36px;
++      margin-bottom: 12px;
++    }
++
++    .dismiss-button {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      width: 36px;
++      height: 36px;
++      border: 0;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    .dismiss-button:hover {
++      background: var(--secondary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: flex-end;
++      gap: 12px;
++      margin-top: 12px;
++    }
++
++    .btn.secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .floating-notice {
++      position: fixed;
++      inset: auto 20px 20px auto;
++      margin: 0;
++      width: min(380px, calc(100% - 40px));
++      max-height: calc(100dvh - 40px);
++      overflow: auto;
++      padding: 20px 56px 20px 20px;
++      border: 1px solid var(--secondary);
++      border-left: 4px solid var(--accent);
++      border-radius: 8px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 32px #0003;
++      z-index: 1100;
++    }
++
++    .logout-dialog,
++    .floating-notice {
++      opacity: 0;
++      transition: opacity 220ms ease, transform 220ms ease, display 220ms, overlay 220ms;
++      transition-behavior: allow-discrete;
++    }
++
++    :is(.logout-dialog[open], .floating-notice:popover-open, .floating-notice.is-visible):where(:not([data-closing])) {
++      opacity: 1;
++    }
++
++    .logout-dialog::backdrop {
++      background: rgb(0 0 0 / 0);
++      overflow: hidden;
++      overscroll-behavior: contain;
++      transition: background-color 220ms ease, display 220ms, overlay 220ms;
++      transition-behavior: allow-discrete;
++    }
++
++    .logout-dialog[open]:not([data-closing])::backdrop {
++      background: rgb(0 0 0 / 0.5);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .logout-dialog,
++      .floating-notice {
++        transform: translateY(16px);
++      }
++
++      :is(.logout-dialog[open], .floating-notice:popover-open, .floating-notice.is-visible):where(:not([data-closing])) {
++        transform: translateY(0);
++      }
++    }
++
++    @starting-style {
++      :is(.logout-dialog[open], .floating-notice:popover-open):where(:not([data-closing])) {
++        opacity: 0;
++      }
++
++      .logout-dialog[open]::backdrop {
++        background: transparent;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        :is(.logout-dialog[open], .floating-notice:popover-open):where(:not([data-closing])) {
++          transform: translateY(16px);
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .logout-dialog,
++      .floating-notice,
++      .logout-dialog::backdrop {
++        transition-duration: 0s;
++      }
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -163,9 +315,9 @@
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/logout" class="logout-link" id="open-dialog-btn" aria-haspopup="dialog" aria-controls="logout-dialog">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+@@ -176,8 +328,9 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <button type="button" class="btn" id="foobar" aria-controls="floating-notice">Coffee information</button>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -206,7 +359,104 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog class="logout-dialog" id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description">
++    <form method="dialog" id="logout-form">
++      <button type="submit" class="dismiss-button" id="close-dialog-btn" value="cancel" aria-label="Close logout confirmation">&times;</button>
++      <h2 id="logout-title">Log out?</h2>
++      <p id="logout-description">Are you sure you want to log out of your Daily Grind account?</p>
++      <div class="dialog-actions">
++        <button type="submit" class="btn secondary" value="cancel" autofocus>Stay logged in</button>
++        <button type="submit" class="btn" value="confirm">Log out</button>
++      </div>
++    </form>
++  </dialog>
++
++  <div role="region" aria-label="Notifications">
++    <div class="floating-notice" id="floating-notice" popover="manual" aria-labelledby="notice-title">
++      <h3 id="notice-title">A little coffee knowledge</h3>
++      <p>Our cold brew is steeped for 18 hours for maximum smoothness. Explore our seasonal favorites above to find your next cup.</p>
++      <button type="button" class="dismiss-button" id="dismiss-notice-btn" aria-label="Dismiss coffee information">&times;</button>
++    </div>
++  </div>
++  <div class="sr-only" id="notice-announcement" role="status" aria-live="polite" aria-atomic="true"></div>
++
++  <script>
++    const logoutLink = document.getElementById('open-dialog-btn');
++    const dialog = document.getElementById('logout-dialog');
++    const noticeButton = document.getElementById('foobar');
++    const notice = document.getElementById('floating-notice');
++    const announcement = document.getElementById('notice-announcement');
++    const hasPopover = 'popover' in HTMLElement.prototype;
++
++    if (!hasPopover) notice.hidden = true;
++
++    // Keep overlays in the top layer until their exit animations finish,
++    // including in browsers without discrete display/overlay transitions.
++    async function dismiss(element, finish) {
++      if (element.hasAttribute('data-closing')) return;
++      element.setAttribute('data-closing', '');
++      await Promise.race([
++        Promise.allSettled(element.getAnimations({ subtree: true }).map(animation => animation.finished)),
++        new Promise(resolve => setTimeout(resolve, 500))
++      ]);
++      finish();
++      element.removeAttribute('data-closing');
++    }
++
++    function dismissNotice() {
++      const hadFocus = notice.contains(document.activeElement);
++      return dismiss(notice, () => {
++        if (hasPopover) notice.hidePopover();
++        else {
++          notice.hidden = true;
++          notice.classList.remove('is-visible');
++        }
++        announcement.textContent = '';
++        if (hadFocus) noticeButton.focus();
++      });
++    }
++
++    logoutLink.addEventListener('click', event => {
++      // Preserve normal navigation if native dialogs are unavailable.
++      if (typeof dialog.showModal !== 'function') return;
++      event.preventDefault();
++      if (hasPopover ? notice.matches(':popover-open') : !notice.hidden) dismissNotice();
++      if (!dialog.open) dialog.showModal();
++    });
++
++    document.getElementById('logout-form').addEventListener('submit', event => {
++      event.preventDefault();
++      const value = event.submitter?.value || 'cancel';
++      dismiss(dialog, () => {
++        dialog.close();
++        if (value === 'confirm') window.location.assign(logoutLink.href);
++      });
++    });
++
++    dialog.addEventListener('cancel', event => {
++      event.preventDefault();
++      dismiss(dialog, () => dialog.close());
++    });
++
++    noticeButton.addEventListener('click', () => {
++      if (notice.hasAttribute('data-closing')) return;
++      if (hasPopover) {
++        notice.showPopover();
++      } else {
++        notice.hidden = false;
++        // Commit the closed style before entering in the manual fallback.
++        void notice.offsetWidth;
++        notice.classList.add('is-visible');
++      }
++      const message = notice.querySelector('p').textContent;
++      if (typeof document.ariaNotify === 'function') document.ariaNotify(message);
++      else announcement.textContent = message;
++    });
++
++    document.getElementById('dismiss-notice-btn').addEventListener('click', dismissNotice);
++  </script>
++
+ </body>
+ 
+ </html>

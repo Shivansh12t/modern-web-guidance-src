@@ -1,0 +1,535 @@
+diff --git a/index.html b/index.html
+index 66c9173..2249aff 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,184 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* SMS sign-in / verification */
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      overflow: hidden;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      border: 0;
++      white-space: nowrap;
++    }
++
++    .verify {
++      scroll-margin-top: 5rem;
++      max-width: 32rem;
++      margin: 0 auto 48px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 28px 24px;
++    }
++
++    .verify h2 {
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++    }
++
++    .verify h2:focus {
++      outline: none;
++    }
++
++    .verify h2:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .verify .intro {
++      margin-bottom: 1.25rem;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      gap: 0.25rem;
++      margin-block-end: 1.25rem;
++    }
++
++    .form-group label,
++    .verify legend {
++      font-weight: 600;
++    }
++
++    .field-hint {
++      font-size: 0.9rem;
++      color: #5d4037;
++    }
++
++    .verify fieldset {
++      border: 0;
++      margin-block-end: 1.25rem;
++    }
++
++    .verify legend {
++      margin-block-end: 0.25rem;
++    }
++
++    .choice {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      min-height: 44px;
++    }
++
++    .choice input {
++      accent-color: var(--primary);
++      width: 1.25rem;
++      height: 1.25rem;
++    }
++
++    .verify input[type="tel"],
++    .verify input[type="text"] {
++      font: inherit;
++      font-size: max(1rem, 1em);
++      min-height: 48px;
++      padding: 0.5rem 0.75rem;
++      border: 2px solid #767676;
++      border-radius: 6px;
++      background: white;
++      color: var(--text);
++      width: 100%;
++    }
++
++    #otp-input {
++      font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
++      font-size: 1.5rem;
++      letter-spacing: 0.4em;
++      max-width: 14rem;
++    }
++
++    .verify input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++      border-color: var(--primary);
++    }
++
++    .verify input:user-invalid,
++    .verify input[aria-invalid="true"] {
++      border-color: #b71c1c;
++    }
++
++    .field-error {
++      color: #b71c1c;
++      font-size: 0.9rem;
++      font-weight: 600;
++    }
++
++    .field-error:empty {
++      display: none;
++    }
++
++    .field-error:not(:empty)::before {
++      content: "⚠ ";
++    }
++
++    .verify button {
++      font: inherit;
++      cursor: pointer;
++      min-height: 48px;
++      border-radius: 5px;
++    }
++
++    .verify button[type="submit"] {
++      background: var(--primary);
++      color: white;
++      border: 0;
++      padding: 0.6rem 1.5rem;
++      font-weight: 600;
++    }
++
++    .verify button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    .verify button[type="submit"]:disabled {
++      opacity: 0.6;
++      cursor: progress;
++    }
++
++    .verify .link-button {
++      background: none;
++      border: 0;
++      color: var(--primary);
++      text-decoration: underline;
++      padding: 0.5rem 0;
++    }
++
++    .verify button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .secondary-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0 1.5rem;
++      margin-top: 0.75rem;
++    }
++
++    .form-status {
++      margin-top: 1rem;
++      font-weight: 600;
++    }
++
++    .form-status:empty {
++      display: none;
++    }
+   </style>
+ </head>
+ 
+@@ -175,6 +353,97 @@
+   </header>
+ 
+   <main class="container">
++
++    <!--
++      SMS sign-in for Rewards and online ordering.
++      Backend contract: the SMS sent by POST /auth/sms/start MUST end with an
++      origin-bound last line so WebOTP and one-time-code autofill can verify it, e.g.
++
++        Your Daily Grind code is 123456. It expires in 10 minutes.
++
++        @dailygrind.example #123456
++
++      (host only — no scheme, port, or path; exactly one space between tokens.)
++    -->
++    <section id="sign-in" class="verify" aria-labelledby="verify-heading">
++      <div id="phone-step">
++        <h2 id="verify-heading" tabindex="-1">Sign in with your phone</h2>
++        <p class="intro">Earn Rewards and check out faster. We'll text you a one-time code.</p>
++
++        <form id="phone-form" action="/auth/sms/start" method="POST" aria-labelledby="verify-heading">
++          <fieldset>
++            <legend>What would you like to do?</legend>
++            <div class="choice">
++              <input type="radio" id="purpose-rewards" name="purpose" value="rewards" checked>
++              <label for="purpose-rewards">Sign in to Rewards</label>
++            </div>
++            <div class="choice">
++              <input type="radio" id="purpose-order" name="purpose" value="order">
++              <label for="purpose-order">Place an online order</label>
++            </div>
++          </fieldset>
++
++          <div class="form-group">
++            <label for="phone-input">Mobile phone number <span aria-hidden="true">*</span></label>
++            <p id="phone-hint" class="field-hint">Include your country code if outside the US, e.g. +44 7700 900123. Message and data rates may apply.</p>
++            <input
++              type="tel"
++              id="phone-input"
++              name="phone"
++              autocomplete="tel"
++              enterkeyhint="send"
++              minlength="7"
++              maxlength="20"
++              pattern="\+?[0-9\s\-\(\)\.]{7,20}"
++              aria-describedby="phone-hint phone-error"
++              required>
++            <p id="phone-error" class="field-error" aria-live="polite"></p>
++          </div>
++
++          <button type="submit">Text me a code</button>
++        </form>
++      </div>
++
++      <div id="otp-step" hidden>
++        <h2 id="otp-heading" tabindex="-1">Enter your code</h2>
++        <p class="intro">We texted a code to <strong id="otp-phone-display"></strong>.</p>
++
++        <form id="otp-form" action="/auth/sms/verify" method="POST" aria-labelledby="otp-heading">
++          <input type="hidden" name="phone" id="otp-phone">
++          <input type="hidden" name="purpose" id="otp-purpose">
++
++          <div class="form-group">
++            <label for="otp-input">Verification code <span aria-hidden="true">*</span></label>
++            <p id="otp-format-hint" class="field-hint">Enter the 6-digit code from the text message. It expires in 10 minutes.</p>
++            <input
++              type="text"
++              id="otp-input"
++              name="otp"
++              inputmode="numeric"
++              autocomplete="one-time-code"
++              autocorrect="off"
++              autocapitalize="none"
++              spellcheck="false"
++              enterkeyhint="done"
++              pattern="\d{6}"
++              minlength="6"
++              maxlength="6"
++              aria-describedby="otp-format-hint otp-error"
++              required>
++            <p id="otp-error" class="field-error" aria-live="polite"></p>
++          </div>
++
++          <button type="submit">Verify code</button>
++
++          <div class="secondary-actions">
++            <button type="button" class="link-button" id="resend-btn">Resend code</button>
++            <button type="button" class="link-button" id="change-number-btn">Use a different number</button>
++          </div>
++        </form>
++      </div>
++
++      <p id="verify-status" class="form-status" role="status"></p>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -207,6 +476,247 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (() => {
++      const phoneStep = document.getElementById('phone-step');
++      const otpStep = document.getElementById('otp-step');
++      const phoneForm = document.getElementById('phone-form');
++      const phoneInput = document.getElementById('phone-input');
++      const phoneError = document.getElementById('phone-error');
++      const otpForm = document.getElementById('otp-form');
++      const otpInput = document.getElementById('otp-input');
++      const otpError = document.getElementById('otp-error');
++      const otpPhone = document.getElementById('otp-phone');
++      const otpPurpose = document.getElementById('otp-purpose');
++      const otpPhoneDisplay = document.getElementById('otp-phone-display');
++      const resendBtn = document.getElementById('resend-btn');
++      const changeNumberBtn = document.getElementById('change-number-btn');
++      const status = document.getElementById('verify-status');
++
++      // JS takes over validation with inline, announced messages; without JS,
++      // native constraint validation and a normal POST still work.
++      phoneForm.noValidate = true;
++      otpForm.noValidate = true;
++
++      const MESSAGES = {
++        phone: {
++          valueMissing: 'Enter your mobile phone number.',
++          default: 'Enter a valid phone number using digits, spaces, dashes, or a leading +.',
++        },
++        otp: {
++          valueMissing: 'Enter the 6-digit code from the text message.',
++          default: 'The code must be exactly 6 digits.',
++        },
++      };
++
++      // ---- Validation helpers (validate on blur/submit, clear on input) ----
++      function messageFor(input) {
++        const set = MESSAGES[input.name];
++        return input.validity.valueMissing ? set.valueMissing : set.default;
++      }
++
++      function showError(input, errorEl, message) {
++        input.setAttribute('aria-invalid', 'true');
++        errorEl.textContent = message;
++      }
++
++      function clearError(input, errorEl) {
++        input.removeAttribute('aria-invalid');
++        errorEl.textContent = '';
++      }
++
++      function validate(input, errorEl) {
++        if (input.checkValidity()) {
++          clearError(input, errorEl);
++          return true;
++        }
++        showError(input, errorEl, messageFor(input));
++        return false;
++      }
++
++      function wireValidation(input, errorEl) {
++        let edited = false;
++        input.addEventListener('input', () => {
++          edited = true;
++          if (input.getAttribute('aria-invalid') === 'true' && input.checkValidity()) {
++            clearError(input, errorEl);
++          }
++        });
++        input.addEventListener('blur', () => {
++          if (edited) validate(input, errorEl);
++        });
++      }
++
++      wireValidation(phoneInput, phoneError);
++      wireValidation(otpInput, otpError);
++
++      // Keep the OTP field digits-only (handles pasted "123 456" or "123-456").
++      otpInput.addEventListener('input', () => {
++        const digits = otpInput.value.replace(/\D/g, '').slice(0, 6);
++        if (digits !== otpInput.value) otpInput.value = digits;
++      });
++
++      async function post(form) {
++        const response = await fetch(form.action, {
++          method: 'POST',
++          body: new FormData(form),
++          headers: { Accept: 'application/json' },
++          credentials: 'same-origin',
++        });
++        let data = {};
++        try { data = await response.json(); } catch { /* non-JSON body */ }
++        return { ok: response.ok, data };
++      }
++
++      // ---- WebOTP: automatic code extraction from the incoming SMS ----
++      let otpAbortController = null;
++
++      function stopSmsOtpListener() {
++        if (otpAbortController) {
++          otpAbortController.abort();
++          otpAbortController = null;
++        }
++      }
++
++      async function startSmsOtpListener() {
++        if (!('OTPCredential' in window)) return; // falls back to autocomplete="one-time-code" / manual entry
++
++        stopSmsOtpListener();
++        const ac = new AbortController();
++        otpAbortController = ac;
++
++        try {
++          const otp = await navigator.credentials.get({
++            otp: { transport: ['sms'] },
++            signal: ac.signal,
++          });
++          if (!otp || ac.signal.aborted) return;
++          otpInput.value = otp.code;
++          clearError(otpInput, otpError);
++          otpForm.requestSubmit(); // runs the submit handler + constraint validation
++        } catch (err) {
++          if (err && err.name === 'AbortError') return;
++          console.error('WebOTP error:', err);
++        }
++      }
++
++      // ---- Step transitions ----
++      function showOtpStep() {
++        const purpose = phoneForm.elements.purpose.value;
++        otpPhone.value = phoneInput.value.trim();
++        otpPurpose.value = purpose;
++        otpPhoneDisplay.textContent = phoneInput.value.trim();
++        otpForm.querySelector('button[type="submit"]').textContent =
++          purpose === 'order' ? 'Verify and continue to order' : 'Verify and sign in';
++
++        otpInput.value = '';
++        clearError(otpInput, otpError);
++        phoneStep.hidden = true;
++        otpStep.hidden = false;
++        document.getElementById('otp-heading').focus();
++        startSmsOtpListener();
++      }
++
++      function showPhoneStep() {
++        stopSmsOtpListener();
++        otpStep.hidden = true;
++        phoneStep.hidden = false;
++        status.textContent = '';
++        phoneInput.focus();
++      }
++
++      async function requestCode(form, button) {
++        button.disabled = true;
++        status.textContent = 'Sending your code…';
++        try {
++          const { ok, data } = await post(form);
++          if (!ok) {
++            const message = data.message || 'We couldn’t send a code to that number. Check it and try again.';
++            if (phoneStep.hidden) {
++              status.textContent = message; // resend failed while on the code step
++            } else {
++              status.textContent = '';
++              showError(phoneInput, phoneError, message);
++              phoneInput.focus();
++            }
++            return false;
++          }
++          status.textContent = `Code sent to ${phoneInput.value.trim()}.`;
++          return true;
++        } catch {
++          status.textContent = 'We couldn’t reach the server. Check your connection and try again.';
++          return false;
++        } finally {
++          button.disabled = false;
++        }
++      }
++
++      // ---- Phone form ----
++      phoneForm.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        if (!validate(phoneInput, phoneError)) {
++          phoneInput.focus();
++          return;
++        }
++        const button = phoneForm.querySelector('button[type="submit"]');
++        if (await requestCode(phoneForm, button)) showOtpStep();
++      });
++
++      // ---- OTP form ----
++      otpForm.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        stopSmsOtpListener();
++
++        if (!validate(otpInput, otpError)) {
++          otpInput.focus();
++          startSmsOtpListener(); // keep listening for the SMS while the user corrects the entry
++          return;
++        }
++
++        const button = otpForm.querySelector('button[type="submit"]');
++        button.disabled = true;
++        status.textContent = 'Verifying…';
++
++        try {
++          const { ok, data } = await post(otpForm);
++          if (!ok) {
++            status.textContent = '';
++            showError(otpInput, otpError, data.message || 'That code didn’t match or has expired. Try again or resend a new code.');
++            otpInput.select();
++            otpInput.focus();
++            startSmsOtpListener();
++            return;
++          }
++          status.textContent = 'Verified! Redirecting…';
++          const fallback = otpPurpose.value === 'order' ? '/order-online' : '/rewards';
++          const next = typeof data.redirect === 'string' && data.redirect.startsWith('/') && !data.redirect.startsWith('//')
++            ? data.redirect
++            : fallback;
++          window.location.assign(next);
++        } catch {
++          status.textContent = 'We couldn’t reach the server. Check your connection and try again.';
++          startSmsOtpListener();
++        } finally {
++          button.disabled = false;
++        }
++      });
++
++      resendBtn.addEventListener('click', async () => {
++        stopSmsOtpListener();
++        otpInput.value = '';
++        clearError(otpInput, otpError);
++        await requestCode(phoneForm, resendBtn);
++        otpInput.focus();
++        startSmsOtpListener();
++      });
++
++      changeNumberBtn.addEventListener('click', showPhoneStep);
++
++      // Abort any pending WebOTP request when navigating away.
++      window.addEventListener('pagehide', stopSmsOtpListener);
++    })();
++  </script>
+ </body>
+ 
+ </html>

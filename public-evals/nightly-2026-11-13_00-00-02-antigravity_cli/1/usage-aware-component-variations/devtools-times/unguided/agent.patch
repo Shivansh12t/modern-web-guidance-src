@@ -1,0 +1,490 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..910aaa9 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -3,7 +3,7 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import { BookOpenIcon, SparklesIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+     article: CollectionEntry<'articles'>;
+@@ -17,66 +17,92 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <article class="teaser-card bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                <div class="flex flex-wrap items-center gap-2 mb-1">
++                    <span class="teaser-promo-badge">
++                        <SparklesIcon className="w-3.5 h-3.5" />
++                        Featured
++                    </span>
++                    <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                </div>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-500 transition-colors">
+                         {article.data.title}
+                     </h1>
+                     <p class="mt-4 text-lg text-gray-700">
+                         {article.data.summary}
+                     </p>
+                 </a>
+-                <div class="flex justify-between items-center mt-6 text-gray-500">
++                <div class="flex flex-wrap justify-between items-center gap-3 mt-6 pt-4 border-t border-gray-100 text-gray-500">
+                     <span class="text-xs font-medium flex items-center">
+                         <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+                         {article.data.readingTime} Min.
+                     </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    <div class="flex items-center gap-2">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-action-btn">
++                            <span>Read Story</span>
++                            <ArrowRightIcon className="w-4 h-4" />
++                        </a>
++                        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    </div>
+                 </div>
+             </div>
+             <div class="lg:col-span-2">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                     <Image 
+                         src={image} 
+-                        alt=""
++                        alt={article.data.title}
+                         width={800}
+                         height={533}
+                         format="webp"
+-                        class="w-full h-auto object-cover"
++                        class="w-full h-auto object-cover rounded-md"
+                     />
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
++    <article class="teaser-card flex flex-col h-full group p-4 bg-white border border-gray-100">
++        <div class="relative">
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                <Image 
++                    src={image} 
++                    alt={article.data.title} 
++                    width={400}
++                    height={225}
++                    format="webp"
++                    class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                />
++            </a>
++        </div>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++            <div class="flex flex-wrap items-center gap-2 mb-1">
++                <span class="teaser-promo-badge">
++                    <SparklesIcon className="w-3.5 h-3.5" />
++                    Featured
++                </span>
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest hover:underline">{capitalizedCategory}</a>
++            </div>
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col flex-grow">
++                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-500 transition-colors">
+                     {article.data.title}
+                 </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                <p class="text-gray-600 mt-1 flex-grow">{article.data.summary}</p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++            <div class="flex justify-between items-center text-gray-500 mt-4 pt-3 border-t border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+                 </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                <div class="flex items-center gap-2">
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-action-btn">
++                        <span>Read Article</span>
++                        <ArrowRightIcon className="w-3.5 h-3.5" />
++                    </a>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+         </div>
+     </article>
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..9699035 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -23,8 +23,13 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   };
+ 
+   return (
+-    <button onClick={handleClick} className="p-1">
+-      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
++    <button
++      onClick={handleClick}
++      aria-pressed={isBookmarked}
++      aria-label={isBookmarked ? 'Remove from reading list' : 'Save to reading list'}
++      className="p-1.5 rounded-md transition-colors hover:bg-gray-100"
++    >
++      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-500 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
+     </button>
+   );
+ }
+diff --git a/src/components/SimpleTeaserGrid.astro b/src/components/SimpleTeaserGrid.astro
+index 29e7e50..c32557d 100644
+--- a/src/components/SimpleTeaserGrid.astro
++++ b/src/components/SimpleTeaserGrid.astro
+@@ -5,11 +5,16 @@ import ArticleTeaser from '../components/ArticleTeaser.astro';
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    featured?: boolean;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, featured = false } = Astro.props;
+ ---
+-<section class="p-4 md:p-6">
++<section
++    class:list={["p-4 md:p-6", { "featured-section": featured }]}
++    data-featured={featured ? "true" : "false"}
++    data-section-context={featured ? "featured" : "default"}
++>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..76301fd 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -3,14 +3,15 @@ import type { CollectionEntry } from 'astro:content';
+ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../utils/images';
+ import BookmarkButton from './BookmarkButton';
+-import { BookOpenIcon } from '@heroicons/react/24/outline'
++import { BookOpenIcon, SparklesIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+ 
+ export interface Props {
+     title: string;
+     articles: CollectionEntry<'articles'>[];
++    featured?: boolean;
+ }
+ 
+-const { title, articles } = Astro.props;
++const { title, articles, featured = true } = Astro.props;
+ 
+ if (articles.length < 4) {
+     throw new Error("TeaserGridVariant requires at least 4 articles.");
+@@ -23,34 +24,54 @@ const topArticleImage = await getArticleImage(topArticle);
+ const bottomArticleImages = await Promise.all(bottomArticles.map(getArticleImage));
+ 
+ const readingList = await Astro.session?.get('readingList') || [];
++const isTopArticleBookmarked = readingList.includes(topArticle.id);
+ 
+ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
+ ---
+-<section class="p-4 md:p-6">
++<section
++    class:list={["p-4 md:p-6", { "featured-section": featured }]}
++    data-featured={featured ? "true" : "false"}
++    data-section-context={featured ? "featured" : "default"}
++>
+     <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">
+         {title}
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <article class="teaser-card shadow-sm overflow-hidden mb-6 lg:mb-8 bg-white">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                    {capitalizedCategory}
+-                </a>
++                <div class="flex flex-wrap items-center gap-2 mb-2">
++                    <span class="teaser-promo-badge">
++                        <SparklesIcon className="w-3.5 h-3.5" />
++                        Featured
++                    </span>
++                    <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-600 font-semibold text-sm hover:underline">
++                        {capitalizedCategory}
++                    </a>
++                </div>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+-                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-400 transition-colors">
++                    <h3 class="text-3xl lg:text-4xl font-brand mb-4 leading-tight hover:text-amber-500 transition-colors">
+                         {topArticle.data.title}
+                     </h3>
+                 </a>
+-                <p class="text-gray-700 mb-4 text-base lg:text-lg">
++                <p class="text-gray-700 mb-6 text-base lg:text-lg">
+                     {topArticle.data.summary}
+                 </p>
+-                <div class="flex items-center text-gray-500 text-sm">
+-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
+-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+-                    </svg>
+-                    <span>{topArticle.data.readingTime} Min Read</span>
++                <div class="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-gray-200/70 text-gray-500 text-sm">
++                    <div class="flex items-center">
++                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1.5">
++                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
++                        </svg>
++                        <span>{topArticle.data.readingTime} Min Read</span>
++                    </div>
++                    <div class="flex items-center gap-2">
++                        <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`} class="teaser-action-btn">
++                            <span>Read Story</span>
++                            <ArrowRightIcon className="w-4 h-4" />
++                        </a>
++                        <BookmarkButton client:visible slug={topArticle.id} initialIsBookmarked={isTopArticleBookmarked} />
++                    </div>
+                 </div>
+             </div>
+             <div class="w-full order-first lg:order-last">
+@@ -59,7 +80,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 </a>
+             </div>
+         </div>
+-    </div>
++    </article>
+ 
+     <!-- Bottom Section: Three Smaller Articles -->
+     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+@@ -67,18 +88,24 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             const capitalizedBottomCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+             const isBookmarked = readingList.includes(article.id);
+             return (
+-                <div class="flex flex-col shadow-sm overflow-hidden h-full">
++                <article class="teaser-card flex flex-col shadow-sm overflow-hidden h-full bg-white">
+                     {index === 1 && (
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                             <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
+-                            {capitalizedBottomCategory}
+-                        </a>
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-400 transition-colors">
++                        <div class="flex flex-wrap items-center gap-2 mb-2">
++                            <span class="teaser-promo-badge">
++                                <SparklesIcon className="w-3.5 h-3.5" />
++                                Featured
++                            </span>
++                            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-600 font-semibold text-sm hover:underline">
++                                {capitalizedBottomCategory}
++                            </a>
++                        </div>
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
++                            <h3 class="text-2xl font-brand mb-2 hover:text-amber-500 transition-colors">
+                                 {article.data.title}
+                             </h3>
+                         </a>
+@@ -87,15 +114,21 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                                 {article.data.summary}
+                             </p>
+                         )}
+-                        <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++                        <div class="flex justify-between items-center text-gray-500 mt-3 pt-3 border-t border-gray-200/70">
+                             <span class="text-xs font-medium flex items-center">
+                                 <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                                 {article.data.readingTime} Min.
+                             </span>
+-                            <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                            <div class="flex items-center gap-2">
++                                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-action-btn">
++                                    <span>Read Article</span>
++                                    <ArrowRightIcon className="w-3.5 h-3.5" />
++                                </a>
++                                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                            </div>
+                         </div>
+                     </div>
+-                </div>
++                </article>
+             )
+         })}
+     </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..f948c15 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,9 +55,9 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6 featured-section" data-featured="true" data-section-context="featured">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </section>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -65,20 +65,20 @@ politicsArticles[2] = {
+         </section>
+ 
+         <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} featured={true} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
++        <SimpleTeaserGrid title="World" articles={worldNewsArticles} featured={false} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+ 
+         <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
++        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} featured={true} />
+         
+     </div>
+ </Layout>
+\ No newline at end of file
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..41c9577 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,114 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++@layer base {
++  :root {
++    --section-variant: default;
++  }
++
++  section[data-featured="true"],
++  section[data-section-context="featured"],
++  .featured-section {
++    --section-variant: featured;
++  }
++}
++
++.teaser-card {
++  position: relative;
++  border-radius: 0.5rem;
++  transition: all 0.2s ease-in-out;
++}
++
++.teaser-promo-badge {
++  display: none;
++  align-items: center;
++  gap: 0.25rem;
++  padding: 0.125rem 0.625rem;
++  border-radius: 9999px;
++  font-size: 0.75rem;
++  font-weight: 700;
++  text-transform: uppercase;
++  letter-spacing: 0.05em;
++  background-color: #f59e0b;
++  color: #111827;
++  width: fit-content;
++}
++
++.teaser-action-btn {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 0.375rem;
++  padding: 0.375rem 0.875rem;
++  border-radius: 0.375rem;
++  font-size: 0.875rem;
++  font-weight: 600;
++  line-height: 1.25rem;
++  transition: all 0.15s ease-in-out;
++  background-color: transparent;
++  color: #111827;
++  border: 1.5px solid #d1d5db;
++  cursor: pointer;
++}
++
++.teaser-action-btn:hover {
++  border-color: #111827;
++  background-color: #f9fafb;
++}
++
++/* Automatic context-aware switching via CSS Container Style Queries & Semantic Parent Selectors */
++@container style(--section-variant: featured) {
++  .teaser-card {
++    background-color: #fffbeb;
++    border: 1px solid #fde68a;
++    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
++  }
++
++  .teaser-promo-badge {
++    display: inline-flex;
++  }
++
++  .teaser-action-btn {
++    background-color: #111827;
++    color: #ffffff;
++    border-color: #111827;
++  }
++
++  .teaser-action-btn:hover {
++    background-color: #d97706;
++    border-color: #d97706;
++    color: #ffffff;
++  }
++}
++
++section[data-featured="true"] .teaser-card,
++section[data-section-context="featured"] .teaser-card,
++.featured-section .teaser-card {
++  background-color: #fffbeb;
++  border: 1px solid #fde68a;
++  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
++}
++
++section[data-featured="true"] .teaser-promo-badge,
++section[data-section-context="featured"] .teaser-promo-badge,
++.featured-section .teaser-promo-badge {
++  display: inline-flex;
++}
++
++section[data-featured="true"] .teaser-action-btn,
++section[data-section-context="featured"] .teaser-action-btn,
++.featured-section .teaser-action-btn {
++  background-color: #111827;
++  color: #ffffff;
++  border-color: #111827;
++}
++
++section[data-featured="true"] .teaser-action-btn:hover,
++section[data-section-context="featured"] .teaser-action-btn:hover,
++.featured-section .teaser-action-btn:hover {
++  background-color: #d97706;
++  border-color: #d97706;
++  color: #ffffff;
++}

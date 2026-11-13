@@ -1,0 +1,270 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,160 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Only decorative layers move; the reading and focus order stays fixed. */
++    .coffee-story {
++      position: relative;
++      isolation: isolate;
++      overflow: hidden;
++      background: #f0e7dc;
++    }
++
++    .story-inner {
++      max-width: 1100px;
++      margin: auto;
++      padding: 72px 20px;
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      align-items: center;
++      gap: 48px;
++    }
++
++    .story-copy { position: relative; z-index: 1; }
++    .eyebrow {
++      color: #75513d;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.18em;
++      text-transform: uppercase;
++    }
++    .story-copy h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2rem, 4vw, 3.2rem);
++      font-weight: 400;
++      line-height: 1.15;
++      margin: 18px 0;
++      max-width: 420px;
++    }
++    .story-copy p { max-width: 390px; }
++    .story-link {
++      display: inline-block;
++      color: var(--primary);
++      font-weight: 600;
++      text-underline-offset: 6px;
++      margin-top: 24px;
++    }
++    .motion-toggle {
++      display: block;
++      margin-top: 32px;
++      padding: 8px 12px;
++      border: 1px solid #947b67;
++      border-radius: 24px;
++      background: transparent;
++      color: var(--text);
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++      min-height: 44px;
++    }
++    .motion-toggle[hidden] { display: none; }
++    a:focus-visible, button:focus-visible {
++      outline: 3px solid #ac5a13;
++      outline-offset: 5px;
++    }
++    .coffee-scene {
++      position: relative;
++      height: 380px;
++      pointer-events: none;
++    }
++    .parallax-layer { position: absolute; inset: 0; }
++    .coffee-story.is-moving .parallax-layer { will-change: transform; }
++    .coffee-halo {
++      position: absolute;
++      width: 330px;
++      height: 330px;
++      top: 25px;
++      left: 50%;
++      margin-left: -165px;
++      border: 1px solid #ccb59c;
++      border-radius: 50%;
++      background: radial-gradient(circle, #ddc5a7 0 52%, transparent 52%);
++    }
++    .coffee-halo::after {
++      content: '';
++      position: absolute;
++      inset: -24px;
++      border: 1px dashed #ccb59c;
++      border-radius: 50%;
++    }
++    .coffee-saucer {
++      position: absolute;
++      width: 260px;
++      height: 260px;
++      left: 50%;
++      top: 60px;
++      margin-left: -130px;
++      border-radius: 50%;
++      background: #fffaf2;
++      box-shadow: 12px 22px 35px #50322026, inset 0 0 0 15px #f4eee5,
++        inset 0 0 0 17px #e7ded1;
++    }
++    .coffee-cup {
++      position: absolute;
++      inset: 40px;
++      border-radius: 50%;
++      border: 9px solid #fffcf6;
++      background: radial-gradient(ellipse at 42% 38%, #c68b50 0 8%, #9d622f 35%, #472719 75%);
++      box-shadow: 5px 9px 15px #40251b45, inset 0 0 0 3px #d6ab72;
++    }
++    .coffee-cup::before {
++      content: '';
++      position: absolute;
++      width: 35px;
++      height: 46px;
++      border: 10px solid #fffcf6;
++      border-left: 0;
++      border-radius: 0 20px 20px 0;
++      right: -38px;
++      top: 56px;
++      transform: rotate(-15deg);
++    }
++    .coffee-cup::after {
++      content: '';
++      position: absolute;
++      inset: 29px;
++      border: 2px solid #e6bc8580;
++      border-bottom-color: transparent;
++      border-radius: 50%;
++      transform: rotate(-30deg);
++    }
++    .coffee-bean {
++      position: absolute;
++      width: 27px;
++      height: 40px;
++      border-radius: 50%;
++      background: linear-gradient(100deg, #69422c 44%, #c49568 47%, #3d241b 53%);
++      box-shadow: 3px 5px 7px #50322026;
++      transform: rotate(35deg);
++    }
++    .coffee-bean:nth-child(1) { top: 45px; left: 15%; }
++    .coffee-bean:nth-child(2) { bottom: 42px; right: 12%; transform: rotate(-35deg); }
++    .coffee-bean:nth-child(3) { bottom: 20px; left: 22%; transform: rotate(70deg); }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .story-inner { grid-template-columns: 1fr; padding: 48px 24px; gap: 20px; }
++      .coffee-scene { height: 380px; width: 100%; max-width: 450px; margin: auto; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .parallax-layer { transform: none !important; will-change: auto !important; }
++      .motion-toggle { display: none; }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,10 +325,30 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="story-title">
++      <div class="story-inner">
++        <div class="story-copy">
++          <span class="eyebrow">Good things take a little time</span>
++          <h2 id="story-title">A little craft.<br>A daily ritual.</h2>
++          <p>From the first roast to the final pour, we take our time so you can savor yours. Find a moment of something wonderful in every cup.</p>
++          <a class="story-link" href="/about">Discover our story &rarr;</a>
++          <button class="motion-toggle" type="button" hidden>Pause motion</button>
++        </div>
++        <div class="coffee-scene" aria-hidden="true">
++          <div class="parallax-layer" data-travel="22"><div class="coffee-halo"></div></div>
++          <div class="parallax-layer" data-travel="44">
++            <div class="coffee-saucer"><div class="coffee-cup"></div></div>
++          </div>
++          <div class="parallax-layer" data-travel="72">
++            <span class="coffee-bean"></span><span class="coffee-bean"></span><span class="coffee-bean"></span>
++          </div>
++        </div>
++      </div>
++    </section>
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -206,7 +378,72 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const section = document.querySelector('.coffee-story');
++      const button = section.querySelector('.motion-toggle');
++      const layers = Array.from(section.querySelectorAll('[data-travel]'));
++      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      // The static scene is the fallback when observation is unavailable.
++      if (!('IntersectionObserver' in window)) return;
++
++      let visible = false;
++      let paused = false;
++      let listening = false;
++      let frame = 0;
++
++      function render() {
++        frame = 0;
++        const bounds = section.getBoundingClientRect();
++        const progress = Math.max(-1, Math.min(1,
++          (window.innerHeight / 2 - bounds.top - bounds.height / 2) /
++          ((window.innerHeight + bounds.height) / 2)));
++        layers.forEach(layer => {
++          layer.style.transform = `translate3d(0, ${progress * Number(layer.dataset.travel)}px, 0)`;
++        });
++      }
++
++      function schedule() {
++        if (!frame) frame = window.requestAnimationFrame(render);
++      }
++
++      function syncMotion() {
++        const active = visible && !paused && !reducedMotion.matches && !document.hidden;
++        button.hidden = reducedMotion.matches;
++        section.classList.toggle('is-moving', active);
++        if (active && !listening) {
++          window.addEventListener('scroll', schedule, { passive: true });
++          window.addEventListener('resize', schedule, { passive: true });
++        } else if (!active && listening) {
++          window.removeEventListener('scroll', schedule);
++          window.removeEventListener('resize', schedule);
++        }
++        listening = active;
++        if (active) schedule();
++        else {
++          window.cancelAnimationFrame(frame);
++          frame = 0;
++          if (reducedMotion.matches) layers.forEach(layer => layer.style.removeProperty('transform'));
++        }
++      }
++
++      button.addEventListener('click', () => {
++        paused = !paused;
++        button.textContent = paused ? 'Resume motion' : 'Pause motion';
++        syncMotion();
++      });
++      reducedMotion.addEventListener('change', syncMotion);
++      document.addEventListener('visibilitychange', syncMotion);
++      const observer = new IntersectionObserver(entries => {
++        visible = entries[0].isIntersecting;
++        syncMotion();
++      });
++      observer.observe(section);
++      syncMotion();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

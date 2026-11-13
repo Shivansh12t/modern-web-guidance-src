@@ -1,0 +1,598 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,209 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Flavor Profile Simulator */
++    .simulator {
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 30px;
++    }
++
++    .simulator h2 {
++      text-align: center;
++      margin-bottom: 6px;
++    }
++
++    .sim-intro {
++      text-align: center;
++      color: #6d4c41;
++      max-width: 680px;
++      margin: 0 auto 24px;
++    }
++
++    .sim-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      align-items: flex-end;
++      justify-content: center;
++      margin-bottom: 20px;
++    }
++
++    .sim-controls label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .sim-controls select,
++    .sim-controls input {
++      margin-top: 4px;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      font-weight: normal;
++      color: var(--text);
++      background: white;
++    }
++
++    .sim-controls button {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    .sim-controls button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover:not(:disabled) {
++      background: #bcaaa4;
++    }
++
++    .sim-status {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      margin-bottom: 8px;
++      font-size: 0.9rem;
++    }
++
++    .sim-heartbeat {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      background: var(--secondary);
++      flex-shrink: 0;
++    }
++
++    .sim-heartbeat.active {
++      background: var(--accent);
++      animation: sim-pulse 0.8s ease-in-out infinite;
++    }
++
++    @keyframes sim-pulse {
++      0%, 100% { transform: scale(0.7); opacity: 0.6; }
++      50% { transform: scale(1.15); opacity: 1; }
++    }
++
++    .sim-progress {
++      height: 10px;
++      background: #efebe9;
++      border-radius: 5px;
++      overflow: hidden;
++      margin-bottom: 24px;
++    }
++
++    .sim-progress-bar {
++      height: 100%;
++      width: 0;
++      background: var(--primary);
++      border-radius: 5px;
++      transition: width 0.15s linear;
++    }
++
++    .sim-results {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
++      gap: 30px;
++    }
++
++    .sim-results h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++      font-size: 1.05rem;
++    }
++
++    .sim-empty {
++      color: #8d6e63;
++      font-style: italic;
++      font-size: 0.9rem;
++    }
++
++    .flavor-row {
++      display: grid;
++      grid-template-columns: 90px 1fr 40px;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.85rem;
++      padding: 3px 0;
++    }
++
++    .flavor-track {
++      height: 12px;
++      background: #f5f0ee;
++      border-radius: 0 4px 4px 0;
++    }
++
++    .flavor-fill {
++      height: 100%;
++      background: #6d4c41;
++      border-radius: 0 4px 4px 0;
++      transition: width 0.3s ease;
++    }
++
++    .flavor-row:hover .flavor-fill {
++      background: var(--primary);
++    }
++
++    .flavor-value {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++      color: #5d4037;
++    }
++
++    .sim-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++    }
++
++    .sim-table th,
++    .sim-table td {
++      text-align: left;
++      padding: 6px 8px;
++      border-bottom: 1px solid #efebe9;
++    }
++
++    .sim-table th {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .sim-table td.num {
++      text-align: right;
++      font-variant-numeric: tabular-nums;
++    }
++
++    .sim-stats {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 24px;
++      margin-top: 16px;
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .sim-stats strong {
++      display: block;
++      font-size: 1.2rem;
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +395,61 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="simulator" id="flavor-simulator" aria-labelledby="sim-title">
++      <h2 id="sim-title">Flavor Profile Simulator</h2>
++      <p class="sim-intro">
++        Simulate thousands of experimental blends from our single-origin beans across roast levels and brew
++        methods. The heavy lifting runs in the background, so you can keep browsing while it works.
++      </p>
++
++      <div class="sim-controls">
++        <label>Number of blends
++          <select id="sim-count">
++            <option value="50000">50,000</option>
++            <option value="200000" selected>200,000</option>
++            <option value="500000">500,000</option>
++            <option value="1000000">1,000,000</option>
++          </select>
++        </label>
++        <label>Target profile
++          <select id="sim-target">
++            <option value="balanced" selected>Balanced</option>
++            <option value="bright">Bright &amp; Fruity</option>
++            <option value="chocolatey">Rich &amp; Chocolatey</option>
++            <option value="bold">Bold &amp; Smoky</option>
++          </select>
++        </label>
++        <label>Random seed
++          <input id="sim-seed" type="number" value="42" min="1" max="999999" style="width: 100px;">
++        </label>
++        <button type="button" class="btn" id="sim-start">Run Simulation</button>
++        <button type="button" class="btn btn-secondary" id="sim-cancel" disabled>Cancel</button>
++      </div>
++
++      <div class="sim-status" role="status" aria-live="polite">
++        <span class="sim-heartbeat" id="sim-heartbeat" aria-hidden="true"></span>
++        <span id="sim-status-text">Ready. Choose your settings and run the simulation.</span>
++      </div>
++      <div class="sim-progress" role="progressbar" aria-label="Simulation progress" aria-valuemin="0"
++        aria-valuemax="100" aria-valuenow="0" id="sim-progress">
++        <div class="sim-progress-bar" id="sim-progress-bar"></div>
++      </div>
++
++      <div class="sim-results">
++        <div>
++          <h3>Average flavor profile (0–10)</h3>
++          <div id="sim-profile"><p class="sim-empty">Run a simulation to see the aggregate profile.</p></div>
++          <div class="sim-stats" id="sim-stats"></div>
++        </div>
++        <div>
++          <h3>Top 10 blends for your target</h3>
++          <div id="sim-top"><p class="sim-empty">Top-scoring blends will appear here.</p></div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +460,322 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Flavor simulation worker source (loaded into a Web Worker via Blob URL) -->
++  <script type="text/js-worker" id="flavor-worker-src">
++    'use strict';
++    var ATTRS = ['acidity', 'body', 'sweetness', 'bitterness', 'aroma', 'fruity', 'chocolate', 'nutty'];
++    var ORIGINS = [
++      { name: 'Ethiopia Yirgacheffe', p: [8.5, 4.0, 6.5, 2.5, 8.5, 9.0, 2.5, 3.0] },
++      { name: 'Kenya AA',             p: [9.0, 5.5, 6.0, 3.0, 8.0, 8.5, 3.0, 2.5] },
++      { name: 'Colombia Huila',       p: [6.5, 6.0, 7.0, 3.5, 7.0, 6.0, 6.0, 5.5] },
++      { name: 'Brazil Cerrado',       p: [3.5, 7.0, 7.0, 4.0, 6.0, 3.0, 8.0, 8.0] },
++      { name: 'Guatemala Antigua',    p: [6.0, 6.5, 6.5, 4.0, 7.0, 5.0, 7.0, 6.0] },
++      { name: 'Sumatra Mandheling',   p: [2.5, 9.0, 5.0, 5.5, 6.5, 2.0, 7.0, 5.0] },
++      { name: 'Costa Rica Tarrazu',   p: [7.5, 5.5, 7.0, 3.0, 7.5, 7.0, 5.0, 4.5] },
++      { name: 'Yemen Mocha',          p: [6.0, 7.0, 6.0, 4.5, 8.0, 7.0, 7.5, 4.0] },
++      { name: 'Panama Geisha',        p: [8.0, 4.5, 8.0, 2.0, 9.5, 8.5, 3.0, 3.0] },
++      { name: 'Vietnam Robusta',      p: [2.0, 8.5, 3.5, 8.5, 5.0, 1.5, 6.0, 6.5] }
++    ];
++    var ROASTS = [
++      { name: 'Light',  mod: [ 1.2, -0.8, -0.3, -1.2,  0.6,  1.0, -1.0, -0.5] },
++      { name: 'Medium', mod: [ 0.0,  0.3,  0.6,  0.0,  0.3,  0.0,  0.6,  0.6] },
++      { name: 'Dark',   mod: [-1.8,  1.2, -0.4,  2.2, -0.2, -1.8,  1.0,  0.4] }
++    ];
++    var METHODS = [
++      { name: 'Espresso',     ratio: 2,  temp: 93, time: 28,  mod: [ 0.3,  1.5,  0.3,  0.6,  0.5, 0.0,  0.5, 0.0] },
++      { name: 'Pour Over',    ratio: 16, temp: 94, time: 210, mod: [ 0.6, -0.8,  0.2, -0.3,  0.6, 0.6, -0.2, 0.0] },
++      { name: 'French Press', ratio: 15, temp: 95, time: 240, mod: [-0.3,  1.0,  0.0,  0.3,  0.2, 0.0,  0.3, 0.3] },
++      { name: 'Cold Brew',    ratio: 8,  temp: 20, time: 64800, mod: [-1.5,  0.4,  0.9, -1.0, -0.4, 0.0, 0.6, 0.4] },
++      { name: 'AeroPress',    ratio: 12, temp: 85, time: 90,  mod: [ 0.2,  0.3,  0.4, -0.2,  0.3, 0.3,  0.1, 0.1] }
++    ];
++    var TARGETS = {
++      balanced:   [6.0, 6.0, 7.0, 3.5, 7.0, 5.5, 5.5, 5.0],
++      bright:     [8.5, 4.5, 7.0, 2.0, 8.5, 9.0, 2.5, 3.0],
++      chocolatey: [4.0, 7.5, 7.0, 4.5, 6.5, 3.0, 9.0, 7.0],
++      bold:       [2.5, 9.0, 4.5, 7.5, 6.0, 2.0, 7.0, 5.5]
++    };
++    var N_ATTR = ATTRS.length;
++    var EXTRACTION_STEPS = 40;
++
++    // Mulberry32 seeded PRNG for reproducible runs
++    function rng(seed) {
++      var a = seed >>> 0;
++      return function () {
++        a = (a + 0x6D2B79F5) | 0;
++        var t = Math.imul(a ^ (a >>> 15), 1 | a);
++        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
++        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++      };
++    }
++
++    function clamp(v) { return v < 0 ? 0 : v > 10 ? 10 : v; }
++
++    // Simulates one blend; writes the resulting profile into `out` and returns extraction yield (%)
++    function simulateBlend(rand, components, weights, roast, method, out) {
++      var base = new Float64Array(N_ATTR);
++      for (var c = 0; c < components.length; c++) {
++        var op = ORIGINS[components[c]].p, w = weights[c];
++        for (var i = 0; i < N_ATTR; i++) base[i] += op[i] * w;
++      }
++      // Simplified extraction kinetics: solubles dissolve at attribute-dependent rates.
++      // Acids extract fast, sugars mid, bitter compounds slow.
++      var rates = [0.18, 0.08, 0.11, 0.05, 0.14, 0.16, 0.07, 0.09];
++      var tempFactor = 0.4 + (method.temp / 100) * 0.8;
++      var timeScale = Math.log10(method.time + 10) / 2.5;
++      var concFactor = 1 + (16 - method.ratio) / 30;
++      var extracted = new Float64Array(N_ATTR);
++      var totalYield = 0;
++      for (var s = 0; s < EXTRACTION_STEPS; s++) {
++        var stepYield = 0;
++        for (var k = 0; k < N_ATTR; k++) {
++          var remaining = base[k] - extracted[k];
++          var d = remaining * rates[k] * tempFactor * timeScale * (0.95 + rand() * 0.1);
++          extracted[k] += d;
++          stepYield += d;
++        }
++        totalYield += stepYield;
++      }
++      for (var j = 0; j < N_ATTR; j++) {
++        var ratioExtracted = base[j] > 0 ? extracted[j] / base[j] : 0;
++        var v = base[j] * (0.55 + 0.45 * ratioExtracted) * (j === 1 ? concFactor : 1);
++        v += roast.mod[j] + method.mod[j] + (rand() - 0.5) * 0.6;
++        out[j] = clamp(v);
++      }
++      // Yield as % of a plausible 18–22% sweet spot window
++      var sumBase = 0;
++      for (var b = 0; b < N_ATTR; b++) sumBase += base[b];
++      return 10 + (totalYield / sumBase) * 10 * tempFactor;
++    }
++
++    function score(profile, target, yieldPct) {
++      var dist = 0;
++      for (var i = 0; i < N_ATTR; i++) {
++        var d = profile[i] - target[i];
++        dist += d * d;
++      }
++      var yieldPenalty = yieldPct < 18 ? (18 - yieldPct) * 0.8 : yieldPct > 22 ? (yieldPct - 22) * 0.8 : 0;
++      return Math.max(0, 100 - Math.sqrt(dist) * 8 - yieldPenalty * 4);
++    }
++
++    var cancelled = false;
++
++    self.onmessage = function (e) {
++      var msg = e.data;
++      if (msg.type === 'cancel') { cancelled = true; return; }
++      if (msg.type !== 'run') return;
++      cancelled = false;
++
++      var total = msg.count, target = TARGETS[msg.target] || TARGETS.balanced;
++      var rand = rng(msg.seed);
++      var sums = new Float64Array(N_ATTR);
++      var profile = new Float64Array(N_ATTR);
++      var top = [];
++      var roastCounts = [0, 0, 0], methodCounts = [0, 0, 0, 0, 0];
++      var scoreSum = 0, yieldSum = 0;
++      var CHUNK = 5000;
++      var done = 0;
++      var t0 = Date.now();
++
++      function chunk() {
++        if (cancelled) { self.postMessage({ type: 'cancelled', done: done }); return; }
++        var end = Math.min(total, done + CHUNK);
++        for (; done < end; done++) {
++          var n = 2 + Math.floor(rand() * 3); // 2–4 origins
++          var comps = [], weights = [], wsum = 0;
++          while (comps.length < n) {
++            var o = Math.floor(rand() * ORIGINS.length);
++            if (comps.indexOf(o) === -1) { comps.push(o); var w = 0.2 + rand(); weights.push(w); wsum += w; }
++          }
++          for (var i = 0; i < n; i++) weights[i] /= wsum;
++          var r = Math.floor(rand() * ROASTS.length);
++          var m = Math.floor(rand() * METHODS.length);
++          var y = simulateBlend(rand, comps, weights, ROASTS[r], METHODS[m], profile);
++          var sc = score(profile, target, y);
++
++          for (var a = 0; a < N_ATTR; a++) sums[a] += profile[a];
++          scoreSum += sc; yieldSum += y;
++          roastCounts[r]++; methodCounts[m]++;
++
++          if (top.length < 10 || sc > top[top.length - 1].score) {
++            var entry = {
++              score: sc,
++              yieldPct: y,
++              roast: ROASTS[r].name,
++              method: METHODS[m].name,
++              blend: comps.map(function (c, idx) {
++                return { name: ORIGINS[c].name, pct: Math.round(weights[idx] * 100) };
++              }).sort(function (x, z) { return z.pct - x.pct; })
++            };
++            var pos = top.length;
++            while (pos > 0 && top[pos - 1].score < sc) pos--;
++            top.splice(pos, 0, entry);
++            if (top.length > 10) top.pop();
++          }
++        }
++
++        var avg = [];
++        for (var k = 0; k < N_ATTR; k++) avg.push(sums[k] / done);
++        var payload = {
++          done: done, total: total, elapsedMs: Date.now() - t0,
++          attrs: ATTRS, average: avg, top: top,
++          avgScore: scoreSum / done, avgYield: yieldSum / done,
++          roastCounts: roastCounts, methodCounts: methodCounts,
++          roastNames: ROASTS.map(function (x) { return x.name; }),
++          methodNames: METHODS.map(function (x) { return x.name; })
++        };
++
++        if (done >= total) {
++          payload.type = 'complete';
++          self.postMessage(payload);
++        } else {
++          payload.type = 'progress';
++          self.postMessage(payload);
++          // Yield to the worker's event loop so cancel messages can be received
++          setTimeout(chunk, 0);
++        }
++      }
++      chunk();
++    };
++  </script>
++
++  <script>
++    (function () {
++      'use strict';
++      var $ = function (id) { return document.getElementById(id); };
++      var startBtn = $('sim-start'), cancelBtn = $('sim-cancel');
++      var statusText = $('sim-status-text'), heartbeat = $('sim-heartbeat');
++      var progress = $('sim-progress'), progressBar = $('sim-progress-bar');
++      var profileEl = $('sim-profile'), topEl = $('sim-top'), statsEl = $('sim-stats');
++      var workerSrc = $('flavor-worker-src').textContent;
++      var worker = null, workerUrl = null, pendingRender = null, rafId = 0;
++
++      function fmt(n) { return Math.round(n).toLocaleString(); }
++      function esc(s) {
++        return String(s).replace(/[&<>"']/g, function (c) {
++          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
++        });
++      }
++      function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
++
++      function setRunning(running) {
++        startBtn.disabled = running;
++        cancelBtn.disabled = !running;
++        $('sim-count').disabled = running;
++        $('sim-target').disabled = running;
++        $('sim-seed').disabled = running;
++        heartbeat.classList.toggle('active', running);
++      }
++
++      function setProgress(pct) {
++        progressBar.style.width = pct + '%';
++        progress.setAttribute('aria-valuenow', String(Math.round(pct)));
++      }
++
++      function render(d) {
++        setProgress((d.done / d.total) * 100);
++        var rate = d.elapsedMs > 0 ? d.done / (d.elapsedMs / 1000) : 0;
++        statusText.textContent = (d.type === 'complete' ? 'Complete: ' : 'Simulating… ') +
++          fmt(d.done) + ' / ' + fmt(d.total) + ' blends (' + fmt(rate) + ' blends/sec)';
++
++        profileEl.innerHTML = d.attrs.map(function (a, i) {
++          var v = d.average[i];
++          return '<div class="flavor-row" title="' + cap(a) + ': ' + v.toFixed(2) + ' / 10">' +
++            '<span>' + cap(a) + '</span>' +
++            '<div class="flavor-track"><div class="flavor-fill" style="width:' + (v * 10).toFixed(1) + '%"></div></div>' +
++            '<span class="flavor-value">' + v.toFixed(1) + '</span></div>';
++        }).join('');
++
++        var topRoast = d.roastNames[d.roastCounts.indexOf(Math.max.apply(null, d.roastCounts))];
++        statsEl.innerHTML =
++          '<div><strong>' + d.avgScore.toFixed(1) + '</strong>Avg. match score</div>' +
++          '<div><strong>' + d.avgYield.toFixed(1) + '%</strong>Avg. extraction yield</div>' +
++          '<div><strong>' + (d.top[0] ? d.top[0].score.toFixed(1) : '–') + '</strong>Best match score</div>' +
++          '<div><strong>' + (d.elapsedMs / 1000).toFixed(1) + 's</strong>Elapsed</div>';
++
++        if (!d.top.length) return;
++        topEl.innerHTML = '<table class="sim-table"><thead><tr>' +
++          '<th>#</th><th>Blend</th><th>Roast / Method</th><th style="text-align:right">Score</th>' +
++          '</tr></thead><tbody>' +
++          d.top.map(function (t, i) {
++            return '<tr><td>' + (i + 1) + '</td><td>' +
++              t.blend.map(function (b) { return esc(b.name) + ' ' + b.pct + '%'; }).join('<br>') +
++              '</td><td>' + esc(t.roast) + '<br>' + esc(t.method) + '</td>' +
++              '<td class="num">' + t.score.toFixed(1) + '</td></tr>';
++          }).join('') + '</tbody></table>';
++      }
++
++      // Coalesce worker updates to at most one DOM render per animation frame
++      function scheduleRender(d) {
++        pendingRender = d;
++        if (rafId) return;
++        rafId = requestAnimationFrame(function () {
++          rafId = 0;
++          if (pendingRender) { render(pendingRender); pendingRender = null; }
++        });
++      }
++
++      function cleanup() {
++        if (worker) { worker.terminate(); worker = null; }
++        if (workerUrl) { URL.revokeObjectURL(workerUrl); workerUrl = null; }
++        setRunning(false);
++      }
++
++      startBtn.addEventListener('click', function () {
++        if (worker) return;
++        if (typeof Worker === 'undefined') {
++          statusText.textContent = 'Sorry, your browser does not support background processing (Web Workers).';
++          return;
++        }
++        var seed = parseInt($('sim-seed').value, 10);
++        if (!isFinite(seed) || seed < 1) seed = 42;
++        var count = parseInt($('sim-count').value, 10);
++
++        workerUrl = URL.createObjectURL(new Blob([workerSrc], { type: 'application/javascript' }));
++        worker = new Worker(workerUrl);
++        worker.onmessage = function (e) {
++          var d = e.data;
++          if (d.type === 'progress') {
++            scheduleRender(d);
++          } else if (d.type === 'complete') {
++            if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
++            pendingRender = null;
++            render(d);
++            cleanup();
++          } else if (d.type === 'cancelled') {
++            statusText.textContent = 'Cancelled after ' + fmt(d.done) + ' blends.';
++            cleanup();
++          }
++        };
++        worker.onerror = function (err) {
++          statusText.textContent = 'Simulation failed: ' + (err.message || 'unknown error');
++          cleanup();
++        };
++
++        setProgress(0);
++        statusText.textContent = 'Starting simulation…';
++        setRunning(true);
++        worker.postMessage({ type: 'run', count: count, target: $('sim-target').value, seed: seed });
++      });
++
++      cancelBtn.addEventListener('click', function () {
++        if (!worker) return;
++        if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
++        pendingRender = null;
++        worker.postMessage({ type: 'cancel' });
++        statusText.textContent = 'Cancelling…';
++        cancelBtn.disabled = true;
++        // Hard stop as a fallback if the worker doesn't respond promptly
++        var w = worker;
++        setTimeout(function () {
++          if (worker === w) { statusText.textContent = 'Cancelled.'; cleanup(); }
++        }, 500);
++      });
++
++      window.addEventListener('pagehide', cleanup);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

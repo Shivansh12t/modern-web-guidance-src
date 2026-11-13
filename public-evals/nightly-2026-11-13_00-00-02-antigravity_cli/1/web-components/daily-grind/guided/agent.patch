@@ -1,0 +1,1610 @@
+diff --git a/components.js b/components.js
+new file mode 100644
+index 0000000..0968476
+--- /dev/null
++++ b/components.js
+@@ -0,0 +1,1424 @@
++/**
++ * The Daily Grind — Reusable, Accessible Web Components
++ *
++ * Components included:
++ * 1. <coffee-card>: Encapsulated product card with Shadow DOM, slots, adoptedStyleSheets,
++ *    container queries, @layer, ::part, private custom property aliases, and custom states (:state(favorited), :state(in-cart)).
++ * 2. <roast-selector>: Interactive, accessible category/roast filter widget using ElementInternals ARIA mixin
++ *    and keyboard navigation.
++ * 3. <grind-selector>: Form-Associated Custom Element (FACE) for selecting coffee grind or size in quick-order forms.
++ * 4. <order-summary>: Interactive cart and quick-order feedback bar listening to card events.
++ */
++
++const supportsAdoptedStyleSheets =
++  'adoptedStyleSheets' in Document.prototype &&
++  'replaceSync' in CSSStyleSheet.prototype;
++
++const supportsCustomStates =
++  typeof ElementInternals !== 'undefined' &&
++  'states' in ElementInternals.prototype;
++
++const supportsFACE =
++  'attachInternals' in HTMLElement.prototype &&
++  typeof ElementInternals !== 'undefined' &&
++  'setFormValue' in ElementInternals.prototype;
++
++const supportsAriaReflection =
++  typeof ElementInternals !== 'undefined' &&
++  'role' in ElementInternals.prototype;
++
++/**
++ * Helper to apply styles to a ShadowRoot using shared adoptedStyleSheets when supported,
++ * with a fallback to a <style> tag.
++ */
++function adoptStyles(shadowRoot, cssText, cachedSheet) {
++  if (supportsAdoptedStyleSheets) {
++    if (!cachedSheet) {
++      cachedSheet = new CSSStyleSheet();
++      cachedSheet.replaceSync(cssText);
++    }
++    shadowRoot.adoptedStyleSheets = [cachedSheet];
++    return cachedSheet;
++  }
++  const styleEl = document.createElement('style');
++  styleEl.textContent = cssText;
++  shadowRoot.prepend(styleEl);
++  return null;
++}
++
++/* ==========================================================================
++   1. <coffee-card> Web Component
++   ========================================================================== */
++
++const coffeeCardCSS = `
++  @layer base, theme, states;
++
++  @layer base {
++    :host {
++      display: block;
++      container-type: inline-size;
++      --_card-bg: var(--card-bg, #ffffff);
++      --_card-fg: var(--card-fg, #3e2723);
++      --_card-primary: var(--card-primary, #4e342e);
++      --_card-accent: var(--card-accent, #ffab40);
++      --_card-radius: var(--card-radius, 12px);
++      --_card-shadow: var(--card-shadow, 0 4px 14px rgba(62, 39, 35, 0.08));
++    }
++
++    :host([hidden]) {
++      display: none !important;
++    }
++
++    .card {
++      background: var(--_card-bg);
++      color: var(--_card-fg);
++      border-radius: var(--_card-radius);
++      box-shadow: var(--_card-shadow);
++      border: 2px solid transparent;
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      height: 100%;
++      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
++      position: relative;
++    }
++
++    .card:hover {
++      transform: translateY(-3px);
++      box-shadow: 0 8px 22px rgba(62, 39, 35, 0.14);
++    }
++
++    .media-wrap {
++      position: relative;
++      aspect-ratio: 16 / 10;
++      background: #efebe9;
++      overflow: hidden;
++    }
++
++    .media-img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++      transition: transform 0.35s ease;
++    }
++
++    .card:hover .media-img {
++      transform: scale(1.04);
++    }
++
++    .badge-wrap {
++      position: absolute;
++      top: 12px;
++      left: 12px;
++      display: flex;
++      gap: 6px;
++      flex-wrap: wrap;
++    }
++
++    .roast-pill,
++    ::slotted([slot="badge"]) {
++      background: rgba(78, 52, 46, 0.9);
++      color: #ffffff;
++      font-size: 0.75rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 4px 10px;
++      border-radius: 999px;
++      backdrop-filter: blur(4px);
++    }
++
++    .fav-btn {
++      position: absolute;
++      top: 12px;
++      right: 12px;
++      width: 38px;
++      height: 38px;
++      border-radius: 50%;
++      border: none;
++      background: rgba(255, 255, 255, 0.92);
++      color: var(--_card-primary);
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      font: inherit;
++      font-size: 1.15rem;
++      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
++      transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
++    }
++
++    .fav-btn:hover {
++      transform: scale(1.08);
++      background: #ffffff;
++    }
++
++    .fav-btn:focus-visible {
++      outline: 3px solid var(--_card-accent);
++      outline-offset: 2px;
++    }
++
++    .content {
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      text-align: left;
++      gap: 10px;
++    }
++
++    .header-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++    }
++
++    ::slotted([slot="title"]),
++    .fallback-title {
++      margin: 0;
++      font-size: 1.25rem;
++      color: var(--_card-primary);
++      font-weight: 700;
++    }
++
++    .price {
++      font-weight: 700;
++      font-size: 1.1rem;
++      color: var(--_card-primary);
++      background: #f5f0ee;
++      padding: 2px 8px;
++      border-radius: 6px;
++      white-space: nowrap;
++    }
++
++    .description {
++      flex: 1;
++      font-size: 0.95rem;
++      color: var(--_card-fg);
++    }
++
++    ::slotted(p) {
++      margin: 0;
++    }
++
++    .details-panel {
++      background: #faf6f5;
++      border-left: 3px solid var(--_card-accent);
++      padding: 10px 12px;
++      border-radius: 4px;
++      font-size: 0.85rem;
++      display: none;
++    }
++
++    .details-panel[data-open="true"] {
++      display: block;
++    }
++
++    .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      align-items: center;
++      justify-content: space-between;
++      margin-top: 8px;
++      padding-top: 12px;
++      border-top: 1px solid #efebe9;
++    }
++
++    button.action-btn,
++    a.details-link {
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      padding: 9px 14px;
++      border-radius: 6px;
++      cursor: pointer;
++      text-decoration: none;
++      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 6px;
++    }
++
++    button.action-btn {
++      background: var(--_card-primary);
++      color: #ffffff;
++      border: 1px solid var(--_card-primary);
++      flex: 1;
++    }
++
++    button.action-btn:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    button.action-btn:disabled {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    button.notes-toggle {
++      background: transparent;
++      color: var(--_card-primary);
++      border: 1px solid #d7ccc8;
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      padding: 9px 12px;
++      border-radius: 6px;
++      cursor: pointer;
++    }
++
++    button.notes-toggle:hover {
++      background: #efebe9;
++    }
++
++    a.details-link {
++      color: var(--_card-primary);
++      background: transparent;
++      border: 1px solid transparent;
++      padding: 6px 8px;
++      font-size: 0.85rem;
++      text-decoration: underline;
++    }
++
++    a.details-link:hover {
++      color: #271815;
++    }
++
++    button:focus-visible,
++    a:focus-visible {
++      outline: 3px solid var(--_card-accent);
++      outline-offset: 2px;
++    }
++
++    .sr-status {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Container query: switch to horizontal split layout when card container is wide */
++    @container (min-width: 30rem) {
++      .card {
++        display: grid;
++        grid-template-columns: 200px 1fr;
++      }
++      .media-wrap {
++        aspect-ratio: auto;
++        height: 100%;
++      }
++    }
++  }
++
++  @layer states {
++    :host(:state(favorited)) .card,
++    :host([favorited]) .card {
++      border-color: var(--_card-accent);
++    }
++
++    :host(:state(favorited)) .fav-btn,
++    :host([favorited]) .fav-btn {
++      background: #fff3e0;
++      color: #d84315;
++    }
++
++    :host(:state(in-cart)) button.action-btn {
++      background: #2e7d32;
++      border-color: #2e7d32;
++    }
++
++    :host([disabled]) {
++      opacity: 0.6;
++      pointer-events: none;
++    }
++  }
++`;
++
++let coffeeCardSheet = null;
++const coffeeCardTemplate = document.createElement('template');
++coffeeCardTemplate.innerHTML = `
++  <article class="card" part="card">
++    <div class="media-wrap" part="media">
++      <img class="media-img" part="image" src="" alt="" loading="lazy" />
++      <div class="badge-wrap">
++        <span class="roast-pill" part="roast-badge"></span>
++        <slot name="badge"></slot>
++      </div>
++      <button type="button" class="fav-btn" part="favorite-button" aria-pressed="false" aria-label="Save to favorites">
++        <span aria-hidden="true" class="fav-icon">♡</span>
++      </button>
++    </div>
++    <div class="content" part="body">
++      <div class="header-row">
++        <slot name="title"><h3 class="fallback-title"></h3></slot>
++        <span class="price" part="price"></span>
++      </div>
++      <div class="description">
++        <slot></slot>
++      </div>
++      <div class="details-panel" id="tasting-panel" part="details-panel">
++        <strong>Tasting Notes:</strong> <span class="notes-text"></span>
++      </div>
++      <div class="actions" part="actions">
++        <button type="button" class="action-btn" part="cta">
++          <span class="cta-text">Add to Order</span>
++        </button>
++        <button type="button" class="notes-toggle" part="notes-button" aria-expanded="false" aria-controls="tasting-panel">
++          Notes
++        </button>
++        <a class="details-link" part="link" href="/menu">View Details</a>
++      </div>
++      <div class="sr-status" role="status" aria-live="polite"></div>
++    </div>
++  </article>
++`;
++
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = [
++    'name',
++    'price',
++    'roast',
++    'image',
++    'image-alt',
++    'href',
++    'notes',
++    'favorited',
++    'disabled',
++  ];
++
++  #internals;
++  #cartCount = 0;
++  #notesExpanded = false;
++  #initialized = false;
++
++  constructor() {
++    super();
++    this.#internals = 'attachInternals' in this ? this.attachInternals() : null;
++
++    // Support Declarative Shadow DOM hydration if already present; otherwise clone template
++    if (!this.shadowRoot) {
++      this.attachShadow({ mode: 'open' });
++      this.shadowRoot.append(coffeeCardTemplate.content.cloneNode(true));
++    }
++    coffeeCardSheet = adoptStyles(this.shadowRoot, coffeeCardCSS, coffeeCardSheet);
++
++    // Bind internal listeners once in constructor so moving the element doesn't duplicate handlers
++    const favBtn = this.shadowRoot.querySelector('.fav-btn');
++    const actionBtn = this.shadowRoot.querySelector('.action-btn');
++    const notesBtn = this.shadowRoot.querySelector('.notes-toggle');
++    const titleSlot = this.shadowRoot.querySelector('slot[name="title"]');
++
++    favBtn?.addEventListener('click', () => this.toggleFavorite());
++    actionBtn?.addEventListener('click', () => this.addToOrder());
++    notesBtn?.addEventListener('click', () => this.toggleNotes());
++    titleSlot?.addEventListener('slotchange', () => this.#syncUI());
++  }
++
++  connectedCallback() {
++    this.#initialized = true;
++    this.#syncUI();
++  }
++
++  connectedMoveCallback() {
++    // Preserve state when relocated with Node.moveBefore() without tearing down
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal && this.#initialized) {
++      this.#syncUI();
++    }
++  }
++
++  // Reflected properties
++  get name() {
++    return this.getAttribute('name') ?? '';
++  }
++  set name(v) {
++    v ? this.setAttribute('name', v) : this.removeAttribute('name');
++  }
++
++  get price() {
++    return Number(this.getAttribute('price')) || 0;
++  }
++  set price(v) {
++    this.setAttribute('price', String(v));
++  }
++
++  get roast() {
++    return this.getAttribute('roast') ?? 'medium';
++  }
++  set roast(v) {
++    v ? this.setAttribute('roast', v) : this.removeAttribute('roast');
++  }
++
++  get image() {
++    return this.getAttribute('image') ?? '';
++  }
++  set image(v) {
++    v ? this.setAttribute('image', v) : this.removeAttribute('image');
++  }
++
++  get href() {
++    return this.getAttribute('href') ?? '/menu';
++  }
++  set href(v) {
++    v ? this.setAttribute('href', v) : this.removeAttribute('href');
++  }
++
++  get notes() {
++    return this.getAttribute('notes') ?? '';
++  }
++  set notes(v) {
++    v ? this.setAttribute('notes', v) : this.removeAttribute('notes');
++  }
++
++  get favorited() {
++    return this.hasAttribute('favorited');
++  }
++  set favorited(on) {
++    this.toggleAttribute('favorited', Boolean(on));
++  }
++
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++  set disabled(on) {
++    this.toggleAttribute('disabled', Boolean(on));
++  }
++
++  get cartCount() {
++    return this.#cartCount;
++  }
++
++  toggleFavorite() {
++    if (this.disabled) return;
++    this.favorited = !this.favorited;
++    this.#announce(
++      this.favorited
++        ? `${this.#resolvedName()} saved to favorites.`
++        : `${this.#resolvedName()} removed from favorites.`
++    );
++    this.dispatchEvent(
++      new CustomEvent('coffee-favorite', {
++        bubbles: true,
++        composed: true,
++        detail: {
++          name: this.#resolvedName(),
++          favorited: this.favorited,
++        },
++      })
++    );
++  }
++
++  addToOrder() {
++    if (this.disabled) return;
++    this.#cartCount += 1;
++    if (supportsCustomStates && this.#internals) {
++      this.#internals.states.add('in-cart');
++    }
++    this.#syncUI();
++    this.#announce(`Added ${this.#resolvedName()} to order (${this.#cartCount} in cart).`);
++    this.dispatchEvent(
++      new CustomEvent('coffee-order', {
++        bubbles: true,
++        composed: true,
++        detail: {
++          name: this.#resolvedName(),
++          price: this.price || 4.75,
++          roast: this.roast,
++          count: this.#cartCount,
++        },
++      })
++    );
++  }
++
++  toggleNotes() {
++    this.#notesExpanded = !this.#notesExpanded;
++    if (supportsCustomStates && this.#internals) {
++      if (this.#notesExpanded) {
++        this.#internals.states.add('expanded');
++      } else {
++        this.#internals.states.delete('expanded');
++      }
++    }
++    this.#syncUI();
++  }
++
++  #resolvedName() {
++    if (this.name) return this.name;
++    const titleSlot = this.shadowRoot?.querySelector('slot[name="title"]');
++    const assigned = titleSlot?.assignedElements?.() ?? [];
++    if (assigned.length > 0) {
++      return assigned[0].textContent.trim();
++    }
++    return 'Artisanal Coffee';
++  }
++
++  #announce(message) {
++    const statusEl = this.shadowRoot?.querySelector('.sr-status');
++    if (statusEl) {
++      statusEl.textContent = message;
++    }
++  }
++
++  #syncUI() {
++    if (!this.shadowRoot) return;
++    const itemName = this.#resolvedName();
++    const isFav = this.favorited;
++    const isDisabled = this.disabled;
++
++    // Sync custom states via ElementInternals
++    if (supportsCustomStates && this.#internals) {
++      if (isFav) {
++        this.#internals.states.add('favorited');
++      } else {
++        this.#internals.states.delete('favorited');
++      }
++    }
++    if (this.#internals && supportsAriaReflection) {
++      this.#internals.ariaDisabled = isDisabled ? 'true' : 'false';
++    }
++
++    // Fallback title
++    const fallbackTitle = this.shadowRoot.querySelector('.fallback-title');
++    if (fallbackTitle) {
++      fallbackTitle.textContent = itemName;
++    }
++
++    // Price
++    const priceEl = this.shadowRoot.querySelector('.price');
++    if (priceEl) {
++      const priceVal = this.price || 4.75;
++      priceEl.textContent = `$${priceVal.toFixed(2)}`;
++    }
++
++    // Roast badge
++    const roastEl = this.shadowRoot.querySelector('.roast-pill');
++    if (roastEl) {
++      roastEl.textContent = `${this.roast} roast`;
++    }
++
++    // Image
++    const imgEl = this.shadowRoot.querySelector('.media-img');
++    if (imgEl) {
++      const fallbackImg =
++        'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80';
++      const targetSrc = this.image || fallbackImg;
++      if (imgEl.getAttribute('src') !== targetSrc) {
++        imgEl.setAttribute('src', targetSrc);
++      }
++      imgEl.setAttribute(
++        'alt',
++        this.getAttribute('image-alt') || `${itemName} served in a ceramic cup`
++      );
++    }
++
++    // Favorite button state & accessible label
++    const favBtn = this.shadowRoot.querySelector('.fav-btn');
++    const favIcon = this.shadowRoot.querySelector('.fav-icon');
++    if (favBtn) {
++      favBtn.setAttribute('aria-pressed', String(isFav));
++      favBtn.setAttribute(
++        'aria-label',
++        isFav ? `Remove ${itemName} from favorites` : `Save ${itemName} to favorites`
++      );
++      favBtn.disabled = isDisabled;
++    }
++    if (favIcon) {
++      favIcon.textContent = isFav ? '♥' : '♡';
++    }
++
++    // Tasting notes panel & button
++    const notesText = this.shadowRoot.querySelector('.notes-text');
++    const notesPanel = this.shadowRoot.querySelector('.details-panel');
++    const notesBtn = this.shadowRoot.querySelector('.notes-toggle');
++    const hasNotes = Boolean(this.notes);
++
++    if (notesText) {
++      notesText.textContent = this.notes || 'Balanced body, smooth crema, clean finish.';
++    }
++    if (notesPanel) {
++      notesPanel.dataset.open = String(this.#notesExpanded);
++    }
++    if (notesBtn) {
++      notesBtn.hidden = !hasNotes;
++      notesBtn.setAttribute('aria-expanded', String(this.#notesExpanded));
++      notesBtn.setAttribute('aria-label', `Tasting notes for ${itemName}`);
++      notesBtn.textContent = this.#notesExpanded ? 'Hide Notes' : 'Tasting Notes';
++      notesBtn.disabled = isDisabled;
++    }
++
++    // Action CTA button
++    const actionBtn = this.shadowRoot.querySelector('.action-btn');
++    const ctaText = this.shadowRoot.querySelector('.cta-text');
++    if (actionBtn) {
++      actionBtn.disabled = isDisabled;
++    }
++    if (ctaText) {
++      ctaText.textContent =
++        this.#cartCount > 0 ? `Add Another (${this.#cartCount} in bag)` : 'Add to Order';
++    }
++
++    // Link
++    const linkEl = this.shadowRoot.querySelector('.details-link');
++    if (linkEl) {
++      linkEl.setAttribute('href', this.href);
++      linkEl.setAttribute('aria-label', `View details for ${itemName}`);
++    }
++  }
++}
++
++/* ==========================================================================
++   2. <roast-selector> Interactive Filter Web Component
++   ========================================================================== */
++
++const roastSelectorCSS = `
++  @layer base;
++  @layer base {
++    :host {
++      display: block;
++      margin: 20px 0 28px;
++    }
++
++    :host([hidden]) {
++      display: none !important;
++    }
++
++    .bar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 16px;
++      background: #ffffff;
++      padding: 14px 20px;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(62, 39, 35, 0.07);
++    }
++
++    .controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .label {
++      font-weight: 700;
++      font-size: 0.9rem;
++      color: var(--primary, #4e342e);
++      margin-right: 6px;
++    }
++
++    button.pill {
++      font: inherit;
++      font-size: 0.875rem;
++      font-weight: 600;
++      padding: 7px 15px;
++      border-radius: 999px;
++      border: 1px solid #d7ccc8;
++      background: #fafafa;
++      color: #3e2723;
++      cursor: pointer;
++      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
++    }
++
++    button.pill:hover {
++      background: #efebe9;
++    }
++
++    button.pill[aria-pressed="true"] {
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      border-color: var(--primary, #4e342e);
++    }
++
++    button.pill:focus-visible {
++      outline: 3px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .meta {
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      font-size: 0.875rem;
++      color: #5d4037;
++    }
++
++    .fav-only-btn {
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
++      padding: 6px 12px;
++      border-radius: 6px;
++      border: 1px solid #d7ccc8;
++      background: #ffffff;
++      color: #4e342e;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .fav-only-btn[aria-pressed="true"] {
++      background: #fff3e0;
++      border-color: #ffab40;
++      color: #bf360c;
++    }
++
++    .fav-only-btn:focus-visible {
++      outline: 3px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .count-status {
++      font-weight: 600;
++    }
++  }
++`;
++
++let roastSelectorSheet = null;
++const roastSelectorTemplate = document.createElement('template');
++roastSelectorTemplate.innerHTML = `
++  <div class="bar" part="toolbar">
++    <div class="controls" role="group" aria-labelledby="filter-heading">
++      <span class="label" id="filter-heading">Roast Profile:</span>
++      <button type="button" class="pill" data-roast="all" aria-pressed="true">All Coffees</button>
++      <button type="button" class="pill" data-roast="light" aria-pressed="false">Light / Seasonal</button>
++      <button type="button" class="pill" data-roast="medium" aria-pressed="false">Medium / Smooth</button>
++      <button type="button" class="pill" data-roast="dark" aria-pressed="false">Dark / Bold</button>
++    </div>
++    <div class="meta">
++      <button type="button" class="fav-only-btn" part="favorites-filter" aria-pressed="false">
++        <span aria-hidden="true">♥</span> Favorites Only
++      </button>
++      <span class="count-status" role="status" aria-live="polite">Showing all drinks</span>
++    </div>
++  </div>
++`;
++
++export class RoastSelector extends HTMLElement {
++  static observedAttributes = ['value', 'favorites-only'];
++
++  #internals;
++  #value = 'all';
++  #favoritesOnly = false;
++  #onDocumentFavChange;
++
++  constructor() {
++    super();
++    this.#internals = 'attachInternals' in this ? this.attachInternals() : null;
++    if (this.#internals && supportsAriaReflection) {
++      this.#internals.role = 'region';
++      this.#internals.ariaLabel = 'Filter seasonal coffee menu';
++    } else if (!this.hasAttribute('role')) {
++      this.setAttribute('role', 'region');
++      this.setAttribute('aria-label', 'Filter seasonal coffee menu');
++    }
++
++    this.attachShadow({ mode: 'open', delegatesFocus: true });
++    this.shadowRoot.append(roastSelectorTemplate.content.cloneNode(true));
++    roastSelectorSheet = adoptStyles(this.shadowRoot, roastSelectorCSS, roastSelectorSheet);
++
++    const pills = this.shadowRoot.querySelectorAll('button.pill');
++    pills.forEach((btn) => {
++      btn.addEventListener('click', () => {
++        this.value = btn.dataset.roast || 'all';
++        this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
++      });
++    });
++
++    const favOnlyBtn = this.shadowRoot.querySelector('.fav-only-btn');
++    favOnlyBtn?.addEventListener('click', () => {
++      this.favoritesOnly = !this.favoritesOnly;
++      this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
++    });
++
++    this.#onDocumentFavChange = () => {
++      if (this.#favoritesOnly) {
++        this.#applyFilterToCards();
++      }
++    };
++  }
++
++  connectedCallback() {
++    if (this.hasAttribute('value')) {
++      this.#value = this.getAttribute('value') || 'all';
++    }
++    this.#favoritesOnly = this.hasAttribute('favorites-only');
++    document.addEventListener('coffee-favorite', this.#onDocumentFavChange);
++    this.#syncUI();
++    this.#applyFilterToCards();
++  }
++
++  disconnectedCallback() {
++    document.removeEventListener('coffee-favorite', this.#onDocumentFavChange);
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    if (name === 'value') {
++      this.#value = newVal || 'all';
++    } else if (name === 'favorites-only') {
++      this.#favoritesOnly = this.hasAttribute('favorites-only');
++    }
++    this.#syncUI();
++    this.#applyFilterToCards();
++  }
++
++  get value() {
++    return this.#value;
++  }
++  set value(v) {
++    const normalized = v || 'all';
++    this.#value = normalized;
++    if (this.getAttribute('value') !== normalized) {
++      this.setAttribute('value', normalized);
++    }
++  }
++
++  get favoritesOnly() {
++    return this.#favoritesOnly;
++  }
++  set favoritesOnly(on) {
++    this.#favoritesOnly = Boolean(on);
++    this.toggleAttribute('favorites-only', this.#favoritesOnly);
++  }
++
++  #syncUI() {
++    const pills = this.shadowRoot.querySelectorAll('button.pill');
++    pills.forEach((btn) => {
++      const active = btn.dataset.roast === this.#value;
++      btn.setAttribute('aria-pressed', String(active));
++    });
++
++    const favOnlyBtn = this.shadowRoot.querySelector('.fav-only-btn');
++    if (favOnlyBtn) {
++      favOnlyBtn.setAttribute('aria-pressed', String(this.#favoritesOnly));
++    }
++  }
++
++  #applyFilterToCards() {
++    const targetSelector = this.getAttribute('target') || 'coffee-card';
++    const cards = Array.from(document.querySelectorAll(targetSelector));
++    if (cards.length === 0) return;
++
++    let visibleCount = 0;
++    for (const card of cards) {
++      const cardRoast = (card.getAttribute('roast') || 'medium').toLowerCase();
++      const matchesRoast = this.#value === 'all' || cardRoast === this.#value;
++      const matchesFav = !this.#favoritesOnly || card.hasAttribute('favorited');
++      const shouldShow = matchesRoast && matchesFav;
++      card.hidden = !shouldShow;
++      if (shouldShow) visibleCount += 1;
++    }
++
++    const statusEl = this.shadowRoot.querySelector('.count-status');
++    if (statusEl) {
++      statusEl.textContent =
++        visibleCount === 1
++          ? 'Showing 1 artisanal drink'
++          : `Showing ${visibleCount} of ${cards.length} drinks`;
++    }
++  }
++}
++
++/* ==========================================================================
++   3. <grind-selector> Form-Associated Custom Element (FACE)
++   ========================================================================== */
++
++const grindSelectorCSS = `
++  @layer base;
++  @layer base {
++    :host {
++      display: block;
++    }
++
++    :host([hidden]) {
++      display: none !important;
++    }
++
++    .options {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
++      gap: 8px;
++    }
++
++    button.option {
++      font: inherit;
++      padding: 10px 12px;
++      border-radius: 8px;
++      border: 2px solid #d7ccc8;
++      background: #ffffff;
++      color: #3e2723;
++      cursor: pointer;
++      text-align: center;
++      transition: border-color 0.15s ease, background-color 0.15s ease;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 2px;
++    }
++
++    button.option:hover:not(:disabled) {
++      border-color: #8d6e63;
++      background: #f5f5;
++    }
++
++    button.option[aria-checked="true"] {
++      border-color: var(--primary, #4e342e);
++      background: #efebe9;
++      font-weight: 700;
++    }
++
++    button.option:focus-visible {
++      outline: 3px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    button.option:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .opt-title {
++      font-size: 0.9rem;
++    }
++
++    .opt-sub {
++      font-size: 0.75rem;
++      color: #6d4c41;
++    }
++  }
++`;
++
++let grindSelectorSheet = null;
++const grindSelectorTemplate = document.createElement('template');
++grindSelectorTemplate.innerHTML = `
++  <div class="options" part="options">
++    <button type="button" class="option" role="radio" aria-checked="true" tabindex="0" data-value="whole-bean">
++      <span class="opt-title">Whole Bean</span>
++      <span class="opt-sub">Peak freshness</span>
++    </button>
++    <button type="button" class="option" role="radio" aria-checked="false" tabindex="-1" data-value="espresso">
++      <span class="opt-title">Fine Espresso</span>
++      <span class="opt-sub">Moka & Espresso</span>
++    </button>
++    <button type="button" class="option" role="radio" aria-checked="false" tabindex="-1" data-value="pour-over">
++      <span class="opt-title">Pour Over</span>
++      <span class="opt-sub">Drip & Chemex</span>
++    </button>
++    <button type="button" class="option" role="radio" aria-checked="false" tabindex="-1" data-value="french-press">
++      <span class="opt-title">Coarse Press</span>
++      <span class="opt-sub">French Press / Cold</span>
++    </button>
++  </div>
++`;
++
++export class GrindSelector extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['value', 'required'];
++
++  #internals;
++  #value = 'whole-bean';
++  #defaultValue = 'whole-bean';
++  #fallbackInput = null;
++
++  constructor() {
++    super();
++    this.#internals = 'attachInternals' in this ? this.attachInternals() : null;
++    if (this.#internals && supportsAriaReflection) {
++      this.#internals.role = 'radiogroup';
++    } else if (!this.hasAttribute('role')) {
++      this.setAttribute('role', 'radiogroup');
++    }
++
++    this.attachShadow({ mode: 'open', delegatesFocus: true });
++    this.shadowRoot.append(grindSelectorTemplate.content.cloneNode(true));
++    grindSelectorSheet = adoptStyles(this.shadowRoot, grindSelectorCSS, grindSelectorSheet);
++
++    const buttons = Array.from(this.shadowRoot.querySelectorAll('button.option'));
++    buttons.forEach((btn, idx) => {
++      btn.addEventListener('click', () => {
++        this.#selectUserValue(btn.dataset.value || '');
++      });
++      btn.addEventListener('keydown', (e) => {
++        let nextIdx = -1;
++        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
++          nextIdx = (idx + 1) % buttons.length;
++        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
++          nextIdx = (idx - 1 + buttons.length) % buttons.length;
++        }
++        if (nextIdx !== -1) {
++          e.preventDefault();
++          const targetBtn = buttons[nextIdx];
++          this.#selectUserValue(targetBtn.dataset.value || '');
++          targetBtn.focus();
++        }
++      });
++    });
++  }
++
++  connectedCallback() {
++    if (this.hasAttribute('value')) {
++      this.#value = this.getAttribute('value') || 'whole-bean';
++      this.#defaultValue = this.#value;
++    }
++
++    // Fallback hidden input only if Form-Associated Custom Elements are unsupported
++    if (!supportsFACE && !this.#fallbackInput) {
++      this.#fallbackInput = document.createElement('input');
++      this.#fallbackInput.type = 'hidden';
++      this.#fallbackInput.name = this.getAttribute('name') || 'grind';
++      this.append(this.#fallbackInput);
++    }
++
++    this.#syncFormAndUI();
++  }
++
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal === newVal) return;
++    if (name === 'value' && newVal !== null) {
++      this.#value = newVal;
++    }
++    this.#syncFormAndUI();
++  }
++
++  get value() {
++    return this.#value;
++  }
++  set value(v) {
++    this.#value = v;
++    this.#syncFormAndUI();
++  }
++
++  formResetCallback() {
++    this.value = this.#defaultValue;
++  }
++
++  formDisabledCallback(disabled) {
++    // Disable internal buttons without setting `disabled` attribute on host
++    for (const btn of this.shadowRoot.querySelectorAll('button.option')) {
++      btn.disabled = disabled;
++    }
++  }
++
++  formStateRestoreCallback(state) {
++    if (typeof state === 'string') {
++      this.value = state;
++    }
++  }
++
++  #selectUserValue(newVal) {
++    if (this.#value === newVal) return;
++    this.value = newVal;
++    this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
++  }
++
++  #syncFormAndUI() {
++    const buttons = this.shadowRoot.querySelectorAll('button.option');
++    buttons.forEach((btn) => {
++      const checked = btn.dataset.value === this.#value;
++      btn.setAttribute('aria-checked', String(checked));
++      btn.tabIndex = checked ? 0 : -1;
++    });
++
++    if (supportsFACE && this.#internals) {
++      this.#internals.setFormValue(this.#value);
++      const firstBtn = this.shadowRoot.querySelector('button.option');
++      if (this.hasAttribute('required') && !this.#value) {
++        this.#internals.setValidity(
++          { valueMissing: true },
++          'Please choose a grind style.',
++          firstBtn || undefined
++        );
++      } else {
++        this.#internals.setValidity({});
++      }
++    } else if (this.#fallbackInput) {
++      this.#fallbackInput.value = this.#value;
++    }
++  }
++}
++
++/* ==========================================================================
++   4. <order-drawer> Interactive Quick-Order & Brew Bar Component
++   ========================================================================== */
++
++const orderDrawerCSS = `
++  @layer base;
++  @layer base {
++    :host {
++      display: block;
++      margin-top: 48px;
++    }
++
++    :host([hidden]) {
++      display: none !important;
++    }
++
++    .panel {
++      background: #ffffff;
++      border-radius: 12px;
++      padding: 28px;
++      box-shadow: 0 4px 18px rgba(62, 39, 35, 0.09);
++      border-top: 4px solid var(--accent, #ffab40);
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 28px;
++      align-items: start;
++    }
++
++    h3 {
++      margin: 0 0 8px;
++      color: var(--primary, #4e342e);
++      font-size: 1.35rem;
++    }
++
++    p.sub {
++      margin: 0 0 18px;
++      font-size: 0.92rem;
++      color: #5d4037;
++    }
++
++    .cart-summary {
++      background: #faf6f5;
++      border-radius: 8px;
++      padding: 16px;
++      border: 1px solid #efebe9;
++    }
++
++    .cart-list {
++      list-style: none;
++      margin: 12px 0;
++      padding: 0;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++    }
++
++    .cart-item {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.92rem;
++      padding-bottom: 6px;
++      border-bottom: 1px dashed #d7ccc8;
++    }
++
++    .cart-total {
++      display: flex;
++      justify-content: space-between;
++      font-weight: 700;
++      font-size: 1.05rem;
++      color: var(--primary, #4e342e);
++      margin-top: 10px;
++    }
++
++    .clear-btn {
++      font: inherit;
++      font-size: 0.8rem;
++      color: #5d4037;
++      background: transparent;
++      border: 1px solid #d7ccc8;
++      padding: 4px 10px;
++      border-radius: 4px;
++      cursor: pointer;
++      margin-top: 10px;
++    }
++
++    .clear-btn:hover {
++      background: #efebe9;
++    }
++
++    .form-field {
++      margin-bottom: 16px;
++    }
++
++    .field-label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      color: var(--primary, #4e342e);
++    }
++
++    .submit-btn {
++      font: inherit;
++      font-weight: 700;
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      border: none;
++      padding: 11px 22px;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: background-color 0.2s ease;
++    }
++
++    .submit-btn:hover {
++      background: #3e2723;
++    }
++
++    .submit-btn:focus-visible,
++    .clear-btn:focus-visible {
++      outline: 3px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .order-toast {
++      margin-top: 12px;
++      padding: 10px 14px;
++      border-radius: 6px;
++      background: #e8f5e9;
++      color: #1b5e20;
++      font-size: 0.9rem;
++      font-weight: 600;
++      display: none;
++    }
++
++    .order-toast[data-visible="true"] {
++      display: block;
++    }
++  }
++`;
++
++let orderDrawerSheet = null;
++const orderDrawerTemplate = document.createElement('template');
++orderDrawerTemplate.innerHTML = `
++  <section class="panel" part="panel" aria-labelledby="customizer-heading">
++    <div>
++      <h3 id="customizer-heading">Custom Grind & Pickup Bar</h3>
++      <p class="sub">Select your preferred grind texture for any seasonal coffee in your bag.</p>
++      <form id="brew-form">
++        <div class="form-field">
++          <span class="field-label" id="grind-group-label">Choose Grind Texture</span>
++          <grind-selector name="grind" value="whole-bean" aria-labelledby="grind-group-label" required></grind-selector>
++        </div>
++        <button type="submit" class="submit-btn" part="submit">Lock In Pickup Order</button>
++        <div class="order-toast" role="status" aria-live="polite"></div>
++      </form>
++    </div>
++    <div class="cart-summary" part="summary" aria-live="polite">
++      <strong>Your Tasting Bag</strong>
++      <ul class="cart-list">
++        <li class="empty-msg">No seasonal drinks added yet. Click "Add to Order" on any card above!</li>
++      </ul>
++      <div class="cart-total">
++        <span>Estimated Total</span>
++        <span class="total-amount">$0.00</span>
++      </div>
++      <button type="button" class="clear-btn" hidden>Reset Bag</button>
++    </div>
++  </section>
++`;
++
++export class OrderDrawer extends HTMLElement {
++  #items = new Map();
++  #onCoffeeOrder;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.append(orderDrawerTemplate.content.cloneNode(true));
++    orderDrawerSheet = adoptStyles(this.shadowRoot, orderDrawerCSS, orderDrawerSheet);
++
++    const form = this.shadowRoot.getElementById('brew-form');
++    const clearBtn = this.shadowRoot.querySelector('.clear-btn');
++
++    form?.addEventListener('submit', (e) => {
++      e.preventDefault();
++      const formData = new FormData(form);
++      const grind = formData.get('grind') || 'whole-bean';
++      const toast = this.shadowRoot.querySelector('.order-toast');
++      const totalItems = Array.from(this.#items.values()).reduce((acc, item) => acc + item.qty, 0);
++      if (toast) {
++        toast.dataset.visible = 'true';
++        toast.textContent =
++          totalItems > 0
++            ? `Order confirmed! Preparing ${totalItems} item(s) with ${grind.replace('-', ' ')} grind.`
++            : `Preference saved: ${grind.replace('-', ' ')} grind ready for your next cup.`;
++      }
++    });
++
++    clearBtn?.addEventListener('click', () => {
++      this.#items.clear();
++      this.#renderCart();
++    });
++
++    this.#onCoffeeOrder = (e) => {
++      const detail = e.detail;
++      if (!detail || !detail.name) return;
++      const existing = this.#items.get(detail.name) || { price: detail.price || 4.75, qty: 0 };
++      existing.qty += 1;
++      this.#items.set(detail.name, existing);
++      this.#renderCart();
++    };
++  }
++
++  connectedCallback() {
++    document.addEventListener('coffee-order', this.#onCoffeeOrder);
++  }
++
++  disconnectedCallback() {
++    document.removeEventListener('coffee-order', this.#onCoffeeOrder);
++  }
++
++  #renderCart() {
++    const listEl = this.shadowRoot.querySelector('.cart-list');
++    const totalEl = this.shadowRoot.querySelector('.total-amount');
++    const clearBtn = this.shadowRoot.querySelector('.clear-btn');
++    if (!listEl || !totalEl) return;
++
++    listEl.replaceChildren();
++    let total = 0;
++
++    if (this.#items.size === 0) {
++      const li = document.createElement('li');
++      li.className = 'empty-msg';
++      li.textContent = 'No seasonal drinks added yet. Click "Add to Order" on any card above!';
++      listEl.append(li);
++      totalEl.textContent = '$0.00';
++      if (clearBtn) clearBtn.hidden = true;
++      return;
++    }
++
++    for (const [name, info] of this.#items.entries()) {
++      const lineTotal = info.price * info.qty;
++      total += lineTotal;
++      const li = document.createElement('li');
++      li.className = 'cart-item';
++      const nameSpan = document.createElement('span');
++      nameSpan.textContent = `${name} × ${info.qty}`;
++      const priceSpan = document.createElement('span');
++      priceSpan.textContent = `$${lineTotal.toFixed(2)}`;
++      li.append(nameSpan, priceSpan);
++      listEl.append(li);
++    }
++
++    totalEl.textContent = `$${total.toFixed(2)}`;
++    if (clearBtn) clearBtn.hidden = false;
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
++if (!customElements.get('roast-selector')) {
++  customElements.define('roast-selector', RoastSelector);
++}
++if (!customElements.get('grind-selector')) {
++  customElements.define('grind-selector', GrindSelector);
++}
++if (!customElements.get('order-drawer')) {
++  customElements.define('order-drawer', OrderDrawer);
++}
+diff --git a/index.html b/index.html
+index 66c9173..ad16b75 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,13 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Public custom properties inherited by <coffee-card> across the Shadow DOM boundary */
++      --card-bg: #ffffff;
++      --card-fg: #3e2723;
++      --card-primary: #4e342e;
++      --card-accent: #ffab40;
++      --card-radius: 12px;
+     }
+ 
+     * {
+@@ -27,6 +34,23 @@
+       background-color: var(--light);
+     }
+ 
++    /* Fail-open FOUC guard for custom elements before registration */
++    coffee-card:not(:defined),
++    roast-selector:not(:defined),
++    grind-selector:not(:defined),
++    order-drawer:not(:defined) {
++      visibility: hidden;
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        visibility: visible;
++        opacity: 1;
++      }
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -100,24 +124,35 @@
+       padding: 0 20px;
+     }
+ 
++    .section-header {
++      text-align: center;
++      margin-bottom: 12px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++    }
++
++    .section-header p {
++      color: #5d4037;
++      font-size: 0.95rem;
++    }
++
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 24px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    /* Consumer-side styling hooks via ::part() and :state() */
++    coffee-card:state(favorited) {
++      filter: drop-shadow(0 4px 12px rgba(255, 171, 64, 0.25));
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    coffee-card::part(roast-badge) {
++      letter-spacing: 0.06em;
+     }
+ 
+     .btn {
+@@ -153,11 +188,12 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -175,25 +211,62 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-header">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <p>Filter by roast profile, explore tasting notes, or add directly to your tasting bag.</p>
++      </div>
++
++      <!-- Interactive Roast & Favorites Filter Web Component -->
++      <roast-selector value="all" target="coffee-card"></roast-selector>
++
++      <!-- Reusable, Encapsulated Coffee Card Web Components -->
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <coffee-card
++          name="Maple Oat Latte"
++          price="5.50"
++          roast="light"
++          href="/menu/seasonal"
++          image="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80"
++          image-alt="Iced Maple Oat Latte topped with velvety microfoam"
++          notes="Pure Grade-A Vermont maple, toasted oat sweetness, and bright Ethiopian single-origin espresso."
++          favorited
++        >
++          <h3 slot="title">Maple Oat Latte</h3>
++          <span slot="badge">Barista Pick</span>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        </coffee-card>
++
++        <coffee-card
++          name="Dark Roast Espresso"
++          price="4.25"
++          roast="dark"
++          href="/menu/espresso"
++          image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=800&q=80"
++          image-alt="Rich dark roast espresso shot in a warm demitasse cup"
++          notes="Bittersweet dark cacao, charred cedar aroma, and a dense caramelized crema."
++        >
++          <h3 slot="title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        </coffee-card>
++
++        <coffee-card
++          name="Cold Brew"
++          price="4.75"
++          roast="medium"
++          href="/menu/cold-brew"
++          image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=800&q=80"
++          image-alt="Smooth slow-steeped cold brew coffee poured over crystal ice"
++          notes="18-hour cold extraction yielding low acidity, milk chocolate undertones, and a crisp finish."
++        >
++          <h3 slot="title">Cold Brew</h3>
++          <span slot="badge">18-Hr Steep</span>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </coffee-card>
+       </div>
++
++      <!-- Interactive Custom Grind & Tasting Bag Web Component (uses Form-Associated <grind-selector>) -->
++      <order-drawer></order-drawer>
+     </section>
+   </main>
+ 

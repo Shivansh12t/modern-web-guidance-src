@@ -1,0 +1,685 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..b3b2c99
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,26 @@
++# The Daily Grind account UI
++
++A static, responsive account screen with passkey listing, persistent preview edits, accessible rename/removal dialogs, and progressive WebAuthn Signal API synchronization.
++
++## Preview
++
++Open the site through the existing static hosting setup. The default is an explicitly labeled Jamie Davis preview account. Changes persist in this browser's local storage; Reset demo restores the three examples. Demo credentials are never sent to an authenticator. No authentication backend or real registered credentials were present in this repository.
++
++## Connect an authenticated account service
++
++Set `data-account-api="/api/account/passkeys"` on `<body>` and provide the session's CSRF token with `<meta name="csrf-token" content="…">`. The client uses same-origin credentials, disables response caching, and sends `X-CSRF-Token` on requests. These endpoints must be implemented by the account backend:
++
++- `GET /api/account/passkeys`: return `{ rpId, userId, complete: true, credentials: [...] }`. The list must contain **all** credentials for the authenticated user, without pagination. `rpId` must match registration; `userId` must be the WebAuthn user handle, encoded as unpadded base64url.
++- Each credential: `{ id, name, registeredAt, lastUsedAt, provider, icon }`. IDs must be unpadded base64url; timestamps are epoch milliseconds (`lastUsedAt` may be null). Supply provider metadata resolved from registration AAGUID, with an unknown-provider fallback. Optional icon values: `laptop`, `phone`, `key`.
++- `PATCH /api/account/passkeys/:id`: accept `{ name }` (trimmed, 1–64 characters); return success or 204.
++- `DELETE /api/account/passkeys/:id`: delete only the authenticated user's credential; return success or 204. Prefer idempotent deletion so a retry after a lost response is safe.
++
++All endpoints must enforce authentication and credential ownership; mutation endpoints must verify CSRF tokens/origin and validate input server-side. Return 401 for expired sessions. Ensure the customer has a usable alternative sign-in method before removing a final passkey. Live mode never falls back to preview data on an API error. Replace the preview account identity/sidebar content with authenticated account data when integrating.
++
++On initial loading and after deletion, the client calls `signalAllAcceptedCredentials` using the complete server-provided list, RP ID, and user handle. It feature-detects the API and handles rejection without reversing a successful account update. Unsupported browsers show manual password-manager cleanup guidance. Renaming changes only the server nickname and does not rename a provider entry or call `signalCurrentUserDetails`.
++
++This task implements management of existing passkeys. Registration, sign-in, and account-profile mutations remain the responsibility of the site's authentication service. The current sidebar's secondary account views are preview content.
++
++## Checks
++
++Run `npm test` for persistence, authenticated API/error handling, Base64URL validation, and safe authenticator synchronization tests. No build step is required for this static site.
+diff --git a/app.mjs b/app.mjs
+new file mode 100644
+index 0000000..68ee4e5
+--- /dev/null
++++ b/app.mjs
+@@ -0,0 +1,172 @@
++import { createPasskeyStore } from './passkeys.mjs';
++const paths = {
++  coffee: '<path d="M5 8h12v8a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Z"/><path d="M17 9h2a3 3 0 1 1 0 6h-2M8 3v2m4-3v3m4-2v2M3 22h17"/>',
++  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>',
++  shield: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/>',
++  'shield-check': '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/>',
++  key: '<circle cx="8" cy="8" r="5"/><path d="m11.5 11.5 9 9m-3-3 3-3m-6 0 3-3"/>',
++  laptop: '<rect x="4" y="4" width="16" height="12" rx="1"/><path d="m4 16-2 4h20l-2-4M9 20h6"/>',
++  phone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4m-3 14h2"/>',
++  pencil: '<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14Z"/>',
++  trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
++  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
++  bag: '<path d="M4 7h16l1 14H3ZM8 8V6a4 4 0 0 1 8 0v2"/>',
++  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13M12 8H8a3 3 0 1 1 3-3Zm0 0h4a3 3 0 1 0-3-3Z"/>',
++  heart: '<path d="M20 4c-3-3-7-1-8 1-1-2-5-4-8-1-5 5 2 11 8 16 6-5 13-11 8-16Z"/>',
++  logout: '<path d="M9 4H4v16h5m5-13 5 5-5 5m-7-5h12"/>',
++  lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/>',
++  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/>',
++  check: '<path d="m5 12 4 4L19 6"/>',
++  refresh: '<path d="M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5M4 16a8 8 0 0 0 14 3l3-3m0 5v-5h-5"/>',
++  chat: '<path d="M21 11a9 9 0 0 1-9 9H4l-2 2V11a9 9 0 0 1 19 0Z"/><path d="M7 11h.01m5 0h.01m5 0h.01"/>',
++};
++function icon(name) { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.key}</svg>`; }
++document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); });
++const $ = id => document.getElementById(id);
++const store = createPasskeyStore({ endpoint: document.body.dataset.accountApi || '', csrfToken: document.querySelector('meta[name="csrf-token"]')?.content || '' });
++let keys = [];
++let selectedId;
++let toastTimer;
++function notify(message) {
++  $('toast-message').textContent = message;
++  $('toast').hidden = false;
++  clearTimeout(toastTimer);
++  toastTimer = setTimeout(() => { $('toast').hidden = true; }, 5500);
++}
++const dateFormat = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
++function formatDate(value) { return value == null ? 'Never used' : dateFormat.format(value); }
++function render() {
++  const list = $('passkey-list');
++  list.replaceChildren();
++  $('key-count').textContent = keys.length;
++  if (!keys.length) {
++    const empty = document.createElement('div');
++    empty.className = 'empty';
++    empty.innerHTML = '<strong>No passkeys saved.</strong><p>You can still use your password to sign in. Passkeys you register for this account will appear here.</p>';
++    list.append(empty);
++  }
++  keys.forEach(key => {
++    const row = document.createElement('article');
++    row.className = 'passkey-row';
++    row.innerHTML = `<span class="provider-icon">${icon(key.icon)}</span><div class="key-details"><div class="key-title"><h4></h4></div><p class="provider-name"></p><div class="key-dates"><span class="registered"></span><span class="last-used"></span></div></div><div class="key-actions"><button class="icon-button rename" type="button">${icon('pencil')}</button><button class="icon-button delete" type="button">${icon('trash')}</button></div>`;
++    row.querySelector('h4').textContent = key.name;
++    row.querySelector('.provider-name').textContent = key.provider || 'Passkey provider';
++    row.querySelector('.registered').textContent = `Added ${formatDate(key.registeredAt)}`;
++    row.querySelector('.last-used').textContent = key.lastUsedAt == null ? 'Never used' : `Used ${formatDate(key.lastUsedAt)}`;
++    const rename = row.querySelector('.rename');
++    rename.setAttribute('aria-label', `Rename ${key.name}`);
++    rename.title = 'Rename passkey';
++    rename.addEventListener('click', () => {
++      selectedId = key.id;
++      $('passkey-name').value = key.name;
++      $('rename-error').hidden = true;
++      $('rename-dialog').showModal();
++      $('passkey-name').select();
++    });
++    const remove = row.querySelector('.delete');
++    remove.setAttribute('aria-label', `Remove ${key.name}`);
++    remove.title = 'Remove passkey';
++    remove.addEventListener('click', () => {
++      selectedId = key.id;
++      $('delete-name').textContent = key.name;
++      $('delete-warning').textContent = keys.length === 1 ? 'This is your last passkey. Make sure you can sign in with your password before removing it.' : 'This action can’t be undone. You can register a new passkey later.';
++      $('delete-error').hidden = true;
++      $('delete-dialog').showModal();
++    });
++    list.append(row);
++  });
++  list.setAttribute('aria-busy', 'false');
++}
++async function synchronize() {
++  const result = await store.sync();
++  $('sync-message').textContent = {
++    demo: 'Preview mode. No changes are sent to your browser authenticator or password manager.',
++    sent: 'Your browser has been notified of your current passkeys. Your passkey provider manages synchronization across devices.',
++    unsupported: 'Your account is up to date. This browser can’t sync passkey changes; remove unused keys in your device or password manager settings too.',
++    failed: 'Your account was updated, but your authenticator couldn’t sync. You can remove unused passkeys in your device or password manager settings.',
++  }[result];
++}
++async function load() {
++  $('load-error').hidden = true;
++  $('passkey-list').setAttribute('aria-busy', 'true');
++  try { keys = await store.list(); render(); await synchronize(); }
++  catch (error) {
++    $('load-error').textContent = error.message;
++    $('load-error').hidden = false;
++    $('passkey-list').replaceChildren();
++    const retry = document.createElement('button');
++    retry.className = 'secondary-button';
++    retry.textContent = 'Try again';
++    retry.addEventListener('click', load);
++    $('passkey-list').append(retry);
++    $('passkey-list').setAttribute('aria-busy', 'false');
++    $('key-count').textContent = '—';
++  }
++}
++document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
++for (const action of ['rename', 'delete']) {
++  const form = $(`${action}-form`);
++  const dialog = $(`${action}-dialog`);
++  let busy = false;
++  dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
++  form.addEventListener('submit', async event => {
++    event.preventDefault();
++    if (busy) return;
++    if (action === 'rename' && !$('passkey-name').value.trim()) {
++      $('passkey-name').setCustomValidity('Please enter a passkey name.');
++      $('passkey-name').reportValidity();
++      return;
++    }
++    busy = true;
++    form.querySelectorAll('button').forEach(button => { button.disabled = true; });
++    const errorElement = $(`${action}-error`);
++    errorElement.hidden = true;
++    try {
++      if (action === 'rename') await store.rename(selectedId, $('passkey-name').value);
++      else await store.remove(selectedId);
++      keys = await store.list();
++      dialog.close();
++      render();
++      // The deleted or rebuilt invoker no longer exists; keep keyboard focus in the list.
++      const nextAction = $('passkey-list').querySelector('button');
++      if (nextAction) nextAction.focus();
++      else { $('passkeys-heading').tabIndex = -1; $('passkeys-heading').focus(); }
++      notify(action === 'rename' ? 'Passkey name updated.' : 'Passkey removed from your account.');
++      if (action === 'delete') await synchronize();
++    } catch (error) { errorElement.textContent = error.message; errorElement.hidden = false; }
++    finally { busy = false; form.querySelectorAll('button').forEach(button => { button.disabled = false; }); }
++  });
++}
++$('passkey-name').addEventListener('input', () => $('passkey-name').setCustomValidity(''));
++$('reset-demo').hidden = !store.demo;
++$('mode-label').textContent = store.demo ? 'Preview account · changes are saved only in this browser.' : 'Your registered account passkeys.';
++$('reset-demo').addEventListener('click', async () => {
++  try { store.reset(); await load(); notify('Preview passkeys restored.'); }
++  catch { notify('Browser storage is unavailable. Enable it to use the preview.'); }
++});
++const panels = {
++  overview: ['Welcome back, Jamie.', 'Your daily ritual, at a glance.', '<h3>Good things are brewing.</h3><p>You have 240 Grind points and three saved sign-in methods. Keep your account details and security up to date here.</p>'],
++  orders: ['My orders', 'Your recent coffee moments.', '<h3>A fresh start.</h3><p>This preview account has no recent orders. Your next Daily Grind order will appear here.</p>'],
++  rewards: ['Grind rewards', 'A little thank-you for your daily ritual.', '<h3>240 points. Plenty to look forward to.</h3><p>You’re a Grind club member. Your rewards and point history will appear here when connected to your account.</p>'],
++  details: ['Personal details', 'The familiar face behind the daily ritual.', '<h3>Nice to see you, Jamie.</h3><dl><dt>Name</dt><dd>Jamie Davis</dd><dt>Member since</dt><dd>2024</dd></dl><p>This is a preview profile. Personal details can be managed when your account service is connected.</p>'],
++};
++function selectTab(tab) {
++  const security = tab === 'security';
++  $('security-panel').hidden = !security;
++  $('other-panel').hidden = security;
++  document.querySelectorAll('[data-tab]').forEach(button => {
++    button.classList.toggle('active', button.dataset.tab === tab);
++    if (button.dataset.tab === tab) button.setAttribute('aria-current', 'page');
++    else button.removeAttribute('aria-current');
++  });
++  $('breadcrumb-current').textContent = security ? 'Security & passkeys' : panels[tab][0];
++  if (!security) {
++    $('other-title').textContent = panels[tab][0];
++    $('other-description').textContent = panels[tab][1];
++    $('other-content').innerHTML = panels[tab][2];
++  }
++}
++document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => selectTab(button.dataset.tab)));
++$('back-security').addEventListener('click', () => selectTab('security'));
++document.querySelector('.account-link').addEventListener('click', () => selectTab('security'));
++load();
+diff --git a/index.html b/index.html
+index 66c9173..07ea8bf 100644
+--- a/index.html
++++ b/index.html
+@@ -1,212 +1,70 @@
+ <!DOCTYPE html>
+ <html lang="en">
+-
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="theme-color" content="#f8f6f1">
++  <title>Security & passkeys | The Daily Grind</title>
++  <link rel="preconnect" href="https://fonts.googleapis.com">
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
++  <link rel="stylesheet" href="/styles.css">
++  <script type="module" src="/app.mjs"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <a class="skip" href="#main">Skip to content</a>
++  <header class="site-header">
++    <a href="/" class="brand" aria-label="The Daily Grind home"><span class="brand-mark" data-icon="coffee"></span><span>the daily grind<span class="brand-sub">GOOD COFFEE. EVERY DAY.</span></span></a>
++    <nav aria-label="Main navigation"><a href="/menu">Our coffee</a><a href="/locations">Our places</a><a href="/rewards">Grind rewards</a></nav>
++    <a class="account-link" href="#account"><span data-icon="user"></span>My account<span class="avatar">JD</span></a>
+   </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <main id="main" class="page">
++    <div class="breadcrumb"><a href="/">Home</a><span>/</span><span>My account</span><span>/</span><span id="breadcrumb-current">Security & passkeys</span></div>
++    <div class="page-heading"><div><p class="eyebrow">YOUR DAILY GRIND</p><h1>A little space for you.</h1><p>Good coffee. Great perks. Everything in one place.</p></div><span class="member-badge"><span data-icon="coffee"></span>Grind club member</span></div>
++    <div class="account-layout" id="account">
++      <aside class="sidebar">
++        <div class="profile"><span class="profile-avatar">JD</span><div><strong>Jamie Davis</strong><span>Coffee person since 2024</span></div></div>
++        <p class="nav-label">MY ACCOUNT</p>
++        <nav class="account-nav" aria-label="Account settings">
++          <button data-tab="overview"><span data-icon="grid"></span>Overview<span class="nav-arrow">↗</span></button>
++          <button data-tab="orders"><span data-icon="bag"></span>My orders</button>
++          <button data-tab="rewards"><span data-icon="gift"></span>Grind rewards<span class="points">240</span></button>
++          <button data-tab="details"><span data-icon="user"></span>Personal details</button>
++          <button data-tab="security" class="active" aria-current="page"><span data-icon="shield"></span>Security & passkeys<span class="nav-arrow">→</span></button>
++        </nav>
++        <div class="sidebar-bottom"><span data-icon="heart"></span><p>Your daily ritual.<br>A little more rewarding.</p></div>
++        <a class="signout" href="/logout"><span data-icon="logout"></span>Sign out</a>
++      </aside>
++      <div class="workspace">
++        <section id="security-panel" aria-labelledby="security-heading">
++          <div class="section-heading"><span class="section-icon" data-icon="shield"></span><div><h2 id="security-heading">Security & passkeys</h2><p>A safer, simpler way to get back to your daily ritual.</p></div></div>
++          <div class="content-grid">
++            <div class="primary-column">
++              <div class="security-banner"><span class="banner-icon" data-icon="shield-check"></span><div><strong>A good day starts with peace of mind.</strong><p>With passkeys, your fingerprint, face, or screen lock is all you need to sign in. No password to remember.</p></div></div>
++              <section class="passkey-card" aria-labelledby="passkeys-heading">
++                <div class="card-heading"><div class="title-with-count"><h3 id="passkeys-heading">Your passkeys</h3><span id="key-count" class="count">3</span></div><span class="small-lock" data-icon="lock"></span></div>
++                <p class="card-intro">Manage the devices and password managers you use to sign in.</p>
++                <p id="load-error" class="error" role="alert" hidden></p>
++                <div id="passkey-list" aria-busy="true"><p class="loading">Loading your passkeys…</p></div>
++                <div class="card-note"><span data-icon="info"></span><p>Only remove a passkey you no longer use. You can still sign in with your other passkeys or your password.</p></div>
++              </section>
++              <div class="sync-note"><span data-icon="refresh"></span><p id="sync-message">Your passkeys, in harmony. Supported browsers keep your authenticator up to date when you remove a passkey.</p></div>
++              <div class="demo-note"><span class="demo-dot"></span><span id="mode-label">Preview account · changes are saved only in this browser.</span><button id="reset-demo">Reset demo</button></div>
++            </div>
++            <aside class="help-column" aria-label="Passkey help">
++              <div class="help-card"><span class="help-icon" data-icon="key"></span><p class="eyebrow">LESS FRICTION. MORE COFFEE.</p><h3>Your key to<br>a better morning.</h3><p>Passkeys make signing in as easy as unlocking your phone.</p><ul><li><span data-icon="check"></span>Built-in phishing protection</li><li><span data-icon="check"></span>No passwords to forget</li><li><span data-icon="check"></span>Made for your everyday devices</li></ul><a href="#passkey-faq">A little more about passkeys<span>↗</span></a></div>
++              <div class="coffee-card"><img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=700&q=85" alt="A warm cup of coffee on a café table" width="700" height="450"><div><p>One less thing to remember.</p><span>More room for the good stuff.</span></div></div>
++            </aside>
++          </div>
++          <section class="faq" id="passkey-faq"><div><span data-icon="chat"></span><h3>A few things you might be wondering</h3></div><details><summary>What happens when I remove a passkey?<span>+</span></summary><p>That passkey will no longer work for this account. Supported browsers notify your passkey provider. If your browser cannot sync the change, you can also remove the saved passkey in your device or password manager settings.</p></details><details><summary>Does renaming change my passkey?<span>+</span></summary><p>No. The name is a label here to help you recognize a passkey. Its security and the name in your password manager stay the same.</p></details><details><summary>Can I use a passkey on more than one device?<span>+</span></summary><p>Passkeys saved in a password manager can sync across your devices. Physical security keys stay on the key itself. Your passkey provider controls where each passkey is available.</p></details></section>
++        </section>
++        <section id="other-panel" hidden><div class="section-heading"><span class="section-icon" data-icon="coffee"></span><div><h2 id="other-title"></h2><p id="other-description"></p></div></div><div class="other-card" id="other-content"></div><button class="primary-button" id="back-security">Manage security & passkeys <span>→</span></button></section>
+       </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++  </main>
++  <footer><a class="footer-brand" href="/">the daily grind<span>Always a good idea.</span></a><p>© 2026 The Daily Grind Coffee Co.</p><div><a href="/privacy-policy">Privacy</a><a href="/terms">Terms</a><a href="/contact">Need a hand? <span>↗</span></a></div></footer>
++  <dialog id="rename-dialog" aria-labelledby="rename-title"><form id="rename-form"><span class="dialog-icon" data-icon="pencil"></span><h2 id="rename-title">Make it familiar.</h2><p>Give this passkey a name you’ll easily recognize.</p><label for="passkey-name">Passkey name</label><input id="passkey-name" name="name" required maxlength="64" autocomplete="off" autofocus><p class="field-hint">Up to 64 characters. Only the label in your account changes.</p><p class="error" id="rename-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="secondary-button" data-close="rename-dialog">Cancel</button><button type="submit" class="primary-button">Save name</button></div></form></dialog>
++  <dialog id="delete-dialog" aria-labelledby="delete-title"><form id="delete-form"><span class="dialog-icon delete-icon" data-icon="trash"></span><h2 id="delete-title">Remove this passkey?</h2><p>You won’t be able to sign in with <strong id="delete-name"></strong> again. Your other sign-in methods will still work.</p><div class="delete-warning" id="delete-warning"></div><p class="error" id="delete-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="secondary-button" data-close="delete-dialog" autofocus>Keep passkey</button><button type="submit" class="danger-button">Remove passkey</button></div></form></dialog>
++  <div class="toast" id="toast" role="status" aria-live="polite" hidden><span data-icon="check"></span><span id="toast-message"></span></div>
+ </body>
+-
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..93fcb10 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test tests/*.test.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/passkeys.mjs b/passkeys.mjs
+new file mode 100644
+index 0000000..afe4236
+--- /dev/null
++++ b/passkeys.mjs
+@@ -0,0 +1,76 @@
++export const seedCredentials = [
++  { id: 'ZGFpbHktZ3JpbmQtaWNsb3Vk', name: 'MacBook Pro', provider: 'iCloud Keychain', icon: 'laptop', registeredAt: Date.UTC(2026, 8, 12), lastUsedAt: Date.UTC(2026, 10, 13) },
++  { id: 'ZGFpbHktZ3JpbmQtZ29vZ2xl', name: 'My everyday phone', provider: 'Google Password Manager', icon: 'phone', registeredAt: Date.UTC(2026, 8, 14), lastUsedAt: Date.UTC(2026, 10, 11) },
++  { id: 'ZGFpbHktZ3JpbmQtc2VjdXJpdHkta2V5', name: 'Backup security key', provider: 'Security key', icon: 'key', registeredAt: Date.UTC(2026, 9, 2), lastUsedAt: null },
++];
++export function isBase64url(value) {
++  return typeof value === 'string' && value.length > 0 && value.length % 4 !== 1 && /^[A-Za-z0-9_-]+$/.test(value);
++}
++export function validateAccount(data) {
++  if (!data || !data.rpId || !isBase64url(data.userId) || data.complete !== true || !Array.isArray(data.credentials) || !data.credentials.every(c => isBase64url(c.id) && typeof c.name === 'string' && c.name.length > 0 && Number.isFinite(c.registeredAt) && (c.lastUsedAt == null || Number.isFinite(c.lastUsedAt))) || new Set(data.credentials.map(c => c.id)).size !== data.credentials.length) {
++    throw new Error('The account service returned incomplete passkey data. Please try again.');
++  }
++  return data;
++}
++export async function syncCredentials(account, credentialAPI = globalThis.PublicKeyCredential) {
++  if (!credentialAPI?.signalAllAcceptedCredentials) return 'unsupported';
++  try {
++    validateAccount(account);
++    await credentialAPI.signalAllAcceptedCredentials({ rpId: account.rpId, userId: account.userId, allAcceptedCredentialIds: account.credentials.map(c => c.id) });
++    return 'sent';
++  } catch (error) {
++    console.warn('Passkey provider synchronization was not completed.', error);
++    return 'failed';
++  }
++}
++export function createPasskeyStore({ endpoint = '', csrfToken = '', fetcher = globalThis.fetch, storage = globalThis.localStorage } = {}) {
++  const demo = !endpoint;
++  const storageKey = 'daily-grind-passkeys-v1';
++  let credentials;
++  let account;
++  async function request(path = '', options = {}) {
++    const response = await fetcher(`${endpoint}${path}`, { credentials: 'same-origin', cache: 'no-store', ...options, headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}) } });
++    if (!response.ok) throw new Error(response.status === 401 ? 'Your session has expired. Please sign in again.' : 'We couldn’t update your passkeys. Please try again.');
++    return response.status === 204 ? null : response.json();
++  }
++  function persist(next) {
++    // Do not change the visible list if persistence fails.
++    storage.setItem(storageKey, JSON.stringify(next));
++    credentials = next;
++  }
++  return {
++    demo,
++    async list() {
++      if (!demo) { account = validateAccount(await request()); return account.credentials; }
++      if (!credentials) {
++        const saved = storage.getItem(storageKey);
++        if (saved) {
++          const parsed = JSON.parse(saved);
++          if (!Array.isArray(parsed) || !parsed.every(c => isBase64url(c.id) && typeof c.name === 'string' && Number.isFinite(c.registeredAt))) throw new Error('Preview data could not be loaded. Use Reset demo to start again.');
++          credentials = parsed;
++        } else credentials = structuredClone(seedCredentials);
++      }
++      return structuredClone(credentials);
++    },
++    async rename(id, name) {
++      name = name.trim();
++      if (!name || name.length > 64) throw new Error('Enter a name between 1 and 64 characters.');
++      if (demo) {
++        if (!credentials?.some(c => c.id === id)) throw new Error('This passkey no longer exists. Reload the page.');
++        persist(credentials.map(c => c.id === id ? { ...c, name } : c));
++      } else await request(`/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ name }) });
++    },
++    async remove(id) {
++      if (demo) {
++        if (!credentials?.some(c => c.id === id)) throw new Error('This passkey no longer exists. Reload the page.');
++        persist(credentials.filter(c => c.id !== id));
++      } else {
++        await request(`/${encodeURIComponent(id)}`, { method: 'DELETE' });
++        // Refetch the complete authoritative list before notifying any authenticator.
++        account = validateAccount(await request());
++      }
++    },
++    async sync() { return demo ? 'demo' : account ? syncCredentials(account) : 'failed'; },
++    reset() { if (demo) { storage.removeItem(storageKey); credentials = undefined; } },
++  };
++}
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..82d6cb5
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1 @@
++:root{--paper:#f8f7f3;--white:#fff;--ink:#302d29;--muted:#807b73;--line:#e8e5de;--accent:#b75433;--green:#58745f;--serif:'Libre Caslon Display',Georgia,serif;--sans:'DM Sans',sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.6}button,input{font:inherit}button,a{-webkit-tap-highlight-color:transparent}button{cursor:pointer}a{color:inherit;text-decoration:none}button{color:inherit}svg{width:20px;height:20px;display:block;flex-shrink:0;stroke-width:1.6}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #b7543380;outline-offset:4px}button:disabled{cursor:wait;opacity:.55}.skip{position:fixed;left:16px;top:-80px;background:white;padding:12px;z-index:10}.skip:focus{top:12px}.site-header{height:105px;max-width:1440px;margin:auto;padding:0 5.1%;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:25px}.brand{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-size:30px;line-height:1.1;letter-spacing:-.7px}.brand-mark{display:grid;place-items:center;width:45px;height:45px;border:1px solid #9d674b;border-radius:50%;color:#8f4b31}.brand-mark svg{width:27px;height:27px}.brand-sub{display:block;font-family:var(--sans);font-size:8px;letter-spacing:2px;text-align:center;margin-top:8px}.site-header nav{display:flex;gap:32px;font-size:13px;color:#605b54}.site-header nav a:hover,footer a:hover{color:var(--accent)}.account-link{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:600}.account-link>span:first-child svg{width:17px}.avatar{display:grid;place-items:center;background:#e9e1d5;color:#746250;border-radius:50%;width:34px;height:34px;margin-left:9px;font-size:11px}.page{max-width:1290px;padding:0 32px;margin:auto}.breadcrumb{display:flex;gap:13px;font-size:10px;color:#8c867d;padding-top:25px}.breadcrumb span:last-child{color:#565148}.page-heading{display:flex;align-items:center;justify-content:space-between;padding:35px 0 37px}.eyebrow{font-size:9px;letter-spacing:1.8px;font-weight:600;color:#9a6b50;margin:0 0 7px}h1{font-family:var(--serif);font-size:49px;font-weight:400;letter-spacing:-1.1px;line-height:1.12;margin:0 0 10px}.page-heading p:last-child{color:var(--muted);font-size:12px;margin:0}.member-badge{display:flex;align-items:center;gap:8px;border:1px solid #dfd8c9;background:#f1eee6;padding:7px 12px;border-radius:30px;font-size:10px;color:#7f6b4c}.member-badge svg{width:15px;height:15px}.account-layout{display:grid;grid-template-columns:216px minmax(0,1fr);gap:42px;border-top:1px solid var(--line);padding-top:29px}.sidebar{border-right:1px solid var(--line);padding-right:24px}.profile{display:flex;gap:10px;align-items:center;margin:0 0 29px}.profile-avatar{display:grid;place-items:center;background:#e9e3d8;color:#77634d;border-radius:50%;width:39px;height:39px;font-size:12px}.profile strong{display:block;font-size:12px;font-weight:600}.profile div>span{font-size:9px;color:var(--muted)}.nav-label{font-size:8px;letter-spacing:1.4px;color:#9a948b;margin:0 0 12px 10px}.account-nav{display:flex;flex-direction:column;gap:5px}.account-nav button{width:100%;border:0;background:none;display:flex;align-items:center;gap:10px;font-size:11px;text-align:left;padding:11px 10px;border-radius:5px;white-space:nowrap}.account-nav svg{width:17px;height:17px;color:#8e887d}.account-nav button:hover{background:#efebe4}.account-nav .active{background:#eee5da;color:#994a2e;font-weight:600}.account-nav .active svg{color:var(--accent)}.nav-arrow,.points{margin-left:auto}.nav-arrow{font-size:16px}.points{border-radius:4px;background:#e8e4da;font-size:9px;padding:0 5px;color:#807059}.sidebar-bottom{border-top:1px solid var(--line);margin-top:33px;padding:25px 10px 15px;display:flex;gap:10px;color:#9b8b71}.sidebar-bottom svg{width:16px;height:16px;margin-top:4px}.sidebar-bottom p{font-family:var(--serif);font-size:17px;line-height:1.4;margin:0}.signout{display:flex;gap:10px;align-items:center;margin:22px 10px;color:#8a8379;font-size:11px}.signout svg{width:16px;height:16px}.section-heading{display:flex;align-items:center;gap:13px;margin:0 0 24px}.section-icon{width:39px;height:39px;border:1px solid #e2ddd2;border-radius:50%;display:grid;place-items:center;color:#74674f}.section-icon svg{width:19px;height:19px}h2{font-size:21px;font-weight:550;letter-spacing:-.6px;line-height:1.3;margin:0 0 5px}.section-heading p{font-size:11px;color:var(--muted);margin:0}.content-grid{display:grid;grid-template-columns:minmax(0,1fr) 239px;gap:23px}.security-banner{display:flex;gap:12px;padding:18px 17px;background:#edf0e8;border:1px solid #e0e5d9;border-radius:7px;margin-bottom:21px}.banner-icon{width:29px;height:29px;flex-shrink:0;border-radius:50%;background:#e0e7d8;display:grid;place-items:center;color:#677d5c}.banner-icon svg{width:18px;height:18px}.security-banner strong{display:block;font-size:11px;font-weight:600;margin:0 0 3px}.security-banner p{font-size:10px;line-height:1.8;color:#727c69;margin:0}.passkey-card{border:1px solid var(--line);border-radius:8px;background:white;overflow:hidden}.card-heading{display:flex;justify-content:space-between;padding:20px 21px 0}.title-with-count{display:flex;align-items:center;gap:8px}h3{font-size:14px;font-weight:600;margin:0}.count{font-size:9px;color:#857867;background:#f0ece5;border-radius:5px;padding:0 6px}.small-lock{color:#b2aa9e}.small-lock svg{width:16px;height:16px}.card-intro{font-size:10px;color:var(--muted);margin:6px 21px 19px}.passkey-row{display:flex;align-items:center;gap:13px;padding:22px 21px;border-top:1px solid #efede8}.provider-icon{flex-shrink:0;display:grid;place-items:center;width:39px;height:43px;background:#f7f5f0;border:1px solid #eeebe5;border-radius:7px}.provider-icon svg{width:23px;height:23px;stroke-width:1.4}.key-details{flex:1;min-width:0}.key-title{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.key-title h4{font-size:12px;font-weight:600;line-height:1.4;margin:0;overflow-wrap:anywhere}.provider-name{font-size:9px;color:var(--muted);margin:3px 0 6px}.key-dates{font-size:8px;color:#918b82;display:flex;gap:8px;flex-wrap:wrap}.key-dates span+span:before{content:'·';margin-right:8px}.key-actions{display:flex;align-items:center;gap:5px}.icon-button{background:none;border:0;color:#9b9489;padding:7px;border-radius:4px}.icon-button svg{width:15px;height:15px}.icon-button:hover{background:#f3eee8;color:var(--accent)}.card-note{display:flex;gap:9px;background:#faf9f6;border-top:1px solid var(--line);padding:14px 20px}.card-note>span svg{width:14px;height:14px;color:#a49c8e;margin-top:2px}.card-note p{margin:0;font-size:9px;line-height:1.8;color:#8e867a}.sync-note{display:flex;gap:9px;padding:17px 6px 0;color:#929180}.sync-note svg{width:14px;height:14px;margin-top:2px}.sync-note p{margin:0;font-size:9px;line-height:1.8;color:#8c867c}.help-card{background:#f0ece3;border:1px solid #e6e0d4;border-radius:8px;padding:22px 21px}.help-icon{width:34px;height:34px;border:1px solid #ded5c5;border-radius:50%;display:grid;place-items:center;color:#977e58;margin-bottom:20px}.help-icon svg{width:17px;height:17px}.help-card .eyebrow{font-size:7px;letter-spacing:1.3px}.help-card h3{font-family:var(--serif);font-weight:400;font-size:31px;line-height:1.1;letter-spacing:-.4px;margin:9px 0 12px}.help-card>p:not(.eyebrow){font-size:10px;color:#837967;margin:0 0 18px;line-height:1.8}.help-card ul{list-style:none;padding:0;margin:0 0 22px;display:grid;gap:10px}.help-card li{font-size:9px;display:flex;align-items:center;gap:7px;color:#786d5b}.help-card li svg{width:12px;height:12px;color:#8a8f72}.help-card>a{display:flex;justify-content:space-between;gap:7px;font-size:9px;border-top:1px solid #dfd8ca;padding-top:15px;color:#8e5a3d}.coffee-card{margin-top:20px;border-radius:7px;overflow:hidden;background:#ebe6db}.coffee-card img{width:100%;height:130px;object-fit:cover;object-position:center 60%;display:block;filter:saturate(.7)}.coffee-card div{padding:13px 16px 16px}.coffee-card p{font-family:var(--serif);font-size:20px;margin:0;line-height:1.2}.coffee-card span{font-size:9px;color:#8b7e6b}.faq{margin-top:28px;padding-top:24px;border-top:1px solid var(--line)}.faq>div{display:flex;gap:9px;align-items:center;margin-bottom:12px}.faq>div svg{width:17px;height:17px;color:#9b8c74}.faq h3{font-size:11px;font-weight:500}.faq details{border-bottom:1px solid var(--line);font-size:10px}.faq summary{display:flex;justify-content:space-between;gap:10px;padding:13px 0;cursor:pointer;list-style:none}.faq summary::-webkit-details-marker{display:none}.faq summary span{color:#9b8c74}.faq details[open] summary span{transform:rotate(45deg)}.faq details p{color:var(--muted);line-height:1.9;margin:0 20px 15px 0;max-width:640px}.demo-note{display:flex;align-items:center;gap:6px;margin:13px 6px 0;font-size:8px;color:#8e877c}.demo-dot{height:4px;width:4px;border-radius:50%;background:#b29a77;flex-shrink:0}.demo-note button{margin-left:auto;background:none;border:0;text-decoration:underline;color:#8e7960;font-size:8px;padding:4px;white-space:nowrap}.loading,.empty{padding:30px 21px;color:var(--muted);font-size:12px}.empty strong{display:block;color:var(--ink);font-weight:500}.empty p{margin:7px 0 0;font-size:11px}footer{max-width:1290px;margin:56px auto 0;border-top:1px solid var(--line);padding:27px 32px 30px;display:flex;align-items:center;justify-content:space-between;gap:20px;color:#999185}.footer-brand{font-family:var(--serif);color:#766b59;font-size:23px;line-height:1.1}.footer-brand span{display:block;font-family:var(--sans);font-size:8px;letter-spacing:.4px;margin-top:6px;color:#9b9284}footer>p{font-size:8px}footer>div{display:flex;gap:23px;font-size:9px}dialog{margin:auto;width:min(440px,calc(100% - 32px));padding:30px;border:1px solid var(--line);border-radius:12px;color:var(--ink);background:var(--paper);box-shadow:0 20px 100px #302d2933}dialog:modal{overscroll-behavior:contain}dialog::backdrop{background:#302d2966;backdrop-filter:blur(3px);overflow:hidden;overscroll-behavior:contain}.dialog-icon{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#eee5da;color:var(--accent);margin-bottom:18px}dialog h2{font-family:var(--serif);font-size:32px;font-weight:400}dialog p{font-size:12px;color:var(--muted);margin:12px 0 20px}dialog strong{overflow-wrap:anywhere;color:var(--ink)}dialog label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}dialog input{background:white;border:1px solid #c9bca9;padding:11px 12px;width:100%;border-radius:5px;outline-color:var(--accent)}dialog .field-hint{font-size:10px;margin-top:8px}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:25px}.primary-button,.secondary-button,.danger-button{border-radius:5px;padding:10px 16px;font-size:11px;font-weight:500;border:1px solid transparent}.primary-button{background:var(--accent);color:white}.secondary-button{background:transparent;border-color:#d8d0c4}.danger-button{background:#a74531;color:white}.primary-button:hover,.danger-button:hover{filter:brightness(.9)}.secondary-button:hover{background:#eee8df}.delete-warning{font-size:11px;background:#eee8df;padding:12px;border-radius:5px;color:#8a7055}.error{color:#a33f2f;font-size:11px;padding:0 20px}dialog .error{padding:0}.toast{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);border:1px solid #d6ddcf;border-radius:7px;background:#f0f3e9;color:#4f674b;padding:13px 20px;box-shadow:0 5px 30px #302d2915;font-size:12px;z-index:5;max-width:calc(100% - 30px)}.toast:not([hidden]){display:flex;gap:10px;align-items:center}.toast svg{width:17px;height:17px}.other-card{padding:30px;border:1px solid var(--line);background:white;border-radius:8px;margin-bottom:20px}.other-card p{color:var(--muted);font-size:12px}.other-card h3{font-family:var(--serif);font-size:30px;font-weight:400}.other-card dl{font-size:12px}.other-card dt{color:var(--muted);margin-top:14px}.other-card dd{margin:2px 0 0} [hidden]{display:none!important}@media(min-width:1450px){.page{padding-top:8px}.page-heading{padding-top:43px;padding-bottom:45px}.account-layout{padding-top:34px}.passkey-row{padding-top:26px;padding-bottom:26px}}@media(max-width:1100px){.account-layout{grid-template-columns:185px minmax(0,1fr);gap:25px}.sidebar{padding-right:15px}.content-grid{grid-template-columns:minmax(0,1fr) 210px;gap:16px}.key-dates{font-size:8px;gap:3px}.passkey-row{padding:20px 15px;gap:9px}.key-actions{gap:0}.help-card{padding:20px 16px}.help-card h3{font-size:28px}.account-nav button{font-size:10px;padding-left:7px;gap:7px}}@media(max-width:900px){.content-grid{grid-template-columns:1fr}.help-column{display:grid;grid-template-columns:1fr 1fr;gap:16px}.coffee-card{margin:0;display:flex;flex-direction:column}.coffee-card img{flex:1;min-height:140px}.help-card h3 br{display:none}.help-card h3{font-size:25px}.help-card ul{margin-bottom:15px}.help-icon{margin-bottom:12px}.site-header nav{gap:20px}.site-header{padding:0 25px}.brand{font-size:25px}.brand-mark{width:37px;height:37px}.brand-sub{font-size:7px}.page-heading{padding:30px 0}.member-badge{font-size:9px}.sidebar-bottom{margin-top:24px}}@media(max-width:650px){.site-header{height:83px;padding:0 20px}.site-header nav{display:none}.account-link{font-size:0;gap:0}.account-link>span:first-child{display:none}.avatar{font-size:11px}.brand{font-size:26px}.brand-sub{font-size:7px}.page{padding:0 20px}.breadcrumb{font-size:9px;gap:10px;padding-top:20px}.page-heading{padding:28px 0}.page-heading h1{font-size:39px}.page-heading p:last-child{font-size:10px}.member-badge{display:none}.account-layout{display:block;padding-top:0}.sidebar{border:0;padding:0}.profile,.nav-label,.sidebar-bottom,.signout{display:none}.account-nav{flex-direction:row;overflow:auto;padding:12px 0 18px;gap:7px}.account-nav button{width:auto;flex-shrink:0;font-size:10px;padding:8px 10px;border:1px solid var(--line)}.account-nav button:not(.active) svg,.nav-arrow,.points{display:none}.account-nav button.active{order:-1}.section-heading{margin-top:8px;margin-bottom:20px}h2{font-size:20px}.section-heading p{font-size:10px}.passkey-row{padding:22px 15px}.key-dates{font-size:8px;gap:7px}.key-actions{gap:1px}.card-heading{padding:20px 17px 0}.card-intro{margin-left:17px;margin-right:17px}.security-banner{padding:15px}.help-column{margin-top:5px}.help-card{padding:18px 15px}.help-card h3{font-size:27px}.help-card .eyebrow{font-size:6px;letter-spacing:1px}.help-card>p:not(.eyebrow){font-size:9px}.help-card li{font-size:8px;gap:4px}.help-card>a{font-size:8px}.coffee-card p{font-size:24px}.coffee-card div{padding:17px 14px}.coffee-card img{min-height:170px}.faq{margin-top:25px}.faq h3{font-size:10px}footer{padding:24px 20px;flex-wrap:wrap;margin-top:35px;gap:20px}footer>p{order:3;width:100%;margin:0}.footer-brand{font-size:23px}footer>div{gap:15px;font-size:8px}}@media(prefers-reduced-motion:no-preference){button,a{transition:background-color .15s,color .15s}.toast{animation:appear .2s ease-out}@keyframes appear{from{opacity:0;bottom:15px}to{opacity:1;bottom:25px}}}
+diff --git a/tests/passkeys.test.mjs b/tests/passkeys.test.mjs
+new file mode 100644
+index 0000000..6b1b65f
+--- /dev/null
++++ b/tests/passkeys.test.mjs
+@@ -0,0 +1,91 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createPasskeyStore, seedCredentials, syncCredentials, isBase64url } from '../passkeys.mjs';
++const memory = () => {
++  const values = new Map();
++  return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
++};
++const account = credentials => ({ rpId: 'dailygrind.example', userId: 'amFtaWU', complete: true, credentials });
++test('demo changes persist across reloads and reset restores keys', async () => {
++  const storage = memory();
++  const store = createPasskeyStore({ storage });
++  const [first] = await store.list();
++  await store.rename(first.id, '  Work laptop  ');
++  assert.equal((await createPasskeyStore({ storage }).list())[0].name, 'Work laptop');
++  await store.remove(first.id);
++  assert.equal((await createPasskeyStore({ storage }).list()).length, 2);
++  for (const key of await store.list()) await store.remove(key.id);
++  assert.deepEqual(await createPasskeyStore({ storage }).list(), []);
++  store.reset();
++  assert.equal((await store.list()).length, 3);
++});
++test('invalid names and failed persistence leave data unchanged', async () => {
++  const storage = memory();
++  const store = createPasskeyStore({ storage });
++  const [first] = await store.list();
++  await assert.rejects(store.rename(first.id, '   '));
++  await assert.rejects(store.rename(first.id, 'a'.repeat(65)));
++  storage.setItem = () => { throw new Error('Storage full'); };
++  await assert.rejects(store.remove(first.id), /Storage full/);
++  assert.equal((await store.list()).length, 3);
++});
++test('only complete valid server data is signaled with the server RP ID', async () => {
++  const calls = [];
++  const api = { signalAllAcceptedCredentials: async value => calls.push(value) };
++  assert.equal(await syncCredentials(account(seedCredentials), api), 'sent');
++  assert.deepEqual(calls[0], { rpId: 'dailygrind.example', userId: 'amFtaWU', allAcceptedCredentialIds: seedCredentials.map(c => c.id) });
++  const originalWarn = console.warn;
++  console.warn = () => {};
++  try {
++    assert.equal(await syncCredentials({ ...account(seedCredentials), complete: false }, api), 'failed');
++    assert.equal(await syncCredentials({ ...account(seedCredentials), userId: 'bad=' }, api), 'failed');
++    assert.equal(calls.length, 1);
++  } finally { console.warn = originalWarn; }
++});
++test('an authoritative empty list can remove the last accepted credential', async () => {
++  let payload;
++  await syncCredentials(account([]), { signalAllAcceptedCredentials: async value => { payload = value; } });
++  assert.deepEqual(payload.allAcceptedCredentialIds, []);
++});
++test('unsupported browsers and rejected signaling do not break management', async () => {
++  assert.equal(await syncCredentials(account(seedCredentials), {}), 'unsupported');
++  const originalWarn = console.warn;
++  console.warn = () => {};
++  try { assert.equal(await syncCredentials(account([]), { signalAllAcceptedCredentials: async () => { throw new Error('Unavailable'); } }), 'failed'); }
++  finally { console.warn = originalWarn; }
++});
++test('real API deletes then fetches a fresh complete list; mutations carry CSRF protection', async () => {
++  const requests = [];
++  let current = structuredClone(seedCredentials);
++  const store = createPasskeyStore({ endpoint: '/api/account/passkeys', csrfToken: 'csrf-value', storage: memory(), fetcher: async (url, options) => {
++    requests.push({ url, ...options });
++    if (options.method === 'DELETE') { current = current.slice(1); return { ok: true, status: 204 }; }
++    return { ok: true, status: 200, json: async () => account(current) };
++  } });
++  await store.list();
++  await store.remove(seedCredentials[0].id);
++  assert.equal(requests[1].method, 'DELETE');
++  assert.equal(requests[1].headers['X-CSRF-Token'], 'csrf-value');
++  assert.equal(requests[1].credentials, 'same-origin');
++  assert.equal(requests[2].url, '/api/account/passkeys');
++  assert.equal((await store.list()).length, 2);
++});
++test('failed account requests never fall back to demo data', async () => {
++  const store = createPasskeyStore({ endpoint: '/api/account/passkeys', storage: memory(), fetcher: async () => ({ ok: false, status: 401 }) });
++  await assert.rejects(store.list(), /session has expired/);
++  assert.equal(await store.sync(), 'failed');
++});
++test('seed credentials and user IDs are unpadded base64url', () => {
++  assert.ok(seedCredentials.every(c => isBase64url(c.id)));
++  for (const value of ['a', 'bad=', '', 'a+b/', null]) assert.equal(isBase64url(value), false);
++});
++test('demo synchronization never reaches the authenticator', async () => {
++  const previous = globalThis.PublicKeyCredential;
++  globalThis.PublicKeyCredential = { signalAllAcceptedCredentials: () => { assert.fail('Demo must never signal'); } };
++  try {
++    const store = createPasskeyStore({ storage: memory() });
++    await store.list();
++    await store.remove(seedCredentials[0].id);
++    assert.equal(await store.sync(), 'demo');
++  } finally { globalThis.PublicKeyCredential = previous; }
++});

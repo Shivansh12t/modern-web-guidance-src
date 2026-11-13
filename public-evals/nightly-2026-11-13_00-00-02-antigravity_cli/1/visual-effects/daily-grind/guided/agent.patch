@@ -1,0 +1,368 @@
+diff --git a/index.html b/index.html
+index 66c9173..d1f7d08 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,22 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #2d1b17;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-warm: #e65100;
+       --text: #3e2723;
+       --light: #fafafa;
++      --cream: #f5ebe6;
++      --in-oklab: ;
++      --in-oklch: ;
++    }
++
++    @supports (background: linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++        --in-oklch: in oklch;
++      }
+     }
+ 
+     * {
+@@ -75,8 +87,12 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      isolation: isolate;
++      background-image:
++        linear-gradient(135deg var(--in-oklab), rgba(62, 39, 35, 0.82), rgba(141, 78, 37, 0.72), rgba(255, 171, 64, 0.55)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-blend-mode: soft-light;
++      background-color: #2d1b17;
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -86,53 +102,239 @@
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      border-bottom: 10px solid transparent;
++      box-shadow: inset 0 -40px 80px rgba(30, 15, 10, 0.45);
++    }
++
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 -10px 0;
++      height: 10px;
++      background: repeating-linear-gradient(
++        -45deg var(--in-oklab),
++        var(--primary) 0 1em,
++        var(--accent) 0 2em
++      );
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 2px 12px rgba(30, 15, 10, 0.65);
++    }
++
++    .hero p {
++      font-size: 1.15rem;
++      max-width: 540px;
++      text-shadow: 0 1px 8px rgba(30, 15, 10, 0.65);
++    }
++
++    .btn-hero {
++      background: linear-gradient(135deg var(--in-oklch), var(--accent), var(--accent-warm));
++      color: #fff;
++      font-weight: 700;
++      padding: 12px 28px;
++      border-radius: 999px;
++      box-shadow:
++        0 2px 4px rgba(45, 27, 23, 0.25),
++        0 8px 20px rgba(230, 81, 0, 0.35);
++      border: 1px solid rgba(255, 255, 255, 0.25);
++    }
++
++    .btn-hero:hover {
++      background: linear-gradient(135deg var(--in-oklch), #ffc470, var(--accent));
++      color: var(--primary-dark);
++      transform: translateY(-2px);
++    }
++
++    /* Decorative Pattern Accents */
++    .section-header {
++      text-align: center;
++      margin-bottom: 28px;
++    }
++
++    .section-header h2 {
++      font-size: 2rem;
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .checkerboard-accent {
++      width: 96px;
++      height: 16px;
++      margin: 0 auto;
++      border-radius: 4px;
++      background: repeating-conic-gradient(var(--primary) 0 25%, var(--secondary) 0 50%) 0 / 16px 16px;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
++      margin: 48px auto;
++      padding: 36px 24px;
++      border-radius: 16px;
++      --distance: 1.5em;
++      --radius: 0.12em;
++      --polka: radial-gradient(circle, var(--secondary) var(--radius), transparent calc(var(--radius) + 1px));
++      background:
++        var(--polka) 0 0,
++        var(--polka) var(--distance) var(--distance) var(--cream);
++      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
+     }
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 28px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 28px 24px 24px;
++      border-radius: 12px;
++      border: 1px solid color-mix(in oklab, var(--primary) 12%, white);
++      box-shadow:
++        0 1px 2px rgba(62, 39, 35, 0.06),
++        0 4px 8px rgba(62, 39, 35, 0.08),
++        0 12px 24px rgba(62, 39, 35, 0.12),
++        0 24px 48px rgba(62, 39, 35, 0.08);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      position: relative;
++      overflow: hidden;
++      transition: transform 0.25s ease, box-shadow 0.25s ease;
++    }
++
++    .card::before {
++      content: "";
++      position: absolute;
++      inset: 0 0 auto 0;
++      height: 6px;
++      background: linear-gradient(to right var(--in-oklab), var(--primary) 50%, var(--accent) 0) 0 / 1.5em;
++    }
++
++    .card:hover {
++      transform: translateY(-4px);
++      box-shadow:
++        0 2px 4px rgba(62, 39, 35, 0.08),
++        0 8px 16px rgba(62, 39, 35, 0.12),
++        0 18px 36px rgba(62, 39, 35, 0.16),
++        0 32px 60px rgba(62, 39, 35, 0.12);
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
++      margin-bottom: 8px;
++      color: var(--primary);
++      font-size: 1.35rem;
++    }
++
++    .card > p {
++      color: color-mix(in oklab, var(--text) 82%, white);
++      margin-bottom: 18px;
++    }
++
++    /* Flavor Profile Pie Chart & Accessible Breakdown */
++    .flavor-profile {
++      width: 100%;
++      background: color-mix(in oklab, var(--cream) 65%, white);
++      border-radius: 10px;
++      padding: 14px;
++      margin: auto 0 16px;
++      display: flex;
++      align-items: center;
++      gap: 14px;
++      text-align: left;
++      border: 1px solid color-mix(in oklab, var(--secondary) 60%, white);
++    }
++
++    .pie {
++      --p1: 50%;
++      --p2: 80%;
++      --c1: var(--primary);
++      --c2: var(--accent);
++      --c3: #8d6e63;
++      width: 64px;
++      aspect-ratio: 1;
++      flex-shrink: 0;
++      border-radius: 50%;
++      background: conic-gradient(
++        var(--c1) 0 var(--p1),
++        var(--c2) 0 var(--p2),
++        var(--c3) 0
++      );
++      box-shadow:
++        0 2px 4px rgba(62, 39, 35, 0.15),
++        inset 0 0 0 2px rgba(255, 255, 255, 0.6);
++    }
++
++    .flavor-breakdown {
++      flex: 1;
++      font-size: 0.8rem;
++      line-height: 1.35;
++    }
++
++    .flavor-title {
++      font-weight: 700;
++      font-size: 0.75rem;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
+       color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .flavor-list {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      gap: 2px 8px;
++    }
++
++    .flavor-list dt {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++      color: var(--text);
++    }
++
++    .flavor-list dd {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .swatch {
++      display: inline-block;
++      width: 9px;
++      height: 9px;
++      border-radius: 2px;
++      flex-shrink: 0;
++    }
++
++    .swatch-2 {
++      border-radius: 50%;
++    }
++
++    .swatch-3 {
++      transform: rotate(45deg);
++      border-radius: 1px;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: linear-gradient(to bottom var(--in-oklab), var(--primary), var(--primary-dark));
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
++      border-radius: 6px;
++      margin-top: 8px;
++      transition: transform 0.2s, background 0.3s, box-shadow 0.2s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: linear-gradient(to bottom var(--in-oklab), #5d4037, var(--primary));
+     }
+ 
+     footer {
+@@ -171,26 +373,71 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn btn-hero">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div class="section-header">
++        <h2>Seasonal Favorites</h2>
++        <div class="checkerboard-accent" aria-hidden="true"></div>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="flavor-profile">
++            <div class="pie" style="--p1: 45%; --p2: 80%; --c1: #ffab40; --c2: #8d6e63; --c3: #4e342e;" aria-hidden="true"></div>
++            <div class="flavor-breakdown">
++              <div class="flavor-title">Flavor Profile</div>
++              <dl class="flavor-list">
++                <dt><span class="swatch" style="background: #ffab40;" aria-hidden="true"></span>Sweet Maple</dt>
++                <dd>45%</dd>
++                <dt><span class="swatch swatch-2" style="background: #8d6e63;" aria-hidden="true"></span>Creamy Oat</dt>
++                <dd>35%</dd>
++                <dt><span class="swatch swatch-3" style="background: #4e342e;" aria-hidden="true"></span>Roasted Espresso</dt>
++                <dd>20%</dd>
++              </dl>
++            </div>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div class="flavor-profile">
++            <div class="pie" style="--p1: 60%; --p2: 85%; --c1: #4e342e; --c2: #8d6e63; --c3: #ffab40;" aria-hidden="true"></div>
++            <div class="flavor-breakdown">
++              <div class="flavor-title">Flavor Profile</div>
++              <dl class="flavor-list">
++                <dt><span class="swatch" style="background: #4e342e;" aria-hidden="true"></span>Smokey Roast</dt>
++                <dd>60%</dd>
++                <dt><span class="swatch swatch-2" style="background: #8d6e63;" aria-hidden="true"></span>Dark Cocoa</dt>
++                <dd>25%</dd>
++                <dt><span class="swatch swatch-3" style="background: #ffab40;" aria-hidden="true"></span>Bright Acidity</dt>
++                <dd>15%</dd>
++              </dl>
++            </div>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div class="flavor-profile">
++            <div class="pie" style="--p1: 50%; --p2: 80%; --c1: #8d6e63; --c2: #4e342e; --c3: #ffab40;" aria-hidden="true"></div>
++            <div class="flavor-breakdown">
++              <div class="flavor-title">Flavor Profile</div>
++              <dl class="flavor-list">
++                <dt><span class="swatch" style="background: #8d6e63;" aria-hidden="true"></span>Smooth Chocolate</dt>
++                <dd>50%</dd>
++                <dt><span class="swatch swatch-2" style="background: #4e342e;" aria-hidden="true"></span>Rich Body</dt>
++                <dd>30%</dd>
++                <dt><span class="swatch swatch-3" style="background: #ffab40;" aria-hidden="true"></span>Caramel Finish</dt>
++                <dd>20%</dd>
++              </dl>
++            </div>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>

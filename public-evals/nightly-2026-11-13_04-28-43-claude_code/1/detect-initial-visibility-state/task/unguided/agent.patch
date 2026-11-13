@@ -1,0 +1,44 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,8 +152,40 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script>
++    // Detect whether this tab was opened in the background during initial page load.
++    (function () {
++      var result = { backgrounded: false, timestamp: Date.now() };
++      var script = document.currentScript;
++      // Async/deferred/injected scripts (or any script run after parsing) may execute
++      // after the user has already switched tabs, so a live visibilityState read is unreliable.
++      var runsLate = !script || script.async || script.defer || document.readyState !== 'loading';
++
++      var supportsVisibilityEntries =
++        typeof PerformanceObserver !== 'undefined' &&
++        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
++        PerformanceObserver.supportedEntryTypes.indexOf('visibility-state') !== -1;
++
++      if (supportsVisibilityEntries) {
++        // Modern path: the browser records the initial visibility state at startTime 0,
++        // regardless of when this script runs.
++        var entries = performance.getEntriesByType('visibility-state');
++        var initial = entries.filter(function (e) { return e.startTime === 0; })[0] || entries[0];
++        result.backgrounded = initial ? initial.name === 'hidden' : document.visibilityState === 'hidden';
++      } else {
++        // Older fallback: read the current visibility state (ignoring prerendering).
++        result.backgrounded = document.visibilityState === 'hidden' && !document.prerendering;
++        if (runsLate) {
++          result.note = 'Fallback document.visibilityState check is unreliable for async scripts: ' +
++            'the tab may have changed visibility before this script executed.';
++        }
++      }
++
++      console.log(result);
++    })();
++  </script>
+ </head>
+ 
+ <body>
+ 

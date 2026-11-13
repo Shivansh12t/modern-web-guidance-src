@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,134 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Rewards trigger + popover card */
++    .rewards-trigger {
++      anchor-name: --rewards-trigger;
++      font: inherit;
++      font-size: 0.9rem;
++      color: white;
++      background: none;
++      border: 0;
++      padding: 0;
++      cursor: pointer;
++      transition: color 0.3s;
++    }
++
++    .rewards-trigger:hover,
++    .rewards-trigger[aria-expanded="true"] {
++      color: var(--accent);
++    }
++
++    .rewards-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 2px;
++    }
++
++    /* Explicit anchor + anchor() insets so the polyfill can position it too
++       (it supports neither implicit anchors nor position-area with fallbacks).
++       Intentionally NOT wrapped in @supports so the polyfill can read it. */
++    .rewards-card {
++      position-anchor: --rewards-trigger;
++      inset: auto;
++      top: anchor(bottom);
++      right: anchor(right);
++      margin: 12px 0 0;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      width: min(320px, calc(100vw - 24px));
++      padding: 0;
++      border: 0;
++      border-radius: 12px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++      overflow: hidden;
++    }
++
++    .rewards-card:is(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    .rewards-card__header {
++      position: relative;
++      height: 110px;
++      background: linear-gradient(rgba(78, 52, 46, 0.35), rgba(78, 52, 46, 0.85)),
++        url('https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=640&q=80') center / cover;
++      color: white;
++      padding: 16px;
++      display: flex;
++      align-items: flex-end;
++    }
++
++    .rewards-card__header h2 {
++      font-size: 1.15rem;
++      letter-spacing: 0.5px;
++    }
++
++    .rewards-card__close {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      width: 32px;
++      height: 32px;
++      border: 0;
++      border-radius: 50%;
++      background: rgba(0, 0, 0, 0.45);
++      color: white;
++      font-size: 1.1rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .rewards-card__close:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .rewards-card__body {
++      padding: 16px;
++    }
++
++    .rewards-card__points {
++      font-size: 2rem;
++      font-weight: bold;
++      color: var(--primary);
++      line-height: 1.1;
++    }
++
++    .rewards-card__points small {
++      font-size: 0.85rem;
++      font-weight: normal;
++      color: #6d4c41;
++    }
++
++    .rewards-card progress {
++      width: 100%;
++      height: 10px;
++      margin: 12px 0 6px;
++      accent-color: var(--accent);
++    }
++
++    .rewards-card__next {
++      font-size: 0.85rem;
++    }
++
++    .rewards-card .btn {
++      display: block;
++      text-align: center;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -152,8 +278,10 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <!-- Single module entry: loads polyfills (only if needed) before rewards code runs. -->
++  <script type="module" src="/js/main.js"></script>
+ </head>
+ 
+ <body>
+ 
+@@ -161,9 +289,26 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li>
++        <button type="button" id="rewards-trigger" class="rewards-trigger" commandfor="rewards-card"
++          command="toggle-popover" aria-controls="rewards-card">Rewards</button>
++        <section id="rewards-card" class="rewards-card" popover aria-labelledby="rewards-card-title">
++          <div class="rewards-card__header">
++            <h2 id="rewards-card-title">Grind Rewards</h2>
++            <button type="button" class="rewards-card__close" commandfor="rewards-card" command="hide-popover"
++              aria-label="Close rewards" data-close>&times;</button>
++          </div>
++          <div class="rewards-card__body">
++            <p class="rewards-card__points"><span data-points>&mdash;</span> <small>points</small></p>
++            <label class="visually-hidden" for="rewards-progress">Progress to next reward</label>
++            <progress id="rewards-progress" data-progress max="1" value="0"></progress>
++            <p class="rewards-card__next" data-next>Loading your rewards&hellip;</p>
++            <a href="/rewards" class="btn">View all rewards</a>
++          </div>
++        </section>
++      </li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>

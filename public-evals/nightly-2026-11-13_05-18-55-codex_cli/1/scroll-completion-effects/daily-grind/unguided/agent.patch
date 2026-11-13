@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+index 66c9173..1562e8b 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,35 @@
+       padding: 0 20px;
+     }
+ 
++    section[id] {
++      scroll-margin-top: var(--nav-offset, 90px);
++      border-radius: 8px;
++    }
++
++    .page-section {
++      margin-top: 60px;
++      padding: 24px;
++      background: white;
++    }
++
++    section[id]:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 6px;
++    }
++
++    .section-arrived {
++      animation: section-arrival 900ms ease-out;
++    }
++
++    @keyframes section-arrival {
++      from { box-shadow: 0 0 0 6px var(--accent); }
++      to { box-shadow: 0 0 0 0 transparent; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .section-arrived { animation: none; }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -160,11 +189,11 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="#menu">Menu</a></li>
++      <li><a href="#locations">Locations</a></li>
++      <li><a href="#rewards">Rewards</a></li>
++      <li><a href="#account">My Account</a></li>
++      <li><a href="#logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+@@ -175,8 +204,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" tabindex="-1" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +224,25 @@
+         </div>
+       </div>
+     </section>
++    <section id="locations" class="page-section" tabindex="-1" aria-labelledby="locations-heading">
++      <h2 id="locations-heading">Locations</h2>
++      <p>Find your next coffee stop. Contact us for café locations and opening hours.</p>
++      <a href="/contact" class="btn">Contact Us</a>
++    </section>
++    <section id="rewards" class="page-section" tabindex="-1" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">Rewards</h2>
++      <p>Make your daily coffee even more rewarding. Ask our team about the rewards program.</p>
++    </section>
++    <section id="account" class="page-section" tabindex="-1" aria-labelledby="account-heading">
++      <h2 id="account-heading">My Account</h2>
++      <p>Visit your account to manage your details.</p>
++      <a href="/account" class="btn">Open My Account</a>
++    </section>
++    <section id="logout" class="page-section" tabindex="-1" aria-labelledby="logout-heading">
++      <h2 id="logout-heading">Logout</h2>
++      <p>Ready to leave? Use the link below to log out of your account.</p>
++      <a href="/logout" class="btn">Log Out</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +255,85 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navigation = document.querySelector('nav');
++    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++    let cancelScroll = () => {};
++
++    function updateNavigationOffset() {
++      document.documentElement.style.setProperty('--nav-offset', `${navigation.offsetHeight + 20}px`);
++    }
++
++    updateNavigationOffset();
++    new ResizeObserver(updateNavigationOffset).observe(navigation);
++
++    navigation.addEventListener('click', (event) => {
++      const link = event.target.closest('a[href^="#"], [data-scroll-target]');
++      if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++      const selector = link.dataset.scrollTarget || link.getAttribute('href');
++      const target = document.getElementById(selector.replace(/^#/, ''));
++      if (!target) return;
++
++      event.preventDefault();
++      cancelScroll();
++      document.querySelectorAll('.section-arrived').forEach((section) => section.classList.remove('section-arrived'));
++      updateNavigationOffset();
++
++      const desiredTop = target.getBoundingClientRect().top + window.scrollY - navigation.offsetHeight - 20;
++      const destination = Math.max(0, Math.min(desiredTop, document.documentElement.scrollHeight - window.innerHeight));
++      const controller = new AbortController();
++      let frame;
++      let stableFrames = 0;
++      let previousY = window.scrollY;
++      const startedAt = performance.now();
++      let lastMovementAt = startedAt;
++
++      const cleanup = () => {
++        controller.abort();
++        cancelAnimationFrame(frame);
++      };
++      cancelScroll = cleanup;
++
++      // User input or a newer navigation cancels the pending arrival effects.
++      for (const type of ['wheel', 'touchstart', 'pointerdown']) {
++        window.addEventListener(type, cleanup, { passive: true, signal: controller.signal });
++      }
++      window.addEventListener('keydown', (event) => {
++        if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Tab', 'Escape'].includes(event.key)) cleanup();
++      }, { signal: controller.signal });
++      window.addEventListener('popstate', cleanup, { signal: controller.signal });
++
++      const checkArrival = (now) => {
++        const currentY = window.scrollY;
++        if (Math.abs(currentY - previousY) < 0.1) {
++          stableFrames += 1;
++        } else {
++          stableFrames = 0;
++          lastMovementAt = now;
++        }
++        previousY = currentY;
++
++        // Check actual position and settling, rather than guessing a scroll duration.
++        if (Math.abs(currentY - destination) <= 1 && stableFrames >= 3 && now - startedAt >= 100) {
++          cleanup();
++          history.pushState(null, '', `#${target.id}`);
++          target.focus({ preventScroll: true });
++          target.classList.add('section-arrived');
++          target.addEventListener('animationend', () => target.classList.remove('section-arrived'), { once: true });
++          return;
++        }
++        // A layout change or interrupted scroll must not activate the wrong target.
++        if (now - startedAt > 500 && now - lastMovementAt > 250) {
++          cleanup();
++          return;
++        }
++        frame = requestAnimationFrame(checkArrival);
++      };
++
++      window.scrollTo({ top: destination, behavior: reducedMotion.matches ? 'instant' : 'smooth' });
++      frame = requestAnimationFrame(checkArrival);
++    });
++  </script>
+ </body>
+ 
+ </html>

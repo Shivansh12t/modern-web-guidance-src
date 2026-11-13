@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,106 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const menuItems = [
++      {
++        name: "Maple Oat Latte",
++        category: "Seasonal",
++        description: "Creamy oat milk with a hint of Vermont maple syrup.",
++        price: "$5.75",
++        sizes: ["Small (12 oz)", "Medium (16 oz)", "Large (20 oz)"],
++        ingredients: ["Espresso", "Steamed oat milk", "Pure Vermont maple syrup", "Cinnamon dusting"],
++        calories: 210,
++        dietary: ["Vegan", "Dairy-Free"],
++        url: "/menu/seasonal",
++      },
++      {
++        name: "Dark Roast Espresso",
++        category: "Espresso",
++        description: "Bold, smokey, and perfect for a morning boost.",
++        price: "$3.50",
++        sizes: ["Single Shot", "Double Shot"],
++        ingredients: ["100% Arabica dark-roasted espresso beans", "Filtered water"],
++        calories: 5,
++        dietary: ["Vegan", "Dairy-Free", "Gluten-Free", "Sugar-Free"],
++        url: "/menu/espresso",
++      },
++      {
++        name: "Cold Brew",
++        category: "Cold Coffee",
++        description: "Steeped for 18 hours for maximum smoothness.",
++        price: "$4.75",
++        sizes: ["Medium (16 oz)", "Large (20 oz)"],
++        ingredients: ["Coarse-ground single-origin coffee beans", "Cold filtered water"],
++        calories: 10,
++        dietary: ["Vegan", "Dairy-Free", "Gluten-Free", "Sugar-Free"],
++        url: "/menu/cold-brew",
++      },
++    ];
++
++    if ("modelContext" in document) {
++      const controller = new AbortController();
++      const deactivateTool = () => controller.abort();
++
++      window.addEventListener("pagehide", deactivateTool, { once: true });
++      window.addEventListener("beforeunload", deactivateTool, { once: true });
++      window.addEventListener("unload", deactivateTool, { once: true });
++
++      await document.modelContext.registerTool(
++        {
++          name: "get_menu_item_details",
++          description:
++            "Looks up details for a coffee shop menu item, including its description, price, available sizes, ingredients, and nutrition information. Use when the user asks about a specific drink or menu item.",
++          inputSchema: {
++            type: "object",
++            properties: {
++              itemName: {
++                type: "string",
++                description: "Name of the menu item to look up.",
++              },
++            },
++            required: ["itemName"],
++          },
++          execute(input = {}) {
++            const rawName =
++              typeof input?.itemName === "string"
++                ? input.itemName
++                : typeof input?.name === "string"
++                  ? input.name
++                  : "";
++            const query = rawName.trim();
++
++            if (!query) {
++              return {
++                error: "Pass a non-empty menu item name to look up.",
++                availableItems: menuItems.map((entry) => entry.name),
++              };
++            }
++
++            const normalizedQuery = query.toLowerCase();
++            const item =
++              menuItems.find((entry) => entry.name.toLowerCase() === normalizedQuery) ||
++              menuItems.find((entry) => entry.name.toLowerCase().includes(normalizedQuery));
++
++            if (!item) {
++              return {
++                error: `Menu item "${query}" not found.`,
++                availableItems: menuItems.map((entry) => entry.name),
++              };
++            }
++
++            return item;
++          },
++          annotations: {
++            readOnlyHint: true,
++          },
++        },
++        { signal: controller.signal }
++      );
++    }
++  </script>
++
+ </body>
+ 
+ </html>

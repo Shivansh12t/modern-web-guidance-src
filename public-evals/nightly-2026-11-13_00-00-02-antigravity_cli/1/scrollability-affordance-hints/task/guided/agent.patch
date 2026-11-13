@@ -1,0 +1,259 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,150 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Customer Reviews Section */
++    .reviews-section {
++      margin-block-start: 48px;
++    }
++
++    .reviews-section h2 {
++      text-align: center;
++      margin-block-end: 20px;
++    }
++
++    .reviews-scroller {
++      block-size: 360px;
++      overflow-y: auto;
++      container-type: scroll-state;
++      list-style: none;
++      display: grid;
++      gap: 16px;
++      padding: 16px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .reviews-scroller::before,
++    .reviews-scroller::after {
++      content: "";
++      display: block;
++      position: sticky;
++      block-size: 1rem;
++      z-index: 1;
++      pointer-events: none;
++      opacity: 0;
++      transition: opacity 0.2s;
++    }
++
++    .reviews-scroller::before {
++      inset-block-start: -16px;
++      margin-block-end: calc(-1rem - 16px);
++      margin-inline: -16px;
++      background: radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 0.15), transparent);
++    }
++
++    .reviews-scroller::after {
++      inset-block-end: -16px;
++      margin-block-start: calc(-1rem - 16px);
++      margin-inline: -16px;
++      background: radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 0.15), transparent);
++    }
++
++    @container scroll-state(scrollable: block-start) {
++      .reviews-scroller::before {
++        opacity: 1;
++      }
++    }
++
++    @container scroll-state(scrollable: block-end) {
++      .reviews-scroller::after {
++        opacity: 1;
++      }
++    }
++
++    @supports not (container-type: scroll-state) {
++      .reviews-scroller::before,
++      .reviews-scroller::after {
++        animation: show-shadow linear both;
++        animation-timeline: scroll();
++      }
++
++      .reviews-scroller::before {
++        animation-range: 0 2rem;
++      }
++
++      .reviews-scroller::after {
++        animation-direction: reverse;
++        animation-range: calc(100% - 2rem) 100%;
++      }
++    }
++
++    @keyframes show-shadow {
++      to {
++        opacity: 1;
++      }
++    }
++
++    .reviews-scroller.more-start::before,
++    .reviews-scroller.more-end::after {
++      opacity: 1;
++    }
++
++    .review-card {
++      background: var(--light);
++      padding: 16px 20px;
++      border-radius: 8px;
++      border: 1px solid var(--secondary);
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-block-end: 8px;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .review-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .review-meta {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      font-size: 0.9rem;
++    }
++
++    .review-stars {
++      color: #d97706;
++      letter-spacing: 1px;
++    }
++
++    .review-date {
++      color: #6d4c41;
++      font-size: 0.85rem;
++    }
++
++    .review-text {
++      margin-block-end: 8px;
++    }
++
++    .review-drink {
++      font-size: 0.85rem;
++      color: var(--primary);
++      text-decoration: none;
++      font-weight: 600;
++    }
++
++    .review-drink:hover {
++      text-decoration: underline;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +336,80 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reviews-section">
++      <h2>Customer Reviews</h2>
++      <ul class="reviews-scroller" role="list">
++        <li class="review-card">
++          <div class="review-header">
++            <span class="review-author">Elena Rostova</span>
++            <div class="review-meta">
++              <span class="review-stars" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              <time class="review-date" datetime="2026-11-10">Nov 10, 2026</time>
++            </div>
++          </div>
++          <p class="review-text">The Maple Oat Latte is hands down the best autumn drink in town. Not overly sweet, with genuine Vermont maple flavor and silky microfoam.</p>
++          <a href="/menu/seasonal" class="review-drink">Ordered: Maple Oat Latte</a>
++        </li>
++        <li class="review-card">
++          <div class="review-header">
++            <span class="review-author">Marcus Vance</span>
++            <div class="review-meta">
++              <span class="review-stars" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              <time class="review-date" datetime="2026-11-08">Nov 8, 2026</time>
++            </div>
++          </div>
++          <p class="review-text">Their 18-hour Cold Brew got me through finals week. Zero bitterness and a rich chocolatey finish that stays smooth even after the ice melts.</p>
++          <a href="/menu/cold-brew" class="review-drink">Ordered: Cold Brew</a>
++        </li>
++        <li class="review-card">
++          <div class="review-header">
++            <span class="review-author">Priya Patel</span>
++            <div class="review-meta">
++              <span class="review-stars" role="img" aria-label="4 out of 5 stars">★★★★☆</span>
++              <time class="review-date" datetime="2026-11-04">Nov 4, 2026</time>
++            </div>
++          </div>
++          <p class="review-text">Cozy atmosphere and super friendly baristas. The Dark Roast Espresso packs a serious punch with lovely toasted hazelnut notes.</p>
++          <a href="/menu/espresso" class="review-drink">Ordered: Dark Roast Espresso</a>
++        </li>
++        <li class="review-card">
++          <div class="review-header">
++            <span class="review-author">David Kim</span>
++            <div class="review-meta">
++              <span class="review-stars" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              <time class="review-date" datetime="2026-10-29">Oct 29, 2026</time>
++            </div>
++          </div>
++          <p class="review-text">I buy a bag of their locally roasted whole beans every Friday. Every pour-over at home tastes as vibrant and fresh as it does at the cafe.</p>
++          <a href="/menu" class="review-drink">Ordered: House Whole Beans</a>
++        </li>
++        <li class="review-card">
++          <div class="review-header">
++            <span class="review-author">Hannah Abbott</span>
++            <div class="review-meta">
++              <span class="review-stars" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              <time class="review-date" datetime="2026-10-22">Oct 22, 2026</time>
++            </div>
++          </div>
++          <p class="review-text">Ordered online before my morning commute and my cortado was waiting hot at the counter. Ethically sourced coffee that actually lives up to the hype!</p>
++          <a href="/order-online" class="review-drink">Ordered: Classic Cortado</a>
++        </li>
++        <li class="review-card">
++          <div class="review-header">
++            <span class="review-author">Liam O'Connor</span>
++            <div class="review-meta">
++              <span class="review-stars" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++              <time class="review-date" datetime="2026-10-15">Oct 15, 2026</time>
++            </div>
++          </div>
++          <p class="review-text">The rewards program is generous and the seasonal pastries pair wonderfully with the Maple Oat Latte. My go-to neighborhood coffee spot.</p>
++          <a href="/rewards" class="review-drink">Ordered: Maple Oat Latte</a>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +420,23 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('animation-timeline', 'scroll()')) {
++      for (const scroller of document.querySelectorAll('.reviews-scroller')) {
++        const [first, last] = [scroller.firstElementChild, scroller.lastElementChild];
++        const observer = new IntersectionObserver(entries => {
++          for (const { target, intersectionRatio } of entries) {
++            scroller.classList.toggle(target === first ? 'more-start' : 'more-end', intersectionRatio < 1);
++          }
++        }, { root: scroller, threshold: 1, rootMargin: '1px' });
++
++        observer.observe(first);
++        observer.observe(last);
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

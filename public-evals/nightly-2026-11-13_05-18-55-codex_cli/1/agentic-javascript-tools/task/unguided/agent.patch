@@ -1,0 +1,85 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -206,7 +206,81 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const toolName = 'get_menu_item';
++      let cleanup;
++
++      const normalize = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
++      const getMenuItems = () => Array.from(document.querySelectorAll('main .card'), (card) => ({
++        name: card.querySelector('h3').textContent.trim(),
++        description: card.querySelector('p').textContent.trim(),
++        detailsUrl: card.querySelector('a').href,
++      }));
++
++      async function registerMenuTool() {
++        if (cleanup) return;
++
++        // Support the current WebMCP API and older browser implementations.
++        const context = document.modelContext ?? navigator.modelContext;
++        if (typeof context?.registerTool !== 'function') return;
++
++        const controller = new AbortController();
++        let active = true;
++        const deactivate = () => {
++          active = false;
++          controller.abort();
++          if (typeof context.unregisterTool === 'function') {
++            context.unregisterTool(toolName);
++          }
++          if (cleanup === deactivate) cleanup = undefined;
++        };
++        cleanup = deactivate;
++
++        try {
++          await context.registerTool({
++            name: toolName,
++            description: 'Look up a Daily Grind menu item and return its name, description, and details URL. Use when a user asks about a drink on the menu.',
++            inputSchema: {
++              type: 'object',
++              properties: {
++                itemName: {
++                  type: 'string',
++                  minLength: 1,
++                  description: 'The full menu item name, such as Maple Oat Latte, Dark Roast Espresso, or Cold Brew. Matching ignores case and extra whitespace.',
++                },
++              },
++              required: ['itemName'],
++              additionalProperties: false,
++            },
++            annotations: { readOnlyHint: true },
++            execute(input) {
++              if (!active) return { error: 'This menu tool is no longer active.' };
++              if (!input || typeof input.itemName !== 'string' || !normalize(input.itemName)) {
++                return { error: 'Provide a non-empty itemName string.' };
++              }
++              const items = getMenuItems();
++              const item = items.find((entry) => normalize(entry.name) === normalize(input.itemName));
++              return item ?? {
++                error: `Menu item "${input.itemName}" not found.`,
++                availableItems: items.map((entry) => entry.name),
++              };
++            },
++          }, { signal: controller.signal });
++        } catch (error) {
++          active = false;
++          controller.abort();
++          if (cleanup === deactivate) cleanup = undefined;
++          if (error.name !== 'AbortError') console.warn('Could not register the menu tool.', error);
++        }
++      }
++
++      window.addEventListener('pagehide', () => cleanup?.());
++      window.addEventListener('pageshow', () => registerMenuTool());
++      registerMenuTool();
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,175 @@
+diff --git a/index.html b/index.html
+index 66c9173..75c4a95 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,157 @@
+       background: #3e2723;
+     }
+ 
++    /* ------------------------------------------------------------------
++       Context-aware cards
++       A section declares its semantic theme via data-theme="…". The theme
++       only sets custom properties; cards (and their headings/buttons)
++       consume them, so any card dropped into a themed section adapts
++       automatically with no per-card classes. Unthemed sections fall back
++       to the base brand palette.
++       ------------------------------------------------------------------ */
++    .themed-section {
++      --card-bg: white;
++      --card-text: var(--text);
++      --card-heading: var(--primary);
++      --card-accent: var(--accent);
++      --card-border: transparent;
++      --card-shadow: rgba(0, 0, 0, 0.1);
++      --card-btn-bg: var(--primary);
++      --card-btn-hover: #3e2723;
++      --card-btn-text: white;
++      --card-icon: "☕";
++      --section-heading: var(--primary);
++
++      padding: 40px 24px;
++      border-radius: 12px;
++      background: var(--section-bg, transparent);
++    }
++
++    .themed-section > h2 {
++      text-align: center;
++      color: var(--section-heading);
++    }
++
++    .themed-section > .section-tagline {
++      text-align: center;
++      color: var(--card-text);
++      opacity: 0.8;
++      font-style: italic;
++    }
++
++    /* Autumn: warm maples, pumpkin spice, toasted spice tones */
++    .themed-section[data-theme="autumn"] {
++      --section-bg: linear-gradient(135deg, #fff3e0 0%, #fbe9e7 100%);
++      --section-heading: #8d3b12;
++      --card-bg: linear-gradient(180deg, #fffaf3 0%, #fff0e0 100%);
++      --card-text: #5d3a1a;
++      --card-heading: #a0451a;
++      --card-accent: #e65100;
++      --card-border: #ffcc80;
++      --card-shadow: rgba(191, 84, 17, 0.18);
++      --card-btn-bg: #bf360c;
++      --card-btn-hover: #8d2a08;
++      --card-icon: "🍁";
++    }
++
++    /* Winter: cool frost, peppermint and cocoa */
++    .themed-section[data-theme="winter"] {
++      --section-bg: linear-gradient(135deg, #e3f2fd 0%, #f3f8fc 100%);
++      --section-heading: #0d47a1;
++      --card-bg: linear-gradient(180deg, #ffffff 0%, #eef5fb 100%);
++      --card-text: #263845;
++      --card-heading: #1565c0;
++      --card-accent: #4fc3f7;
++      --card-border: #bbdefb;
++      --card-shadow: rgba(21, 101, 192, 0.16);
++      --card-btn-bg: #1565c0;
++      --card-btn-hover: #0d47a1;
++      --card-icon: "❄️";
++    }
++
++    /* Spring: fresh florals, lavender and matcha */
++    .themed-section[data-theme="spring"] {
++      --section-bg: linear-gradient(135deg, #f1f8e9 0%, #fce4ec 100%);
++      --section-heading: #6a1b9a;
++      --card-bg: linear-gradient(180deg, #ffffff 0%, #f8f1fb 100%);
++      --card-text: #3f3149;
++      --card-heading: #7b1fa2;
++      --card-accent: #9ccc65;
++      --card-border: #e1bee7;
++      --card-shadow: rgba(123, 31, 162, 0.14);
++      --card-btn-bg: #7b1fa2;
++      --card-btn-hover: #4a148c;
++      --card-icon: "🌸";
++    }
++
++    /* Summer: bright citrus, iced drinks and sunshine */
++    .themed-section[data-theme="summer"] {
++      --section-bg: linear-gradient(135deg, #fffde7 0%, #e0f7fa 100%);
++      --section-heading: #00695c;
++      --card-bg: linear-gradient(180deg, #ffffff 0%, #f0fbfa 100%);
++      --card-text: #23403d;
++      --card-heading: #00796b;
++      --card-accent: #ffca28;
++      --card-border: #b2ebf2;
++      --card-shadow: rgba(0, 121, 107, 0.15);
++      --card-btn-bg: #00796b;
++      --card-btn-hover: #004d40;
++      --card-icon: "☀️";
++    }
++
++    .themed-section .card {
++      position: relative;
++      background: var(--card-bg);
++      color: var(--card-text);
++      border: 1px solid var(--card-border);
++      border-top: 4px solid var(--card-accent);
++      box-shadow: 0 4px 12px var(--card-shadow);
++      padding-top: 48px;
++      transition: transform 0.25s ease, box-shadow 0.25s ease;
++    }
++
++    .themed-section .card::before {
++      content: var(--card-icon);
++      position: absolute;
++      top: 12px;
++      left: 50%;
++      transform: translateX(-50%);
++      font-size: 1.5rem;
++      line-height: 1;
++    }
++
++    .themed-section .card:hover {
++      transform: translateY(-4px);
++      box-shadow: 0 10px 22px var(--card-shadow);
++    }
++
++    .themed-section .card h3 {
++      color: var(--card-heading);
++    }
++
++    .themed-section .card .btn {
++      background: var(--card-btn-bg);
++      color: var(--card-btn-text);
++    }
++
++    .themed-section .card .btn:hover,
++    .themed-section .card .btn:focus-visible {
++      background: var(--card-btn-hover);
++    }
++
++    .themed-section .card .btn:focus-visible {
++      outline: 2px solid var(--card-accent);
++      outline-offset: 2px;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .themed-section .card,
++      .themed-section .card:hover {
++        transition: none;
++        transform: none;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,8 +326,10 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <!-- Change data-theme (autumn | winter | spring | summer) to re-skin every card in this section -->
++    <section class="themed-section" data-theme="autumn" aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading">Seasonal Favorites</h2>
++      <p class="section-tagline">Cozy flavors for crisp fall mornings.</p>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

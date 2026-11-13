@@ -1,0 +1,1074 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..dbbcf72 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,17 @@
++declare namespace App {
++  interface Locals {
++    nonce?: string;
++  }
++}
++
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: any;
++    IdentityCredential?: unknown;
++  }
++  interface Navigator {
++    globalPrivacyControl?: boolean;
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/Footer.astro b/src/components/Footer.astro
+index 5f2d281..a0aadd9 100644
+--- a/src/components/Footer.astro
++++ b/src/components/Footer.astro
+@@ -91,14 +91,14 @@ const baseUrl = import.meta.env.BASE_URL;
+             <span>© 2025 The DevTools Times Company</span>
+             <a href="#" class="hover:underline">Contact Us</a>
+             <a href="#" class="hover:underline">Work with us</a>
+-            <a href=`${baseUrl}legal/privacy` class="hover:underline">Privacy Policy</a>
+-            <a href=`${baseUrl}legal/terms` class="hover:underline">Terms of Service</a>
+-            <a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a>
++            <a href={`${baseUrl}legal/privacy`} data-skip-tracking="true" class="hover:underline">Privacy Policy</a>
++            <a href={`${baseUrl}legal/terms`} data-skip-tracking="true" class="hover:underline">Terms of Service</a>
++            <a href={`${baseUrl}legal/imprint`} data-skip-tracking="true" class="hover:underline">Imprint</a>
+         </div>
+         
+         <!-- Privacy settings link -->
+         <div class="text-center mt-4">
+-            <a href="#" class="hover:underline">Manage Privacy Preferences</a>
++            <a href={`${baseUrl}legal/privacy#privacy-controls`} data-skip-tracking="true" class="hover:underline">Manage Privacy Preferences</a>
+         </div>
+     </div>
+ 
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..9177b46 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -1,8 +1,14 @@
+ import React, { useState } from 'react';
+ 
++const ERROR_MESSAGES: Record<string, string> = {
++  APP_ERR_2001: 'Invalid username or password (APP_ERR_2001).',
++  APP_ERR_2002: 'Account temporarily locked or unavailable (APP_ERR_2002).',
++};
++
+ export default function SignInForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+@@ -14,79 +20,211 @@ export default function SignInForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
++      const response = await fetch(
++        'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login',
++        {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          referrerPolicy: 'no-referrer',
++          credentials: 'omit',
++          body: JSON.stringify({ username, password }),
++        }
++      );
+ 
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Login failed: ${data.error || 'Unknown error'}`);
++        const errorCode = typeof data.error === 'string' ? data.error : '';
++        const friendlyMessage = ERROR_MESSAGES[errorCode];
++        setError(
++          friendlyMessage
++            ? `Login failed: ${friendlyMessage}`
++            : `Login failed: ${data.error || 'Unknown error'}`
++        );
+       } else {
++        // Privacy by design: Never store sensitive tokens or PII in localStorage,
++        // which is accessible to any script. Clear plaintext password from memory immediately.
++        setPassword('');
++        setShowPassword(false);
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
+       setLoading(false);
+     }
+   };
+ 
++  const handleFedCmSignIn = async () => {
++    setError(null);
++    setSuccess(null);
++    if (typeof window === 'undefined' || !('IdentityCredential' in window) || !navigator.credentials) {
++      setError('Federated Credential Management (FedCM) is not supported in this browser.');
++      return;
++    }
++    try {
++      const nonceBytes = new Uint8Array(16);
++      crypto.getRandomValues(nonceBytes);
++      const nonce = btoa(String.fromCharCode(...nonceBytes));
++      const credential = await (navigator.credentials as any).get({
++        identity: {
++          providers: [
++            {
++              configURL: 'https://idp.example/fedcm.json',
++              clientId: 'devtools-times-rp',
++              nonce,
++            },
++          ],
++        },
++      });
++      if (credential?.token) {
++        setSuccess('Signed in via privacy-preserving Federated Credential Management (FedCM).');
++      }
++    } catch {
++      setError('Federated sign-in was cancelled or is unavailable.');
++    }
++  };
++
++  const handleClearSiteData = async () => {
++    setError(null);
++    try {
++      await fetch('/devtools-times/api/logout', {
++        method: 'POST',
++        referrerPolicy: 'no-referrer',
++      });
++      setUsername('');
++      setPassword('');
++      setSuccess('Signed out and cleared browser cookies, storage, and cache.');
++    } catch {
++      setError('Unable to clear session data at this time.');
++    }
++  };
++
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
+-      
++      <h1 id="signin-heading" className="text-2xl font-bold mb-2 text-center text-gray-800">
++        Sign In
++      </h1>
++      <p className="text-xs text-gray-600 text-center mb-6">
++        No account is required to read articles on The DevTools Times. Signing in is optional and only used to sync your account preferences.
++      </p>
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div
++          id="signin-error"
++          className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg"
++          role="alert"
++          aria-live="assertive"
++        >
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+-          {success}
++        <div
++          id="signin-status"
++          className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg"
++          role="status"
++          aria-live="polite"
++        >
++          <p>{success}</p>
++          <button
++            type="button"
++            onClick={handleClearSiteData}
++            data-skip-tracking="true"
++            className="mt-2 inline-block text-xs font-semibold underline text-green-900 hover:text-green-700"
++          >
++            Sign out &amp; clear all site data
++          </button>
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        method="post"
++        action="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login"
++        onSubmit={handleSubmit}
++        aria-labelledby="signin-heading"
++        className="space-y-4"
++      >
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
++          <div className="flex justify-between items-baseline mb-1">
++            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
++              Username <span aria-hidden="true">*</span>
++            </label>
++            <a
++              href="#username-privacy-help"
++              data-skip-tracking="true"
++              className="text-xs text-gray-600 underline hover:text-gray-900"
++            >
++              Why do we ask for this?
++            </a>
++          </div>
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
++            autoComplete="username"
++            autoCorrect="off"
++            autoCapitalize="none"
++            spellCheck={false}
++            enterKeyHint="next"
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            aria-invalid={error ? 'true' : undefined}
++            aria-describedby="username-privacy-help"
++            className="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+           />
++          <aside id="username-privacy-help" className="text-xs text-gray-500 mt-1">
++            Used strictly to identify your account during sign-in. Never shared with third-party advertisers or used for tracking.
++          </aside>
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
++          <div className="flex justify-between items-baseline mb-1">
++            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
++              Password <span aria-hidden="true">*</span>
++            </label>
++            <button
++              id="toggle-password"
++              type="button"
++              onClick={() => setShowPassword((prev) => !prev)}
++              aria-pressed={showPassword}
++              aria-label={showPassword ? 'Hide password' : 'Show password'}
++              aria-describedby="toggle-warning"
++              data-skip-tracking="true"
++              className="text-xs font-medium text-gray-700 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 rounded px-1"
++            >
++              {showPassword ? 'Hide password' : 'Show password'}
++            </button>
++            <span id="toggle-warning" className="sr-only">
++              Warning: this will display your password on the screen.
++            </span>
++          </div>
+           <input
+-            type="password"
++            type={showPassword ? 'text' : 'password'}
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
++            autoComplete="current-password"
++            enterKeyHint="done"
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            aria-invalid={error ? 'true' : undefined}
++            aria-describedby="password-privacy-help"
++            className="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+           />
++          <aside id="password-privacy-help" className="text-xs text-gray-500 mt-1">
++            Sent securely over HTTPS solely to verify your credentials and cleared from memory after authentication. Never stored in browser storage.
++          </aside>
+         </div>
+ 
+         <button
+           type="submit"
+           disabled={loading}
++          data-skip-tracking="true"
+           className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 ${
+             loading ? 'opacity-75 cursor-not-allowed' : ''
+           }`}
+@@ -94,6 +232,41 @@ export default function SignInForm() {
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
+       </form>
++
++      <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
++        <button
++          type="button"
++          onClick={handleFedCmSignIn}
++          data-skip-tracking="true"
++          className="w-full py-2 px-4 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
++        >
++          Sign in with Federated Identity (FedCM)
++        </button>
++
++        <div className="text-xs text-gray-500 space-y-1">
++          <p>
++            <strong>Privacy &amp; Data Control:</strong> Third-party analytics and ad scripts are disabled on this page. We do not use persistent tracking tokens in <code>localStorage</code>.
++          </p>
++          <p className="flex justify-between items-center pt-1">
++            <a
++              href="/devtools-times/legal/privacy"
++              data-skip-tracking="true"
++              className="underline text-gray-700 hover:text-gray-900"
++            >
++              Privacy Policy &amp; Data Rights
++            </a>
++            <button
++              type="button"
++              onClick={handleClearSiteData}
++              data-skip-tracking="true"
++              className="underline text-gray-700 hover:text-gray-900"
++            >
++              Clear site data
++            </button>
++          </p>
++        </div>
++      </div>
+     </div>
+   );
+ }
++
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..5818e18 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -1,8 +1,14 @@
+ import React, { useState } from 'react';
+ 
++const ERROR_MESSAGES: Record<string, string> = {
++  APP_ERR_1001: 'Username is already taken or invalid (APP_ERR_1001).',
++  APP_ERR_1002: 'Password does not meet security requirements (APP_ERR_1002).',
++};
++
+ export default function SignUpForm() {
+   const [username, setUsername] = useState('');
+   const [password, setPassword] = useState('');
++  const [showPassword, setShowPassword] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [success, setSuccess] = useState<string | null>(null);
+   const [loading, setLoading] = useState(false);
+@@ -14,26 +20,36 @@ export default function SignUpForm() {
+     setLoading(true);
+ 
+     try {
+-      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
+-        method: 'POST',
+-        headers: {
+-          'Content-Type': 'application/json',
+-        },
+-        body: JSON.stringify({ username, password }),
+-      });
++      const response = await fetch(
++        'https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register',
++        {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++          },
++          referrerPolicy: 'no-referrer',
++          credentials: 'omit',
++          body: JSON.stringify({ username, password }),
++        }
++      );
+ 
+       const data = await response.json();
+ 
+       if (!response.ok) {
+-        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
+-        // For now, we display a generic error message including the code.
+-        setError(`Registration failed: ${data.error || 'Unknown error'}`);
++        const errorCode = typeof data.error === 'string' ? data.error : '';
++        const friendlyMessage = ERROR_MESSAGES[errorCode];
++        setError(
++          friendlyMessage
++            ? `Registration failed: ${friendlyMessage}`
++            : `Registration failed: ${data.error || 'Unknown error'}`
++        );
+       } else {
+         setSuccess('User registered successfully! You can now sign in.');
+         setUsername('');
+         setPassword('');
++        setShowPassword(false);
+       }
+-    } catch (err) {
++    } catch {
+       setError('An unexpected error occurred. Please try again later.');
+     } finally {
+       setLoading(false);
+@@ -42,50 +58,118 @@ export default function SignUpForm() {
+ 
+   return (
+     <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
+-      
++      <h1 id="signup-heading" className="text-2xl font-bold mb-2 text-center text-gray-800">
++        Sign Up
++      </h1>
++      <p className="text-xs text-gray-600 text-center mb-6">
++        <strong>Data Minimization:</strong> You can read all articles without creating an account. If you choose to sign up, we only collect a pseudonymous username and password—never your real name, email, phone number, or date of birth.
++      </p>
++
+       {error && (
+-        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
++        <div
++          id="signup-error"
++          className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg"
++          role="alert"
++          aria-live="assertive"
++        >
+           {error}
+         </div>
+       )}
+-      
++
+       {success && (
+-        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
++        <div
++          id="signup-status"
++          className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg"
++          role="status"
++          aria-live="polite"
++        >
+           {success}
+         </div>
+       )}
+ 
+-      <form onSubmit={handleSubmit} className="space-y-4">
++      <form
++        method="post"
++        action="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register"
++        onSubmit={handleSubmit}
++        aria-labelledby="signup-heading"
++        className="space-y-4"
++      >
+         <div>
+-          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+-            Username
+-          </label>
++          <div className="flex justify-between items-baseline mb-1">
++            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
++              Username <span aria-hidden="true">*</span>
++            </label>
++            <a
++              href="#signup-username-help"
++              data-skip-tracking="true"
++              className="text-xs text-gray-600 underline hover:text-gray-900"
++            >
++              Why do we ask for this?
++            </a>
++          </div>
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
++            autoComplete="username"
++            autoCorrect="off"
++            autoCapitalize="none"
++            spellCheck={false}
++            enterKeyHint="next"
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            aria-invalid={error ? 'true' : undefined}
++            aria-describedby="signup-username-help"
++            className="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+           />
++          <aside id="signup-username-help" className="text-xs text-gray-500 mt-1">
++            Why we ask: Used solely as your unique login identifier. Use a pseudonymous handle rather than personal information. We never use this identifier for marketing or cross-site tracking.
++          </aside>
+         </div>
+-        
++
+         <div>
+-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+-            Password
+-          </label>
++          <div className="flex justify-between items-baseline mb-1">
++            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
++              Password <span aria-hidden="true">*</span>
++            </label>
++            <button
++              id="toggle-password"
++              type="button"
++              onClick={() => setShowPassword((prev) => !prev)}
++              aria-pressed={showPassword}
++              aria-label={showPassword ? 'Hide password' : 'Show password'}
++              aria-describedby="toggle-warning"
++              data-skip-tracking="true"
++              className="text-xs font-medium text-gray-700 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 rounded px-1"
++            >
++              {showPassword ? 'Hide password' : 'Show password'}
++            </button>
++            <span id="toggle-warning" className="sr-only">
++              Warning: this will display your password on the screen.
++            </span>
++          </div>
+           <input
+-            type="password"
++            type={showPassword ? 'text' : 'password'}
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
++            autoComplete="new-password"
++            minLength={8}
++            pattern="(?=.*\d).{8,}"
++            enterKeyHint="done"
+             required
+-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
++            aria-invalid={error ? 'true' : undefined}
++            aria-describedby="password-constraints signup-password-help"
++            className="w-full px-3 py-2 border border-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="password-constraints" className="text-xs text-gray-600 mt-1">
++            Must be at least 8 characters and contain a number. Password pasting and browser password generators are fully supported.
+           </p>
++          <aside id="signup-password-help" className="text-xs text-gray-500 mt-1">
++            Why we ask: Used exclusively to authenticate your account. Transmitted over HTTPS without referrer headers and never stored in client-side storage.
++          </aside>
+         </div>
+ 
+         <button
+@@ -99,6 +183,29 @@ export default function SignUpForm() {
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
+       </form>
++
++      <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 space-y-1">
++        <p>
++          <strong>Transparency &amp; Retention:</strong> Your credentials are kept only while your account remains active and are never sold or shared with third parties. Third-party analytics and ad scripts are disabled on this page.
++        </p>
++        <p className="flex justify-between items-center pt-1">
++          <a
++            href="/devtools-times/legal/privacy"
++            data-skip-tracking="true"
++            className="underline text-gray-700 hover:text-gray-900"
++          >
++            Privacy Policy &amp; Data Deletion Rights
++          </a>
++          <a
++            href="/devtools-times/signin"
++            data-skip-tracking="true"
++            className="underline text-gray-700 hover:text-gray-900"
++          >
++            Already have an account? Sign in
++          </a>
++        </p>
++      </div>
+     </div>
+   );
+ }
++
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..2de3b88 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -8,37 +8,66 @@ import { ClientRouter } from "astro:transitions";
+ 
+ export interface Props {
+   title: string;
++  disableThirdParty?: boolean;
+ }
+ 
+-const { title } = Astro.props;
++const { title, disableThirdParty = false } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
++const nonce = Astro.locals.nonce;
++const pathname = Astro.url.pathname;
++
++// Do not load third-party tracking or ad scripts on pages handling sensitive user data
++// (authentication forms, legal/privacy controls) or when Global Privacy Control (Sec-GPC) is enabled.
++const isSensitiveRoute =
++  disableThirdParty ||
++  pathname.endsWith("/signin") ||
++  pathname.endsWith("/signin/") ||
++  pathname.endsWith("/signup") ||
++  pathname.endsWith("/signup/") ||
++  pathname.includes("/legal/");
++
++const gpcEnabled = Astro.request.headers.get("Sec-GPC") === "1";
++const dntEnabled = Astro.request.headers.get("DNT") === "1";
++const allowThirdPartyScripts = !isSensitiveRoute && !gpcEnabled && !dntEnabled;
+ ---
+ 
+ <!doctype html>
+ <html lang="en">
+   <head>
+-    <meta charset="UTF8" />
++    <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++    <meta name="referrer" content="strict-origin-when-cross-origin" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+     <link
+       href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+       rel="stylesheet"
++      crossorigin="anonymous"
++      referrerpolicy="no-referrer"
+     />
+ 
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
++    {
++      allowThirdPartyScripts && (
++        <script
++          is:inline
++          defer
++          nonce={nonce}
++          src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"
++          crossorigin="anonymous"
++          referrerpolicy="no-referrer"
++        />
++      )
++    }
+ 
+-    <link rel="icon" href=`${baseUrl}/favicon.svg` />
++    <link rel="icon" href={`${baseUrl}/favicon.svg`} />
+ 
+     <ClientRouter />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+-      <AdSlotFireplace client:load />
++      {allowThirdPartyScripts && <AdSlotFireplace client:load />}
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+@@ -53,3 +82,4 @@ const baseUrl = import.meta.env.BASE_URL;
+     <Footer />
+   </body>
+ </html>
++
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..1ecbe00 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -7,7 +7,7 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ ---
+-<Layout title={title}>
++<Layout title={title} disableThirdParty={true}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+@@ -15,3 +15,4 @@ const { title } = Astro.props;
+         </div>
+     </div>
+ </Layout>
++
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..0c67872 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,13 +1,198 @@
+ 
+ import { defineMiddleware } from 'astro:middleware';
+ 
++const ALLOWLIST_DESTS = new Set([
++  'document',
++  'iframe',
++  'worker',
++  'sharedworker',
++  'serviceworker',
++]);
++
++// Normalize a URLPattern string for Connection-Allowlist (RFC 9651 Inner List)
++export function normalizeAllowlistPattern(rawPattern: string): string {
++  const trimmed = String(rawPattern).trim().replace(/^ws(s?):\/\//i, 'http$1://');
++  if (!/^https?:\/\//i.test(trimmed)) {
++    throw new Error(`Pattern must include an http:// or https:// scheme: ${rawPattern}`);
++  }
++  if (/[\s,]/.test(trimmed)) {
++    throw new Error(`Pattern must be a single URLPattern without spaces or commas: ${rawPattern}`);
++  }
++  if (/[()]/.test(trimmed)) {
++    throw new Error(`Custom regex groups are rejected by Connection-Allowlist: ${rawPattern}`);
++  }
++  return trimmed.replace(/^(https?:\/\/[^/?#]+)\/$/i, '$1');
++}
++
++export function buildConnectionAllowlistHeader({
++  allowSelf = true,
++  patterns = [] as string[],
++  reportTo,
++  redirects = 'block',
++  webrtc = 'block',
++}: {
++  allowSelf?: boolean;
++  patterns?: string[];
++  reportTo?: string;
++  redirects?: 'allow' | 'block';
++  webrtc?: 'allow' | 'block';
++} = {}): string {
++  const items = allowSelf ? ['response-origin'] : [];
++  for (const pattern of patterns) {
++    const raw = String(pattern).trim();
++    if (raw === 'response-origin') {
++      if (!items.includes('response-origin')) items.push('response-origin');
++      continue;
++    }
++    const normalized = normalizeAllowlistPattern(raw);
++    items.push(`"${normalized.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
++  }
++  let header = `(${items.join(' ')})`;
++  if (redirects === 'allow') header += '; redirects=allow';
++  if (webrtc === 'allow') header += '; webrtc=allow';
++  if (reportTo) {
++    const endpointToken = String(reportTo).trim().replace(/^"+|"+$/g, '');
++    header += `; report-to=${endpointToken}`;
++  }
++  return header;
++}
++
++function generateNonce(): string {
++  const bytes = new Uint8Array(16);
++  crypto.getRandomValues(bytes);
++  return btoa(String.fromCharCode(...bytes));
++}
++
+ export const onRequest = defineMiddleware(async (context, next) => {
++  // 1. Fetch Metadata Resource Isolation (reject cross-site non-navigational requests early)
++  const site = context.request.headers.get('Sec-Fetch-Site');
++  const mode = context.request.headers.get('Sec-Fetch-Mode');
++  const dest = context.request.headers.get('Sec-Fetch-Dest');
++
++  if (site && !['same-origin', 'same-site', 'none'].includes(site)) {
++    const isAllowedNavigation =
++      site === 'cross-site' &&
++      mode === 'navigate' &&
++      context.request.method === 'GET' &&
++      !['object', 'embed'].includes(dest || '');
++    if (!isAllowedNavigation) {
++      return new Response('Forbidden', {
++        status: 403,
++        headers: {
++          Vary: 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',
++        },
++      });
++    }
++  }
++
++  // 2. Generate per-request cryptographic CSP nonce
++  const nonce = generateNonce();
++  context.locals.nonce = nonce;
++
++  // 3. Initialize minimal session state if needed
+   if (context.session) {
+-    // Initialize the reading list if it doesn't exist
+     const readingList = await context.session.get('readingList');
+     if (readingList === undefined) {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++  const headers = new Headers(response.headers);
++
++  // Always include Vary for Fetch Metadata isolation & Connection-Allowlist scoping
++  headers.set('Vary', 'Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site');
++
++  // 4. Privacy-Preserving Headers
++  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++  headers.set(
++    'Permissions-Policy',
++    'geolocation=(), camera=(), microphone=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=(), browsing-topics=(), interest-cohort=(), join-ad-interest-group=(), run-ad-auction=(), focus-without-user-activation=()'
++  );
++
++  // 5. Companion Security & Isolation Headers
++  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
++  headers.set('X-Content-Type-Options', 'nosniff');
++  headers.set('X-Frame-Options', 'DENY');
++  headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
++  headers.set('Cross-Origin-Resource-Policy', 'same-origin');
++
++  // 6. Reporting Endpoints, Content Security Policy, and Connection-Allowlist
++  const baseUrl = import.meta.env.BASE_URL || '/devtools-times/';
++  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
++  const reportUrl = `${normalizedBase}api/security-reports`;
++
++  headers.set(
++    'Reporting-Endpoints',
++    `default="${reportUrl}", main-endpoint="${reportUrl}", conn-reports="${reportUrl}"`
++  );
++
++  const csp = [
++    "default-src 'self'",
++    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
++    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
++    "font-src 'self' https://fonts.gstatic.com",
++    "img-src 'self' https://i.imgur.com data: blob:",
++    "connect-src 'self' https://us-central1-web-devrel-apps.cloudfunctions.net",
++    "form-action 'self'",
++    "worker-src 'self'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    "frame-ancestors 'none'",
++    'report-to main-endpoint',
++  ].join('; ');
++  headers.set('Content-Security-Policy', csp);
++
++  const normalizedDest = (dest || 'document').toLowerCase();
++  if (ALLOWLIST_DESTS.has(normalizedDest)) {
++    headers.set(
++      'Connection-Allowlist',
++      buildConnectionAllowlistHeader({
++        allowSelf: true,
++        patterns: [
++          'https://us-central1-web-devrel-apps.cloudfunctions.net/*',
++          'https://fonts.googleapis.com/*',
++          'https://fonts.gstatic.com/*',
++          'https://developer.chrome.com/*',
++          'https://i.imgur.com/*',
++        ],
++        reportTo: 'conn-reports',
++        redirects: 'block',
++        webrtc: 'block',
++      })
++    );
++  }
++
++  // 7. Sensitive route cache control & logout Clear-Site-Data enforcement
++  const pathname = context.url.pathname;
++  if (
++    pathname.endsWith('/signin') ||
++    pathname.endsWith('/signin/') ||
++    pathname.endsWith('/signup') ||
++    pathname.endsWith('/signup/')
++  ) {
++    headers.set('Cache-Control', 'no-store, max-age=0');
++  }
++
++  if (pathname.endsWith('/api/logout') || context.url.searchParams.get('logout') === 'true') {
++    headers.set('Clear-Site-Data', '"cookies", "storage", "cache"');
++    headers.set('Cache-Control', 'no-store, max-age=0');
++  }
++
++  // 8. Ensure any session cookies enforce HttpOnly, Secure, and SameSite=Lax
++  const setCookie = headers.get('set-cookie');
++  if (setCookie) {
++    let hardenedCookie = setCookie;
++    if (!/;\s*HttpOnly/i.test(hardenedCookie)) hardenedCookie += '; HttpOnly';
++    if (!/;\s*Secure/i.test(hardenedCookie)) hardenedCookie += '; Secure';
++    if (!/;\s*SameSite=/i.test(hardenedCookie)) hardenedCookie += '; SameSite=Lax';
++    headers.set('set-cookie', hardenedCookie);
++  }
++
++  return new Response(response.body, {
++    status: response.status,
++    statusText: response.statusText,
++    headers,
++  });
+ });
++
+diff --git a/src/pages/api/logout.ts b/src/pages/api/logout.ts
+new file mode 100644
+index 0000000..b3857ff
+--- /dev/null
++++ b/src/pages/api/logout.ts
+@@ -0,0 +1,25 @@
++import type { APIRoute } from 'astro';
++
++export const POST: APIRoute = async ({ session }) => {
++  if (session) {
++    await session.set('readingList', []);
++    if (typeof session.destroy === 'function') {
++      session.destroy();
++    }
++  }
++
++  return new Response(
++    JSON.stringify({
++      cleared: true,
++      message: 'Session and browser site data cleared.',
++    }),
++    {
++      status: 200,
++      headers: {
++        'Content-Type': 'application/json',
++        'Clear-Site-Data': '"cookies", "storage", "cache"',
++        'Cache-Control': 'no-store, max-age=0',
++      },
++    }
++  );
++};
+diff --git a/src/pages/api/security-reports.ts b/src/pages/api/security-reports.ts
+new file mode 100644
+index 0000000..42e16d8
+--- /dev/null
++++ b/src/pages/api/security-reports.ts
+@@ -0,0 +1,39 @@
++import type { APIRoute } from 'astro';
++
++// Scrub PII, tokens, and query parameters before logging security reports
++function scrubSensitiveUrl(rawUrl: unknown): string {
++  if (typeof rawUrl !== 'string' || !rawUrl) return '';
++  try {
++    const parsed = new URL(rawUrl, 'https://astro-news-pytrpecapa-uc.a.run.app');
++    parsed.search = '';
++    parsed.hash = '';
++    parsed.username = '';
++    parsed.password = '';
++    return parsed.toString();
++  } catch {
++    return '[redacted-url]';
++  }
++}
++
++export const POST: APIRoute = async ({ request }) => {
++  try {
++    const payload = await request.json().catch(() => null);
++    const reports = Array.isArray(payload) ? payload : payload ? [payload] : [];
++    const sanitized = reports.map((report) => ({
++      type: report?.type || 'unknown',
++      url: scrubSensitiveUrl(report?.url || report?.body?.documentURL),
++      blockedURL: scrubSensitiveUrl(report?.body?.blockedURL || report?.body?.connection),
++      disposition: report?.body?.disposition || 'enforce',
++    }));
++
++    return new Response(JSON.stringify({ received: sanitized.length }), {
++      status: 202,
++      headers: {
++        'Content-Type': 'application/json',
++        'Cache-Control': 'no-store',
++      },
++    });
++  } catch {
++    return new Response(null, { status: 204 });
++  }
++};
+diff --git a/src/pages/legal/privacy.astro b/src/pages/legal/privacy.astro
+index 4477e28..b93c603 100644
+--- a/src/pages/legal/privacy.astro
++++ b/src/pages/legal/privacy.astro
+@@ -1,17 +1,59 @@
+ ---
+ import LegalLayout from '../../layouts/LegalLayout.astro';
++const baseUrl = import.meta.env.BASE_URL;
+ ---
+ <LegalLayout title="Privacy Policy">
+-    <h2>1. An overview of data protection</h2>
+-    <p><strong>General information</strong></p>
+-    <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit our website. The term “personal data” comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+-    
+-    <h2>2. General information and mandatory information</h2>
+-    <p><strong>Data protection</strong></p>
+-    <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+-    <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+-    
+-    <h2>3. Recording of data on our website</h2>
+-    <p><strong>Cookies</strong></p>
+-    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>
++    <h2>1. Privacy by Design &amp; Data Minimization</h2>
++    <p>
++        The DevTools Times follows <strong>Privacy by Design</strong> and <strong>Data Minimization</strong> principles ("if we don't have the data, we can't lose it"). You can read all articles and browse the site without creating an account.
++    </p>
++    <ul>
++        <li><strong>Account Credentials (Optional):</strong> If you choose to register or sign in, we collect only a pseudonymous username and password strictly for account authentication. We never ask for your full name, email address, phone number, or exact date of birth.</li>
++        <li><strong>Purpose Limitation:</strong> Data collected for authentication is used exclusively to verify your session and is never repurposed for marketing, advertising profiles, or third-party data brokering.</li>
++        <li><strong>No Insecure Client Storage:</strong> Authentication tokens and sensitive identifiers are never stored in <code>localStorage</code> or <code>sessionStorage</code>.</li>
++    </ul>
++
++    <h2>2. Cookies, Sessions &amp; Retention</h2>
++    <p>
++        We use a minimal first-party session cookie solely to maintain your temporary Reading List bookmarks. Session cookies are configured with <code>HttpOnly</code>, <code>Secure</code>, and <code>SameSite=Lax</code> flags so they cannot be read by client-side scripts or sent on cross-site subresource requests. Session data is retained only for the duration of your active session and is purged immediately upon sign-out or erasure.
++    </p>
++
++    <h2>3. Third-Party Scripts &amp; Technical Mitigations</h2>
++    <p>
++        We audit all external resources and enforce strict boundaries to protect your browsing activity:
++    </p>
++    <ul>
++        <li><strong>Sensitive Route Isolation:</strong> Third-party analytics and advertising scripts are completely disabled on authentication (<code>/signin</code>, <code>/signup</code>) and legal/privacy pages.</li>
++        <li><strong>Global Privacy Control (GPC) &amp; Do Not Track:</strong> When your browser sends <code>Sec-GPC: 1</code> or <code>DNT: 1</code>, third-party analytics and ad scripts are omitted automatically on the server.</li>
++        <li><strong>Strict Headers &amp; Outbound Restrictions:</strong> Every document sets <code>Referrer-Policy: strict-origin-when-cross-origin</code>, a restrictive <code>Permissions-Policy</code> disabling camera, microphone, geolocation, and accelerometer access, a nonce-based <code>Content-Security-Policy</code>, and a network-layer <code>Connection-Allowlist</code>.</li>
++    </ul>
++
++    <h2 id="privacy-controls">4. Your Data Rights &amp; One-Click Erasure</h2>
++    <p>
++        You have the right to inspect, export, and permanently delete any session data stored by The DevTools Times at any time without contacting support:
++    </p>
++    <div class="not-prose my-4 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
++        <div class="flex flex-wrap gap-3">
++            <a
++                href={`${baseUrl}api/reading-list.json`}
++                data-skip-tracking="true"
++                class="inline-block px-4 py-2 text-xs font-semibold text-gray-800 bg-white border border-gray-300 rounded hover:bg-gray-100"
++            >
++                Access / Export My Session Data (JSON)
++            </a>
++            <form method="post" action={`${baseUrl}api/logout`}>
++                <button
++                    type="submit"
++                    data-skip-tracking="true"
++                    class="px-4 py-2 text-xs font-semibold text-white bg-red-700 rounded hover:bg-red-800"
++                >
++                    Delete Session &amp; Clear All Browser Site Data
++                </button>
++            </form>
++        </div>
++        <p class="text-xs text-gray-600">
++            Submitting "Delete Session &amp; Clear All Browser Site Data" clears your server-side reading list session and sends the HTTP <code>Clear-Site-Data: "cookies", "storage", "cache"</code> header to instruct your browser to wipe all local data for this origin.
++        </p>
++    </div>
+ </LegalLayout>
++
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..65f2bc8 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,8 +3,9 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
++<Layout title="Sign In | The DevTools Times" disableThirdParty={true}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+ </Layout>
++
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..0cf997d 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,8 +3,9 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
++<Layout title="Sign Up | The DevTools Times" disableThirdParty={true}>
+   <div class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
++

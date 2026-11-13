@@ -1,0 +1,168 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,30 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Promo countdown */
++    .promo-timer {
++      margin-top: 12px;
++      padding: 10px;
++      border-radius: 6px;
++      background: #fff3e0;
++      border: 1px dashed var(--accent);
++      font-size: 0.9rem;
++    }
++
++    .promo-timer p {
++      margin: 2px 0;
++    }
++
++    .promo-timer strong {
++      color: var(--primary);
++    }
++
++    .promo-timer.is-ended {
++      background: #efebe9;
++      border-color: var(--secondary);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -180,8 +202,14 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="promo-timer" id="maple-promo-timer"
++               data-start="2025-12-01T00:00"
++               data-end="2026-03-01T00:00">
++            <p class="promo-remaining">Offer ends <time datetime="2026-03-01T00:00">March 1, 2026 at midnight</time>.</p>
++            <p class="promo-elapsed"></p>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+@@ -206,7 +234,118 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Maple Oat Latte promo countdown. Computed once on page load.
++    // data-start / data-end are wall-clock times (no offset) interpreted in
++    // the visitor's local time zone. "Midnight on March 1" = 2026-03-01T00:00.
++    (function () {
++      var el = document.getElementById('maple-promo-timer');
++      if (!el) return;
++
++      var remainingEl = el.querySelector('.promo-remaining');
++      var elapsedEl = el.querySelector('.promo-elapsed');
++
++      function plural(n, word) {
++        return n + ' ' + word + (n === 1 ? '' : 's');
++      }
++
++      function format(span) {
++        return plural(span.days, 'day') + ' and ' + plural(span.hours, 'hour');
++      }
++
++      // Returns { cmpStart, cmpEnd, remaining, elapsed, endLabel } where
++      // cmpX = sign(now - X) and spans are { days, hours } (calendar days, so
++      // DST transitions don't skew the day count).
++      function computeWithTemporal(startStr, endStr) {
++        var T = globalThis.Temporal;
++        var tz = T.Now.timeZoneId();
++        var now = T.Now.zonedDateTimeISO(tz);
++        var start = T.PlainDateTime.from(startStr).toZonedDateTime(tz);
++        var end = T.PlainDateTime.from(endStr).toZonedDateTime(tz);
++        var opts = { largestUnit: 'day', smallestUnit: 'hour', roundingMode: 'trunc' };
++
++        function span(from, to) {
++          var d = from.until(to, opts);
++          return { days: d.days, hours: d.hours };
++        }
++
++        return {
++          cmpStart: T.ZonedDateTime.compare(now, start),
++          cmpEnd: T.ZonedDateTime.compare(now, end),
++          remaining: span(now, end),
++          elapsed: span(start, now),
++          sinceEnd: span(end, now),
++          promoLength: span(start, end),
++          endLabel: end.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })
++        };
++      }
++
++      function computeWithDate(startStr, endStr) {
++        // Parse "YYYY-MM-DDTHH:mm" explicitly as local time (avoids any
++        // ambiguity in Date string parsing across engines).
++        function parseLocal(str) {
++          var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(str);
++          return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
++        }
++
++        // Whole calendar days from `from` to `to` (to >= from), then whole hours.
++        function span(from, to) {
++          var days = Math.round(
++            (Date.UTC(to.getFullYear(), to.getMonth(), to.getDate()) -
++             Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) / 864e5
++          );
++          var anchor = new Date(from);
++          anchor.setDate(anchor.getDate() + days);
++          if (anchor > to) {
++            days -= 1;
++            anchor = new Date(from);
++            anchor.setDate(anchor.getDate() + days);
++          }
++          return { days: days, hours: Math.floor((to - anchor) / 36e5) };
++        }
++
++        var now = new Date();
++        var start = parseLocal(startStr);
++        var end = parseLocal(endStr);
++
++        return {
++          cmpStart: Math.sign(now - start),
++          cmpEnd: Math.sign(now - end),
++          remaining: now < end ? span(now, end) : null,
++          elapsed: now > start ? span(start, now) : null,
++          sinceEnd: now > end ? span(end, now) : null,
++          promoLength: span(start, end),
++          endLabel: end.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })
++        };
++      }
++
++      var startStr = el.dataset.start;
++      var endStr = el.dataset.end;
++      var r;
++      try {
++        r = (typeof globalThis.Temporal !== 'undefined')
++          ? computeWithTemporal(startStr, endStr)
++          : computeWithDate(startStr, endStr);
++      } catch (e) {
++        r = computeWithDate(startStr, endStr);
++      }
++
++      if (r.cmpEnd >= 0) {
++        el.classList.add('is-ended');
++        remainingEl.innerHTML = 'This offer has ended (<strong>' + format(r.sinceEnd) + '</strong> ago).';
++        elapsedEl.textContent = 'The promotion ran for ' + format(r.promoLength) +
++          '; ' + format(r.elapsed) + ' have passed since it started.';
++      } else if (r.cmpStart < 0) {
++        remainingEl.innerHTML = '<strong>' + format(r.remaining) + '</strong> left — offer ends ' + r.endLabel + '.';
++        elapsedEl.textContent = 'The promotion hasn\u2019t started yet.';
++      } else {
++        remainingEl.innerHTML = '<strong>' + format(r.remaining) + '</strong> left — offer ends ' + r.endLabel + '.';
++        elapsedEl.textContent = format(r.elapsed) + ' since the promotion started.';
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

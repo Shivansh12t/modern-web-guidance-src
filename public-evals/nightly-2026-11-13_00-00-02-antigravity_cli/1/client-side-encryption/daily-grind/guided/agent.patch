@@ -1,0 +1,751 @@
+diff --git a/delivery-encryption.js b/delivery-encryption.js
+new file mode 100644
+index 0000000..eb2bd94
+--- /dev/null
++++ b/delivery-encryption.js
+@@ -0,0 +1,434 @@
++const KEM_PUBLIC_KEY_ALGORITHMS = {
++  1184: 'ML-KEM-768',
++  1216: 'MLKEM768-X25519',
++  1568: 'ML-KEM-1024',
++};
++
++const DB_NAME = 'daily-grind-crypto-store';
++const STORE_NAME = 'courier-keys';
++const KEY_RECORD_ID = 'recipient-kem-key';
++const ENVELOPE_CONTEXT = new TextEncoder().encode('daily-grind-delivery-note-v1');
++
++export function toBase64(bytes) {
++  const uint8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
++  if (typeof uint8.toBase64 === 'function') {
++    return uint8.toBase64();
++  }
++  let binary = '';
++  for (let i = 0; i < uint8.byteLength; i++) {
++    binary += String.fromCharCode(uint8[i]);
++  }
++  return btoa(binary);
++}
++
++export function supportsPostQuantumEnvelope() {
++  return (
++    typeof globalThis.SubtleCrypto?.supports === 'function' &&
++    SubtleCrypto.supports('encapsulateKey', 'MLKEM768-X25519', 'ChaCha20-Poly1305')
++  );
++}
++
++export async function generateRecipientKeys() {
++  if (supportsPostQuantumEnvelope()) {
++    const keyPair = await crypto.subtle.generateKey(
++      'MLKEM768-X25519',
++      false,
++      ['encapsulateKey', 'decapsulateKey'],
++    );
++    const publicKeyBytes = new Uint8Array(
++      await crypto.subtle.exportKey('raw-public', keyPair.publicKey),
++    );
++    return { suite: 'MLKEM768-X25519+ChaCha20-Poly1305', keyPair, publicKeyBytes };
++  }
++
++  // Classical fallback: X25519 key agreement + HKDF + AES-GCM
++  const keyPair = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++  const publicKeyBytes = new Uint8Array(
++    await crypto.subtle.exportKey('raw', keyPair.publicKey),
++  );
++  return { suite: 'X25519+HKDF+AES-GCM', keyPair, publicKeyBytes };
++}
++
++async function deriveFallbackAesKey(privateKey, peerPublicKey, infoBytes = new Uint8Array(0)) {
++  const sharedSecret = await crypto.subtle.deriveBits(
++    { name: 'X25519', public: peerPublicKey },
++    privateKey,
++    256,
++  );
++  const hkdfKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, ['deriveKey']);
++  return crypto.subtle.deriveKey(
++    {
++      name: 'HKDF',
++      hash: 'SHA-256',
++      salt: new Uint8Array(32),
++      info: infoBytes,
++    },
++    hkdfKey,
++    { name: 'AES-GCM', length: 256 },
++    false,
++    ['encrypt', 'decrypt'],
++  );
++}
++
++export async function encapsulateEnvelopeKey(
++  recipientPublicKeyOrBytes,
++  infoBytes = new Uint8Array(0),
++) {
++  const pubKey =
++    recipientPublicKeyOrBytes instanceof CryptoKey
++      ? recipientPublicKeyOrBytes
++      : await (() => {
++          const bytes =
++            recipientPublicKeyOrBytes instanceof Uint8Array
++              ? recipientPublicKeyOrBytes
++              : new Uint8Array(recipientPublicKeyOrBytes);
++          const kemName = KEM_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++          return kemName
++            ? crypto.subtle.importKey('raw-public', bytes, kemName, true, ['encapsulateKey'])
++            : crypto.subtle.importKey('raw', bytes, 'X25519', true, []);
++        })();
++
++  if (pubKey.algorithm.name !== 'X25519') {
++    const { sharedKey, ciphertext } = await crypto.subtle.encapsulateKey(
++      pubKey.algorithm.name,
++      pubKey,
++      'ChaCha20-Poly1305',
++      false,
++      ['encrypt', 'decrypt'],
++    );
++    return { sharedKey, capsuleBytes: new Uint8Array(ciphertext) };
++  }
++
++  // Classical fallback: generate ephemeral X25519 key pair and send ephemeral public key as capsule
++  const ephemeral = await crypto.subtle.generateKey('X25519', false, ['deriveBits']);
++  const capsuleBytes = new Uint8Array(await crypto.subtle.exportKey('raw', ephemeral.publicKey));
++  const sharedKey = await deriveFallbackAesKey(ephemeral.privateKey, pubKey, infoBytes);
++  return { sharedKey, capsuleBytes };
++}
++
++export async function decapsulateEnvelopeKey(
++  recipientPrivateKey,
++  capsuleBytes,
++  infoBytes = new Uint8Array(0),
++) {
++  if (recipientPrivateKey.algorithm.name !== 'X25519') {
++    return crypto.subtle.decapsulateKey(
++      recipientPrivateKey.algorithm.name,
++      recipientPrivateKey,
++      capsuleBytes,
++      'ChaCha20-Poly1305',
++      false,
++      ['encrypt', 'decrypt'],
++    );
++  }
++
++  const ephemeralPubKey = await crypto.subtle.importKey('raw', capsuleBytes, 'X25519', true, []);
++  return deriveFallbackAesKey(recipientPrivateKey, ephemeralPubKey, infoBytes);
++}
++
++/**
++ * Encrypts UTF-8 text with an AEAD CryptoKey ('ChaCha20-Poly1305' or 'AES-GCM').
++ * @param {CryptoKey} key
++ * @param {string} plaintext
++ * @param {Uint8Array} [additionalData]
++ */
++export async function encryptMessage(key, plaintext, additionalData = new Uint8Array(0)) {
++  // Always generate a fresh 12-byte (96-bit) IV per message
++  const iv = crypto.getRandomValues(new Uint8Array(12));
++  const encoded = new TextEncoder().encode(plaintext);
++
++  const ciphertextBuffer = await crypto.subtle.encrypt(
++    {
++      name: key.algorithm.name,
++      iv,
++      additionalData,
++    },
++    key,
++    encoded,
++  );
++
++  return { iv, ciphertext: new Uint8Array(ciphertextBuffer) };
++}
++
++/**
++ * Decrypts and authenticates an AEAD payload. Throws OperationError if tampered.
++ * @param {CryptoKey} key
++ * @param {Uint8Array} iv
++ * @param {Uint8Array} ciphertext
++ * @param {Uint8Array} [additionalData]
++ */
++export async function decryptMessage(key, iv, ciphertext, additionalData = new Uint8Array(0)) {
++  const plaintextBuffer = await crypto.subtle.decrypt(
++    {
++      name: key.algorithm.name,
++      iv,
++      additionalData,
++    },
++    key,
++    ciphertext,
++  );
++
++  return new TextDecoder().decode(plaintextBuffer);
++}
++
++function openKeyStore() {
++  return new Promise((resolve, reject) => {
++    if (typeof indexedDB === 'undefined') {
++      reject(new Error('IndexedDB unavailable'));
++      return;
++    }
++    const request = indexedDB.open(DB_NAME, 1);
++    request.onupgradeneeded = () => {
++      const db = request.result;
++      if (!db.objectStoreNames.contains(STORE_NAME)) {
++        db.createObjectStore(STORE_NAME);
++      }
++    };
++    request.onsuccess = () => resolve(request.result);
++    request.onerror = () => reject(request.error);
++  });
++}
++
++async function loadOrCreateRecipientKeys(forceRotate = false) {
++  const expectedSuite = supportsPostQuantumEnvelope()
++    ? 'MLKEM768-X25519+ChaCha20-Poly1305'
++    : 'X25519+HKDF+AES-GCM';
++
++  if (!forceRotate) {
++    try {
++      const db = await openKeyStore();
++      const stored = await new Promise((resolve, reject) => {
++        const tx = db.transaction(STORE_NAME, 'readonly');
++        const store = tx.objectStore(STORE_NAME);
++        const req = store.get(KEY_RECORD_ID);
++        req.onsuccess = () => resolve(req.result);
++        req.onerror = () => reject(req.error);
++      });
++      db.close();
++
++      if (stored && stored.keyPair && stored.suite === expectedSuite) {
++        const format = stored.keyPair.publicKey.algorithm.name === 'X25519' ? 'raw' : 'raw-public';
++        const publicKeyBytes = new Uint8Array(
++          await crypto.subtle.exportKey(format, stored.keyPair.publicKey),
++        );
++        return { suite: stored.suite, keyPair: stored.keyPair, publicKeyBytes };
++      }
++    } catch {
++      // Fall through to generate a fresh key pair if IndexedDB is restricted
++    }
++  }
++
++  const generated = await generateRecipientKeys();
++  try {
++    const db = await openKeyStore();
++    await new Promise((resolve, reject) => {
++      const tx = db.transaction(STORE_NAME, 'readwrite');
++      const store = tx.objectStore(STORE_NAME);
++      store.put({ suite: generated.suite, keyPair: generated.keyPair }, KEY_RECORD_ID);
++      tx.oncomplete = () => resolve();
++      tx.onerror = () => reject(tx.error);
++    });
++    db.close();
++  } catch {
++    // Key remains usable in memory for the current session
++  }
++
++  return generated;
++}
++
++function initDeliveryNotesUI() {
++  const form = document.getElementById('delivery-notes-form');
++  if (!form) return;
++
++  const orderInput = document.getElementById('order-reference');
++  const noteInput = document.getElementById('delivery-note');
++  const orderError = document.getElementById('order-reference-error');
++  const noteError = document.getElementById('delivery-note-error');
++  const submitBtn = document.getElementById('encrypt-submit-btn');
++  const rotateBtn = document.getElementById('rotate-keys-btn');
++  const verifyBtn = document.getElementById('verify-decrypt-btn');
++
++  const suiteBadge = document.getElementById('crypto-suite-badge');
++  const suiteOutput = document.getElementById('envelope-suite');
++  const pubKeyOutput = document.getElementById('recipient-public-key');
++  const capsuleOutput = document.getElementById('envelope-capsule');
++  const ivOutput = document.getElementById('envelope-iv');
++  const ciphertextOutput = document.getElementById('envelope-ciphertext');
++  const decryptedOutput = document.getElementById('decrypted-preview');
++  const statusBanner = document.getElementById('encryption-status');
++
++  let activeRecipient = null;
++  let latestEnvelope = null;
++
++  function setStatus(message, state = 'info') {
++    statusBanner.textContent = message;
++    statusBanner.dataset.state = state;
++  }
++
++  function validateField(input, errorEl, labelText) {
++    input.setCustomValidity('');
++    if (!input.validity.valid) {
++      let msg = `Please enter a valid ${labelText}.`;
++      if (input.validity.valueMissing) {
++        msg = `${labelText} is required.`;
++      } else if (input.validity.tooShort) {
++        msg = `${labelText} must be at least ${input.minLength} characters.`;
++      }
++      input.setCustomValidity(msg);
++      input.setAttribute('aria-invalid', 'true');
++      errorEl.textContent = msg;
++      errorEl.hidden = false;
++      return false;
++    }
++    input.removeAttribute('aria-invalid');
++    errorEl.textContent = '';
++    errorEl.hidden = true;
++    return true;
++  }
++
++  function clearFieldError(input, errorEl) {
++    input.setCustomValidity('');
++    if (input.validity.valid) {
++      input.removeAttribute('aria-invalid');
++      errorEl.textContent = '';
++      errorEl.hidden = true;
++    }
++  }
++
++  orderInput.addEventListener('blur', () => {
++    if (orderInput.value !== '') {
++      validateField(orderInput, orderError, 'Order Reference');
++    }
++  });
++  orderInput.addEventListener('input', () => clearFieldError(orderInput, orderError));
++
++  noteInput.addEventListener('blur', () => {
++    if (noteInput.value !== '') {
++      validateField(noteInput, noteError, 'Delivery instructions');
++    }
++  });
++  noteInput.addEventListener('input', () => clearFieldError(noteInput, noteError));
++
++  async function encryptCurrentNote() {
++    if (!activeRecipient) {
++      activeRecipient = await loadOrCreateRecipientKeys(false);
++    }
++
++    const orderRef = orderInput.value.trim();
++    const plaintextNote = noteInput.value.trim();
++    const aadBytes = new TextEncoder().encode(`order:${orderRef}`);
++
++    const { sharedKey, capsuleBytes } = await encapsulateEnvelopeKey(
++      activeRecipient.publicKeyBytes,
++      ENVELOPE_CONTEXT,
++    );
++    const { iv, ciphertext } = await encryptMessage(sharedKey, plaintextNote, aadBytes);
++
++    latestEnvelope = {
++      suite: activeRecipient.suite,
++      capsuleBytes,
++      iv,
++      ciphertext,
++      aadBytes,
++      orderRef,
++    };
++
++    suiteOutput.textContent = `${activeRecipient.suite} (AAD: order:${orderRef})`;
++    pubKeyOutput.textContent = `${toBase64(activeRecipient.publicKeyBytes)} (${activeRecipient.publicKeyBytes.byteLength} bytes)`;
++    capsuleOutput.textContent = `${toBase64(capsuleBytes)} (${capsuleBytes.byteLength} bytes)`;
++    ivOutput.textContent = `${toBase64(iv)} (${iv.byteLength} bytes)`;
++    ciphertextOutput.textContent = `${toBase64(ciphertext)} (${ciphertext.byteLength} bytes)`;
++
++    const verifiedPlaintext = await decapsulateAndDecrypt(latestEnvelope);
++    decryptedOutput.textContent = verifiedPlaintext;
++    setStatus(
++      `Encrypted delivery note for ${orderRef} with ${activeRecipient.suite} and verified integrity.`,
++      'success',
++    );
++  }
++
++  async function decapsulateAndDecrypt(envelope) {
++    const recipientSharedKey = await decapsulateEnvelopeKey(
++      activeRecipient.keyPair.privateKey,
++      envelope.capsuleBytes,
++      ENVELOPE_CONTEXT,
++    );
++    return decryptMessage(
++      recipientSharedKey,
++      envelope.iv,
++      envelope.ciphertext,
++      envelope.aadBytes,
++    );
++  }
++
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++
++    const orderValid = validateField(orderInput, orderError, 'Order Reference');
++    const noteValid = validateField(noteInput, noteError, 'Delivery instructions');
++
++    if (!orderValid) {
++      orderInput.focus();
++      return;
++    }
++    if (!noteValid) {
++      noteInput.focus();
++      return;
++    }
++
++    submitBtn.disabled = true;
++    try {
++      await encryptCurrentNote();
++    } catch (err) {
++      setStatus(`Encryption failed: ${err.message || String(err)}`, 'error');
++    } finally {
++      submitBtn.disabled = false;
++    }
++  });
++
++  rotateBtn.addEventListener('click', async () => {
++    rotateBtn.disabled = true;
++    try {
++      activeRecipient = await loadOrCreateRecipientKeys(true);
++      suiteBadge.textContent = `Active Crypto Suite: ${activeRecipient.suite}`;
++      await encryptCurrentNote();
++      setStatus('Rotated courier key pair and re-encapsulated delivery note.', 'success');
++    } catch (err) {
++      setStatus(`Key rotation failed: ${err.message || String(err)}`, 'error');
++    } finally {
++      rotateBtn.disabled = false;
++    }
++  });
++
++  verifyBtn.addEventListener('click', async () => {
++    if (!latestEnvelope || !activeRecipient) {
++      setStatus('Encrypt a delivery note first before verifying decapsulation.', 'error');
++      return;
++    }
++    try {
++      const recovered = await decapsulateAndDecrypt(latestEnvelope);
++      decryptedOutput.textContent = recovered;
++      setStatus(
++        `Decapsulated capsule (${latestEnvelope.capsuleBytes.byteLength} bytes) and authenticated note for ${latestEnvelope.orderRef}.`,
++        'success',
++      );
++    } catch (err) {
++      setStatus(`Authentication or decapsulation failed: ${err.message || String(err)}`, 'error');
++    }
++  });
++
++  (async () => {
++    try {
++      activeRecipient = await loadOrCreateRecipientKeys(false);
++      suiteBadge.textContent = `Active Crypto Suite: ${activeRecipient.suite}`;
++      await encryptCurrentNote();
++    } catch (err) {
++      suiteBadge.textContent = 'WebCrypto initialization error';
++      setStatus(`Could not initialize WebCrypto keys: ${err.message || String(err)}`, 'error');
++    }
++  })();
++}
++
++if (typeof document !== 'undefined') {
++  initDeliveryNotesUI();
++}
+diff --git a/index.html b/index.html
+index 66c9173..a3720f2 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,199 @@
+       background: #3e2723;
+     }
+ 
++    /* Encrypted Delivery Notes Section */
++    .delivery-notes-section {
++      margin-top: 50px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++    }
++
++    .delivery-notes-header {
++      margin-bottom: 24px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 16px;
++    }
++
++    .delivery-notes-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .crypto-badge {
++      display: inline-block;
++      background: #efebe9;
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      padding: 4px 10px;
++      border-radius: 999px;
++      font-size: 0.82rem;
++      font-weight: 600;
++      margin-top: 6px;
++    }
++
++    .delivery-layout {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 28px;
++      align-items: start;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 0.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--primary);
++      display: inline-block;
++      padding: 10px 0;
++      margin: -10px 0;
++    }
++
++    .hint {
++      font-size: 0.85rem;
++      color: #5d4037;
++    }
++
++    .form-control {
++      width: 100%;
++      font: inherit;
++      font-size: max(1rem, 1em);
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #767676;
++      border-radius: 5px;
++      background-color: #fff;
++      color: var(--text);
++      box-sizing: border-box;
++    }
++
++    textarea.form-control {
++      min-height: 110px;
++      resize: vertical;
++    }
++
++    .form-control:focus-visible,
++    button:focus-visible,
++    .btn:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .form-control:user-invalid,
++    .form-control[aria-invalid="true"] {
++      border-color: #b71c1c;
++      background-color: #fff8f8;
++    }
++
++    .field-error {
++      color: #b71c1c;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .button-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 8px;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      font-weight: 600;
++      min-height: 48px;
++      margin-top: 0;
++    }
++
++    button.btn-secondary {
++      background: #efebe9;
++      color: var(--primary);
++      border: 1px solid #767676;
++    }
++
++    button.btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .envelope-panel {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 20px;
++    }
++
++    .envelope-panel h3 {
++      color: var(--primary);
++      margin-bottom: 12px;
++    }
++
++    .meta-list {
++      display: grid;
++      gap: 10px;
++      font-size: 0.9rem;
++    }
++
++    .meta-item {
++      background: white;
++      border: 1px solid #e0e0e0;
++      border-radius: 5px;
++      padding: 10px 12px;
++    }
++
++    .meta-item strong {
++      display: block;
++      color: var(--primary);
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      margin-bottom: 4px;
++    }
++
++    .mono-output {
++      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
++      font-size: 0.82rem;
++      word-break: break-all;
++      color: #3e2723;
++      max-height: 96px;
++      overflow-y: auto;
++    }
++
++    .status-banner {
++      margin-top: 12px;
++      padding: 10px 12px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      background: #efebe9;
++      color: var(--primary);
++    }
++
++    .status-banner[data-state="error"] {
++      background: #ffebee;
++      color: #b71c1c;
++    }
++
++    .status-banner[data-state="success"] {
++      background: #e8f5e9;
++      color: #1b5e20;
++    }
++
++    @media (pointer: coarse) {
++      .form-control,
++      button.btn {
++        min-height: 52px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +388,98 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="delivery-notes-section" aria-labelledby="delivery-notes-heading">
++      <div class="delivery-notes-header">
++        <h2 id="delivery-notes-heading">Encrypted Delivery Notes</h2>
++        <p>Protect sensitive drop-off instructions (gate codes, building access PINs, or locker instructions) in your browser before they leave your device.</p>
++        <div id="crypto-suite-badge" class="crypto-badge" role="status" aria-live="polite">Initializing courier key encapsulation…</div>
++      </div>
++
++      <div class="delivery-layout">
++        <form id="delivery-notes-form" action="/api/delivery-notes" method="POST" aria-labelledby="delivery-notes-heading" novalidate>
++          <div class="form-group">
++            <label for="order-reference">Order Reference <span aria-hidden="true">*</span></label>
++            <input
++              type="text"
++              id="order-reference"
++              name="order_reference"
++              class="form-control"
++              required
++              minlength="4"
++              maxlength="40"
++              value="DG-2026-8491"
++              autocorrect="off"
++              autocapitalize="none"
++              spellcheck="false"
++              enterkeyhint="next"
++              aria-describedby="order-reference-help order-reference-error"
++            >
++            <span id="order-reference-help" class="hint">Bound as unencrypted Additional Authenticated Data (AAD) so tampering with the order ID rejects decryption.</span>
++            <span id="order-reference-error" class="field-error" hidden></span>
++          </div>
++
++          <div class="form-group">
++            <label for="delivery-note">Sensitive Delivery Instructions <span aria-hidden="true">*</span></label>
++            <textarea
++              id="delivery-note"
++              name="delivery_note"
++              class="form-control"
++              required
++              minlength="3"
++              maxlength="500"
++              enterkeyhint="done"
++              aria-describedby="delivery-note-help delivery-note-error"
++            >Gate code #4829 — leave thermos inside the porch parcel locker.</textarea>
++            <span id="delivery-note-help" class="hint">3–500 characters. Encrypted client-side using a fresh one-time shared key and 12-byte IV.</span>
++            <span id="delivery-note-error" class="field-error" hidden></span>
++          </div>
++
++          <div class="button-row">
++            <button type="submit" id="encrypt-submit-btn" class="btn">Encrypt Delivery Note</button>
++            <button type="button" id="rotate-keys-btn" class="btn btn-secondary">Rotate Courier Key Pair</button>
++          </div>
++        </form>
++
++        <div class="envelope-panel" aria-labelledby="envelope-heading">
++          <h3 id="envelope-heading">Encrypted Courier Envelope</h3>
++          <div class="meta-list">
++            <div class="meta-item">
++              <strong>Active Suite &amp; Key Encapsulation</strong>
++              <div id="envelope-suite" class="mono-output">Pending key setup…</div>
++            </div>
++            <div class="meta-item">
++              <strong>Courier Public Key (raw-public / raw)</strong>
++              <div id="recipient-public-key" class="mono-output">—</div>
++            </div>
++            <div class="meta-item">
++              <strong>Encapsulated Key Capsule (Base64)</strong>
++              <div id="envelope-capsule" class="mono-output">—</div>
++            </div>
++            <div class="meta-item">
++              <strong>12-Byte Initialization Vector (Base64)</strong>
++              <div id="envelope-iv" class="mono-output">—</div>
++            </div>
++            <div class="meta-item">
++              <strong>AEAD Ciphertext + Tag (Base64)</strong>
++              <div id="envelope-ciphertext" class="mono-output">—</div>
++            </div>
++            <div class="meta-item">
++              <strong>Verified Decrypted Note (Courier Preview)</strong>
++              <div id="decrypted-preview" class="mono-output">—</div>
++            </div>
++          </div>
++
++          <div class="button-row" style="margin-top: 14px;">
++            <button type="button" id="verify-decrypt-btn" class="btn btn-secondary">Decapsulate &amp; Verify</button>
++          </div>
++
++          <div id="encryption-status" class="status-banner" role="status" aria-live="polite">
++            Ready to encrypt your delivery instructions.
++          </div>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +492,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/delivery-encryption.js"></script>
+ </body>
+ 
+ </html>

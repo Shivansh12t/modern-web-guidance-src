@@ -1,0 +1,187 @@
+diff --git a/index.html b/index.html
+index 66c9173..bbc1331 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,15 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="no-referrer">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet"
++    href="https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.css"
++    integrity="sha384-hxrRiR+VTIhTNO1KuuKsIj6SfGSfMCqoeh8pXTWgdgjAWfeS7EHXARUoOXHI5+qc"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <script defer src="https://cdn.jsdelivr.net/npm/feather-icons@4.29.2/dist/feather.min.js"
++    integrity="sha384-qEqAs1VsN9WH2myXDbiP2wGGIttL9bMRZBKCl54ZnzpDlVqbYANP9vMaoT/wvQcf"
++    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -41,6 +49,9 @@
+     }
+ 
+     .logo {
++      display: flex;
++      align-items: center;
++      gap: 0.6rem;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+@@ -75,8 +86,9 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        var(--verified-image, none);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -89,6 +101,8 @@
+     }
+ 
+     .hero h1 {
++      font-family: 'Daily Grind Lora', Georgia, serif;
++      font-weight: 400;
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -120,6 +134,16 @@
+       color: var(--primary);
+     }
+ 
++    .card-photo {
++      aspect-ratio: 8 / 5;
++      margin-bottom: 16px;
++      border-radius: 4px;
++      background-color: var(--secondary);
++      background-image: var(--verified-image, none);
++      background-size: cover;
++      background-position: center;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -158,7 +182,7 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo"><i data-feather="coffee" aria-hidden="true"></i>THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -168,7 +192,7 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero" id="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -179,16 +203,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-photo" id="latte-photo" aria-hidden="true"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-photo" id="espresso-photo" aria-hidden="true"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-photo" id="cold-brew-photo" aria-hidden="true"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +234,80 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Hashes are pinned at release time, never derived from runtime responses.
++    // Package assets match their exact npm releases; photos use fixed JPEG
++    // transformations to avoid content negotiation changing the verified bytes.
++    const fontAsset = {
++      url: 'https://cdn.jsdelivr.net/npm/@fontsource/lora@5.3.0/files/lora-latin-400-normal.woff2',
++      integrity: 'sha384-4K0WjzceC/SOy/usx6omCD3VyEOFfhpO97BismDBHNTJVOkoaAqmoEOWkiDGJr/8',
++    };
++    const imageAssets = [
++      {
++        target: 'hero',
++        url: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&h=900&q=80',
++        integrity: 'sha384-YUet8nBDHQZZytDjKEaBDYSEY+6j+mSlWjiARMNti2PWhjnHa74ouBxvRVcUN10H',
++      },
++      {
++        target: 'latte-photo',
++        url: 'https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?fm=jpg&fit=crop&w=640&h=400&q=80',
++        integrity: 'sha384-i/mji0y0+dl8sh3QARunS158pInWjNfs2eQmhNujD0oRGY2d/h9J+sj51LPRCNov',
++      },
++      {
++        target: 'espresso-photo',
++        url: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=640&h=400&q=80',
++        integrity: 'sha384-ebFGHNeEqCguFeCzJzWvZQOmwgCJXN77+FFLpG3HAmkl4RJdOFQyMmDGjQcozx3J',
++      },
++      {
++        target: 'cold-brew-photo',
++        url: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?fm=jpg&fit=crop&w=640&h=400&q=80',
++        integrity: 'sha384-hI7RYGmB16YukMy3u3zUGXrmafIjWjLH1ZDm1OZ2QOSvedWTL6REDfOsnetLUqz1',
++      },
++    ];
++
++    async function fetchVerified(asset) {
++      // Fetch SRI also protects fonts/images in browsers without CSS integrity().
++      // A mismatch rejects the request; there is no unverified network fallback.
++      const response = await fetch(asset.url, {
++        integrity: asset.integrity,
++        mode: 'cors',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++      });
++      if (!response.ok) throw new Error(`Asset request failed: ${response.status}`);
++      return response;
++    }
++
++    async function loadFont() {
++      const response = await fetchVerified(fontAsset);
++      const font = new FontFace('Daily Grind Lora', await response.arrayBuffer(), {
++        weight: '400',
++        style: 'normal',
++        display: 'swap',
++      });
++      document.fonts.add(await font.load());
++    }
++
++    async function loadImage(asset) {
++      const response = await fetchVerified(asset);
++      const objectUrl = URL.createObjectURL(await response.blob());
++      // Only verified bytes reach CSS. Keep the blob alive for this document's
++      // lifetime so background images can be repainted; navigation releases it.
++      document.getElementById(asset.target).style.setProperty(
++        '--verified-image', `url("${objectUrl}")`,
++      );
++    }
++
++    // Independent failures preserve the system font, solid backgrounds, and links.
++    loadFont().catch(error => console.warn('Verified font unavailable.', error));
++    imageAssets.forEach(asset => {
++      loadImage(asset).catch(error => console.warn(`Verified image unavailable: ${asset.target}`, error));
++    });
++    document.addEventListener('DOMContentLoaded', () => {
++      window.feather?.replace({ 'aria-hidden': 'true', focusable: 'false' });
++    });
++  </script>
++
+ </body>
+ 
+ </html>

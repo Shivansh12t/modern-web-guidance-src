@@ -1,0 +1,197 @@
+diff --git a/index.html b/index.html
+index 66c9173..b605657 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,11 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --seasonal-bg: #fffbf5;
++      --seasonal-border: #ffe0b2;
++      --seasonal-badge-bg: #ffe0b2;
++      --seasonal-badge-text: #6d4c41;
++      --accent-hover: #ff9100;
+     }
+ 
+     * {
+@@ -107,12 +112,29 @@
+       margin-top: 20px;
+     }
+ 
++    /* Semantic Contexts */
++    .seasonal,
++    [data-theme="seasonal"] {
++      --surface: seasonal;
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
++      border: 1px solid transparent;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      transition: transform 0.2s, box-shadow 0.2s;
++    }
++
++    .card > header {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .card h3 {
+@@ -120,6 +142,37 @@
+       color: var(--primary);
+     }
+ 
++    .card > footer {
++      background: transparent;
++      padding: 0;
++      margin-top: auto;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .badge {
++      display: none;
++      background: var(--seasonal-badge-bg);
++      color: var(--seasonal-badge-text);
++      font-size: 0.75rem;
++      font-weight: 700;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      padding: 4px 10px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -128,14 +181,57 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-weight: 600;
++      transition: background 0.3s, color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+-    footer {
++    /* Selector-based contextual fallback — broad browser support */
++    :where(.seasonal, [data-theme="seasonal"]) .card {
++      background: var(--seasonal-bg);
++      border-color: var(--seasonal-border);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.12);
++    }
++
++    :where(.seasonal, [data-theme="seasonal"]) .badge {
++      display: inline-block;
++    }
++
++    :where(.seasonal, [data-theme="seasonal"]) .card .btn {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    :where(.seasonal, [data-theme="seasonal"]) .card .btn:hover {
++      background: var(--accent-hover);
++    }
++
++    /* Progressive enhancement: style queries override when supported */
++    @container style(--surface: seasonal) {
++      .card {
++        background: var(--seasonal-bg);
++        border-color: var(--seasonal-border);
++        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.12);
++      }
++
++      .badge {
++        display: inline-block;
++      }
++
++      .card .btn {
++        background: var(--accent);
++        color: var(--text);
++      }
++
++      .card .btn:hover {
++        background: var(--accent-hover);
++      }
++    }
++
++    body > footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -175,24 +271,39 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal" data-theme="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <article class="card">
++          <header>
++            <span class="badge">Seasonal</span>
++            <h3>Maple Oat Latte</h3>
++          </header>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <footer>
++            <a href="/menu/seasonal" class="btn">View Details<span class="sr-only"> about Maple Oat Latte</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <header>
++            <span class="badge">Seasonal</span>
++            <h3>Dark Roast Espresso</h3>
++          </header>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <footer>
++            <a href="/menu/espresso" class="btn">View Details<span class="sr-only"> about Dark Roast Espresso</span></a>
++          </footer>
++        </article>
++        <article class="card">
++          <header>
++            <span class="badge">Seasonal</span>
++            <h3>Cold Brew</h3>
++          </header>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <footer>
++            <a href="/menu/cold-brew" class="btn">View Details<span class="sr-only"> about Cold Brew</span></a>
++          </footer>
++        </article>
+       </div>
+     </section>
+   </main>

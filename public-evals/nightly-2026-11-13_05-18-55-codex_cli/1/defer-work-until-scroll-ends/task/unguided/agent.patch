@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,62 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .beans-section {
++      margin-top: 40px;
++    }
++
++    .beans-section > h2,
++    .beans-section > p {
++      text-align: center;
++    }
++
++    #scroller {
++      height: 260px;
++      overflow-y: auto;
++      scroll-snap-type: y mandatory;
++      scrollbar-color: var(--primary) var(--secondary);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      margin-top: 20px;
++      background: white;
++    }
++
++    #scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    .bean {
++      min-height: 100%;
++      scroll-snap-align: start;
++      padding: 32px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: center;
++      text-align: center;
++      gap: 8px;
++    }
++
++    .bean:nth-child(even) {
++      background: #f4eeeb;
++    }
++
++    .bean-roast {
++      color: var(--primary);
++      font-size: 0.8rem;
++      letter-spacing: 0.1em;
++      text-transform: uppercase;
++    }
++
++    #status {
++      min-height: 1.6em;
++      margin-top: 12px;
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +248,37 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="beans-section" aria-labelledby="beans-heading">
++      <h2 id="beans-heading">Explore Our Coffee Beans</h2>
++      <p id="beans-instructions">Scroll to discover your next favorite roast.</p>
++      <div id="scroller" tabindex="0" role="region" aria-labelledby="beans-heading"
++        aria-describedby="beans-instructions">
++        <article class="bean" data-bean="Ethiopian Yirgacheffe">
++          <p class="bean-roast">01 / Light roast</p>
++          <h3>Ethiopian Yirgacheffe</h3>
++          <p>Bright citrus, delicate florals, and a tea-like finish.</p>
++        </article>
++        <article class="bean" data-bean="Colombian Supremo">
++          <p class="bean-roast">02 / Medium roast</p>
++          <h3>Colombian Supremo</h3>
++          <p>Caramel sweetness with notes of red apple and toasted nuts.</p>
++        </article>
++        <article class="bean" data-bean="Sumatra Mandheling">
++          <p class="bean-roast">03 / Dark roast</p>
++          <h3>Sumatra Mandheling</h3>
++          <p>Full-bodied and earthy with a rich dark chocolate finish.</p>
++        </article>
++        <article class="bean" data-bean="Brazilian Santos">
++          <p class="bean-roast">04 / Medium roast</p>
++          <h3>Brazilian Santos</h3>
++          <p>Smooth cocoa and roasted hazelnut with a mellow sweetness.</p>
++        </article>
++      </div>
++      <p id="status" role="status" aria-live="polite" aria-atomic="true">Viewing: Ethiopian Yirgacheffe (1 of 4)</p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +289,48 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const scroller = document.getElementById('scroller');
++    const status = document.getElementById('status');
++    const beans = Array.from(scroller.querySelectorAll('.bean'));
++    let stopTimer;
++    let scrolling = false;
++
++    function showVisibleBean() {
++      clearTimeout(stopTimer);
++      scrolling = false;
++      const top = scroller.getBoundingClientRect().top + scroller.clientTop;
++      const bottom = top + scroller.clientHeight;
++      let visibleIndex = 0;
++      let largestVisibleArea = -1;
++
++      beans.forEach((bean, index) => {
++        const bounds = bean.getBoundingClientRect();
++        const visibleArea = Math.max(0, Math.min(bottom, bounds.bottom) - Math.max(top, bounds.top));
++        if (visibleArea > largestVisibleArea) {
++          largestVisibleArea = visibleArea;
++          visibleIndex = index;
++        }
++      });
++
++      status.textContent = `Viewing: ${beans[visibleIndex].dataset.bean} (${visibleIndex + 1} of ${beans.length})`;
++    }
++
++    scroller.addEventListener('scroll', () => {
++      if (!scrolling) {
++        scrolling = true;
++        status.textContent = 'Scrolling…';
++      }
++      clearTimeout(stopTimer);
++      // Keep the movement handler light; measure visibility only after scrolling settles.
++      stopTimer = setTimeout(showVisibleBean, 180);
++    }, { passive: true });
++
++    scroller.addEventListener('scrollend', showVisibleBean);
++    showVisibleBean();
++  </script>
++
+ </body>
+ 
+ </html>

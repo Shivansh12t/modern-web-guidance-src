@@ -1,0 +1,411 @@
+diff --git a/index.html b/index.html
+index 66c9173..3943514 100644
+--- a/index.html
++++ b/index.html
+@@ -113,6 +113,16 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      transition: box-shadow 0.2s ease, border-color 0.2s ease;
++      border: 2px solid transparent;
++    }
++
++    .card:has(favorite-toggle:state(favorited)) {
++      border-color: var(--accent);
++      box-shadow: 0 4px 12px rgba(255, 171, 64, 0.25);
+     }
+ 
+     .card h3 {
+@@ -120,6 +130,15 @@
+       color: var(--primary);
+     }
+ 
++    .card-actions {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 12px;
++      margin-top: 15px;
++      flex-wrap: wrap;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -131,10 +150,31 @@
+       transition: background 0.3s;
+     }
+ 
++    .card-actions .btn {
++      margin-top: 0;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    favorite-toggle:not(:defined) {
++      visibility: hidden;
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        visibility: visible;
++        opacity: 1;
++      }
++    }
++
++    favorite-toggle:state(favorited) {
++      filter: drop-shadow(0 1px 4px rgba(255, 171, 64, 0.45));
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,17 +221,26 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/seasonal" class="btn">View Details</a>
++            <favorite-toggle drink-id="maple-oat-latte" label="Mark Maple Oat Latte as a favorite"></favorite-toggle>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/espresso" class="btn">View Details</a>
++            <favorite-toggle drink-id="dark-roast-espresso" label="Mark Dark Roast Espresso as a favorite"></favorite-toggle>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="card-actions">
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <favorite-toggle drink-id="cold-brew" label="Mark Cold Brew as a favorite"></favorite-toggle>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +256,311 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const favoriteTemplate = document.createElement('template');
++    favoriteTemplate.innerHTML = `
++      <span class="control" part="control">
++        <span class="track" part="track" aria-hidden="true">
++          <span class="thumb" part="thumb"></span>
++        </span>
++        <svg class="icon" part="icon" viewBox="0 0 24 24" aria-hidden="true">
++          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
++        </svg>
++        <span class="status" part="label"><slot>Favorite</slot></span>
++      </span>
++    `;
++
++    const favoriteSheet = new CSSStyleSheet();
++    favoriteSheet.replaceSync(`
++      @layer base, theme;
++
++      @layer base {
++        :host {
++          --_bg: var(--favorite-bg, #fff);
++          --_fg: var(--favorite-fg, var(--text, #3e2723));
++          --_border: var(--favorite-border, var(--secondary, #d7ccc8));
++          --_accent: var(--favorite-accent, var(--accent, #ffab40));
++          --_primary: var(--favorite-primary, var(--primary, #4e342e));
++          display: inline-flex;
++          align-items: center;
++          cursor: pointer;
++          user-select: none;
++          border-radius: 999px;
++          font: inherit;
++          color: var(--_fg);
++        }
++
++        :host([hidden]) {
++          display: none;
++        }
++
++        :host([disabled]) {
++          opacity: 0.5;
++          pointer-events: none;
++          cursor: not-allowed;
++        }
++
++        :host(:focus-visible) {
++          outline: 3px solid var(--_accent);
++          outline-offset: 3px;
++        }
++
++        .control {
++          display: inline-flex;
++          align-items: center;
++          gap: 8px;
++          padding: 7px 14px;
++          border-radius: 999px;
++          border: 1.5px solid var(--_border);
++          background: var(--_bg);
++          font-size: 0.9rem;
++          font-weight: 600;
++          line-height: 1.2;
++          transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
++        }
++
++        :host(:hover) .control {
++          border-color: var(--_primary);
++        }
++
++        .track {
++          position: relative;
++          width: 32px;
++          height: 18px;
++          border-radius: 999px;
++          background: var(--_border);
++          transition: background-color 0.2s ease;
++          flex-shrink: 0;
++        }
++
++        .thumb {
++          position: absolute;
++          top: 2px;
++          left: 2px;
++          width: 14px;
++          height: 14px;
++          border-radius: 50%;
++          background: #ffffff;
++          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
++          transition: transform 0.2s ease;
++        }
++
++        .icon {
++          width: 16px;
++          height: 16px;
++          fill: transparent;
++          stroke: currentColor;
++          stroke-width: 2;
++          transition: fill 0.2s ease, stroke 0.2s ease, transform 0.2s ease;
++          flex-shrink: 0;
++        }
++
++        :host(:state(favorited)) .control,
++        :host([checked]) .control {
++          background: #fff8e1;
++          border-color: var(--_accent);
++          color: var(--_primary);
++        }
++
++        :host(:state(favorited)) .track,
++        :host([checked]) .track {
++          background: var(--_accent);
++        }
++
++        :host(:state(favorited)) .thumb,
++        :host([checked]) .thumb {
++          transform: translateX(14px);
++        }
++
++        :host(:state(favorited)) .icon,
++        :host([checked]) .icon {
++          fill: #e53935;
++          stroke: #e53935;
++          transform: scale(1.1);
++        }
++      }
++    `);
++
++    class FavoriteToggle extends HTMLElement {
++      static observedAttributes = ['checked', 'disabled', 'label', 'drink-id'];
++
++      #internals;
++      #statusEl;
++      #slotEl;
++      #initialized = false;
++
++      constructor() {
++        super();
++        this.#internals = this.attachInternals?.() ?? null;
++        if (this.#internals && 'role' in this.#internals) {
++          this.#internals.role = 'switch';
++          this.#internals.ariaChecked = 'false';
++        }
++        const shadow = this.attachShadow({ mode: 'open' });
++        shadow.adoptedStyleSheets = [favoriteSheet];
++        shadow.append(favoriteTemplate.content.cloneNode(true));
++        this.#statusEl = shadow.querySelector('.status');
++        this.#slotEl = shadow.querySelector('slot');
++
++        this.addEventListener('click', () => {
++          if (!this.disabled) this.toggle();
++        });
++        this.addEventListener('keydown', (e) => {
++          if (this.disabled) return;
++          if (e.key === ' ' || e.key === 'Enter') {
++            e.preventDefault();
++            this.toggle();
++          }
++        });
++      }
++
++      connectedCallback() {
++        if (!this.#internals || !('role' in this.#internals)) {
++          if (!this.hasAttribute('role')) this.setAttribute('role', 'switch');
++        }
++        if (!this.hasAttribute('tabindex') && !this.disabled) {
++          this.tabIndex = 0;
++        }
++        if (!this.#initialized) {
++          this.#initialized = true;
++          this.#restorePersistedState();
++        }
++        this.#syncState();
++      }
++
++      connectedMoveCallback() {
++        this.#syncState();
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal !== newVal) {
++          this.#syncState();
++        }
++      }
++
++      get checked() {
++        return this.hasAttribute('checked');
++      }
++
++      set checked(on) {
++        this.toggleAttribute('checked', Boolean(on));
++      }
++
++      get disabled() {
++        return this.hasAttribute('disabled');
++      }
++
++      set disabled(on) {
++        this.toggleAttribute('disabled', Boolean(on));
++      }
++
++      get label() {
++        return this.getAttribute('label') ?? '';
++      }
++
++      set label(v) {
++        v ? this.setAttribute('label', v) : this.removeAttribute('label');
++      }
++
++      get drinkId() {
++        return this.getAttribute('drink-id') ?? '';
++      }
++
++      set drinkId(v) {
++        v ? this.setAttribute('drink-id', v) : this.removeAttribute('drink-id');
++      }
++
++      toggle(force) {
++        if (this.disabled) return this.checked;
++        const next = typeof force === 'boolean' ? force : !this.checked;
++        this.checked = next;
++        this.#persistState();
++        this.dispatchEvent(
++          new CustomEvent('change', {
++            bubbles: true,
++            composed: true,
++            detail: { checked: next, drinkId: this.drinkId }
++          })
++        );
++        return next;
++      }
++
++      #storageKey() {
++        return this.drinkId ? `daily-grind:fav:${this.drinkId}` : '';
++      }
++
++      #restorePersistedState() {
++        const key = this.#storageKey();
++        if (!key || this.hasAttribute('checked')) return;
++        try {
++          if (localStorage.getItem(key) === 'true') {
++            this.checked = true;
++          }
++        } catch {
++          // Ignore storage errors in restricted environments
++        }
++      }
++
++      #persistState() {
++        const key = this.#storageKey();
++        if (!key) return;
++        try {
++          if (this.checked) {
++            localStorage.setItem(key, 'true');
++          } else {
++            localStorage.removeItem(key);
++          }
++        } catch {
++          // Ignore storage errors
++        }
++      }
++
++      #syncState() {
++        const isChecked = this.checked;
++        const isDisabled = this.disabled;
++
++        if (this.#internals?.states) {
++          if (isChecked) {
++            this.#internals.states.add('favorited');
++          } else {
++            this.#internals.states.delete('favorited');
++          }
++        }
++
++        if (this.#internals && 'role' in this.#internals) {
++          this.#internals.ariaChecked = String(isChecked);
++          this.#internals.ariaDisabled = String(isDisabled);
++          if (this.label) {
++            this.#internals.ariaLabel = this.label;
++          }
++        } else {
++          this.setAttribute('aria-checked', String(isChecked));
++          if (isDisabled) {
++            this.setAttribute('aria-disabled', 'true');
++          } else {
++            this.removeAttribute('aria-disabled');
++          }
++          if (this.label && !this.hasAttribute('aria-label')) {
++            this.setAttribute('aria-label', this.label);
++          }
++        }
++
++        if (isDisabled) {
++          this.tabIndex = -1;
++        } else if (!this.hasAttribute('tabindex') || this.tabIndex < 0) {
++          this.tabIndex = 0;
++        }
++
++        if (this.#slotEl && this.#slotEl.assignedNodes().length === 0) {
++          this.#slotEl.textContent = isChecked ? 'Favorited' : 'Favorite';
++        }
++      }
++    }
++
++    if (!customElements.get('favorite-toggle')) {
++      customElements.define('favorite-toggle', FavoriteToggle);
++    }
++  </script>
+ </body>
+ 
+ </html>

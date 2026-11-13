@@ -1,0 +1,537 @@
+diff --git a/index.html b/index.html
+index 66c9173..fe5e91e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,210 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    button.btn {
++      border: none;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn:focus-visible,
++    .order-dialog button:focus-visible,
++    .order-dialog select:focus-visible,
++    .order-dialog input:focus-visible,
++    .order-dialog textarea:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      box-shadow: inset 0 0 0 1px var(--primary);
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .btn-danger {
++      background: #b71c1c;
++    }
++
++    .btn-danger:hover {
++      background: #8e1515;
++    }
++
++    /* Order dialog */
++    body.dialog-open {
++      overflow: hidden;
++    }
++
++    .order-dialog {
++      border: none;
++      border-radius: 12px;
++      padding: 0;
++      width: min(560px, calc(100% - 32px));
++      max-height: calc(100vh - 32px);
++      margin: auto;
++      color: var(--text);
++      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
++    }
++
++    .order-dialog::backdrop {
++      background: rgba(30, 20, 15, 0.6);
++    }
++
++    .dialog-inner {
++      position: relative;
++    }
++
++    .dialog-image {
++      width: 100%;
++      height: 200px;
++      object-fit: cover;
++      display: block;
++      background: var(--secondary);
++    }
++
++    .dialog-close {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      width: 36px;
++      height: 36px;
++      border-radius: 50%;
++      border: none;
++      background: rgba(255, 255, 255, 0.9);
++      color: var(--text);
++      font-size: 1.4rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .dialog-body {
++      padding: 20px 24px 24px;
++    }
++
++    .dialog-body h2 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .dialog-meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 8px;
++    }
++
++    .order-form {
++      margin-top: 16px;
++      display: grid;
++      gap: 14px;
++    }
++
++    .order-form fieldset {
++      border: none;
++    }
++
++    .order-form legend,
++    .order-form label.field-label {
++      display: block;
++      font-weight: 600;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++    }
++
++    .option-row {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .option-row label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 6px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 20px;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .option-row label:has(input:checked) {
++      border-color: var(--primary);
++      background: #efebe9;
++    }
++
++    .order-form select,
++    .order-form textarea,
++    .order-form input[type="number"] {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font: inherit;
++      background: white;
++    }
++
++    .order-form input[type="number"] {
++      width: 90px;
++    }
++
++    .order-form textarea {
++      resize: vertical;
++      min-height: 60px;
++    }
++
++    .order-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 12px;
++      flex-wrap: wrap;
++      border-top: 1px solid var(--secondary);
++      padding-top: 14px;
++    }
++
++    .order-total {
++      font-size: 1.1rem;
++      font-weight: 700;
++    }
++
++    .order-footer .btn {
++      margin-top: 0;
++    }
++
++    .discard-panel {
++      margin-top: 16px;
++      padding: 14px 16px;
++      border-radius: 8px;
++      background: #fff3e0;
++      border: 1px solid var(--accent);
++    }
++
++    .discard-panel p {
++      margin-bottom: 10px;
++      font-weight: 600;
++    }
++
++    .discard-panel .btn {
++      margin-top: 0;
++      margin-right: 8px;
++    }
++
++    .order-success {
++      text-align: center;
++      padding: 10px 0;
++    }
++
++    .order-success .btn {
++      margin-top: 16px;
++    }
++
++    [hidden] {
++      display: none !important;
++    }
+   </style>
+ </head>
+ 
+@@ -171,7 +375,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" data-open-order>Order Now</button>
+   </header>
+ 
+   <main class="container">
+@@ -181,17 +385,17 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" data-open-order="maple-oat-latte">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" data-open-order="dark-roast-espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" data-open-order="cold-brew">View Details</button>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +411,291 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="order-dialog" class="order-dialog" aria-labelledby="order-dialog-title" closedby="none">
++    <div class="dialog-inner">
++      <img class="dialog-image" id="order-dialog-image" alt="" src="">
++      <button type="button" class="dialog-close" data-request-close aria-label="Close">&times;</button>
++      <div class="dialog-body">
++        <div id="order-view">
++          <h2 id="order-dialog-title">Drink details</h2>
++          <p class="dialog-meta" id="order-dialog-meta"></p>
++          <p id="order-dialog-description"></p>
++
++          <form id="order-form" class="order-form" novalidate>
++            <div>
++              <label class="field-label" for="order-drink">Drink</label>
++              <select id="order-drink" name="drink"></select>
++            </div>
++
++            <fieldset>
++              <legend>Size</legend>
++              <div class="option-row">
++                <label><input type="radio" name="size" value="small"> Small</label>
++                <label><input type="radio" name="size" value="medium" checked> Medium (+$0.50)</label>
++                <label><input type="radio" name="size" value="large"> Large (+$1.00)</label>
++              </div>
++            </fieldset>
++
++            <div id="milk-field">
++              <label class="field-label" for="order-milk">Milk</label>
++              <select id="order-milk" name="milk">
++                <option value="default">House default</option>
++                <option value="none">No milk</option>
++                <option value="whole">Whole milk</option>
++                <option value="oat">Oat milk (+$0.60)</option>
++                <option value="almond">Almond milk (+$0.60)</option>
++              </select>
++            </div>
++
++            <fieldset>
++              <legend>Extras</legend>
++              <div class="option-row">
++                <label><input type="checkbox" name="extras" value="shot"> Extra shot (+$0.75)</label>
++                <label><input type="checkbox" name="extras" value="vanilla"> Vanilla syrup (+$0.50)</label>
++                <label><input type="checkbox" name="extras" value="cream"> Sweet cream (+$0.50)</label>
++              </div>
++            </fieldset>
++
++            <div>
++              <label class="field-label" for="order-qty">Quantity</label>
++              <input type="number" id="order-qty" name="quantity" min="1" max="20" value="1">
++            </div>
++
++            <div>
++              <label class="field-label" for="order-notes">Special instructions</label>
++              <textarea id="order-notes" name="notes" placeholder="e.g. extra hot, light ice"></textarea>
++            </div>
++
++            <div class="order-footer">
++              <span class="order-total">Total: <span id="order-total">$0.00</span></span>
++              <div>
++                <button type="button" class="btn btn-secondary" data-request-close>Cancel</button>
++                <button type="submit" class="btn">Add to Order</button>
++              </div>
++            </div>
++          </form>
++
++          <div class="discard-panel" id="discard-panel" role="alertdialog" aria-labelledby="discard-message" hidden>
++            <p id="discard-message">You have unsaved changes to this order. Discard them?</p>
++            <button type="button" class="btn btn-danger" id="discard-confirm">Discard changes</button>
++            <button type="button" class="btn btn-secondary" id="discard-cancel">Keep editing</button>
++          </div>
++        </div>
++
++        <div id="order-success" class="order-success" hidden>
++          <h2>Added to your order!</h2>
++          <p id="order-success-summary"></p>
++          <button type="button" class="btn" data-request-close>Done</button>
++        </div>
++      </div>
++    </div>
++  </dialog>
++
++  <script>
++    (function () {
++      const DRINKS = {
++        'maple-oat-latte': {
++          name: 'Maple Oat Latte',
++          description: 'Creamy oat milk with a hint of Vermont maple syrup, poured over a double shot of our house espresso.',
++          meta: 'Seasonal · 190 cal (medium) · Contains: oats',
++          price: 5.25,
++          milk: true,
++          defaultMilk: 'oat',
++          image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=900&q=80'
++        },
++        'dark-roast-espresso': {
++          name: 'Dark Roast Espresso',
++          description: 'Bold, smokey, and perfect for a morning boost. Pulled from our signature dark roast blend.',
++          meta: 'Classic · 5 cal · Single-origin blend',
++          price: 3.25,
++          milk: false,
++          defaultMilk: 'none',
++          image: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=900&q=80'
++        },
++        'cold-brew': {
++          name: 'Cold Brew',
++          description: 'Steeped for 18 hours for maximum smoothness, served over ice.',
++          meta: 'Iced · 5 cal · Steeped 18 hours',
++          price: 4.50,
++          milk: true,
++          defaultMilk: 'none',
++          image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=900&q=80'
++        }
++      };
++      const SIZE_PRICE = { small: 0, medium: 0.5, large: 1 };
++      const MILK_PRICE = { oat: 0.6, almond: 0.6 };
++      const EXTRA_PRICE = { shot: 0.75, vanilla: 0.5, cream: 0.5 };
++
++      const dialog = document.getElementById('order-dialog');
++      const form = document.getElementById('order-form');
++      const drinkSelect = document.getElementById('order-drink');
++      const milkField = document.getElementById('milk-field');
++      const milkSelect = document.getElementById('order-milk');
++      const qtyInput = document.getElementById('order-qty');
++      const totalEl = document.getElementById('order-total');
++      const orderView = document.getElementById('order-view');
++      const successView = document.getElementById('order-success');
++      const discardPanel = document.getElementById('discard-panel');
++      const discardConfirm = document.getElementById('discard-confirm');
++      const discardCancel = document.getElementById('discard-cancel');
++
++      let initialState = '';
++      let allowClose = false;
++      let opener = null;
++
++      Object.entries(DRINKS).forEach(([id, d]) => {
++        drinkSelect.add(new Option(d.name + ' — $' + d.price.toFixed(2), id));
++      });
++
++      function serialize() {
++        const data = new FormData(form);
++        return JSON.stringify([...data.entries()]);
++      }
++
++      function isDirty() {
++        return !successView.hidden ? false : serialize() !== initialState;
++      }
++
++      function renderDrink(id, resetMilk) {
++        const d = DRINKS[id];
++        document.getElementById('order-dialog-title').textContent = d.name;
++        document.getElementById('order-dialog-meta').textContent = d.meta;
++        document.getElementById('order-dialog-description').textContent = d.description;
++        const img = document.getElementById('order-dialog-image');
++        img.hidden = false;
++        img.src = d.image;
++        img.alt = d.name;
++        milkField.hidden = !d.milk;
++        milkSelect.disabled = !d.milk;
++        if (resetMilk) milkSelect.value = d.defaultMilk;
++      }
++
++      function updateTotal() {
++        const d = DRINKS[drinkSelect.value];
++        const data = new FormData(form);
++        let unit = d.price + (SIZE_PRICE[data.get('size')] || 0);
++        if (d.milk) unit += MILK_PRICE[data.get('milk')] || 0;
++        data.getAll('extras').forEach(e => { unit += EXTRA_PRICE[e] || 0; });
++        const qty = Math.min(20, Math.max(1, parseInt(qtyInput.value, 10) || 1));
++        totalEl.textContent = '$' + (unit * qty).toFixed(2);
++        return { unit, qty, total: unit * qty };
++      }
++
++      function openOrder(drinkId, trigger) {
++        opener = trigger || null;
++        form.reset();
++        drinkSelect.value = DRINKS[drinkId] ? drinkId : Object.keys(DRINKS)[0];
++        renderDrink(drinkSelect.value, true);
++        updateTotal();
++        initialState = serialize();
++        orderView.hidden = false;
++        successView.hidden = true;
++        hideDiscardPrompt();
++        allowClose = false;
++        dialog.showModal();
++        document.body.classList.add('dialog-open');
++      }
++
++      function closeDialog() {
++        allowClose = true;
++        dialog.close();
++      }
++
++      function showDiscardPrompt() {
++        discardPanel.hidden = false;
++        discardPanel.scrollIntoView({ block: 'nearest' });
++        discardConfirm.focus();
++      }
++
++      function hideDiscardPrompt() {
++        discardPanel.hidden = true;
++      }
++
++      // Any attempt to dismiss (close button, Cancel, Escape, backdrop click) goes through here.
++      function requestClose() {
++        if (isDirty()) {
++          showDiscardPrompt();
++        } else {
++          closeDialog();
++        }
++      }
++
++      document.querySelectorAll('[data-open-order]').forEach(btn => {
++        btn.addEventListener('click', () => openOrder(btn.dataset.openOrder, btn));
++      });
++
++      dialog.querySelectorAll('[data-request-close]').forEach(btn => {
++        btn.addEventListener('click', requestClose);
++      });
++
++      discardConfirm.addEventListener('click', closeDialog);
++      discardCancel.addEventListener('click', () => {
++        hideDiscardPrompt();
++        drinkSelect.focus();
++      });
++
++      // Handle Escape ourselves so the browser never closes a dirty dialog.
++      dialog.addEventListener('keydown', e => {
++        if (e.key === 'Escape') {
++          e.preventDefault();
++          e.stopPropagation();
++          if (!discardPanel.hidden) {
++            hideDiscardPrompt();
++            drinkSelect.focus();
++          } else {
++            requestClose();
++          }
++        }
++      });
++
++      // Other close requests (e.g. platform back gesture) fire "cancel".
++      dialog.addEventListener('cancel', e => {
++        e.preventDefault();
++        requestClose();
++      });
++
++      // Backdrop click = light dismiss attempt.
++      let pointerDownOnBackdrop = false;
++      dialog.addEventListener('pointerdown', e => { pointerDownOnBackdrop = e.target === dialog; });
++      dialog.addEventListener('click', e => {
++        if (e.target === dialog && pointerDownOnBackdrop) requestClose();
++        pointerDownOnBackdrop = false;
++      });
++
++      // Safety net: if something closed the dialog without going through requestClose, reopen it.
++      dialog.addEventListener('close', () => {
++        if (!allowClose && isDirty()) {
++          dialog.showModal();
++          showDiscardPrompt();
++          return;
++        }
++        allowClose = false;
++        document.body.classList.remove('dialog-open');
++        if (opener) opener.focus();
++      });
++
++      drinkSelect.addEventListener('change', () => renderDrink(drinkSelect.value, true));
++      form.addEventListener('input', () => { hideDiscardPrompt(); updateTotal(); });
++      form.addEventListener('change', updateTotal);
++
++      document.getElementById('order-dialog-image').addEventListener('error', e => { e.target.hidden = true; });
++
++      form.addEventListener('submit', e => {
++        e.preventDefault();
++        const { qty, total } = updateTotal();
++        qtyInput.value = qty;
++        const d = DRINKS[drinkSelect.value];
++        const size = new FormData(form).get('size');
++        document.getElementById('order-success-summary').textContent =
++          qty + ' × ' + size.charAt(0).toUpperCase() + size.slice(1) + ' ' + d.name + ' — $' + total.toFixed(2);
++        hideDiscardPrompt();
++        orderView.hidden = true;
++        successView.hidden = false;
++        successView.querySelector('button').focus();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

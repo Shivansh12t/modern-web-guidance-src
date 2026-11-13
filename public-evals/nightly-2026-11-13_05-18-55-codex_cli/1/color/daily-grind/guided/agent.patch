@@ -1,0 +1,308 @@
+diff --git a/index.html b/index.html
+index 66c9173..62c4e49 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,54 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      color-scheme: light dark;
++      --brand: #4e342e;
++      --page: #faf6f2;
++      --surface: #fffdfb;
++      --text: #34231e;
++      --muted: #6e5950;
++      --heading: var(--brand);
++      --border: #d9c8bd;
++      --nav: var(--brand);
++      --on-nav: #fff8f1;
++      --accent: #ffd098;
++      --button: var(--brand);
++      --button-hover: #38231e;
++      --on-button: #fff8f1;
++      --footer: #eaded4;
++      --focus: #805338;
++      --new-bg: #f8dfb9;
++      --new-text: #603b16;
++      --sold-bg: #e9e1dc;
++      --sold-text: #5c4b43;
++      --shadow: 0 3px 14px rgb(78 52 46 / 8%);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --page: #1c1512;
++        --surface: #2b211d;
++        --text: #f3e8df;
++        --muted: #cbb7aa;
++        --heading: #edc5a5;
++        --border: #5c473b;
++        --nav: #30211c;
++        --on-nav: #fff0e4;
++        --button: #edc5a5;
++        --button-hover: #ffdbbd;
++        --on-button: #30211c;
++        --footer: #271c17;
++        --focus: #ffd098;
++        --new-bg: #51391f;
++        --new-text: #ffda9e;
++        --sold-bg: #403630;
++        --sold-text: #e0cec1;
++        --shadow: 0 3px 14px rgb(0 0 0 / 20%);
++      }
+     }
+ 
+     * {
+@@ -24,17 +64,20 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--page);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background: var(--nav);
++      color: var(--on-nav);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: wrap;
++      gap: 12px 24px;
++      border-bottom: 1px solid var(--border);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+@@ -49,20 +92,19 @@
+     nav ul {
+       display: flex;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      flex-wrap: wrap;
++      gap: 10px 20px;
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--on-nav);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
+@@ -74,8 +116,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      min-height: 60vh;
++      background: linear-gradient(rgb(37 22 16 / 78%), rgb(37 22 16 / 78%)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
+@@ -83,16 +125,36 @@
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      background-color: var(--brand);
++      color: #fff8f1;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 48px 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 5vw, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
++    .hero .btn {
++      background: #ffd098;
++      color: #38231e;
++    }
++
++    .hero .btn:hover {
++      background: #ffe2bd;
++    }
++
++    a:focus-visible {
++      outline: 3px solid var(--focus);
++      outline-offset: 4px;
++    }
++
++    nav a:focus-visible,
++    .hero a:focus-visible {
++      outline-color: #ffd098;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -108,35 +170,64 @@
+     }
+ 
+     .card {
+-      background: white;
+-      padding: 20px;
++      position: relative;
++      background: var(--surface);
++      color: var(--muted);
++      border: 1px solid var(--border);
++      padding: 56px 20px 24px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      box-shadow: var(--shadow);
+       text-align: center;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
++    }
++
++    .badge {
++      position: absolute;
++      top: 16px;
++      right: 16px;
++      display: inline-block;
++      padding: 2px 10px;
++      border: 1px solid currentColor;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.02em;
++    }
++
++    .badge-new {
++      background: var(--new-bg);
++      color: var(--new-text);
++    }
++
++    .badge-sold-out {
++      background: var(--sold-bg);
++      color: var(--sold-text);
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background: var(--button);
++      color: var(--on-button);
+       padding: 10px 20px;
+       text-decoration: none;
++      border: 1px solid transparent;
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--button-hover);
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer);
++      color: var(--muted);
++      border-top: 1px solid var(--border);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -152,6 +243,53 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration: underline;
++      text-underline-offset: 3px;
++    }
++
++    @media (forced-colors: active) {
++      :root {
++        --page: Canvas;
++        --surface: Canvas;
++        --text: CanvasText;
++        --muted: CanvasText;
++        --heading: CanvasText;
++        --border: CanvasText;
++        --nav: Canvas;
++        --on-nav: LinkText;
++        --accent: LinkText;
++        --button: ButtonFace;
++        --button-hover: ButtonFace;
++        --on-button: ButtonText;
++        --footer: Canvas;
++        --focus: Highlight;
++        --new-bg: Canvas;
++        --new-text: CanvasText;
++        --sold-bg: Canvas;
++        --sold-text: CanvasText;
++      }
++
++      .hero {
++        background: Canvas;
++        color: CanvasText;
++      }
++
++      .hero .btn {
++        background: ButtonFace;
++        color: ButtonText;
++      }
++
++      .btn {
++        border-color: ButtonText;
++      }
++
++      nav a:focus-visible,
++      .hero a:focus-visible {
++        outline-color: Highlight;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -179,6 +317,7 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="badge badge-new">New</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+@@ -189,6 +328,7 @@
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="badge badge-sold-out">Sold out</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

@@ -1,0 +1,148 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,114 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Showcase Section */
++    .showcase {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
++      gap: 32px;
++      align-items: start;
++    }
++
++    /* Card whose children are clipped to the inner (content-box) curve */
++    .nested-curve-parent {
++      background: var(--primary);
++      padding: 14px;
++      border-radius: 28px;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
++      /* Fallback: clips at the padding box */
++      overflow: hidden;
++    }
++
++    .nested-curve-parent img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .nested-curve-footer {
++      background: var(--secondary);
++      color: var(--text);
++      padding: 14px 18px;
++    }
++
++    .nested-curve-footer h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    @supports (overflow-clip-margin: content-box) {
++      .nested-curve-parent {
++        overflow: clip;
++        /* Clip edge follows the inner curve (28px - 14px padding) */
++        overflow-clip-margin: content-box;
++      }
++    }
++
++    /* Promo that clips overflowing text but lets the button glow bleed out */
++    .safety-zone-parent {
++      position: relative;
++      background: linear-gradient(135deg, var(--primary), #6d4c41);
++      color: white;
++      padding: 28px;
++      border-radius: 16px;
++      /* Fallback: clips text, but also truncates the button glow */
++      overflow: hidden;
++    }
++
++    .promo-watermark {
++      font-size: 5.5rem;
++      font-weight: 800;
++      line-height: 1;
++      white-space: nowrap;
++      color: rgba(255, 255, 255, 0.1);
++      margin: 0 0 12px -6px;
++      user-select: none;
++    }
++
++    .safety-zone-parent h3 {
++      font-size: 1.6rem;
++      margin-bottom: 8px;
++    }
++
++    .safety-zone-parent p {
++      margin-bottom: 20px;
++      color: var(--secondary);
++    }
++
++    .glow-btn {
++      display: block;
++      width: 100%;
++      padding: 12px 20px;
++      border: 0;
++      border-radius: 8px;
++      background: var(--accent);
++      color: var(--text);
++      font: inherit;
++      font-weight: 700;
++      text-align: center;
++      text-decoration: none;
++      box-shadow: 0 8px 16px rgba(255, 171, 64, 0.75), 0 0 24px rgba(255, 171, 64, 0.45);
++      /* Pull the button down so its glow sits beyond the container edge */
++      margin-bottom: -8px;
++    }
++
++    .glow-btn:hover,
++    .glow-btn:focus-visible {
++      background: #ffc370;
++    }
++
++    @supports (overflow-clip-margin: 16px) {
++      .safety-zone-parent {
++        overflow: clip;
++        /* Safety zone: overflowing text is still clipped close to the edge,
++           while the button's glow can render past it */
++        overflow-clip-margin: 16px;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,8 +279,29 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="container" aria-labelledby="showcase-title">
++    <h2 id="showcase-title" style="text-align: center; margin-bottom: 20px;">From Our Roastery</h2>
++    <div class="showcase">
++      <article class="nested-curve-parent">
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++          alt="Latte art in a ceramic cup on a wooden table" width="900" height="675" loading="lazy">
++        <div class="nested-curve-footer">
++          <h3>Barista's Pick</h3>
++          <p>A velvety flat white pulled from our single-origin Ethiopian beans.</p>
++        </div>
++      </article>
++
++      <aside class="safety-zone-parent" aria-labelledby="promo-title">
++        <p class="promo-watermark" aria-hidden="true">BREWMASTERCLASS</p>
++        <h3 id="promo-title">Join the Brew Masterclass</h3>
++        <p>Learn pour-over, espresso dialing, and latte art from our head roaster. Seats are limited every Saturday.</p>
++        <a href="/rewards/masterclass" class="glow-btn">Reserve a Seat</a>
++      </aside>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">

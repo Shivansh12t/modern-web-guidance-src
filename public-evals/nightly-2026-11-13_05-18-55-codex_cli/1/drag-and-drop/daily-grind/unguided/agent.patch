@@ -1,0 +1,205 @@
+diff --git a/index.html b/index.html
+index 66c9173..5d93dbf 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,62 @@
+       color: var(--primary);
+     }
+ 
++    #seasonal-favorites .card {
++      position: relative;
++      cursor: grab;
++      touch-action: pan-y;
++    }
++
++    .reorder-handle {
++      display: block;
++      margin: -10px auto 6px;
++      padding: 0 12px;
++      border: 0;
++      background: transparent;
++      color: var(--primary);
++      font-size: 1.25rem;
++      cursor: grab;
++      touch-action: none;
++    }
++
++    .reorder-handle:focus-visible {
++      outline: 2px solid var(--primary);
++      border-radius: 4px;
++    }
++
++    #seasonal-favorites .card.is-dragging {
++      z-index: 1;
++      opacity: 0.7;
++      cursor: grabbing;
++      user-select: none;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
++    }
++
++    .card.drop-before::before,
++    .card.drop-after::after {
++      content: '';
++      position: absolute;
++      top: 0;
++      bottom: 0;
++      width: 4px;
++      background: var(--accent);
++      border-radius: 2px;
++    }
++
++    .card.drop-before::before { left: -12px; }
++    .card.drop-after::after { right: -12px; }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,7 +233,8 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <p id="reorder-help" class="sr-only">Drag cards left or right within their row, or focus a drag handle and use the left and right arrow keys.</p>
++      <div class="grid" id="seasonal-favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -194,6 +251,7 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <p id="reorder-status" class="sr-only" role="status" aria-live="polite"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +265,119 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const favorites = document.getElementById('seasonal-favorites');
++    const status = document.getElementById('reorder-status');
++    let drag = null;
++
++    const cards = () => Array.from(favorites.children);
++    const title = card => card.querySelector('h3').textContent;
++    const rowFor = card => {
++      const top = card.offsetTop;
++      return cards().filter(item => Math.abs(item.offsetTop - top) < 2);
++    };
++    const announce = card => {
++      const row = rowFor(card);
++      status.textContent = `${title(card)}, position ${row.indexOf(card) + 1} of ${row.length} in this row.`;
++    };
++
++    cards().forEach(card => {
++      const handle = document.createElement('button');
++      handle.type = 'button';
++      handle.className = 'reorder-handle';
++      handle.textContent = '⠿';
++      handle.setAttribute('aria-label', `Reorder ${title(card)}`);
++      handle.setAttribute('aria-describedby', 'reorder-help');
++      card.prepend(handle);
++    });
++
++    favorites.addEventListener('keydown', event => {
++      if (!event.target.matches('.reorder-handle')) return;
++      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
++      event.preventDefault();
++      const card = event.target.closest('.card');
++      const row = rowFor(card);
++      const index = row.indexOf(card);
++      const neighbor = row[index + (event.key === 'ArrowLeft' ? -1 : 1)];
++      if (!neighbor) return;
++      favorites.insertBefore(card, event.key === 'ArrowLeft' ? neighbor : neighbor.nextSibling);
++      event.target.focus();
++      announce(card);
++    });
++
++    favorites.addEventListener('pointerdown', event => {
++      if (drag || !event.isPrimary || event.button !== 0 || event.target.closest('a')) return;
++      const card = event.target.closest('.card');
++      if (!card) return;
++      const row = rowFor(card);
++      if (row.length < 2) return;
++      drag = {
++        card, row, pointerId: event.pointerId, startX: event.clientX,
++        startY: event.clientY, active: false, index: row.indexOf(card),
++        bounds: row.map(item => item.getBoundingClientRect())
++      };
++      card.setPointerCapture(event.pointerId);
++    });
++
++    favorites.addEventListener('pointermove', event => {
++      if (!drag || event.pointerId !== drag.pointerId) return;
++      const dx = event.clientX - drag.startX;
++      const dy = event.clientY - drag.startY;
++      if (!drag.active) {
++        if (Math.max(Math.abs(dx), Math.abs(dy)) < 6) return;
++        if (Math.abs(dy) > Math.abs(dx)) {
++          finishDrag(false);
++          return;
++        }
++        drag.active = true;
++        drag.card.classList.add('is-dragging');
++      }
++      const origin = drag.bounds[drag.row.indexOf(drag.card)];
++      const shift = Math.max(drag.bounds[0].left - origin.left,
++        Math.min(dx, drag.bounds[drag.bounds.length - 1].right - origin.right));
++      drag.card.style.transform = `translateX(${shift}px)`;
++      const center = origin.left + origin.width / 2 + shift;
++      const others = drag.row.filter(card => card !== drag.card);
++      drag.index = drag.bounds.reduce((nearest, bounds, index) => {
++        const previous = drag.bounds[nearest];
++        return Math.abs(center - bounds.left - bounds.width / 2) <
++          Math.abs(center - previous.left - previous.width / 2) ? index : nearest;
++      }, 0);
++      clearIndicators();
++      if (drag.index < others.length) others[drag.index].classList.add('drop-before');
++      else others[others.length - 1].classList.add('drop-after');
++    });
++
++    function clearIndicators() {
++      cards().forEach(card => card.classList.remove('drop-before', 'drop-after'));
++    }
++
++    function finishDrag(commit) {
++      if (!drag) return;
++      const { card, row, index, active, pointerId } = drag;
++      drag = null;
++      card.style.transform = '';
++      card.classList.remove('is-dragging');
++      clearIndicators();
++      if (card.hasPointerCapture(pointerId)) card.releasePointerCapture(pointerId);
++      if (commit && active) {
++        const others = row.filter(item => item !== card);
++        favorites.insertBefore(card, others[index] || others[others.length - 1].nextSibling);
++        card.querySelector('.reorder-handle').focus({ preventScroll: true });
++        announce(card);
++      }
++    }
++
++    favorites.addEventListener('pointerup', event => {
++      if (drag && event.pointerId === drag.pointerId) finishDrag(true);
++    });
++    favorites.addEventListener('pointercancel', () => finishDrag(false));
++    favorites.addEventListener('lostpointercapture', () => finishDrag(false));
++    document.addEventListener('keydown', event => {
++      if (event.key === 'Escape') finishDrag(false);
++    });
++    window.addEventListener('resize', () => finishDrag(false));
++  </script>
+ </body>
+ 
+ </html>

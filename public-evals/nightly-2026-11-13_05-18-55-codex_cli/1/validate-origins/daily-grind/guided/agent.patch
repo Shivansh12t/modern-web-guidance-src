@@ -1,0 +1,418 @@
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..6628ecd
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,42 @@
++# The Daily Grind
++
++Static HTML and browser modules; no build is required. Run `npm test` for the Node security tests.
++
++## Ordering integration
++
++`security.mjs` trusts exactly `https://orders.dailygrind.coffee` for ordering messages.
++Set `ORDERING_ORIGIN` to the deployed ordering service and `OWNED_SITE_DOMAIN` to a
++private registrable domain you control. Do not configure a public suffix or shared
++hosting suffix as the owned domain.
++
++The ordering window can send either of these payloads to the page's exact origin:
++
++```js
++{ type: 'order-status', message: 'Your coffee is ready.' }
++{ type: 'redirect', url: '/orders' }
++```
++
++Redirects must be HTTP(S), credential-free and schemefully same-site with the
++current page. Relative URLs resolve against the page URL. External HTTP(S) links
++receive `external noopener noreferrer`; unsafe link schemes are blocked on click.
++
++## Sandboxed widget
++
++The page loads `widget.html` with `sandbox="allow-scripts"`, without
++`allow-same-origin`. The first `init` message must come from that iframe's captured
++`contentWindow`. On browsers with the `Origin` API, the receiver pins its underlying
++opaque origin once; it rejects other frames and a new document origin even when
++the iframe's window identity remains the same. Accepted `status` messages contain
++a string `message`, rendered as text.
++
++Without `Origin`, the receiver pins the expected sender window on `init`, requires
++the serialized origin to be `"null"`, and rejects other windows. This fallback
++cannot detect navigation to a different opaque document within the same iframe;
++do not navigate or reuse the initialized iframe for untrusted content. Same-site
++URL checks use the explicitly owned domain; on other deployments the fallback
++conservatively permits only matching hosts and schemes rather than guessing public
++suffix boundaries.
++
++Tests cover URL parsing and fallback behavior directly. Native `Origin` contract
++tests use a test double because Node does not expose browser opaque-origin events;
++they do not claim browser compatibility verification.
+diff --git a/index.html b/index.html
+index 66c9173..d9b03e5 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,12 @@
+         </div>
+       </div>
+     </section>
++    <section aria-labelledby="updates-heading">
++      <h2 id="updates-heading">From The Daily Grind</h2>
++      <p id="order-status" role="status">Order updates will appear here.</p>
++      <iframe id="coffee-widget" title="Daily coffee tip" sandbox="allow-scripts" referrerpolicy="origin"></iframe>
++      <p id="widget-status" role="status">Loading your daily coffee tip…</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +213,10 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    import { initializePage } from './page.mjs';
++    initializePage(window, document);
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..d1fe2ea 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "test": "node --test",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/page.mjs b/page.mjs
+new file mode 100644
+index 0000000..36bc080
+--- /dev/null
++++ b/page.mjs
+@@ -0,0 +1,47 @@
++import { createUrlPolicy, createWidgetValidator } from './security.mjs';
++
++export function initializePage(window, document) {
++  const policy = createUrlPolicy(window.location.href);
++  const widget = document.querySelector('#coffee-widget');
++  const acceptsWidget = createWidgetValidator(widget?.contentWindow);
++  const orderStatus = document.querySelector('#order-status');
++  const widgetStatus = document.querySelector('#widget-status');
++
++  function classifyLink(link) {
++    const url = policy.parseLink(link);
++    if (!url) return false;
++    const external = !policy.sameSiteUrl(url);
++    link.dataset.external = String(external);
++    if (external) {
++      link.relList.add('external', 'noopener', 'noreferrer');
++    }
++    return true;
++  }
++
++  document.querySelectorAll('a[href]').forEach(classifyLink);
++  document.addEventListener('click', (event) => {
++    const link = event.target.closest?.('a[href]');
++    if (link && !classifyLink(link)) event.preventDefault();
++  });
++
++  window.addEventListener('message', (event) => {
++    const data = event.data;
++    if (!data || typeof data !== 'object' || Array.isArray(data)) return;
++    if (policy.isTrustedOrderingMessage(event)) {
++      if (data.type === 'order-status' && typeof data.message === 'string' && data.message.length <= 500) {
++        orderStatus.textContent = data.message;
++      } else if (data.type === 'redirect' && typeof data.url === 'string') {
++        const destination = policy.sameSiteUrl(data.url);
++        if (destination) window.location.assign(destination.href);
++      }
++      return;
++    }
++    if (!acceptsWidget(event)) return;
++    if (data.type === 'status' && typeof data.message === 'string' && data.message.length <= 500) {
++      widgetStatus.textContent = data.message;
++    }
++  });
++
++  // Register the receiver before loading the widget so its init message cannot race it.
++  widget.src = './widget.html';
++}
+diff --git a/security.mjs b/security.mjs
+new file mode 100644
+index 0000000..714ffd5
+--- /dev/null
++++ b/security.mjs
+@@ -0,0 +1,84 @@
++// Deployment configuration: keep this an exact HTTPS origin, never a URL prefix.
++export const ORDERING_ORIGIN = 'https://orders.dailygrind.coffee';
++const OWNED_SITE_DOMAIN = 'dailygrind.coffee';
++
++export function createUrlPolicy(baseUrl, OriginApi = globalThis.Origin) {
++  const base = new URL(baseUrl);
++  const trusted = new URL(ORDERING_ORIGIN);
++
++  function parseLink(candidate) {
++    const value = typeof candidate === 'string' ? candidate : candidate?.href;
++    if (typeof value !== 'string' || !value.trim()) return null;
++    try {
++      const url = new URL(value, base);
++      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return null;
++      return url;
++    } catch {
++      return null;
++    }
++  }
++
++  function isTrustedOrderingMessage(event) {
++    try {
++      // No synthetic-event fallback: only real browser messages carry sender identity.
++      if (OriginApi) {
++        const sender = OriginApi.from(event);
++        return !sender.opaque && sender.isSameOrigin(OriginApi.from(trusted));
++      }
++      const sender = new URL(event.origin);
++      return sender.origin !== 'null' && sender.origin === trusted.origin;
++    } catch {
++      return false;
++    }
++  }
++
++  function sameSiteUrl(candidate) {
++    const url = parseLink(candidate);
++    if (!url) return null;
++    try {
++      if (OriginApi) {
++        const origin = OriginApi.from(url);
++        return !origin.opaque && origin.isSameSite(OriginApi.from(base)) ? url : null;
++      }
++      if (url.protocol !== base.protocol) return null;
++      // Without a PSL API, only expand trust beneath this known private domain.
++      // Unknown deployments (including shared hosting) conservatively require exact hosts.
++      const isOwnedHost = (host) => host === OWNED_SITE_DOMAIN || host.endsWith(`.${OWNED_SITE_DOMAIN}`);
++      return url.hostname === base.hostname || (isOwnedHost(base.hostname) && isOwnedHost(url.hostname))
++        ? url : null;
++    } catch {
++      return null;
++    }
++  }
++
++  return { parseLink, sameSiteUrl, isTrustedOrderingMessage };
++}
++
++export function createWidgetValidator(expectedWindow, OriginApi = globalThis.Origin) {
++  let pinned = false;
++  let pinnedOrigin = OriginApi ? new OriginApi() : null;
++
++  return (event) => {
++    if (!expectedWindow || event.source !== expectedWindow) return false;
++    try {
++      if (OriginApi) {
++        // Preserve opaque identity: parsing event.origin ("null") loses it.
++        const sender = OriginApi.from(event);
++        if (!sender.opaque) return false;
++        if (!pinned) {
++          if (event.data?.type !== 'init') return false;
++          pinnedOrigin = sender;
++          pinned = true;
++        }
++        return sender.isSameOrigin(pinnedOrigin);
++      }
++      // Older browsers expose only the WindowProxy, not the opaque origin identity.
++      if (event.origin !== 'null') return false;
++      if (!pinned && event.data?.type !== 'init') return false;
++      pinned = true;
++      return true;
++    } catch {
++      return false;
++    }
++  };
++}
+diff --git a/security.test.mjs b/security.test.mjs
+new file mode 100644
+index 0000000..0bcccf3
+--- /dev/null
++++ b/security.test.mjs
+@@ -0,0 +1,156 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createUrlPolicy, createWidgetValidator, ORDERING_ORIGIN } from './security.mjs';
++import { initializePage } from './page.mjs';
++
++const policy = createUrlPolicy('https://www.dailygrind.coffee/account', null);
++
++test('ordering origin normalizes default ports but rejects spoofing, other ports and opaque senders', () => {
++  assert.equal(policy.isTrustedOrderingMessage({ origin: `${ORDERING_ORIGIN}:443` }), true);
++  for (const origin of [
++    `${ORDERING_ORIGIN}.evil.test`, 'https://dailygrind.coffee',
++    `${ORDERING_ORIGIN}:8443`, 'http://orders.dailygrind.coffee',
++    'https://orders.dailygrind.coffee@evil.test', 'null', '', 'not a URL',
++  ]) assert.equal(policy.isTrustedOrderingMessage({ origin }), false, origin);
++});
++
++test('same-site redirects resolve relative URLs and allow owned sibling subdomains', () => {
++  assert.equal(policy.sameSiteUrl('../orders').href, 'https://www.dailygrind.coffee/orders');
++  assert.equal(policy.sameSiteUrl('https://billing.dailygrind.coffee:8443/orders').port, '8443');
++  assert.equal(policy.sameSiteUrl({ href: '/rewards' }).pathname, '/rewards');
++});
++
++test('redirect validation rejects scheme downgrades, credentials, spoofing and unsafe schemes', () => {
++  for (const url of [
++    'http://www.dailygrind.coffee/orders', '//evil.test/path',
++    'https://dailygrind.coffee.evil.test', 'https://evildailygrind.coffee',
++    'https://www.dailygrind.coffee@evil.test', 'https://user@www.dailygrind.coffee',
++    'javascript:alert(1)', 'data:text/html,test', 'blob:https://www.dailygrind.coffee/id',
++    'https://[invalid', '', null, {},
++  ]) assert.equal(policy.sameSiteUrl(url), null, String(url));
++});
++
++test('URL parser handles backslashes using browser semantics', () => {
++  const url = policy.sameSiteUrl('https://www.dailygrind.coffee\\@evil.test');
++  assert.equal(url.hostname, 'www.dailygrind.coffee');
++});
++
++test('fallback never guesses registrable domains on public suffixes or shared hosting', () => {
++  for (const [base, other] of [
++    ['https://shop.example.co.uk', 'https://attacker.co.uk'],
++    ['https://tenant-a.github.io', 'https://tenant-b.github.io'],
++    ['https://shop.example.co.uk', 'https://billing.example.co.uk'],
++  ]) assert.equal(createUrlPolicy(base, null).sameSiteUrl(other), null);
++});
++
++test('fallback distinguishes external web links from unsafe link schemes', () => {
++  assert.ok(policy.parseLink('https://example.com'));
++  assert.equal(policy.sameSiteUrl('https://example.com'), null);
++  assert.equal(policy.parseLink('javascript:alert(1)'), null);
++});
++
++test('legacy sandbox validation requires initialization from the expected window', () => {
++  const widget = {};
++  const other = {};
++  const accepts = createWidgetValidator(widget, null);
++  const message = (source, type, origin = 'null') => ({ source, origin, data: { type } });
++  assert.equal(accepts(message(other, 'init')), false);
++  assert.equal(accepts(message(widget, 'status')), false);
++  assert.equal(accepts(message(widget, 'init', ORDERING_ORIGIN)), false);
++  assert.equal(accepts(message(widget, 'init')), true);
++  assert.equal(accepts(message(widget, 'status')), true);
++  assert.equal(accepts(message(other, 'status')), false);
++  assert.equal(createWidgetValidator(null, null)(message(null, 'init')), false);
++});
++
++// Contract double: Node does not expose the browser Origin API or opaque MessageEvents.
++// Keep origin identities out of the serialized event.origin string, as browsers do.
++class TestOrigin {
++  opaque = true;
++  static senders = new WeakMap();
++  static from(value) {
++    const sender = this.senders.get(value);
++    if (sender) return sender;
++    if (!(value instanceof URL)) throw new TypeError('No browser sender origin');
++    return Object.assign(new TestOrigin(), { opaque: false, url: value });
++  }
++  isSameOrigin(other) {
++    return this.opaque || other.opaque ? this === other : this.url.origin === other.url.origin;
++  }
++  isSameSite(other) {
++    // Only the known sites used by the API delegation test below.
++    return this.url.protocol === other.url.protocol &&
++      [this.url.hostname, other.url.hostname].every((host) =>
++        ['shop.example.co.uk', 'billing.example.co.uk'].includes(host));
++  }
++}
++
++test('native opaque origin is pinned once, rejects other frames and same-window navigation', () => {
++  const widget = {};
++  const pinnedSender = new TestOrigin();
++  const accepts = createWidgetValidator(widget, TestOrigin);
++  function event(source, type, sender) {
++    const message = { source, origin: 'null', data: { type } };
++    TestOrigin.senders.set(message, sender);
++    return message;
++  }
++  assert.equal(accepts(event(widget, 'status', pinnedSender)), false);
++  assert.equal(accepts(event({}, 'init', new TestOrigin())), false);
++  assert.equal(accepts(event(widget, 'init', pinnedSender)), true);
++  assert.equal(accepts(event(widget, 'status', pinnedSender)), true);
++  assert.equal(accepts(event({}, 'status', new TestOrigin())), false);
++  assert.equal(accepts(event(widget, 'init', new TestOrigin())), false);
++  assert.equal(accepts(event(widget, 'status', new TestOrigin())), false);
++  assert.equal(accepts(event(widget, 'status', pinnedSender)), true);
++});
++
++test('native validation delegates site comparison and fails closed on extraction errors', () => {
++  const native = createUrlPolicy('https://shop.example.co.uk', TestOrigin);
++  assert.ok(native.sameSiteUrl('https://billing.example.co.uk'));
++  assert.equal(native.sameSiteUrl('https://attacker.co.uk'), null);
++  assert.equal(native.sameSiteUrl('http://billing.example.co.uk'), null);
++  assert.equal(native.isTrustedOrderingMessage({ origin: ORDERING_ORIGIN }), false);
++  const event = { origin: ORDERING_ORIGIN };
++  TestOrigin.senders.set(event, TestOrigin.from(new URL(ORDERING_ORIGIN)));
++  assert.equal(native.isTrustedOrderingMessage(event), true);
++});
++
++test('page receiver gates redirects and text updates, and loads widget after listening', () => {
++  const listeners = {};
++  const destinations = [];
++  const widget = { contentWindow: {} };
++  Object.defineProperty(widget, 'src', { set() { assert.ok(listeners.message); } });
++  const orderStatus = { textContent: 'original' };
++  const widgetStatus = { textContent: 'loading' };
++  const elements = { '#coffee-widget': widget, '#order-status': orderStatus, '#widget-status': widgetStatus };
++  const window = {
++    location: { href: 'https://www.dailygrind.coffee', assign: (url) => destinations.push(url) },
++    addEventListener: (type, listener) => { listeners[type] = listener; },
++  };
++  const document = {
++    querySelector: (selector) => elements[selector],
++    querySelectorAll: () => [],
++    addEventListener: (type, listener) => { listeners[type] = listener; },
++  };
++  initializePage(window, document);
++  const send = (origin, data, source = {}) => listeners.message({ origin, data, source });
++  send('https://evil.test', { type: 'order-status', message: 'spoofed' });
++  assert.equal(orderStatus.textContent, 'original');
++  send(ORDERING_ORIGIN, { type: 'order-status', message: '<script>literal text</script>' });
++  assert.equal(orderStatus.textContent, '<script>literal text</script>');
++  send(ORDERING_ORIGIN, { type: 'order-status', message: {} });
++  send(ORDERING_ORIGIN, { type: 'redirect', url: 'https://evil.test' });
++  send('https://evil.test', { type: 'redirect', url: '/orders' });
++  assert.deepEqual(destinations, []);
++  send(ORDERING_ORIGIN, { type: 'redirect', url: '/orders' });
++  assert.deepEqual(destinations, ['https://www.dailygrind.coffee/orders']);
++  send('null', { type: 'status', message: 'too early' }, widget.contentWindow);
++  assert.equal(widgetStatus.textContent, 'loading');
++  send('null', { type: 'init' }, widget.contentWindow);
++  send('null', { type: 'status', message: 'ready' }, widget.contentWindow);
++  send('null', { type: 'status', message: 'spoofed' });
++  assert.equal(widgetStatus.textContent, 'ready');
++  let prevented = false;
++  listeners.click({ target: { closest: () => ({ href: 'javascript:alert(1)' }) }, preventDefault() { prevented = true; } });
++  assert.equal(prevented, true);
++});
+diff --git a/widget.html b/widget.html
+new file mode 100644
+index 0000000..4589927
+--- /dev/null
++++ b/widget.html
+@@ -0,0 +1,19 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Daily Grind Coffee Tip</title>
++</head>
++<body>
++  <p>Freshly ground beans make a brighter cup.</p>
++  <script>
++    // The iframe receives only the parent's origin as its referrer, never URL parameters.
++    const parentOrigin = new URL(document.referrer).origin;
++    if (parentOrigin !== 'null') {
++      parent.postMessage({ type: 'init' }, parentOrigin);
++      parent.postMessage({ type: 'status', message: 'Your daily coffee tip is ready.' }, parentOrigin);
++    }
++  </script>
++</body>
++</html>

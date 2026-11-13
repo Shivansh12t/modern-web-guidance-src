@@ -1,0 +1,656 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/components/README.md b/components/README.md
+new file mode 100644
+index 0000000..8b4f3e2
+--- /dev/null
++++ b/components/README.md
+@@ -0,0 +1,34 @@
++# Daily Grind components
++
++Load `components/index.js` once with a `<script type="module">`. The components use native custom elements and open Shadow DOM; no runtime framework or build step is required. Each module can also be imported separately.
++
++## Coffee card and hero
++
++`coffee-card` and `coffee-hero` accept three named slots: `heading`, `description`, and `action`. Keep headings at the appropriate level for the surrounding page, and use real anchors for navigation. Give repeated action links a descriptive accessible name.
++
++```html
++<coffee-card>
++  <h3 slot="heading">Maple Oat Latte</h3>
++  <p slot="description">Oat milk with Vermont maple syrup.</p>
++  <a slot="action" href="/menu/seasonal"
++     aria-label="View details for Maple Oat Latte">View Details</a>
++</coffee-card>
++```
++
++Consumer content stays in the document and updates naturally through slots, without rebuilding the shadow tree or losing focus. Without JavaScript the text and links remain available.
++
++## Navigation
++
++`grind-navigation` takes branding in the `brand` slot and native anchors in the default slot. Add `data-logout` to an anchor for its outlined appearance. Each instance owns its menu state. At widths up to 640px, a native button toggles the links; Tab follows normal document order, and Escape closes the menu and restores button focus. Desktop links are always available. Resize handling moves focus when its previous target becomes hidden. Global viewport listeners are removed on disconnect and restored on reconnect.
++
++The disclosure button and its `aria-controls` target live in the same shadow root. The component uses ordinary navigation semantics rather than application menu roles.
++
++## Styling
++
++Component styles live in their shadow roots. Typography and the existing `--primary`, `--accent`, and other page tokens inherit normally. Components have standalone fallbacks for the tokens they consume. Override `--card-background` or `--hero-image` (a CSS `url(...)`) for local variants. Public parts are `card`, `hero`, `navigation`, and `toggle`.
++
++Slotted nodes belong to the consumer; page styles can deliberately override their default presentation. Keep page resets scoped so they do not unintentionally override slotted content. The host `hidden` attribute remains supported.
++
++## Checks
++
++Run `pnpm install` followed by `pnpm test` for automated DOM tests. These cover slots, separate shadow roots, disclosure state, same-tree ARIA references, focus restoration, viewport changes, reconnection, native link activation, and content without upgrades. They do not verify visual layout or substitute for assistive technology testing.
+diff --git a/components/coffee-card.js b/components/coffee-card.js
+new file mode 100644
+index 0000000..08de050
+--- /dev/null
++++ b/components/coffee-card.js
+@@ -0,0 +1,31 @@
++import { createTemplate, baseStyles, actionStyles } from './shared.js';
++
++const template = createTemplate(`
++  <article part="card">
++    <slot name="heading"></slot>
++    <slot name="description"></slot>
++    <slot name="action"></slot>
++  </article>
++`, `${baseStyles}
++  :host { height: 100%; }
++  article {
++    height: 100%;
++    background: var(--card-background, white);
++    padding: 20px;
++    border-radius: 8px;
++    box-shadow: 0 2px 5px rgb(0 0 0 / 10%);
++    text-align: center;
++  }
++  ::slotted([slot="heading"]) { margin: 0 0 10px; color: var(--primary, #4e342e); }
++  ::slotted([slot="description"]) { margin: 0; }
++  ${actionStyles}
++`);
++
++export class CoffeeCard extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open', delegatesFocus: true }).append(template.content.cloneNode(true));
++  }
++}
++
++if (!customElements.get('coffee-card')) customElements.define('coffee-card', CoffeeCard);
+diff --git a/components/coffee-hero.js b/components/coffee-hero.js
+new file mode 100644
+index 0000000..a22f03d
+--- /dev/null
++++ b/components/coffee-hero.js
+@@ -0,0 +1,36 @@
++import { createTemplate, baseStyles, actionStyles } from './shared.js';
++
++const template = createTemplate(`
++  <header part="hero">
++    <slot name="heading"></slot>
++    <slot name="description"></slot>
++    <slot name="action"></slot>
++  </header>
++`, `${baseStyles}
++  header {
++    min-height: 60vh;
++    background: linear-gradient(rgb(0 0 0 / 50%), rgb(0 0 0 / 50%)),
++      var(--hero-image, url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80'));
++    background-size: cover;
++    background-position: center;
++    display: flex;
++    flex-direction: column;
++    justify-content: center;
++    align-items: center;
++    color: white;
++    text-align: center;
++    padding: 40px 20px;
++  }
++  ::slotted([slot="heading"]) { font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 1rem; }
++  ::slotted([slot="description"]) { margin: 0; }
++  ${actionStyles}
++`);
++
++export class CoffeeHero extends HTMLElement {
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open', delegatesFocus: true }).append(template.content.cloneNode(true));
++  }
++}
++
++if (!customElements.get('coffee-hero')) customElements.define('coffee-hero', CoffeeHero);
+diff --git a/components/grind-navigation.js b/components/grind-navigation.js
+new file mode 100644
+index 0000000..1fc28bc
+--- /dev/null
++++ b/components/grind-navigation.js
+@@ -0,0 +1,116 @@
++import { createTemplate, baseStyles } from './shared.js';
++
++const template = createTemplate(`
++  <nav aria-label="Main navigation" part="navigation">
++    <div class="brand"><slot name="brand"></slot></div>
++    <button type="button" aria-expanded="false" aria-controls="links" part="toggle">Menu</button>
++    <div id="links"><slot></slot></div>
++  </nav>
++`, `${baseStyles}
++  :host { position: sticky; top: 0; z-index: 1000; }
++  nav {
++    background: var(--primary, #4e342e);
++    color: white;
++    padding: 1rem 5%;
++    display: flex;
++    flex-wrap: wrap;
++    justify-content: space-between;
++    align-items: center;
++    gap: 1rem;
++  }
++  .brand { font-size: 1.5rem; font-weight: bold; letter-spacing: 1px; }
++  #links { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; }
++  #links[hidden] { display: none; }
++  ::slotted(a) { color: white; text-decoration: none; font-size: .9rem; padding: 8px 0; }
++  ::slotted(a:hover) { color: var(--accent, #ffab40); }
++  ::slotted(a[slot="brand"]) { font-size: inherit; }
++  ::slotted(a[data-logout]) { border: 1px solid var(--accent, #ffab40); padding: 5px 12px; border-radius: 4px; }
++  button {
++    display: none;
++    background: transparent;
++    color: inherit;
++    font: inherit;
++    border: 1px solid var(--accent, #ffab40);
++    border-radius: 4px;
++    padding: 8px 12px;
++    cursor: pointer;
++  }
++  button:focus-visible, ::slotted(a:focus-visible) {
++    outline: 3px solid var(--accent, #ffab40);
++    outline-offset: 4px;
++  }
++  @media (max-width: 640px) {
++    button { display: block; }
++    #links { flex-basis: 100%; flex-direction: column; align-items: stretch; gap: 4px; }
++  }
++`);
++
++export class GrindNavigation extends HTMLElement {
++  #toggle;
++  #links;
++  #viewport;
++  #expanded = false;
++
++  constructor() {
++    super();
++    this.attachShadow({ mode: 'open', delegatesFocus: true }).append(template.content.cloneNode(true));
++    this.#toggle = this.shadowRoot.querySelector('button');
++    this.#links = this.shadowRoot.getElementById('links');
++  }
++
++  connectedCallback() {
++    this.#viewport = window.matchMedia('(max-width: 640px)');
++    this.#toggle.addEventListener('click', this.#toggleMenu);
++    this.addEventListener('keydown', this.#onKeydown);
++    this.addEventListener('click', this.#onNavigate);
++    this.#viewport.addEventListener('change', this.#syncViewport);
++    this.#syncViewport();
++  }
++
++  disconnectedCallback() {
++    this.#toggle.removeEventListener('click', this.#toggleMenu);
++    this.removeEventListener('keydown', this.#onKeydown);
++    this.removeEventListener('click', this.#onNavigate);
++    this.#viewport.removeEventListener('change', this.#syncViewport);
++  }
++
++  #render() {
++    this.#toggle.setAttribute('aria-expanded', String(this.#expanded));
++    this.#links.hidden = this.#viewport.matches && !this.#expanded;
++  }
++
++  #syncViewport = () => {
++    // If a resize would hide the focused link/control, move focus to its visible replacement.
++    const active = this.shadowRoot.activeElement || document.activeElement;
++    const focusedLink = active instanceof Element && this.contains(active) && active.matches('a:not([slot="brand"])');
++    this.#expanded = false;
++    this.#render();
++    if (this.#viewport.matches && focusedLink) this.#toggle.focus();
++    if (!this.#viewport.matches && active === this.#toggle) this.querySelector('a:not([slot])')?.focus();
++  };
++
++  #toggleMenu = () => {
++    this.#expanded = !this.#expanded;
++    this.#render();
++  };
++
++  #onKeydown = (event) => {
++    if (event.key === 'Escape' && this.#viewport.matches && this.#expanded) {
++      event.preventDefault();
++      this.#expanded = false;
++      this.#render();
++      this.#toggle.focus();
++    }
++  };
++
++  #onNavigate = (event) => {
++    const link = event.composedPath().find(node => node instanceof HTMLAnchorElement);
++    if (link && link.slot !== 'brand' && this.#viewport.matches && this.#expanded) {
++      this.#expanded = false;
++      this.#render();
++      this.#toggle.focus();
++    }
++  };
++}
++
++if (!customElements.get('grind-navigation')) customElements.define('grind-navigation', GrindNavigation);
+diff --git a/components/index.js b/components/index.js
+new file mode 100644
+index 0000000..e515e5b
+--- /dev/null
++++ b/components/index.js
+@@ -0,0 +1,3 @@
++import './coffee-card.js';
++import './coffee-hero.js';
++import './grind-navigation.js';
+diff --git a/components/shared.js b/components/shared.js
+new file mode 100644
+index 0000000..eacde12
+--- /dev/null
++++ b/components/shared.js
+@@ -0,0 +1,30 @@
++// Only trusted, static component markup is parsed here. Consumer content uses slots.
++export function createTemplate(markup, styles) {
++  const template = document.createElement('template');
++  template.innerHTML = `<style>${styles}</style>${markup}`;
++  return template;
++}
++
++export const baseStyles = `
++  :host { display: block; }
++  :host([hidden]) { display: none; }
++  *, *::before, *::after { box-sizing: border-box; }
++  ::slotted(*) { box-sizing: border-box; }
++`;
++
++export const actionStyles = `
++  ::slotted(a[slot="action"]) {
++    display: inline-block;
++    background: var(--primary, #4e342e);
++    color: white;
++    padding: 10px 20px;
++    text-decoration: none;
++    border-radius: 5px;
++    margin-top: 15px;
++  }
++  ::slotted(a[slot="action"]:hover) { background: #3e2723; }
++  ::slotted(a[slot="action"]:focus-visible) {
++    outline: 3px solid var(--accent, #ffab40);
++    outline-offset: 4px;
++  }
++`;
+diff --git a/index.html b/index.html
+index 66c9173..afe0878 100644
+--- a/index.html
++++ b/index.html
+@@ -16,82 +16,26 @@
+ 
+     * {
+       box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+     }
+ 
+     body {
++      margin: 0;
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
++    .skip-link { position: absolute; left: 20px; top: -100px; z-index: 1001; padding: 10px; background: white; color: var(--text); }
++    .skip-link:focus { top: 10px; }
++    .skip-link:focus-visible, footer a:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
++    coffee-card, coffee-hero, grind-navigation { display: block; }
++    /* Readable content and working links before upgrade, or if the module fails. */
++    coffee-card:not(:defined), coffee-hero:not(:defined), grind-navigation:not(:defined) { padding: 20px; }
++    grind-navigation:not(:defined) a { display: inline-block; margin: 8px; }
+ 
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
++    h2, footer p { margin: 0; }
++    #main-content { scroll-margin-top: 6rem; }
+ 
+     /* Content Sections */
+     .container {
+@@ -102,39 +46,11 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -153,46 +69,46 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./components/index.js"></script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <a class="skip-link" href="#main-content">Skip to content</a>
++  <grind-navigation>
++    <span slot="brand">THE DAILY GRIND</span>
++    <a href="/menu">Menu</a>
++    <a href="/locations">Locations</a>
++    <a href="/rewards">Rewards</a>
++    <a href="/account">My Account</a>
++    <a href="/logout" data-logout>Logout</a>
++  </grind-navigation>
++
++  <coffee-hero>
++    <h1 slot="heading">Wake Up Your Senses</h1>
++    <p slot="description">Ethically sourced, locally roasted, delivered to your cup.</p>
++    <a slot="action" href="/order-online">Order Now</a>
++  </coffee-hero>
++
++  <main id="main-content" class="container" tabindex="-1">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card>
++          <h3 slot="heading">Maple Oat Latte</h3>
++          <p slot="description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <a slot="action" href="/menu/seasonal" aria-label="View details for Maple Oat Latte">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <h3 slot="heading">Dark Roast Espresso</h3>
++          <p slot="description">Bold, smokey, and perfect for a morning boost.</p>
++          <a slot="action" href="/menu/espresso" aria-label="View details for Dark Roast Espresso">View Details</a>
++        </coffee-card>
++        <coffee-card>
++          <h3 slot="heading">Cold Brew</h3>
++          <p slot="description">Steeped for 18 hours for maximum smoothness.</p>
++          <a slot="action" href="/menu/cold-brew" aria-label="View details for Cold Brew">View Details</a>
++        </coffee-card>
+       </div>
+     </section>
+   </main>
+diff --git a/package.json b/package.json
+index 2bd4d77..66912c4 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,14 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+-  }
++  },
++  "devDependencies": {
++    "happy-dom": "^21.0.4"
++  },
++  "type": "module"
+ }
+diff --git a/tests/components.test.js b/tests/components.test.js
+new file mode 100644
+index 0000000..035b0b1
+--- /dev/null
++++ b/tests/components.test.js
+@@ -0,0 +1,116 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import { test } from 'node:test';
++import { Window } from 'happy-dom';
++
++const window = new Window({ url: 'https://daily-grind.example' });
++for (const name of ['window', 'document', 'HTMLElement', 'HTMLAnchorElement', 'Element', 'customElements']) {
++  globalThis[name] = name === 'window' ? window : window[name];
++}
++
++const viewport = new window.EventTarget();
++viewport.matches = false;
++window.matchMedia = () => viewport;
++await import('../components/index.js');
++const page = await readFile(new URL('../index.html', import.meta.url), 'utf8');
++
++function mountPage(mobile = false) {
++  // Disconnect the previous instance before changing the shared viewport.
++  document.body.replaceChildren();
++  viewport.matches = mobile;
++  document.body.innerHTML = page.match(/<body>([\s\S]*)<\/body>/)[1];
++}
++
++function resize(mobile) {
++  viewport.matches = mobile;
++  viewport.dispatchEvent(new window.Event('change'));
++}
++
++function navigation() {
++  const host = document.querySelector('grind-navigation');
++  return { host, button: host.shadowRoot.querySelector('button'), links: host.shadowRoot.getElementById('links') };
++}
++
++test('cards use independent shadow roots and preserve content, slots, and native links', () => {
++  mountPage();
++  const cards = [...document.querySelectorAll('coffee-card')];
++  assert.equal(cards.length, 3);
++  assert.notEqual(cards[0].shadowRoot, cards[1].shadowRoot);
++  for (const card of cards) {
++    assert.ok(card.shadowRoot.querySelector('article'));
++    assert.ok(card.shadowRoot.querySelector('style'));
++    assert.equal(card.hasAttribute('tabindex'), false);
++    const title = card.querySelector('h3');
++    assert.equal(card.shadowRoot.querySelector('slot[name="heading"]').assignedElements()[0], title);
++    const link = card.querySelector('a');
++    assert.ok(link.getAttribute('aria-label').includes(title.textContent));
++    assert.match(link.getAttribute('href'), /^\/menu\//);
++  }
++  cards[0].querySelector('h3').textContent = 'New seasonal coffee';
++  assert.equal(cards[0].shadowRoot.querySelector('slot[name="heading"]').assignedElements()[0].textContent, 'New seasonal coffee');
++  assert.equal(cards[1].querySelector('h3').textContent, 'Dark Roast Espresso');
++  assert.ok(document.querySelector('coffee-hero').shadowRoot.querySelector('header'));
++  assert.equal(document.querySelector('h1').textContent, 'Wake Up Your Senses');
++});
++
++test('mobile disclosure synchronizes visibility and ARIA, and Escape restores focus', () => {
++  mountPage(true);
++  const { host, button, links } = navigation();
++  assert.equal(links.hidden, true);
++  assert.equal(button.getAttribute('aria-expanded'), 'false');
++  assert.equal(button.getRootNode().getElementById(button.getAttribute('aria-controls')), links);
++  button.click();
++  assert.equal(links.hidden, false);
++  assert.equal(button.getAttribute('aria-expanded'), 'true');
++  host.querySelector('a').focus();
++  host.querySelector('a').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }));
++  assert.equal(links.hidden, true);
++  assert.equal(button.getAttribute('aria-expanded'), 'false');
++  assert.equal(host.shadowRoot.activeElement, button);
++});
++
++test('resizing keeps desktop links available and moves focus out of hidden content', () => {
++  mountPage(true);
++  const { host, button, links } = navigation();
++  button.focus();
++  resize(false);
++  assert.equal(links.hidden, false);
++  assert.equal(document.activeElement, host.querySelector('a'));
++  resize(true);
++  assert.equal(links.hidden, true);
++  assert.equal(host.shadowRoot.activeElement, button);
++});
++
++test('navigation can disconnect and reconnect without duplicate toggle listeners', () => {
++  mountPage(true);
++  const { host, button, links } = navigation();
++  host.remove();
++  document.body.prepend(host);
++  button.click();
++  assert.equal(links.hidden, false);
++  assert.equal(button.getAttribute('aria-expanded'), 'true');
++  button.click();
++  assert.equal(links.hidden, true);
++});
++
++test('following a mobile link closes the disclosure without canceling navigation', () => {
++  mountPage(true);
++  const { host, button, links } = navigation();
++  button.click();
++  const click = new window.MouseEvent('click', { bubbles: true, composed: true, cancelable: true });
++  host.querySelector('a').dispatchEvent(click);
++  assert.equal(click.defaultPrevented, false);
++  assert.equal(links.hidden, true);
++  assert.equal(host.shadowRoot.activeElement, button);
++});
++
++test('homepage retains semantic content and destinations without component upgrades', () => {
++  const fallback = new Window();
++  fallback.document.body.innerHTML = page.match(/<body>([\s\S]*)<\/body>/)[1];
++  assert.equal(fallback.document.querySelectorAll('coffee-card a[href]').length, 3);
++  assert.equal(fallback.document.querySelectorAll('grind-navigation a[href]').length, 5);
++  assert.ok(fallback.document.querySelector('coffee-hero h1'));
++  assert.ok(fallback.document.querySelector('a[href="#main-content"]'));
++  assert.equal(fallback.document.querySelector('main section').getAttribute('aria-labelledby'), 'seasonal-heading');
++  fallback.happyDOM.abort();
++});

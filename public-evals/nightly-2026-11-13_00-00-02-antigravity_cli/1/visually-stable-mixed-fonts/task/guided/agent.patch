@@ -1,0 +1,96 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,92 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Visually Stable Mixed Fonts &amp; Independent Theme Normalization</title>
++  <link rel="stylesheet" href="styles.css">
++  <style>
++    @layer base, components, theme;
++
++    @layer components {
++      #mixed-fonts-container {
++        font-family: Verdana, Geneva, Tahoma, sans-serif;
++        font-size: 1rem;
++        line-height: 1.6;
++        /* Automatically extract and apply the x-height ratio from the primary font */
++        font-size-adjust: from-font;
++      }
++
++      #mixed-fonts-container code,
++      #mixed-fonts-container span {
++        font-family: "Courier New", Courier, monospace;
++      }
++    }
++
++    @layer theme {
++      #independent-theme-container {
++        font-family: "Times New Roman", Times, Georgia, serif;
++        font-size: 1rem;
++        line-height: 1.6;
++        /* Numeric metric override (x-height / font-size aspect ratio) for an independent theme */
++        font-size-adjust: 0.51;
++      }
++    }
++
++    @supports not (font-size-adjust: from-font) {
++      #mixed-fonts-container {
++        line-height: 1.65;
++        font-size: 1rem;
++      }
++
++      #mixed-fonts-container code,
++      #mixed-fonts-container span {
++        font-size: 1.08em;
++        line-height: 1.5;
++      }
++
++      #independent-theme-container {
++        font-size: 1.12rem;
++        line-height: 1.65;
++      }
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1>Visually Stable Mixed Fonts</h1>
++    <p>Normalizing x-height proportions across mixed inline font stacks and independent themes using modern CSS.</p>
++  </header>
++
++  <main>
++    <article aria-labelledby="mixed-fonts-heading">
++      <h2 id="mixed-fonts-heading">Automatic Mixed-Font Normalization</h2>
++      <div id="mixed-fonts-container">
++        <p>
++          When mixing body prose with inline code like <code>font-size-adjust: from-font</code> or calling
++          <code>window.getComputedStyle(element)</code>, differences in lowercase x-height can cause monospace snippets
++          to appear visually shrunken compared to the surrounding text. Applying <code>from-font</code> on the parent
++          container automatically extracts the primary font's x-height aspect ratio and scales nested
++          <code>&lt;code&gt;</code> elements to match its visual height seamlessly.
++        </p>
++      </div>
++    </article>
++
++    <article aria-labelledby="independent-theme-heading">
++      <h2 id="independent-theme-heading">Independent Theme with Metric Override</h2>
++      <div id="independent-theme-container">
++        <p>
++          This container uses an independent editorial serif theme that does not inherit from the primary sans-serif
++          text hierarchy. By specifying an explicit numeric metric override (<code>font-size-adjust: 0.51</code>), its
++          lowercase x-height proportions remain visually locked to the rest of the interface regardless of which serif
++          typeface renders.
++        </p>
++      </div>
++    </article>
++  </main>
++
++  <footer>
++    <p>Typography normalization powered by CSS <code>font-size-adjust</code> with <code>@supports</code> fallback.</p>
++  </footer>
++</body>
++</html>

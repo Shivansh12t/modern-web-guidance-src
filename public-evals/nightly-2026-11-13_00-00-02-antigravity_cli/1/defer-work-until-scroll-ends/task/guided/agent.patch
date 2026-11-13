@@ -1,0 +1,245 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,104 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Coffee Beans Scroller Section */
++    .beans-section {
++      margin-top: 50px;
++    }
++
++    .beans-section h2 {
++      text-align: center;
++      margin-bottom: 10px;
++    }
++
++    .beans-subtitle {
++      text-align: center;
++      color: #6d4c41;
++      margin-bottom: 20px;
++      font-size: 0.95rem;
++    }
++
++    #scroller {
++      position: relative;
++      display: flex;
++      gap: 20px;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding: 15px 5px 25px;
++      scrollbar-width: thin;
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      #scroller {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .bean-card {
++      flex: 0 0 100%;
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      text-align: center;
++      padding-bottom: 24px;
++    }
++
++    .bean-card img {
++      width: 100%;
++      height: 240px;
++      object-fit: cover;
++      margin-bottom: 16px;
++    }
++
++    .bean-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1.35rem;
++    }
++
++    .bean-meta {
++      display: inline-block;
++      background: var(--secondary);
++      color: var(--text);
++      font-size: 0.8rem;
++      font-weight: 600;
++      padding: 3px 10px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
++    .bean-card p {
++      max-width: 520px;
++      padding: 0 20px;
++      color: #5d4037;
++    }
++
++    #status {
++      margin-top: 16px;
++      padding: 12px 20px;
++      background: white;
++      border-left: 4px solid var(--accent);
++      border-radius: 6px;
++      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
++      text-align: center;
++      font-weight: 600;
++      color: var(--primary);
++      transition: background-color 0.2s ease, border-color 0.2s ease;
++    }
++
++    #status[data-scrolling="true"] {
++      background-color: #fff8e1;
++      border-left-color: var(--primary);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +290,47 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="beans-section" aria-labelledby="beans-heading">
++      <h2 id="beans-heading">Signature Coffee Beans</h2>
++      <p class="beans-subtitle">Scroll horizontally to explore our single-origin roasts</p>
++
++      <div id="scroller" tabindex="0" role="region" aria-label="Coffee Beans">
++        <article class="bean-card" id="bean-ethiopian" data-bean-name="Ethiopian Yirgacheffe">
++          <img src="https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=900&q=80" alt="Ethiopian Yirgacheffe coffee beans">
++          <h3>Ethiopian Yirgacheffe</h3>
++          <span class="bean-meta">Light Roast &bull; Washed</span>
++          <p>Bright floral jasmine aromas balanced with vibrant bergamot, Meyer lemon, and sweet peach notes.</p>
++        </article>
++
++        <article class="bean-card" id="bean-colombian" data-bean-name="Colombian Supremo">
++          <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=900&q=80" alt="Colombian Supremo coffee beans">
++          <h3>Colombian Supremo</h3>
++          <span class="bean-meta">Medium Roast &bull; High Altitude</span>
++          <p>Rich caramel sweetness with toasted hazelnut undertones, velvety body, and a crisp red apple finish.</p>
++        </article>
++
++        <article class="bean-card" id="bean-sumatra" data-bean-name="Sumatra Mandheling">
++          <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80" alt="Sumatra Mandheling dark roasted coffee beans">
++          <h3>Sumatra Mandheling</h3>
++          <span class="bean-meta">Dark Roast &bull; Wet-Hulled</span>
++          <p>Full-bodied and earthy with deep baker's chocolate richness, cedar spice, and a lingering syrupy finish.</p>
++        </article>
++
++        <article class="bean-card" id="bean-guatemala" data-bean-name="Guatemala Antigua">
++          <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=900&q=80" alt="Guatemala Antigua coffee beans">
++          <h3>Guatemala Antigua</h3>
++          <span class="bean-meta">Medium-Dark Roast &bull; Volcanic Soil</span>
++          <p>Velvety cocoa notes intertwined with warm cinnamon spice, brown sugar, and bright orange zest.</p>
++        </article>
++      </div>
++
++      <div id="status" role="status" aria-live="polite" data-scrolling="false">
++        Viewing: Ethiopian Yirgacheffe
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +341,88 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const scroller = document.querySelector('#scroller');
++    const statusEl = document.querySelector('#status');
++    const beanCards = [...scroller.querySelectorAll('.bean-card')];
++
++    let isScrolling = false;
++    let snappedBeanCard = beanCards[0] || null;
++
++    function getBeanName(card) {
++      if (!card) return '';
++      return card.dataset.beanName || card.querySelector('h3')?.textContent.trim() || '';
++    }
++
++    // Note: For item.offsetLeft to be relative to the container,
++    // the container MUST be the offsetParent (e.g., `position: relative`).
++    function findMostVisibleBean() {
++      const containerCenter = scroller.scrollLeft + scroller.clientWidth / 2;
++      let closestCard = beanCards[0];
++      let minDistance = Infinity;
++
++      beanCards.forEach((card) => {
++        const cardCenter = card.offsetLeft + card.offsetWidth / 2;
++        const distance = Math.abs(containerCenter - cardCenter);
++        if (distance < minDistance) {
++          minDistance = distance;
++          closestCard = card;
++        }
++      });
++
++      return closestCard;
++    }
++
++    function updateVisibleBeanStatus(targetCard) {
++      const visibleCard = targetCard || findMostVisibleBean();
++      snappedBeanCard = visibleCard;
++      const beanName = getBeanName(visibleCard);
++      isScrolling = false;
++      statusEl.dataset.scrolling = 'false';
++      statusEl.textContent = `Viewing: ${beanName}`;
++    }
++
++    // 1. Lightweight informative feedback during scroll without layout reads/thrashing
++    scroller.addEventListener('scroll', () => {
++      if (!isScrolling) {
++        isScrolling = true;
++        statusEl.dataset.scrolling = 'true';
++        statusEl.textContent = 'Scrolling...';
++      }
++    }, { passive: true });
++
++    // 2. Native scrollsnapchange when supported to track the snapped bean target
++    if ('onscrollsnapchange' in HTMLElement.prototype) {
++      scroller.addEventListener('scrollsnapchange', (event) => {
++        const snappedTarget = event.snapTargetInline;
++        if (snappedTarget) {
++          updateVisibleBeanStatus(snappedTarget);
++        }
++      });
++    }
++
++    // 3. Safe callback when scrolling rests via scrollend (plus debounced fallback)
++    scroller.addEventListener('scrollend', () => {
++      updateVisibleBeanStatus();
++    });
++
++    if (!('onscrollend' in window)) {
++      scroller.addEventListener('scroll', () => {
++        clearTimeout(window.scrollendtimer);
++        window.scrollendtimer = setTimeout(() => {
++          scroller.dispatchEvent(new CustomEvent('scrollend'));
++        }, 100);
++      }, { passive: true });
++    }
++
++    // Sync initial state on load
++    if (document.readyState === 'complete') {
++      updateVisibleBeanStatus();
++    } else {
++      window.addEventListener('load', () => updateVisibleBeanStatus(), { once: true });
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,307 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,26 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <!-- Resource Hints for critical third-party image CDN -->
++  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
++  <link rel="dns-prefetch" href="https://images.unsplash.com">
++
++  <!-- Preload LCP Hero Image with high fetch priority -->
++  <link
++    rel="preload"
++    as="image"
++    href="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++    imagesrcset="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=480&q=80 480w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=800&q=80 800w, https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=1350&q=80 1350w"
++    imagesizes="100vw"
++    fetchpriority="high"
++  >
++
++  <!-- Ensure above-the-fold hero is parsed before cross-document view transitions render -->
++  <link rel="expect" href="#hero" blocking="render">
++
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -13,21 +31,42 @@
+       --text: #3e2723;
+       --light: #fafafa;
+     }
+ 
++    @media (prefers-reduced-motion: no-preference) {
++      @view-transition {
++        navigation: auto;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @view-transition {
++        navigation: none;
++      }
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+     }
+ 
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size-adjust: from-font;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    h1, h2, h3 {
++      text-wrap: balance;
++    }
++
++    p, li {
++      text-wrap: pretty;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -73,22 +112,54 @@
+     }
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      min-height: 360px;
++      background-color: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      overflow: hidden;
+     }
+ 
++    .hero::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: rgba(0, 0, 0, 0.5);
++      z-index: 1;
++    }
++
++    .hero-picture {
++      position: absolute;
++      inset: 0;
++      width: 100%;
++      height: 100%;
++      z-index: 0;
++    }
++
++    .hero-image {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      display: block;
++    }
++
++    .hero-content {
++      position: relative;
++      z-index: 2;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -99,8 +170,12 @@
+       margin: 40px auto;
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+       gap: 20px;
+@@ -112,8 +187,9 @@
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      contain: layout style paint;
+     }
+ 
+     .card h3 {
+       margin-bottom: 10px;
+@@ -127,9 +203,9 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+@@ -139,8 +215,10 @@
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto 130px;
+     }
+ 
+     .footer-links {
+       margin-bottom: 20px;
+@@ -152,13 +230,47 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++
++  <!-- Speculation Rules API for instant MPA navigation, excluding state-changing logout link -->
++  <script type="speculationrules">
++    {
++      "prefetch": [
++        {
++          "tag": "prefetch-speculations",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link" } },
++              { "not": { "selector_matches": "[rel~=nofollow]" } }
++            ]
++          },
++          "eagerness": "eager"
++        }
++      ],
++      "prerender": [
++        {
++          "tag": "prerender-speculations",
++          "where": {
++            "and": [
++              { "href_matches": "/*" },
++              { "not": { "href_matches": "/logout" } },
++              { "not": { "selector_matches": ".logout-link" } },
++              { "not": { "selector_matches": "[rel~=nofollow]" } }
++            ]
++          },
++          "eagerness": "moderate"
++        }
++      ]
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+@@ -167,33 +279,69 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header id="hero" class="hero">
++    <picture class="hero-picture">
++      <source
++        type="image/avif"
++        srcset="
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=480&q=80 480w,
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=800&q=80 800w,
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=avif&fit=crop&w=1350&q=80 1350w
++        "
++        sizes="100vw"
++      >
++      <source
++        type="image/webp"
++        srcset="
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=480&q=80 480w,
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=800&q=80 800w,
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=webp&fit=crop&w=1350&q=80 1350w
++        "
++        sizes="100vw"
++      >
++      <img
++        class="hero-image"
++        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80"
++        srcset="
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=480&q=80 480w,
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80 800w,
++          https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80 1350w
++        "
++        sizes="100vw"
++        alt="Freshly brewed artisanal coffee cups on a wooden table"
++        width="1350"
++        height="900"
++        fetchpriority="high"
++      >
++    </picture>
++    <div class="hero-content">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <article class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
++        </article>
++        <article class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        </article>
+       </div>
+     </section>
+   </main>
+ 

@@ -1,0 +1,387 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,198 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Bean Selector */
++    .beans {
++      margin-top: 60px;
++    }
++
++    .beans-intro {
++      text-align: center;
++      max-width: 600px;
++      margin: 8px auto 0;
++      color: #6d4c41;
++    }
++
++    .bean-board {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 24px;
++      margin-top: 24px;
++    }
++
++    .bean-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .bean-panel-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 12px;
++      gap: 10px;
++    }
++
++    .bean-panel h3 {
++      color: var(--primary);
++    }
++
++    .bean-count {
++      background: var(--secondary);
++      border-radius: 999px;
++      padding: 2px 10px;
++      font-size: 0.8rem;
++      font-weight: bold;
++    }
++
++    .bean-list {
++      list-style: none;
++      display: grid;
++      gap: 10px;
++      min-height: 84px;
++      flex: 1;
++      align-content: start;
++      position: relative;
++    }
++
++    .bean-list:empty::after {
++      content: attr(data-empty);
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      min-height: 84px;
++      border: 2px dashed var(--secondary);
++      border-radius: 8px;
++      color: #8d6e63;
++      font-size: 0.9rem;
++      text-align: center;
++      padding: 10px;
++    }
++
++    .bean-item {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++      padding: 10px;
++      border: 1px solid #efebe9;
++      border-radius: 8px;
++      background: white;
++      position: relative;
++      will-change: transform;
++    }
++
++    .bean-item img {
++      width: 56px;
++      height: 56px;
++      border-radius: 6px;
++      object-fit: cover;
++      background: var(--secondary);
++      flex-shrink: 0;
++    }
++
++    .bean-info {
++      flex: 1;
++      min-width: 0;
++    }
++
++    .bean-info strong {
++      display: block;
++      color: var(--primary);
++    }
++
++    .bean-info span {
++      font-size: 0.8rem;
++      color: #6d4c41;
++    }
++
++    .bean-price {
++      font-weight: bold;
++      white-space: nowrap;
++    }
++
++    .bean-toggle {
++      border: none;
++      cursor: pointer;
++      border-radius: 5px;
++      padding: 8px 12px;
++      font: inherit;
++      font-size: 0.85rem;
++      font-weight: bold;
++      background: var(--primary);
++      color: white;
++      transition: background 0.2s;
++      white-space: nowrap;
++    }
++
++    .bean-toggle:hover {
++      background: #3e2723;
++    }
++
++    .bean-toggle:focus-visible,
++    .bean-action:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #bean-bag .bean-toggle {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    #bean-bag .bean-toggle:hover {
++      background: #bcaaa4;
++    }
++
++    #bean-bag .bean-item {
++      border-color: var(--accent);
++    }
++
++    .bean-action {
++      background: none;
++      border: 1px solid var(--primary);
++      color: var(--primary);
++      border-radius: 5px;
++      padding: 4px 10px;
++      font: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    .bean-action:disabled {
++      opacity: 0.4;
++      cursor: default;
++    }
++
++    .bean-total {
++      display: flex;
++      justify-content: space-between;
++      border-top: 1px solid #efebe9;
++      margin-top: 16px;
++      padding-top: 12px;
++      font-weight: bold;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
++    @media (max-width: 760px) {
++      .bean-board {
++        grid-template-columns: 1fr;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +384,36 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="beans" aria-labelledby="beans-title">
++      <h2 id="beans-title" style="text-align: center;">Build Your Bean Bag</h2>
++      <p class="beans-intro">Pick the single origins and blends you want in this week's delivery. Add or remove beans
++        anytime &mdash; everything rearranges itself.</p>
++
++      <div class="bean-board">
++        <div class="bean-panel">
++          <div class="bean-panel-header">
++            <h3>Bean Pantry</h3>
++            <button type="button" class="bean-action" data-action="add-all">Add all</button>
++          </div>
++          <ul id="bean-pantry" class="bean-list" aria-label="Available beans"
++            data-empty="You've grabbed every bean we have!"></ul>
++        </div>
++
++        <div class="bean-panel">
++          <div class="bean-panel-header">
++            <h3>Your Bag <span class="bean-count" id="bean-count">0</span></h3>
++            <button type="button" class="bean-action" data-action="clear">Clear</button>
++          </div>
++          <ul id="bean-bag" class="bean-list" aria-label="Selected beans"
++            data-empty="Your bag is empty. Add some beans from the pantry."></ul>
++          <div class="bean-total"><span>Total</span><span id="bean-total">$0.00</span></div>
++        </div>
++      </div>
++      <p class="sr-only" aria-live="polite" id="bean-status"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +424,147 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const BEANS = [
++        { id: 'ethiopia', name: 'Ethiopia Yirgacheffe', notes: 'Floral, bergamot, lemon', price: 18.5,
++          img: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=160&h=160&q=70' },
++        { id: 'colombia', name: 'Colombia Huila', notes: 'Caramel, red apple, cocoa', price: 16,
++          img: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=160&h=160&q=70' },
++        { id: 'sumatra', name: 'Sumatra Mandheling', notes: 'Earthy, cedar, dark chocolate', price: 17,
++          img: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=160&h=160&q=70' },
++        { id: 'guatemala', name: 'Guatemala Antigua', notes: 'Toffee, spice, orange peel', price: 16.5,
++          img: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=160&h=160&q=70' },
++        { id: 'kenya', name: 'Kenya AA', notes: 'Blackcurrant, grapefruit, bright', price: 19.5,
++          img: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=160&h=160&q=70' },
++        { id: 'house', name: 'Daily Grind House Blend', notes: 'Nutty, balanced, chocolatey', price: 14,
++          img: 'https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=160&h=160&q=70' }
++      ];
++
++      const pantry = document.getElementById('bean-pantry');
++      const bag = document.getElementById('bean-bag');
++      const countEl = document.getElementById('bean-count');
++      const totalEl = document.getElementById('bean-total');
++      const statusEl = document.getElementById('bean-status');
++      const addAllBtn = document.querySelector('[data-action="add-all"]');
++      const clearBtn = document.querySelector('[data-action="clear"]');
++      const order = BEANS.map(b => b.id);
++      const byId = Object.fromEntries(BEANS.map(b => [b.id, b]));
++      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const DURATION = 450;
++      const EASING = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
++
++      function createItem(bean) {
++        const li = document.createElement('li');
++        li.className = 'bean-item';
++        li.dataset.id = bean.id;
++        li.innerHTML = `
++          <img src="${bean.img}" alt="" loading="lazy" width="56" height="56">
++          <div class="bean-info"><strong></strong><span></span></div>
++          <span class="bean-price"></span>
++          <button type="button" class="bean-toggle"></button>`;
++        li.querySelector('strong').textContent = bean.name;
++        li.querySelector('.bean-info span').textContent = bean.notes;
++        li.querySelector('.bean-price').textContent = `$${bean.price.toFixed(2)}`;
++        li.querySelector('img').addEventListener('error', e => { e.target.style.visibility = 'hidden'; }, { once: true });
++        return li;
++      }
++
++      const items = () => [...document.querySelectorAll('.bean-item')];
++
++      /*
++       * Group FLIP transition: every item is measured before and after the DOM
++       * change, then all of them animate together from their old position to
++       * the new one. Only transforms are animated via the Web Animations API,
++       * so nothing blocks input — users can keep clicking (even mid-animation)
++       * and the next transition starts from wherever items currently are.
++       */
++      function groupTransition(mutate) {
++        if (reduceMotion.matches) { mutate(); return; }
++
++        // First: visual positions, including any in-flight transform.
++        const first = new Map(items().map(el => [el, el.getBoundingClientRect()]));
++        items().forEach(el => el.getAnimations().forEach(a => a.cancel()));
++
++        mutate();
++
++        // Last + Invert + Play, all at once.
++        items().forEach(el => {
++          const last = el.getBoundingClientRect();
++          const prev = first.get(el);
++          if (!prev) {
++            el.animate(
++              [{ opacity: 0, transform: 'scale(0.9)' }, { opacity: 1, transform: 'none' }],
++              { duration: DURATION, easing: EASING }
++            );
++            return;
++          }
++          const dx = prev.left - last.left;
++          const dy = prev.top - last.top;
++          if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
++          el.animate(
++            [
++              { transform: `translate(${dx}px, ${dy}px)`, zIndex: 2 },
++              { transform: 'none', zIndex: 2 }
++            ],
++            { duration: DURATION, easing: EASING }
++          );
++        });
++      }
++
++      // Keep each list in the catalog's canonical order so positions are stable.
++      function insertSorted(list, el) {
++        const idx = order.indexOf(el.dataset.id);
++        const next = [...list.children].find(c => order.indexOf(c.dataset.id) > idx);
++        list.insertBefore(el, next || null);
++      }
++
++      function sync() {
++        const selected = [...bag.children].map(el => byId[el.dataset.id]);
++        countEl.textContent = selected.length;
++        totalEl.textContent = `$${selected.reduce((s, b) => s + b.price, 0).toFixed(2)}`;
++        addAllBtn.disabled = pantry.children.length === 0;
++        clearBtn.disabled = bag.children.length === 0;
++        for (const el of items()) {
++          const inBag = el.parentElement === bag;
++          const btn = el.querySelector('.bean-toggle');
++          btn.textContent = inBag ? 'Remove' : 'Add';
++          btn.setAttribute('aria-label', `${inBag ? 'Remove' : 'Add'} ${byId[el.dataset.id].name}`);
++        }
++      }
++
++      function moveItems(els, target, message) {
++        if (!els.length) return;
++        groupTransition(() => {
++          els.forEach(el => insertSorted(target, el));
++          sync();
++        });
++        statusEl.textContent = message;
++      }
++
++      BEANS.forEach(b => pantry.appendChild(createItem(b)));
++      // Start with a couple of favorites already in the bag.
++      ['colombia', 'house'].forEach(id => insertSorted(bag, pantry.querySelector(`[data-id="${id}"]`)));
++      sync();
++
++      document.querySelector('.bean-board').addEventListener('click', e => {
++        const toggle = e.target.closest('.bean-toggle');
++        if (toggle) {
++          const el = toggle.closest('.bean-item');
++          const toBag = el.parentElement === pantry;
++          const name = byId[el.dataset.id].name;
++          moveItems([el], toBag ? bag : pantry, `${name} ${toBag ? 'added to' : 'removed from'} your bag.`);
++          toggle.focus({ preventScroll: true });
++          return;
++        }
++        const action = e.target.closest('[data-action]')?.dataset.action;
++        if (action === 'add-all') moveItems([...pantry.children], bag, 'All beans added to your bag.');
++        if (action === 'clear') moveItems([...bag.children], pantry, 'Your bag has been cleared.');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,884 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..c2658d7
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++node_modules/
+diff --git a/index.html b/index.html
+index 66c9173..0a30c6a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,146 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Rewards sign-up */
++    .rewards {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
++      margin-top: 60px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      overflow: hidden;
++    }
++
++    .rewards-photo {
++      width: 100%;
++      height: 100%;
++      min-height: 240px;
++      object-fit: cover;
++      display: block;
++    }
++
++    .rewards-body {
++      padding: 32px;
++    }
++
++    .rewards-body h2 {
++      color: var(--primary);
++      margin-bottom: 0.25rem;
++    }
++
++    .rewards-perks {
++      margin: 0.75rem 0 1.5rem 1.25rem;
++    }
++
++    .field {
++      margin-bottom: 1.1rem;
++    }
++
++    .field label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 0.25rem;
++    }
++
++    .hint {
++      display: block;
++      color: #5d4037;
++      font-size: 0.85rem;
++      margin-bottom: 0.25rem;
++    }
++
++    .field input {
++      width: 100%;
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    .field input:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .password-row {
++      display: flex;
++      gap: 8px;
++    }
++
++    .password-row input {
++      flex: 1;
++    }
++
++    .toggle-password {
++      font: inherit;
++      font-size: 0.85rem;
++      padding: 0 12px;
++      border: 1px solid #a1887f;
++      border-radius: 5px;
++      background: var(--secondary);
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .error-msg {
++      display: none;
++      color: #b71c1c;
++      font-size: 0.875rem;
++      margin-top: 0.25rem;
++    }
++
++    /* Only flag errors after the user has committed a value or tried to submit. */
++    .field input:user-invalid {
++      border-color: #b71c1c;
++      background-color: #ffebee;
++    }
++
++    .field:has(input:user-invalid) .error-msg {
++      display: block;
++    }
++
++    .field input:user-valid {
++      border-color: #2e7d32;
++    }
++
++    .rewards-body button[type="submit"] {
++      font: inherit;
++      font-weight: 600;
++      border: 0;
++      cursor: pointer;
++      width: 100%;
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 5px;
++      transition: background 0.3s;
++    }
++
++    .rewards-body button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    .fine-print {
++      font-size: 0.8rem;
++      color: #5d4037;
++      margin-top: 0.75rem;
++    }
++
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +335,71 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="rewards" id="rewards" aria-labelledby="rewards-heading">
++      <img class="rewards-photo"
++        src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80"
++        alt="A barista pouring latte art into a cup of coffee" width="900" height="1200" loading="lazy"
++        decoding="async">
++
++      <div class="rewards-body">
++        <h2 id="rewards-heading">Join Daily Grind Rewards</h2>
++        <p>Earn a star with every cup and enjoy:</p>
++        <ul class="rewards-perks">
++          <li>A free drink when you sign up</li>
++          <li>A birthday treat on us</li>
++          <li>Early access to seasonal favorites</li>
++        </ul>
++
++        <form id="rewards-form" method="post" action="/api/rewards/signup">
++          <div class="field">
++            <label for="rewards-name">Name</label>
++            <input type="text" id="rewards-name" name="name" autocomplete="name" required maxlength="200"
++              enterkeyhint="next" data-error="rewards-name-error">
++            <div id="rewards-name-error" class="error-msg">
++              <span role="img" aria-label="Error">❌</span> Enter your name.
++            </div>
++          </div>
++
++          <div class="field">
++            <label for="rewards-email">Email address</label>
++            <span id="rewards-email-hint" class="hint">If you're signed in to your email provider in this browser, we
++              can confirm your address instantly. No code needed.</span>
++            <input type="email" id="rewards-email" name="email" autocomplete="email" spellcheck="false" required
++              maxlength="254" enterkeyhint="next" aria-describedby="rewards-email-hint"
++              data-error="rewards-email-error">
++            <div id="rewards-email-error" class="error-msg">
++              <span role="img" aria-label="Error">❌</span> Enter an email address in the format you@example.com.
++            </div>
++          </div>
++
++          <!-- Email Verification Protocol: browsers that support it fill this with an
++               EVT~KB-JWT from the user's email provider, bound to this origin and a
++               server-generated, single-use nonce. Unsupported browsers submit it empty
++               and the server falls back to sending a confirmation link. -->
++          <input type="hidden" name="email-verification-token" nonce="{{EVT_NONCE}}"
++            autocomplete="email-verification-token">
++
++          <div class="field">
++            <label for="rewards-password">Create a password</label>
++            <span id="rewards-password-hint" class="hint">At least 8 characters.</span>
++            <div class="password-row">
++              <input type="password" id="rewards-password" name="new-password" autocomplete="new-password" required
++                minlength="8" maxlength="256" enterkeyhint="done" aria-describedby="rewards-password-hint"
++                data-error="rewards-password-error">
++              <button type="button" class="toggle-password" aria-controls="rewards-password" aria-pressed="false"
++                hidden>Show password</button>
++            </div>
++            <div id="rewards-password-error" class="error-msg">
++              <span role="img" aria-label="Error">❌</span> Choose a password with at least 8 characters.
++            </div>
++          </div>
++
++          <button type="submit">Join Rewards</button>
++          <p class="fine-print">By joining you agree to our <a href="/privacy-policy">Privacy Policy</a>.</p>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +412,94 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const form = document.getElementById('rewards-form');
++
++    // Show/hide password toggle (only shown when JavaScript is available).
++    const toggle = form.querySelector('.toggle-password');
++    const password = document.getElementById(toggle.getAttribute('aria-controls'));
++    toggle.hidden = false;
++    toggle.addEventListener('click', () => {
++      const show = password.type === 'password';
++      password.type = show ? 'text' : 'password';
++      toggle.setAttribute('aria-pressed', String(show));
++      toggle.textContent = show ? 'Hide password' : 'Show password';
++    });
++    // Never submit the password as a visible text field state.
++    form.addEventListener('submit', () => {
++      password.type = 'password';
++    });
++
++    // Keep aria-invalid and the error description in sync with :user-invalid.
++    const linkError = (el, shown) => {
++      const errorId = el.dataset.error;
++      if (!errorId) return;
++      const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter((id) => id && id !== errorId);
++      if (shown) ids.push(errorId);
++      if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
++      else el.removeAttribute('aria-describedby');
++    };
++
++    const announcer = document.createElement('div');
++    announcer.setAttribute('aria-live', 'polite');
++    announcer.classList.add('visually-hidden');
++    document.body.append(announcer);
++    let announceTimer;
++    let announcedField;
++
++    const spokenText = (node) => {
++      const copy = node.cloneNode(true);
++      copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
++      copy.querySelectorAll('[role="img"][aria-label]').forEach((n) => n.replaceWith(`${n.getAttribute('aria-label')}: `));
++      return copy.textContent.replace(/\s+/g, ' ').trim();
++    };
++    const announceError = (el) => {
++      const error = document.getElementById(el.dataset.error);
++      if (!error) return;
++      const label = el.labels?.[0] ? `${spokenText(el.labels[0])}: ` : '';
++      clearTimeout(announceTimer);
++      announcer.textContent = '';
++      announcedField = el;
++      announceTimer = setTimeout(() => { announcer.textContent = label + spokenText(error); }, 500);
++    };
++
++    const flagged = new WeakSet();
++    const announced = new WeakSet();
++    const syncAria = (el, announce = false) => {
++      if (!el.matches?.('input:not([type="hidden"]), select, textarea')) return;
++      const invalid = el.matches(':user-invalid');
++      if (invalid) {
++        if (announce && !announced.has(el)) {
++          announceError(el);
++          announced.add(el);
++        }
++        el.setAttribute('aria-invalid', 'true');
++        linkError(el, true);
++        flagged.add(el);
++      } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
++        el.setAttribute('aria-invalid', 'false');
++        linkError(el, false);
++        flagged.delete(el);
++        announced.delete(el);
++        if (announcedField === el) {
++          clearTimeout(announceTimer);
++          announcer.textContent = '';
++        }
++      }
++    };
++
++    [...form.elements].forEach((el) => syncAria(el));
++    form.addEventListener('blur', (e) => syncAria(e.target, true), true);
++    form.addEventListener('input', (e) => {
++      if (e.target.hasAttribute('aria-invalid')) syncAria(e.target);
++    });
++    form.addEventListener('change', (e) => syncAria(e.target, true), true);
++    form.addEventListener('invalid', (e) => {
++      announced.add(e.target);
++      syncAria(e.target);
++    }, true);
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..c7717ad 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,17 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@sd-jwt/core": "^0.24.3",
++    "jose": "^6.2.17"
++  },
++  "type": "module",
++  "engines": {
++    "node": ">=20"
+   }
+ }
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..8d7ef78
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,261 @@
++// The Daily Grind web server.
++//
++//   GET  /                     Homepage with the rewards sign-up form (fresh EVP nonce per render)
++//   POST /api/rewards/signup   Creates the rewards account; verifies the email via EVP when the
++//                              browser supplied a token, otherwise falls back to an email link
++//   GET  /verify-email?token=  Completes the fallback email-link verification
++//
++// Environment:
++//   PORT                     Listen port (default 11222)
++//   PUBLIC_ORIGIN            Public origin of this site, used as the KB-JWT audience
++//                            (default http://localhost:$PORT). Must match what the browser sees.
++//   EVP_ORIGIN_TRIAL_TOKEN   Chrome Origin Trial token for the Email Verification API
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import { verifyEmailVerificationToken } from './server/verify-email-token.mjs';
++import {
++  newId,
++  issueNonce,
++  consumeNonce,
++  findAccount,
++  createAccount,
++  markEmailVerified,
++  createPendingVerification,
++  consumePendingVerification,
++} from './server/store.mjs';
++
++const PORT = Number(process.env.PORT) || 11222;
++const RP_ORIGIN = (process.env.PUBLIC_ORIGIN || `http://localhost:${PORT}`).replace(/\/+$/, '');
++const ORIGIN_TRIAL_TOKEN = process.env.EVP_ORIGIN_TRIAL_TOKEN || '';
++const IS_HTTPS = RP_ORIGIN.startsWith('https://');
++// __Host- prefix requires Secure; use a plain name for local http development.
++const SESSION_COOKIE = IS_HTTPS ? '__Host-dg_sid' : 'dg_sid';
++const MAX_BODY_BYTES = 32 * 1024; // EVT~KB-JWT presentations are a few KB
++
++const homepageTemplate = await readFile(fileURLToPath(new URL('./index.html', import.meta.url)), 'utf8');
++
++const escapeHtml = (s) =>
++  String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
++
++function parseCookies(header = '') {
++  const out = {};
++  for (const part of header.split(';')) {
++    const i = part.indexOf('=');
++    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
++  }
++  return out;
++}
++
++function sessionCookie(id) {
++  return `${SESSION_COOKIE}=${id}; Path=/; HttpOnly; SameSite=Lax${IS_HTTPS ? '; Secure' : ''}`;
++}
++
++const baseHeaders = {
++  'Cache-Control': 'no-store',
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'strict-origin-when-cross-origin',
++  'X-Frame-Options': 'DENY',
++};
++
++function send(res, status, body, headers = {}) {
++  res.writeHead(status, { ...baseHeaders, 'Content-Type': 'text/html; charset=utf-8', ...headers });
++  res.end(body);
++}
++
++function readBody(req) {
++  return new Promise((resolve, reject) => {
++    let size = 0;
++    const chunks = [];
++    req.on('data', (chunk) => {
++      size += chunk.length;
++      if (size > MAX_BODY_BYTES) {
++        reject(Object.assign(new Error('Payload too large'), { status: 413 }));
++        req.destroy();
++        return;
++      }
++      chunks.push(chunk);
++    });
++    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
++    req.on('error', reject);
++  });
++}
++
++function resultPage({ title, heading, message, status = 'info' }) {
++  return `<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>${escapeHtml(title)} | The Daily Grind</title>
++  <style>
++    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #3e2723; background: #fafafa; margin: 0; }
++    nav { background: #4e342e; color: white; padding: 1rem 5%; font-weight: bold; letter-spacing: 1px; font-size: 1.5rem; }
++    nav a { color: inherit; text-decoration: none; }
++    main { max-width: 36rem; margin: 3rem auto; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgb(0 0 0 / 0.1); }
++    main[data-status="success"] { border-top: 6px solid #2e7d32; }
++    main[data-status="info"] { border-top: 6px solid #ffab40; }
++    main[data-status="error"] { border-top: 6px solid #c62828; }
++    h1 { color: #4e342e; margin-top: 0; }
++    .btn { display: inline-block; background: #4e342e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 1rem; }
++  </style>
++</head>
++<body>
++  <nav><a href="/">THE DAILY GRIND</a></nav>
++  <main data-status="${status}">
++    <h1>${escapeHtml(heading)}</h1>
++    ${message}
++    <a class="btn" href="/">Back to the homepage</a>
++  </main>
++</body>
++</html>`;
++}
++
++// ---------------------------------------------------------------------------
++// Handlers
++// ---------------------------------------------------------------------------
++
++function handleHomepage(req, res) {
++  const cookies = parseCookies(req.headers.cookie);
++  const existing = cookies[SESSION_COOKIE];
++  const sessionId = existing && /^[A-Za-z0-9_-]{43}$/.test(existing) ? existing : newId();
++  // Fresh single-use nonce per render, stored server-side keyed by the session cookie.
++  const nonce = issueNonce(sessionId);
++  const html = homepageTemplate.replaceAll('{{EVT_NONCE}}', escapeHtml(nonce));
++
++  const headers = { 'Set-Cookie': sessionCookie(sessionId) };
++  if (ORIGIN_TRIAL_TOKEN) headers['Origin-Trial'] = ORIGIN_TRIAL_TOKEN;
++  send(res, 200, html, headers);
++}
++
++const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++
++async function handleSignup(req, res) {
++  // CSRF defence in depth alongside the SameSite=Lax session cookie.
++  const origin = req.headers.origin;
++  if (origin && origin !== RP_ORIGIN) {
++    return send(res, 403, resultPage({ title: 'Forbidden', heading: 'Request blocked', status: 'error', message: '<p>Cross-origin form submissions are not allowed.</p>' }));
++  }
++  if (!String(req.headers['content-type'] || '').startsWith('application/x-www-form-urlencoded')) {
++    return send(res, 415, resultPage({ title: 'Unsupported', heading: 'Unsupported request', status: 'error', message: '<p>Please submit the sign-up form.</p>' }));
++  }
++
++  const form = new URLSearchParams(await readBody(req));
++  // Atomically consume the single-use nonce on receipt so a token can never be replayed,
++  // regardless of how the rest of the request goes.
++  const sessionId = parseCookies(req.headers.cookie)[SESSION_COOKIE];
++  const expectedNonce = consumeNonce(sessionId);
++
++  const name = String(form.get('name') || '').trim();
++  const email = String(form.get('email') || '').trim();
++  const password = String(form.get('new-password') || '');
++  const rawToken = String(form.get('email-verification-token') || '').trim();
++
++  const problems = [];
++  if (!name || name.length > 200) problems.push('Enter your name.');
++  if (!EMAIL_RE.test(email) || email.length > 254) problems.push('Enter an email address in the format you@example.com.');
++  if (password.length < 8 || password.length > 256) problems.push('Choose a password with at least 8 characters.');
++  if (problems.length) {
++    return send(res, 400, resultPage({
++      title: 'Check your details',
++      heading: 'Please check your details',
++      status: 'error',
++      message: `<ul>${problems.map((p) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`,
++    }));
++  }
++
++  if (findAccount(email)) {
++    return send(res, 409, resultPage({
++      title: 'Account exists',
++      heading: 'You’re already a member',
++      status: 'info',
++      message: '<p>A rewards account already exists for that email address. <a href="/account">Sign in</a> or reset your password instead.</p>',
++    }));
++  }
++
++  // Fast path: the browser obtained an Email Verification Token from the user's email
++  // provider. Verify the full cryptographic chain on the server.
++  let verified = false;
++  if (rawToken && expectedNonce) {
++    try {
++      await verifyEmailVerificationToken({ rawToken, submittedEmail: email, expectedNonce, expectedAudience: RP_ORIGIN });
++      verified = true;
++    } catch (err) {
++      console.warn('[rewards] Email verification token rejected, falling back to email link:', err?.message || err);
++    }
++  }
++
++  const account = await createAccount({
++    name,
++    email,
++    password,
++    emailVerified: verified,
++    verificationMethod: verified ? 'evp' : null,
++  });
++  if (!account) {
++    // Lost a race with a concurrent sign-up for the same address.
++    return send(res, 409, resultPage({ title: 'Account exists', heading: 'You’re already a member', status: 'info', message: '<p>A rewards account already exists for that email address.</p>' }));
++  }
++
++  if (verified) {
++    return send(res, 201, resultPage({
++      title: 'Welcome to Rewards',
++      heading: `Welcome to Daily Grind Rewards, ${name}!`,
++      status: 'success',
++      message: `<p>Your email address <strong>${escapeHtml(email)}</strong> was confirmed instantly by your email provider, so there's no code to type in. Your first drink is on us.</p>`,
++    }));
++  }
++
++  // Fallback: the browser doesn't support EVP, the email domain doesn't participate, the user
++  // isn't signed in to their provider, or verification failed. Send a traditional link.
++  const verifyToken = createPendingVerification(email);
++  await sendVerificationEmail(email, `${RP_ORIGIN}/verify-email?token=${encodeURIComponent(verifyToken)}`);
++  return send(res, 202, resultPage({
++    title: 'Confirm your email',
++    heading: 'Almost there — check your inbox',
++    status: 'info',
++    message: `<p>We sent a confirmation link to <strong>${escapeHtml(email)}</strong>. Open it to activate your rewards account.</p>`,
++  }));
++}
++
++// Replace with your transactional email provider.
++async function sendVerificationEmail(email, link) {
++  console.info(`[rewards] (stub) Sending verification link to ${email}: ${link}`);
++}
++
++function handleVerifyEmailLink(req, res, url) {
++  const email = consumePendingVerification(url.searchParams.get('token') || '');
++  const account = email && markEmailVerified(email, 'email-link');
++  if (!account) {
++    return send(res, 400, resultPage({ title: 'Link expired', heading: 'That link has expired', status: 'error', message: '<p>This confirmation link is invalid or has already been used.</p>' }));
++  }
++  return send(res, 200, resultPage({ title: 'Email confirmed', heading: 'Email confirmed', status: 'success', message: `<p>Thanks, ${escapeHtml(account.name)}! Your rewards account is now active.</p>` }));
++}
++
++// ---------------------------------------------------------------------------
++
++const server = createServer(async (req, res) => {
++  try {
++    const url = new URL(req.url, RP_ORIGIN);
++    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
++      return handleHomepage(req, res);
++    }
++    if (url.pathname === '/api/rewards/signup') {
++      if (req.method !== 'POST') return send(res, 405, 'Method Not Allowed', { Allow: 'POST', 'Content-Type': 'text/plain' });
++      return await handleSignup(req, res);
++    }
++    if (req.method === 'GET' && url.pathname === '/verify-email') {
++      return handleVerifyEmailLink(req, res, url);
++    }
++    return send(res, 404, resultPage({ title: 'Not found', heading: 'Page not found', status: 'error', message: '<p>We couldn’t find that page.</p>' }));
++  } catch (err) {
++    if (res.headersSent) return res.destroy();
++    const status = err?.status || 500;
++    if (status === 500) console.error(err);
++    return send(res, status, resultPage({ title: 'Error', heading: 'Something went wrong', status: 'error', message: '<p>Please try again.</p>' }));
++  }
++});
++
++server.listen(PORT, () => {
++  console.log(`The Daily Grind listening on ${RP_ORIGIN} (port ${PORT})`);
++});
+diff --git a/server/store.mjs b/server/store.mjs
+new file mode 100644
+index 0000000..336022d
+--- /dev/null
++++ b/server/store.mjs
+@@ -0,0 +1,94 @@
++// In-memory stores. Swap for Redis/a database in production; the interfaces
++// (issueNonce/consumeNonce, accounts, pending verifications) stay the same.
++import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
++import { promisify } from 'node:util';
++
++const scrypt = promisify(scryptCb);
++
++const NONCE_TTL_MS = 10 * 60 * 1000;
++const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
++
++/** sessionId -> { nonce, expiresAt } */
++const sessions = new Map();
++/** lower-cased email -> account */
++const accounts = new Map();
++/** verification token -> { email, expiresAt } */
++const pendingVerifications = new Map();
++
++export const newId = () => randomBytes(32).toString('base64url');
++
++/** Generates a fresh single-use nonce (256 bits) for this session and form render. */
++export function issueNonce(sessionId) {
++  const nonce = randomBytes(32).toString('base64url');
++  sessions.set(sessionId, { nonce, expiresAt: Date.now() + NONCE_TTL_MS });
++  return nonce;
++}
++
++/** Atomically reads and deletes the session's nonce (single-threaded get+delete). */
++export function consumeNonce(sessionId) {
++  if (!sessionId) return null;
++  const entry = sessions.get(sessionId);
++  sessions.delete(sessionId);
++  if (!entry || entry.expiresAt < Date.now()) return null;
++  return entry.nonce;
++}
++
++async function hashPassword(password) {
++  const salt = randomBytes(16);
++  const hash = await scrypt(password.normalize('NFKC'), salt, 64);
++  return `scrypt$${salt.toString('base64url')}$${hash.toString('base64url')}`;
++}
++
++export async function verifyPassword(password, stored) {
++  const [, saltB64, hashB64] = stored.split('$');
++  const expected = Buffer.from(hashB64, 'base64url');
++  const actual = await scrypt(password.normalize('NFKC'), Buffer.from(saltB64, 'base64url'), expected.length);
++  return timingSafeEqual(actual, expected);
++}
++
++export const findAccount = (email) => accounts.get(email.toLowerCase()) ?? null;
++
++export async function createAccount({ name, email, password, emailVerified, verificationMethod }) {
++  const key = email.toLowerCase();
++  if (accounts.has(key)) return null;
++  const account = {
++    id: newId(),
++    name,
++    email, // preserve the address as submitted
++    passwordHash: await hashPassword(password),
++    emailVerified,
++    verificationMethod, // 'evp' | 'email-link' | null
++    createdAt: new Date().toISOString(),
++  };
++  accounts.set(key, account);
++  return account;
++}
++
++export function markEmailVerified(email, method) {
++  const account = findAccount(email);
++  if (account) {
++    account.emailVerified = true;
++    account.verificationMethod = method;
++  }
++  return account;
++}
++
++export function createPendingVerification(email) {
++  const token = newId();
++  pendingVerifications.set(token, { email, expiresAt: Date.now() + PENDING_TTL_MS });
++  return token;
++}
++
++export function consumePendingVerification(token) {
++  const entry = pendingVerifications.get(token);
++  pendingVerifications.delete(token);
++  if (!entry || entry.expiresAt < Date.now()) return null;
++  return entry.email;
++}
++
++// Periodically drop expired entries so abandoned sessions don't accumulate.
++setInterval(() => {
++  const now = Date.now();
++  for (const [k, v] of sessions) if (v.expiresAt < now) sessions.delete(k);
++  for (const [k, v] of pendingVerifications) if (v.expiresAt < now) pendingVerifications.delete(k);
++}, 60 * 1000).unref();
+diff --git a/server/verify-email-token.mjs b/server/verify-email-token.mjs
+new file mode 100644
+index 0000000..4210b80
+--- /dev/null
++++ b/server/verify-email-token.mjs
+@@ -0,0 +1,163 @@
++// Server-side verification of an Email Verification Protocol (EVP) presentation
++// (`EVT~KB-JWT`) submitted via <input autocomplete="email-verification-token">.
++//
++// Chain of trust:
++//   1. SD-JWT claims: email_verified === true and email matches the submitted address.
++//   2. DNS: `_email-verification.<domain>` TXT delegates to the EVT's `iss`.
++//   3. Issuer metadata (`/.well-known/email-verification`) -> JWKS -> EVT signature.
++//   4. KB-JWT signed by the browser's ephemeral key (cnf.jwk), bound to our origin
++//      (aud) and our single-use session nonce, with a valid sd_hash.
++import { createHash } from 'node:crypto';
++import dns from 'node:dns/promises';
++import { SDJwtInstance, decodeSdJwtSync } from '@sd-jwt/core';
++import { createRemoteJWKSet, importJWK, jwtVerify } from 'jose';
++
++// IETF draft-hardt-email-verification specifies RFC 9864 'Ed25519' and 'ES256'.
++// TODO: Remove 'EdDSA' once live issuers and Chrome Origin Trial builds finish
++// transitioning from 'EdDSA' (with crv: 'Ed25519') to 'Ed25519'.
++const ALLOWED_ALGS = ['Ed25519', 'EdDSA', 'ES256'];
++const normalizeAlg = (alg) => (alg === 'Ed25519' ? 'EdDSA' : alg);
++const NETWORK_TIMEOUT_MS = 5000;
++
++const hasher = (data, alg) =>
++  createHash(alg === 'sha-256' ? 'sha256' : alg).update(data).digest();
++
++// Cache JWKS getters per jwks_uri so jose can reuse its own key cache/cooldown.
++const jwksCache = new Map();
++function getRemoteJwks(jwksUri) {
++  let jwks = jwksCache.get(jwksUri);
++  if (!jwks) {
++    jwks = createRemoteJWKSet(new URL(jwksUri), { timeoutDuration: NETWORK_TIMEOUT_MS });
++    jwksCache.set(jwksUri, jwks);
++  }
++  return jwks;
++}
++
++async function assertDnsDelegation(domain, iss) {
++  const records = (await dns.resolveTxt(`_email-verification.${domain}`)).map((r) => r.join(''));
++  const delegated = records.some(
++    (txt) => txt.startsWith('iss=') && `https://${txt.slice(4).trim()}` === iss,
++  );
++  if (!delegated) {
++    throw new Error(`Issuer "${iss}" is not delegated via DNS for "${domain}".`);
++  }
++}
++
++async function loadIssuerJwks(iss) {
++  const discoveryUrl = new URL('/.well-known/email-verification', iss);
++  if (discoveryUrl.protocol !== 'https:') throw new Error('Issuer must use HTTPS.');
++  const res = await fetch(discoveryUrl, {
++    redirect: 'error',
++    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
++    headers: { accept: 'application/json' },
++  });
++  if (!res.ok) throw new Error(`Issuer metadata request failed with HTTP ${res.status}.`);
++  const metadata = await res.json();
++  if (metadata?.issuer !== iss || typeof metadata.jwks_uri !== 'string' || !metadata.jwks_uri.startsWith('https://')) {
++    throw new Error('Invalid issuer metadata or non-HTTPS jwks_uri.');
++  }
++  return getRemoteJwks(metadata.jwks_uri);
++}
++
++/**
++ * Verifies an `EVT~KB-JWT` presentation. Throws on any failure.
++ * @param {{ rawToken: string, submittedEmail: string, expectedNonce: string, expectedAudience: string }} params
++ * @returns {Promise<{ email: string, issuer: string }>}
++ */
++export async function verifyEmailVerificationToken({ rawToken, submittedEmail, expectedNonce, expectedAudience }) {
++  if (!rawToken || !submittedEmail || !expectedNonce || !expectedAudience) {
++    throw new Error('Missing token, email, nonce, or audience.');
++  }
++
++  // Step 1: parse SD-JWT and pre-check claims before any network I/O.
++  const decoded = decodeSdJwtSync(rawToken, hasher);
++  const evtPayload = decoded.jwt?.payload ?? {};
++  const iss = evtPayload.iss;
++  if (!decoded.kbJwt || typeof iss !== 'string' || !iss) {
++    throw new Error('Missing KB-JWT or issuer.');
++  }
++
++  const at = submittedEmail.lastIndexOf('@');
++  const domain = submittedEmail.slice(at + 1).toLowerCase();
++  if (at < 1 || !domain) throw new Error('Submitted email has no domain.');
++
++  // Step 2: DNS delegation, then issuer metadata + JWKS.
++  await assertDnsDelegation(domain, iss);
++  const issuerJwks = await loadIssuerJwks(iss);
++
++  // Step 3: EVT signature + KB-JWT holder binding.
++  const evtOptions = {
++    typ: 'ev+sd-jwt',
++    issuer: iss,
++    algorithms: ALLOWED_ALGS,
++    maxTokenAge: '5m',
++    clockTolerance: '1m',
++  };
++
++  const sdJwt = new SDJwtInstance({
++    hasher,
++    verifier: async (data, sig) => {
++      const compactEvt = `${data}.${sig}`;
++      try {
++        await jwtVerify(compactEvt, issuerJwks, evtOptions);
++      } catch (err) {
++        // Issuers that omit `kid` (e.g. Gmail) cause jose to throw
++        // JWKSMultipleMatchingKeys, which is an async iterable of candidate keys.
++        if (err?.code !== 'ERR_JWKS_MULTIPLE_MATCHING_KEYS') throw err;
++        let matched = false;
++        for await (const publicKey of err) {
++          try {
++            await jwtVerify(compactEvt, publicKey, evtOptions);
++            matched = true;
++            break;
++          } catch {}
++        }
++        if (!matched) throw err;
++      }
++      return true;
++    },
++    kbVerifier: async (data, sig) => {
++      const holderJwk = evtPayload.cnf?.jwk;
++      const holderAlg = holderJwk?.alg;
++      const kbAlg = decoded.kbJwt.header?.alg;
++      if (
++        !holderAlg ||
++        !kbAlg ||
++        !ALLOWED_ALGS.includes(holderAlg) ||
++        !ALLOWED_ALGS.includes(kbAlg) ||
++        normalizeAlg(kbAlg) !== normalizeAlg(holderAlg)
++      ) {
++        throw new Error('Missing, disallowed, or mismatched KB-JWT algorithm.');
++      }
++      const holderKey = await importJWK(holderJwk, kbAlg);
++      await jwtVerify(`${data}.${sig}`, holderKey, {
++        typ: 'kb+jwt',
++        audience: expectedAudience,
++        algorithms: [kbAlg],
++        maxTokenAge: '5m',
++        clockTolerance: '1m',
++      });
++      return true;
++    },
++  });
++
++  // keyBindingNonce MUST be supplied: @sd-jwt/core only checks the KB-JWT
++  // (signature, nonce, aud, iat, sd_hash) when it is present.
++  const verified = await sdJwt.verify(rawToken, {
++    requiredClaimKeys: ['email', 'email_verified'],
++    keyBindingNonce: expectedNonce,
++    expectedKeyBindingAudience: expectedAudience,
++    keyBindingMaxAgeSeconds: 300,
++    skewSeconds: 60,
++  });
++
++  // Check the fully disclosed, signature-verified claims (email may be selectively disclosed).
++  const claims = verified.payload ?? {};
++  if (claims.email_verified !== true) throw new Error('email_verified !== true.');
++  if (typeof claims.email !== 'string' || claims.email.toLowerCase() !== submittedEmail.toLowerCase()) {
++    throw new Error('Submitted email does not match the EVT email claim.');
++  }
++  if (!verified.kb) throw new Error('Key Binding JWT was not verified.');
++
++  return { email: submittedEmail, issuer: iss };
++}

@@ -1,0 +1,373 @@
+diff --git a/components/drink-card.js b/components/drink-card.js
+new file mode 100644
+index 0000000..230c800
+--- /dev/null
++++ b/components/drink-card.js
+@@ -0,0 +1,234 @@
++/**
++ * <drink-card> — encapsulated Seasonal Favorites card.
++ *
++ * Theming
++ *   Inherits the site palette across the shadow boundary through CSS custom
++ *   properties (--primary, --secondary, --accent, --text, --light) plus the
++ *   normally-inherited font/color. Per-card overrides: --card-bg, --card-fg,
++ *   --card-accent, --card-radius, --card-shadow, --card-padding.
++ *
++ * Variants (host attribute, styled with :host([...]))
++ *   variant="default" | "featured" | "compact" | "seasonal"
++ *
++ * Slots (projected light-DOM content, restyle from the page normally)
++ *   media, badge, title, (default) description, price, action
++ *
++ * Parts (internal elements, restyle from the page with ::part())
++ *   card, media, body, badge, header, description, footer, price
++ *
++ * Internal style priority: @layer reset, tokens, base, layout, variants, states
++ * Layout: the host is a size container; the card reflows by its OWN width.
++ */
++
++const css = /* css */ `
++@layer reset, tokens, base, layout, variants, states;
++
++/* ---------- reset: lowest priority ---------- */
++@layer reset {
++  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
++  [hidden] { display: none !important; }
++}
++
++/* ---------- tokens: map site theme -> component tokens ---------- */
++@layer tokens {
++  :host {
++    --_bg: var(--card-bg, #fff);
++    --_fg: var(--card-fg, var(--text, #3e2723));
++    --_heading: var(--card-heading, var(--primary, #4e342e));
++    --_accent: var(--card-accent, var(--accent, #ffab40));
++    --_muted: var(--card-muted, var(--secondary, #d7ccc8));
++    --_radius: var(--card-radius, 8px);
++    --_shadow: var(--card-shadow, 0 2px 5px rgb(0 0 0 / 0.1));
++    --_pad: var(--card-padding, 20px);
++    --_media-ratio: 16 / 10;
++  }
++}
++
++/* ---------- base: host + internal element defaults ---------- */
++@layer base {
++  :host {
++    display: block;
++    container: drink-card / inline-size;
++    color: var(--_fg);           /* font-family/line-height inherit from page */
++  }
++
++  .card {
++    height: 100%;
++    background: var(--_bg);
++    border-radius: var(--_radius);
++    box-shadow: var(--_shadow);
++    overflow: hidden;
++    text-align: center;
++    transition: transform 0.25s ease, box-shadow 0.25s ease;
++  }
++
++  .media { background: var(--_muted); aspect-ratio: var(--_media-ratio); overflow: hidden; }
++  ::slotted([slot="media"]) {
++    display: block; width: 100%; height: 100%; object-fit: cover;
++  }
++
++  .badge {
++    display: inline-block;
++    align-self: center;
++    background: var(--_accent);
++    color: var(--primary, #4e342e);
++    font-size: 0.7rem;
++    font-weight: 700;
++    letter-spacing: 0.08em;
++    text-transform: uppercase;
++    padding: 2px 10px;
++    border-radius: 999px;
++  }
++
++  ::slotted([slot="title"]) {
++    color: var(--_heading);
++    font-size: clamp(1.1rem, 0.9rem + 2cqi, 1.6rem);
++    line-height: 1.25;
++  }
++
++  .description { color: inherit; }
++  ::slotted(p) { margin: 0; }
++
++  .price { font-weight: 700; color: var(--_heading); }
++}
++
++/* ---------- layout: responds to the card's own size ---------- */
++@layer layout {
++  .card { display: grid; grid-template-rows: auto 1fr; }
++
++  .body {
++    display: flex;
++    flex-direction: column;
++    gap: 10px;
++    padding: var(--_pad);
++  }
++
++  .footer {
++    margin-top: auto;
++    display: flex;
++    flex-wrap: wrap;
++    align-items: center;
++    justify-content: center;
++    gap: 4px 16px;
++  }
++  /* Page's .btn adds margin-top; neutralise only inside our footer row */
++  ::slotted([slot="action"]) { margin-top: 0; }
++  .footer { padding-top: 5px; }
++
++  /* Narrow card: tighten everything */
++  @container drink-card (max-width: 260px) {
++    .body { --_pad: 14px; gap: 6px; }
++    .footer { flex-direction: column; }
++  }
++
++  /* Wide card: side-by-side media + content, left aligned */
++  @container drink-card (min-width: 520px) {
++    .card { grid-template-columns: minmax(200px, 2fr) 3fr; grid-template-rows: 1fr; text-align: start; }
++    .media { aspect-ratio: auto; min-height: 100%; }
++    .badge { align-self: flex-start; }
++    .footer { justify-content: space-between; }
++  }
++
++  /* Extra-wide: more breathing room */
++  @container drink-card (min-width: 760px) {
++    .body { --_pad: 36px; gap: 14px; justify-content: center; }
++  }
++}
++
++/* ---------- variants: host's own outer styling ---------- */
++@layer variants {
++  :host([variant="featured"]) {
++    --_bg: var(--card-bg, var(--primary, #4e342e));
++    --_fg: var(--card-fg, var(--light, #fafafa));
++    --_heading: var(--card-heading, var(--_accent));
++    --_shadow: var(--card-shadow, 0 10px 24px rgb(0 0 0 / 0.22));
++    --_radius: var(--card-radius, 14px);
++  }
++  :host([variant="featured"]) .card { outline: 2px solid var(--_accent); outline-offset: -2px; }
++
++  :host([variant="seasonal"]) {
++    --_bg: var(--card-bg, linear-gradient(160deg, #fff 55%, color-mix(in srgb, var(--_accent) 18%, #fff)));
++  }
++  :host([variant="seasonal"]) .card { border-top: 4px solid var(--_accent); }
++
++  :host([variant="compact"]) {
++    --_pad: var(--card-padding, 14px);
++    --_media-ratio: 3 / 1;
++    --_shadow: var(--card-shadow, none);
++  }
++  :host([variant="compact"]) .card { border: 1px solid var(--_muted); }
++}
++
++/* ---------- states: highest internal priority ---------- */
++@layer states {
++  :host(:hover) .card,
++  :host(:focus-within) .card {
++    transform: translateY(-3px);
++    box-shadow: 0 12px 24px rgb(0 0 0 / 0.16);
++  }
++  :host([sold-out]) .card { filter: grayscale(0.85); opacity: 0.75; }
++  :host([sold-out]:hover) .card { transform: none; }
++
++  @media (prefers-reduced-motion: reduce) {
++    .card { transition: none; }
++    :host(:hover) .card, :host(:focus-within) .card { transform: none; }
++  }
++}
++`;
++
++let sheet = null;
++const supportsAdopted = 'adoptedStyleSheets' in Document.prototype && 'replaceSync' in CSSStyleSheet.prototype;
++if (supportsAdopted) {
++  sheet = new CSSStyleSheet();
++  sheet.replaceSync(css);
++}
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <article class="card" part="card">
++    <div class="media" part="media" hidden><slot name="media"></slot></div>
++    <div class="body" part="body">
++      <span class="badge" part="badge" hidden><slot name="badge"></slot></span>
++      <header class="header" part="header"><slot name="title"></slot></header>
++      <div class="description" part="description"><slot></slot></div>
++      <footer class="footer" part="footer">
++        <span class="price" part="price" hidden><slot name="price"></slot></span>
++        <slot name="action"></slot>
++      </footer>
++    </div>
++  </article>
++`;
++
++class DrinkCard extends HTMLElement {
++  static observedAttributes = ['variant'];
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    if (sheet) {
++      root.adoptedStyleSheets = [sheet];
++    } else {
++      const style = document.createElement('style');
++      style.textContent = css;
++      root.append(style);
++    }
++    root.append(template.content.cloneNode(true));
++
++    // Hide optional wrappers whose slots have nothing assigned.
++    for (const name of ['media', 'badge', 'price']) {
++      const slot = root.querySelector(`slot[name="${name}"]`);
++      const wrapper = slot.parentElement;
++      const sync = () => { wrapper.hidden = slot.assignedNodes({ flatten: true }).length === 0; };
++      slot.addEventListener('slotchange', sync);
++      sync();
++    }
++  }
++
++  attributeChangedCallback(name, _old, value) {
++    if (name === 'variant' && value && !['default', 'featured', 'compact', 'seasonal'].includes(value)) {
++      console.warn(`<drink-card>: unknown variant "${value}"`);
++    }
++  }
++}
++
++if (!customElements.get('drink-card')) customElements.define('drink-card', DrinkCard);
+diff --git a/index.html b/index.html
+index 66c9173..e08e059 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -152,7 +139,64 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* ---------- <drink-card> customisation from the page ---------- */
++    /* Pre-upgrade fallback so content isn't unstyled before JS runs */
++    drink-card:not(:defined) {
++      display: block;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    drink-card:not(:defined) img { display: none; }
++
++    .seasonal-grid .span-all {
++      grid-column: 1 / -1;
++    }
++
++    /* Outer host styling + theme token overrides */
++    drink-card[variant="seasonal"] {
++      --card-accent: #ff9100;
++    }
++
++    /* Projected (light DOM) content: page styles win over ::slotted() */
++    drink-card .btn {
++      margin-top: 0;
++    }
++
++    drink-card[variant="featured"] .btn {
++      background: var(--accent);
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    drink-card[variant="featured"] .btn:hover {
++      background: #ffc370;
++    }
++
++    /* Exposed internals via ::part() */
++    drink-card::part(badge) {
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
++    }
++
++    drink-card::part(price) {
++      font-size: 1.1rem;
++    }
++
++    drink-card[variant="featured"]::part(description) {
++      font-size: 1.05rem;
++      opacity: 0.9;
++    }
++
++    drink-card[variant="seasonal"]::part(badge) {
++      background: var(--primary);
++      color: var(--light);
++    }
+   </style>
++  <script type="module" src="components/drink-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -177,22 +221,30 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++      <div class="grid seasonal-grid">
++        <drink-card variant="featured" class="span-all">
++          <img slot="media" src="https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=900&q=80" alt="Maple oat latte with latte art" loading="lazy">
++          <span slot="badge">Limited Time</span>
++          <h3 slot="title">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <span slot="price">$5.75</span>
++          <a slot="action" href="/menu/seasonal" class="btn">View Details</a>
++        </drink-card>
++        <drink-card variant="seasonal">
++          <img slot="media" src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=700&q=80" alt="Espresso shot in a small cup" loading="lazy">
++          <h3 slot="title">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++          <span slot="price">$3.25</span>
++          <a slot="action" href="/menu/espresso" class="btn">View Details</a>
++        </drink-card>
++        <drink-card>
++          <img slot="media" src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=700&q=80" alt="Iced cold brew in a glass" loading="lazy">
++          <span slot="badge">Staff Pick</span>
++          <h3 slot="title">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++          <span slot="price">$4.50</span>
++          <a slot="action" href="/menu/cold-brew" class="btn">View Details</a>
++        </drink-card>
+       </div>
+     </section>
+   </main>

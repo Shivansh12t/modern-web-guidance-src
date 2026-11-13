@@ -1,0 +1,257 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,253 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <title>Lumen — Ship faster with less effort</title>
++  <meta name="description" content="Lumen helps teams plan, build and ship products faster." />
++
++  <!-- Open the connection to the experiment CDN as early as possible to cut SDK latency. -->
++  <link rel="preconnect" href="https://cdn.example.com" crossorigin />
++  <link rel="dns-prefetch" href="https://cdn.example.com" />
++  <link rel="preload" href="https://cdn.example.com/experiment-sdk.js" as="script" crossorigin />
++
++  <!--
++    ANTI-FLICKER
++    ------------------------------------------------------------------
++    1. This <style> is in <head>, before any body content is parsed, so
++       elements under experiment are hidden from the very first paint.
++       Only [data-experiment] regions are hidden; the rest of the page
++       renders normally.
++    2. The SDK reveals the page once variants are applied by calling
++       window.__experimentReady() or dispatching "experiment:ready".
++    3. Safety net: if the SDK fails to load, throws, or takes too long,
++       the page is revealed after a timeout, showing the control.
++    4. <noscript> override keeps content visible for users without JS.
++  -->
++  <style id="experiment-antiflicker">
++    .exp-pending [data-experiment] { opacity: 0 !important; }
++  </style>
++  <noscript>
++    <style>.exp-pending [data-experiment] { opacity: 1 !important; }</style>
++  </noscript>
++  <script>
++    (function (w, d) {
++      var TIMEOUT_MS = 2000; // cap on how long the hero can stay hidden
++      var root = d.documentElement;
++      var revealed = false;
++
++      root.classList.add('exp-pending');
++
++      function reveal(reason) {
++        if (revealed) return;
++        revealed = true;
++        clearTimeout(timer);
++        // Wait one frame so DOM changes from the SDK are painted together with the reveal.
++        (w.requestAnimationFrame || setTimeout)(function () {
++          root.classList.remove('exp-pending');
++          root.classList.add('exp-ready');
++          root.setAttribute('data-exp-reveal', reason);
++        });
++      }
++
++      var timer = setTimeout(function () { reveal('timeout'); }, TIMEOUT_MS);
++
++      // Public hooks the SDK can use to signal that variants have been applied.
++      w.__experimentReady = function () { reveal('sdk'); };
++      w.addEventListener('experiment:ready', function () { reveal('sdk'); });
++
++      // Called by the SDK <script> onload. If the SDK exposes an onReady hook,
++      // wait for it (variants may be fetched async); otherwise assume it applied
++      // its DOM changes synchronously while executing and reveal now.
++      w.__experimentLoaded = function () {
++        var sdk = w.ExperimentSDK;
++        if (sdk && typeof sdk.onReady === 'function') {
++          try { sdk.onReady(w.__experimentReady); } catch (e) { reveal('error'); }
++        } else {
++          reveal('loaded');
++        }
++      };
++
++      // Called by the SDK <script> onerror — fall back to the control immediately.
++      w.__experimentFailed = function () { reveal('error'); };
++    })(window, document);
++  </script>
++
++  <!--
++    Load the SDK async so it never blocks HTML parsing. The anti-flicker
++    snippet above keeps the experiment regions hidden until it finishes.
++  -->
++  <script
++    src="https://cdn.example.com/experiment-sdk.js"
++    async
++    crossorigin="anonymous"
++    onload="window.__experimentLoaded()"
++    onerror="window.__experimentFailed()"
++  ></script>
++
++  <style>
++    *, *::before, *::after { box-sizing: border-box; }
++    :root {
++      --brand: #5b5bf7;
++      --brand-dark: #4343d6;
++      --ink: #0f172a;
++      --muted: #475569;
++      --bg: #ffffff;
++      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
++      color: var(--ink);
++      background: var(--bg);
++    }
++    body { margin: 0; line-height: 1.5; }
++    a { color: inherit; }
++
++    .nav {
++      position: absolute; inset: 0 0 auto 0; z-index: 2;
++      display: flex; align-items: center; justify-content: space-between;
++      padding: 1.25rem clamp(1rem, 5vw, 4rem);
++      color: #fff;
++    }
++    .logo { font-weight: 800; font-size: 1.35rem; letter-spacing: -0.02em; text-decoration: none; }
++    .nav ul { display: flex; gap: 1.75rem; list-style: none; margin: 0; padding: 0; }
++    .nav ul a { text-decoration: none; opacity: .85; }
++    .nav ul a:hover { opacity: 1; }
++    @media (max-width: 640px) { .nav ul { display: none; } }
++
++    .hero {
++      position: relative;
++      min-height: 100vh;
++      display: grid; place-items: center;
++      padding: 7rem clamp(1rem, 5vw, 4rem) 4rem;
++      color: #fff;
++      text-align: center;
++      background:
++        linear-gradient(180deg, rgba(15, 23, 42, .70), rgba(15, 23, 42, .85)),
++        url("https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=2000&q=80") center / cover no-repeat;
++      background-color: var(--ink);
++    }
++    .hero__inner { max-width: 760px; transition: opacity .15s ease-out; }
++    .eyebrow {
++      display: inline-block; margin-bottom: 1.25rem;
++      padding: .35rem .85rem; border-radius: 999px;
++      background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .2);
++      font-size: .85rem; font-weight: 600; letter-spacing: .02em;
++    }
++    .hero h1 {
++      margin: 0 0 1rem;
++      font-size: clamp(2.25rem, 6vw, 4rem);
++      line-height: 1.08; letter-spacing: -0.03em;
++    }
++    .hero p {
++      margin: 0 auto 2.25rem; max-width: 600px;
++      font-size: clamp(1.05rem, 2vw, 1.25rem); color: rgba(255, 255, 255, .85);
++    }
++    .cta-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
++    .btn {
++      display: inline-flex; align-items: center; gap: .5rem;
++      padding: .95rem 1.75rem; border-radius: 10px;
++      font-weight: 700; font-size: 1.05rem; text-decoration: none;
++      border: 2px solid transparent; cursor: pointer;
++      transition: transform .15s ease, background-color .15s ease, box-shadow .15s ease;
++    }
++    .btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
++    .btn--primary { background: var(--brand); color: #fff; box-shadow: 0 10px 30px -10px rgba(91, 91, 247, .8); }
++    .btn--primary:hover { background: var(--brand-dark); transform: translateY(-2px); }
++    .btn--ghost { color: #fff; border-color: rgba(255, 255, 255, .4); }
++    .btn--ghost:hover { border-color: #fff; }
++    .fine-print { margin-top: 1rem; font-size: .875rem; color: rgba(255, 255, 255, .65); }
++
++    .features {
++      max-width: 1100px; margin: 0 auto;
++      padding: 5rem clamp(1rem, 5vw, 4rem);
++      display: grid; gap: 2rem;
++      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
++    }
++    .feature h3 { margin: 0 0 .5rem; font-size: 1.15rem; }
++    .feature p { margin: 0; color: var(--muted); }
++    .feature .icon {
++      width: 44px; height: 44px; border-radius: 12px; margin-bottom: 1rem;
++      display: grid; place-items: center; font-size: 1.35rem;
++      background: #eef0ff;
++    }
++
++    footer {
++      border-top: 1px solid #e2e8f0;
++      padding: 2rem clamp(1rem, 5vw, 4rem);
++      color: var(--muted); font-size: .9rem; text-align: center;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .btn, .hero__inner { transition: none; }
++    }
++  </style>
++</head>
++<body>
++  <header class="nav">
++    <a class="logo" href="/">Lumen</a>
++    <nav aria-label="Primary">
++      <ul>
++        <li><a href="#features">Features</a></li>
++        <li><a href="#pricing">Pricing</a></li>
++        <li><a href="#login">Log in</a></li>
++      </ul>
++    </nav>
++  </header>
++
++  <main>
++    <section class="hero" aria-labelledby="hero-title">
++      <!--
++        Everything inside [data-experiment] stays hidden until the SDK has
++        applied its variant (or the timeout fires). Stable IDs / data
++        attributes give the SDK reliable selectors to target.
++      -->
++      <div class="hero__inner" data-experiment="hero-v1">
++        <span class="eyebrow" data-exp-slot="eyebrow">New: AI-powered roadmaps</span>
++        <h1 id="hero-title" data-exp-slot="headline">Ship your best work, faster.</h1>
++        <p data-exp-slot="subheadline">
++          Lumen brings planning, tracking and feedback into one calm workspace,
++          so your team spends less time coordinating and more time building.
++        </p>
++        <div class="cta-group">
++          <a class="btn btn--primary" id="hero-cta" href="#signup" data-exp-slot="cta">
++            Start free trial
++            <span aria-hidden="true">→</span>
++          </a>
++          <a class="btn btn--ghost" href="#demo">Watch demo</a>
++        </div>
++        <p class="fine-print" data-exp-slot="fine-print">No credit card required · Free for 14 days</p>
++      </div>
++    </section>
++
++    <section class="features" id="features" aria-label="Features">
++      <div class="feature">
++        <div class="icon" aria-hidden="true">⚡</div>
++        <h3>Lightning fast</h3>
++        <p>Keyboard-first and instant everywhere. No spinners, no waiting.</p>
++      </div>
++      <div class="feature">
++        <div class="icon" aria-hidden="true">🧭</div>
++        <h3>Roadmaps that adapt</h3>
++        <p>Plans update automatically as work progresses, keeping everyone aligned.</p>
++      </div>
++      <div class="feature">
++        <div class="icon" aria-hidden="true">🔒</div>
++        <h3>Secure by default</h3>
++        <p>SSO, audit logs and granular permissions included on every plan.</p>
++      </div>
++    </section>
++  </main>
++
++  <footer>
++    © 2026 Lumen, Inc. All rights reserved.
++  </footer>
++
++  <script>
++    // Track CTA clicks together with whichever variant the SDK assigned.
++    document.getElementById('hero-cta').addEventListener('click', function () {
++      var sdk = window.ExperimentSDK;
++      if (sdk && typeof sdk.track === 'function') {
++        sdk.track('hero_cta_click');
++      }
++    });
++  </script>
++</body>
++</html>

@@ -1,0 +1,483 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,100 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Tasting Event Coordinator */
++    .coordinator {
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
++      padding: 28px;
++      margin-bottom: 50px;
++    }
++
++    .coordinator h2 { text-align: center; color: var(--primary); }
++    .coordinator .intro { text-align: center; color: #6d4c41; margin-bottom: 20px; }
++
++    .event-form {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 16px;
++      justify-content: center;
++      align-items: flex-end;
++    }
++
++    .event-form label {
++      display: flex;
++      flex-direction: column;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      gap: 4px;
++    }
++
++    .event-form input,
++    .event-form select {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      min-width: 170px;
++      background: #fff;
++      color: var(--text);
++    }
++
++    .event-form input:focus,
++    .event-form select:focus {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .event-form input[aria-invalid="true"] { border-color: #c62828; }
++
++    .event-form button {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      margin-top: 0;
++    }
++
++    .event-status {
++      margin-top: 18px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      text-align: center;
++      font-size: 0.95rem;
++    }
++
++    .event-status:empty { display: none; }
++    .event-status.error { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
++    .event-status.warn { background: #fff8e1; color: #8d5b00; border: 1px solid #ffe082; }
++    .event-status.ok { background: #efebe9; color: var(--primary); border: 1px solid #d7ccc8; }
++
++    .tz-card { text-align: left; position: relative; }
++    .tz-card.host { border: 2px solid var(--accent); }
++    .tz-card .city { margin-bottom: 2px; }
++    .tz-card .zone { font-size: 0.75rem; color: #8d6e63; word-break: break-all; }
++    .tz-card .time { font-size: 2rem; font-weight: 700; color: var(--text); line-height: 1.2; margin-top: 10px; }
++    .tz-card .date { font-size: 0.9rem; color: #5d4037; }
++    .tz-card .meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
++
++    .badge {
++      font-size: 0.7rem;
++      padding: 2px 8px;
++      border-radius: 999px;
++      background: var(--secondary);
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    .badge.dst { background: #fff3e0; color: #e65100; }
++    .badge.day-shift { background: #e3f2fd; color: #0d47a1; }
++    .badge.host-badge { background: var(--accent); color: #3e2723; }
++    .badge.unsocial { background: #fce4ec; color: #880e4f; }
++    .tz-card .vibe { margin-top: 8px; font-size: 0.85rem; color: #6d4c41; font-style: italic; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,8 +266,27 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="coordinator" aria-labelledby="coord-title">
++      <h2 id="coord-title">Global Coffee Tasting Coordinator</h2>
++      <p class="intro">Pick when the host pours the first cup — we'll show what time it is for tasters around the world, daylight saving time included.</p>
++      <form class="event-form" id="eventForm" novalidate>
++        <label for="dateInput">Event date
++          <input type="date" id="dateInput" required>
++        </label>
++        <label for="timeInput">Start time (host local)
++          <input type="time" id="timeInput" required>
++        </label>
++        <label for="hostTzSelect">Host time zone
++          <select id="hostTzSelect"></select>
++        </label>
++        <button type="submit" class="btn">Convert</button>
++      </form>
++      <div id="eventStatus" class="event-status" role="status" aria-live="polite"></div>
++      <div class="grid" id="grid" aria-live="polite"></div>
++    </section>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +317,350 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    (function () {
++      'use strict';
++
++      // Target zones tasters join from. Tokyo first, by popular demand.
++      const TARGET_ZONES = [
++        { tz: 'Asia/Tokyo', city: 'Tokyo' },
++        { tz: 'America/New_York', city: 'New York' },
++        { tz: 'America/Los_Angeles', city: 'Los Angeles' },
++        { tz: 'America/Sao_Paulo', city: 'São Paulo' },
++        { tz: 'Europe/London', city: 'London' },
++        { tz: 'Europe/Paris', city: 'Paris' },
++        { tz: 'Africa/Addis_Ababa', city: 'Addis Ababa' },
++        { tz: 'Asia/Dubai', city: 'Dubai' },
++        { tz: 'Asia/Kolkata', city: 'Kolkata' },
++        { tz: 'Asia/Jakarta', city: 'Jakarta' },
++        { tz: 'Australia/Sydney', city: 'Sydney' },
++        { tz: 'Pacific/Auckland', city: 'Auckland' }
++      ];
++
++      const HOST_ZONES = [
++        { tz: 'UTC', city: 'UTC' },
++        { tz: 'America/Los_Angeles', city: 'Los Angeles' },
++        { tz: 'America/Denver', city: 'Denver' },
++        { tz: 'America/Chicago', city: 'Chicago' },
++        { tz: 'America/New_York', city: 'New York' },
++        { tz: 'America/Bogota', city: 'Bogotá' },
++        { tz: 'America/Sao_Paulo', city: 'São Paulo' },
++        { tz: 'Europe/London', city: 'London' },
++        { tz: 'Europe/Paris', city: 'Paris' },
++        { tz: 'Europe/Berlin', city: 'Berlin' },
++        { tz: 'Africa/Nairobi', city: 'Nairobi' },
++        { tz: 'Africa/Addis_Ababa', city: 'Addis Ababa' },
++        { tz: 'Asia/Dubai', city: 'Dubai' },
++        { tz: 'Asia/Kolkata', city: 'Kolkata' },
++        { tz: 'Asia/Ho_Chi_Minh', city: 'Ho Chi Minh City' },
++        { tz: 'Asia/Jakarta', city: 'Jakarta' },
++        { tz: 'Asia/Shanghai', city: 'Shanghai' },
++        { tz: 'Asia/Tokyo', city: 'Tokyo' },
++        { tz: 'Australia/Sydney', city: 'Sydney' },
++        { tz: 'Pacific/Auckland', city: 'Auckland' }
++      ];
++
++      const $ = (id) => document.getElementById(id);
++      const dateInput = $('dateInput');
++      const timeInput = $('timeInput');
++      const hostSelect = $('hostTzSelect');
++      const grid = $('grid');
++      const statusEl = $('eventStatus');
++      const form = $('eventForm');
++
++      // ---------- Timezone core ----------
++
++      const partsFmtCache = new Map();
++      function partsFormatter(tz) {
++        let f = partsFmtCache.get(tz);
++        if (!f) {
++          f = new Intl.DateTimeFormat('en-US', {
++            timeZone: tz, hourCycle: 'h23',
++            year: 'numeric', month: '2-digit', day: '2-digit',
++            hour: '2-digit', minute: '2-digit', second: '2-digit'
++          });
++          partsFmtCache.set(tz, f);
++        }
++        return f;
++      }
++
++      // Wall-clock fields of an instant in a zone.
++      function wallFields(ts, tz) {
++        const out = {};
++        for (const p of partsFormatter(tz).formatToParts(new Date(ts))) {
++          if (p.type !== 'literal') out[p.type] = parseInt(p.value, 10);
++        }
++        if (out.hour === 24) out.hour = 0; // older engines
++        return out;
++      }
++
++      // UTC offset (ms) of a zone at an instant.
++      function offsetAt(ts, tz) {
++        const f = wallFields(ts, tz);
++        const asUtc = Date.UTC(f.year, f.month - 1, f.day, f.hour, f.minute, f.second);
++        return asUtc - Math.floor(ts / 1000) * 1000;
++      }
++
++      function sameWall(a, b) {
++        return a.year === b.year && a.month === b.month && a.day === b.day &&
++               a.hour === b.hour && a.minute === b.minute;
++      }
++
++      /**
++       * Resolve a wall-clock time in a zone to UTC instants.
++       * Returns [] for nonexistent times (spring-forward gap),
++       * one instant normally, or two for ambiguous times (fall-back overlap), earliest first.
++       */
++      function resolveWallTime(w, tz) {
++        const naive = Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute, 0);
++        const DAY = 864e5;
++        const offsets = new Set([
++          offsetAt(naive - DAY, tz),
++          offsetAt(naive, tz),
++          offsetAt(naive + DAY, tz)
++        ]);
++        const hits = new Set();
++        for (const off of offsets) {
++          const candidate = naive - off;
++          if (sameWall(wallFields(candidate, tz), w)) hits.add(candidate);
++        }
++        return [...hits].sort((a, b) => a - b);
++      }
++
++      // Is DST in effect? Compare with the zone's standard (smallest) offset this year.
++      function dstInfo(ts, tz) {
++        const year = wallFields(ts, tz).year;
++        const jan = offsetAt(Date.UTC(year, 0, 1), tz);
++        const jul = offsetAt(Date.UTC(year, 6, 1), tz);
++        const now = offsetAt(ts, tz);
++        const observes = jan !== jul;
++        return { observes, active: observes && now !== Math.min(jan, jul), offset: now };
++      }
++
++      function formatOffset(ms) {
++        const mins = Math.round(ms / 60000);
++        const sign = mins < 0 ? '−' : '+';
++        const a = Math.abs(mins);
++        const h = String(Math.floor(a / 60)).padStart(2, '0');
++        const m = String(a % 60).padStart(2, '0');
++        return `UTC${sign}${h}:${m}`;
++      }
++
++      function tzAbbrev(ts, tz) {
++        try {
++          const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
++            .formatToParts(new Date(ts)).find((x) => x.type === 'timeZoneName');
++          return p ? p.value : '';
++        } catch (e) { return ''; }
++      }
++
++      function zoneSupported(tz) {
++        try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; }
++        catch (e) { return false; }
++      }
++
++      // Calendar-day difference between two wall dates.
++      function dayDiff(a, b) {
++        return Math.round((Date.UTC(a.year, a.month - 1, a.day) - Date.UTC(b.year, b.month - 1, b.day)) / 864e5);
++      }
++
++      function vibeFor(hour) {
++        if (hour >= 5 && hour < 9) return { text: 'Sunrise pour-over hour ☀️', social: true };
++        if (hour >= 9 && hour < 12) return { text: 'Prime espresso time ☕', social: true };
++        if (hour >= 12 && hour < 17) return { text: 'Afternoon cupping session 🍪', social: true };
++        if (hour >= 17 && hour < 21) return { text: 'Evening decaf flight 🌆', social: true };
++        if (hour >= 21 && hour < 23) return { text: 'Late-night cold brew 🌙', social: true };
++        return { text: 'Middle of the night — bring a thermos 😴', social: false };
++      }
++
++      // ---------- Input parsing ----------
++
++      function parseDate(v) {
++        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
++        if (!m) return null;
++        const year = +m[1], month = +m[2], day = +m[3];
++        if (year < 1000 || month < 1 || month > 12 || day < 1) return null;
++        const dim = new Date(Date.UTC(year, month, 0)).getUTCDate();
++        if (day > dim) return null;
++        return { year, month, day };
++      }
++
++      function parseTime(v) {
++        const m = /^(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/.exec(v || '');
++        if (!m) return null;
++        const hour = +m[1], minute = +m[2];
++        if (hour > 23 || minute > 59) return null;
++        return { hour, minute };
++      }
++
++      // ---------- Rendering ----------
++
++      function setStatus(msg, kind) {
++        statusEl.className = 'event-status' + (kind ? ' ' + kind : '');
++        statusEl.setAttribute('role', kind === 'error' ? 'alert' : 'status');
++        statusEl.textContent = msg || '';
++      }
++
++      function markInvalid(el, bad) {
++        if (bad) el.setAttribute('aria-invalid', 'true');
++        else el.removeAttribute('aria-invalid');
++      }
++
++      function el(tag, cls, text) {
++        const n = document.createElement(tag);
++        if (cls) n.className = cls;
++        if (text != null) n.textContent = text;
++        return n;
++      }
++
++      function buildCard(zone, ts, hostWall, isHost) {
++        const w = wallFields(ts, zone.tz);
++        const dst = dstInfo(ts, zone.tz);
++        const card = el('article', 'card tz-card' + (isHost ? ' host' : ''));
++        card.dataset.tz = zone.tz;
++
++        card.appendChild(el('h3', 'city', zone.city));
++        card.appendChild(el('div', 'zone', zone.tz));
++
++        const timeStr = new Intl.DateTimeFormat('en-US', {
++          timeZone: zone.tz, hour: 'numeric', minute: '2-digit', hour12: true
++        }).format(new Date(ts));
++        const dateStr = new Intl.DateTimeFormat('en-US', {
++          timeZone: zone.tz, weekday: 'long', month: 'short', day: 'numeric', year: 'numeric'
++        }).format(new Date(ts));
++
++        const t = el('time', 'time', timeStr);
++        t.setAttribute('datetime', new Date(ts).toISOString());
++        card.appendChild(t);
++        card.appendChild(el('div', 'date', dateStr));
++
++        const meta = el('div', 'meta');
++        if (isHost) meta.appendChild(el('span', 'badge host-badge', 'Host'));
++        const abbr = tzAbbrev(ts, zone.tz);
++        const offStr = formatOffset(dst.offset);
++        meta.appendChild(el('span', 'badge', abbr && abbr !== offStr && !/^GMT[+-]/.test(abbr) ? `${abbr} · ${offStr}` : offStr));
++        if (dst.active) meta.appendChild(el('span', 'badge dst', 'DST in effect'));
++        else if (dst.observes) meta.appendChild(el('span', 'badge', 'Standard time'));
++        else meta.appendChild(el('span', 'badge', 'No DST'));
++
++        const dd = dayDiff(w, hostWall);
++        if (dd !== 0) {
++          meta.appendChild(el('span', 'badge day-shift',
++            dd > 0 ? `+${dd} day${dd > 1 ? 's' : ''} vs host` : `${dd} day${dd < -1 ? 's' : ''} vs host`));
++        }
++        const vibe = vibeFor(w.hour);
++        if (!vibe.social) meta.appendChild(el('span', 'badge unsocial', 'Unsocial hour'));
++        card.appendChild(meta);
++        card.appendChild(el('p', 'vibe', vibe.text));
++        return card;
++      }
++
++      function render() {
++        grid.replaceChildren();
++        const d = parseDate(dateInput.value);
++        const t = parseTime(timeInput.value);
++        const hostTz = hostSelect.value;
++        markInvalid(dateInput, !d);
++        markInvalid(timeInput, !t);
++
++        if (!d || !t) {
++          const missing = [!d && 'a valid date', !t && 'a valid time'].filter(Boolean).join(' and ');
++          setStatus(`Please enter ${missing} for the tasting.`, 'error');
++          return;
++        }
++        if (!hostTz || !zoneSupported(hostTz)) {
++          setStatus('Please choose a supported host time zone.', 'error');
++          return;
++        }
++
++        const wall = { year: d.year, month: d.month, day: d.day, hour: t.hour, minute: t.minute };
++        const instants = resolveWallTime(wall, hostTz);
++        const hostZone = HOST_ZONES.find((z) => z.tz === hostTz) || { tz: hostTz, city: hostTz };
++        const pad = (n) => String(n).padStart(2, '0');
++        const wallStr = `${d.year}-${pad(d.month)}-${pad(d.day)} ${pad(t.hour)}:${pad(t.minute)}`;
++
++        if (instants.length === 0) {
++          // Spring-forward gap: this local time never happens.
++          markInvalid(timeInput, true);
++          const probe = Date.UTC(d.year, d.month - 1, d.day, t.hour, t.minute);
++          const before = offsetAt(probe - 864e5, hostTz);
++          const after = offsetAt(probe + 864e5, hostTz);
++          const gapMin = Math.abs(after - before) / 60000;
++          const gapStr = gapMin % 60 === 0 ? `${gapMin / 60} hour${gapMin === 60 ? '' : 's'}` : `${gapMin} minutes`;
++          const suggestion = new Intl.DateTimeFormat('en-US', {
++            timeZone: hostTz, hour: 'numeric', minute: '2-digit', hour12: true
++          }).format(new Date(probe - before));
++          setStatus(
++            `Invalid time: ${wallStr} does not exist in ${hostZone.city} (${hostTz}). ` +
++            `Clocks spring forward ${gapStr} for daylight saving time, skipping this time. ` +
++            `Try ${suggestion} or another time.`, 'error');
++          return;
++        }
++
++        const ts = instants[0];
++        if (instants.length > 1) {
++          const o1 = formatOffset(offsetAt(instants[0], hostTz));
++          const o2 = formatOffset(offsetAt(instants[1], hostTz));
++          setStatus(
++            `Heads up: ${wallStr} happens twice in ${hostZone.city} as clocks fall back. ` +
++            `Using the first occurrence (${o1}, daylight time) rather than the repeat (${o2}).`, 'warn');
++        } else {
++          setStatus(`Tasting starts ${wallStr} in ${hostZone.city} · ${new Date(ts).toISOString().replace('.000Z', 'Z')} UTC instant`, 'ok');
++        }
++
++        const frag = document.createDocumentFragment();
++        frag.appendChild(buildCard(hostZone, ts, wall, true));
++        for (const z of TARGET_ZONES) {
++          if (z.tz === hostTz || !zoneSupported(z.tz)) continue;
++          frag.appendChild(buildCard(z, ts, wall, false));
++        }
++        grid.appendChild(frag);
++      }
++
++      // ---------- Init ----------
++
++      function init() {
++        let localTz = 'UTC';
++        try { localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) {}
++        const zones = HOST_ZONES.filter((z) => zoneSupported(z.tz));
++        if (!zones.some((z) => z.tz === localTz) && zoneSupported(localTz)) {
++          const city = localTz.split('/').pop().replace(/_/g, ' ');
++          zones.unshift({ tz: localTz, city: `${city} (your zone)` });
++          HOST_ZONES.push(zones[0]);
++        }
++        for (const z of zones) {
++          const opt = document.createElement('option');
++          opt.value = z.tz;
++          opt.textContent = z.tz === 'UTC' ? 'UTC' : `${z.city} — ${z.tz}`;
++          hostSelect.appendChild(opt);
++        }
++        hostSelect.value = localTz;
++        if (!hostSelect.value) hostSelect.value = 'UTC';
++
++        // Default: next Saturday, 10:00 host time.
++        const now = new Date();
++        const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + ((6 - now.getDay() + 7) % 7 || 7));
++        const pad = (n) => String(n).padStart(2, '0');
++        dateInput.value = `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
++        timeInput.value = '10:00';
++
++        form.addEventListener('submit', (e) => { e.preventDefault(); render(); });
++        [dateInput, timeInput, hostSelect].forEach((n) => {
++          n.addEventListener('change', render);
++          n.addEventListener('input', render);
++        });
++        render();
++      }
++
++      // Exposed for testing.
++      window.TastingTZ = { resolveWallTime, offsetAt, wallFields, dstInfo, render };
++
++      init();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

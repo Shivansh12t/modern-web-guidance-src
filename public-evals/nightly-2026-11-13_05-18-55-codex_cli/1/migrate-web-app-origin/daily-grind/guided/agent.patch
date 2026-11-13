@@ -1,0 +1,692 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..673f501
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,54 @@
++# The Daily Grind origin migration
++
++This static app now has an install manifest and a two-origin migration build. No
++production origins or existing installed-app identity were provided, so
++`migration.config.json` uses reserved example subdomains. Nothing is deployed by
++the build.
++
++1. Set `oldOrigin` and `newOrigin` to your HTTPS origins. They must have the same
++   registrable domain; the build checks the Public Suffix List, including private
++   domains. Keep `oldAppId` exactly equal to the existing installed app's manifest
++   ID (or its previous resolved start URL if it had no explicit ID). This starter
++   assumes `/`. Set the destination identity with `newAppId`.
++2. List the localStorage configuration keys in `settingsKeys`. This repository
++   previously had no configuration persistence; the default keys are
++   `daily-grind:preferences` and `daily-grind:settings`. Only these explicit keys
++   move. Do not add authentication tokens. Cookies, IndexedDB, permissions, and
++   server-side accounts require their own migration if later introduced.
++3. Run `pnpm install` and `pnpm build`. An alternate JSON configuration can be
++   supplied with `pnpm build ./production-migration.json`.
++4. Deploy `dist/new` to the destination first, then `dist/old` to the original
++   origin. Both folders are standalone static sites. Include the hidden
++   `.well-known` directory. Do not deploy the repository root or redirect the old
++   site: its manifest, association, page, and settings bridge must stay reachable.
++
++The old association explicitly authorizes the exact destination manifest ID. Its
++manifest advertises `migrate_to`; the destination declares `migrate_from` with
++suggested behavior. Supporting browsers handle the installation update, including
++OS integration, through their own consent UI. Browsers without this feature get a
++link to the new site and instructions to install there; shortcuts cannot be
++preserved automatically on those browsers. See the
++[Chrome origin migration documentation](https://developer.chrome.com/blog/seamless-pwa-origin-migration).
++If adapting an existing PWA, retain its name, icons, manifest URL, and identity on
++the old origin rather than replacing its manifest with a new app identity.
++
++On the first destination visit, a hidden old-origin frame reads the allowlisted
++settings. Both sides verify the exact origin and source window, and the response
++must match a random request nonce. Settings never appear in URLs. Destination
++values win conflicts; the old data is never deleted. Successful import is marked
++so later visits do not re-import stale source settings. A failed write rolls back
++new entries and leaves retry available. Download/import provides a fallback for
++blocked frame storage; it copies only configuration, not the installation.
++
++The generated `_headers` file is for hosts supporting that format (such as
++Netlify or Cloudflare Pages). Other hosts must configure equivalent HTTP headers:
++serve the association as JSON, the manifest as `application/manifest+json`, and
++avoid caching configuration and the bridge. Permit only the new origin to frame
++the old bridge using CSP `frame-ancestors`. Do not apply `X-Frame-Options: DENY`
++or `SAMEORIGIN` to that bridge; any destination CSP must allow `frame-src` for the
++old origin. HTTPS and continued old-origin availability are required. Offline
++caching is intentionally not added to this previously static site.
++
++`pnpm test` runs storage/security and build-output checks without a browser or
++server. Deployment and actual browser-managed shortcut migration must happen
++outside this local build.
+diff --git a/icon.svg b/icon.svg
+new file mode 100644
+index 0000000..724b72b
+--- /dev/null
++++ b/icon.svg
+@@ -0,0 +1,5 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <path d="M128 192h224v112a88 88 0 0 1-88 88h-48a88 88 0 0 1-88-88z" fill="#fafafa"/>
++  <path d="M352 208h24a48 48 0 0 1 0 96h-24M112 416h256M208 96v48M272 80v64" fill="none" stroke="#ffab40" stroke-width="24" stroke-linecap="round"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..f52a23e 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,9 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.webmanifest">
++  <meta name="theme-color" content="#4e342e">
++  <script type="module" src="/migration.mjs"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -152,10 +155,22 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .migration-notice {
++      padding: 16px 5%;
++      background: #fff3df;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .migration-notice a { color: var(--primary); font-weight: 600; }
++    .migration-notice button, .migration-notice input { margin: 8px 12px 0 0; }
++    .migration-notice button { padding: 8px 12px; cursor: pointer; }
++    .migration-notice :focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+   </style>
+ </head>
+ 
+ <body>
++  <!-- MIGRATION_NOTICE -->
+ 
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..8a7c0cc
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,11 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
++}
+diff --git a/migration-bridge.html b/migration-bridge.html
+new file mode 100644
+index 0000000..2095da5
+--- /dev/null
++++ b/migration-bridge.html
+@@ -0,0 +1,7 @@
++<!doctype html>
++<html lang="en">
++<meta charset="utf-8">
++<meta name="referrer" content="no-referrer">
++<title>Daily Grind settings transfer</title>
++<script type="module" src="/migration-bridge.mjs"></script>
++</html>
+diff --git a/migration-bridge.mjs b/migration-bridge.mjs
+new file mode 100644
+index 0000000..4cc86ff
+--- /dev/null
++++ b/migration-bridge.mjs
+@@ -0,0 +1,22 @@
++import { readSettings, trustedOrigin, validateBackup } from './migration-storage.mjs';
++
++const response = await fetch('/migration.config.json', { cache: 'no-store' });
++if (!response.ok) throw new Error('Migration configuration unavailable.');
++const config = await response.json();
++
++if (location.origin === config.oldOrigin && parent !== window) {
++  window.addEventListener('message', event => {
++    if (event.source !== parent || !trustedOrigin(event.origin, config.newOrigin) ||
++        event.data?.type !== 'daily-grind:request-settings' ||
++        typeof event.data.nonce !== 'string' || event.data.nonce.length > 100) return;
++    const reply = { type: 'daily-grind:settings', nonce: event.data.nonce };
++    try {
++      reply.backup = validateBackup(readSettings(localStorage, config.settingsKeys), config.settingsKeys);
++    } catch {
++      reply.error = true;
++    }
++    parent.postMessage(reply, config.newOrigin);
++  });
++  // Signal only after the listener and configuration are ready.
++  parent.postMessage({ type: 'daily-grind:bridge-ready' }, config.newOrigin);
++}
+diff --git a/migration-storage.mjs b/migration-storage.mjs
+new file mode 100644
+index 0000000..85db99e
+--- /dev/null
++++ b/migration-storage.mjs
+@@ -0,0 +1,53 @@
++export const MAX_BACKUP_BYTES = 256 * 1024;
++export const MIGRATION_MARKER = 'daily-grind:origin-migration:v1';
++
++export function trustedOrigin(candidate, expected) {
++  try {
++    if ('Origin' in globalThis) {
++      return Origin.from(candidate).isSameOrigin(Origin.from(expected));
++    }
++    const actual = new URL(candidate).origin;
++    return actual !== 'null' && actual === new URL(expected).origin;
++  } catch {
++    return false;
++  }
++}
++
++export function readSettings(storage, keys) {
++  return {
++    version: 1,
++    settings: Object.fromEntries(keys.flatMap(key => {
++      const value = storage.getItem(key);
++      return value === null ? [] : [[key, value]];
++    })),
++  };
++}
++
++export function validateBackup(backup, keys) {
++  if (!backup || backup.version !== 1 || !backup.settings ||
++      typeof backup.settings !== 'object' || Array.isArray(backup.settings) ||
++      new TextEncoder().encode(JSON.stringify(backup)).length > MAX_BACKUP_BYTES ||
++      Object.entries(backup.settings).some(([key, value]) =>
++        !keys.includes(key) || typeof value !== 'string')) {
++    throw new Error('This is not a valid Daily Grind settings backup.');
++  }
++  return backup;
++}
++
++// Keep newer destination settings; retain source data and roll back failed writes.
++export function importSettings(storage, backup, keys, marker) {
++  validateBackup(backup, keys);
++  const written = [];
++  try {
++    for (const [key, value] of Object.entries(backup.settings)) {
++      if (storage.getItem(key) === null) {
++        storage.setItem(key, value);
++        written.push(key);
++      }
++    }
++    storage.setItem(MIGRATION_MARKER, marker);
++  } catch (error) {
++    for (const key of written) storage.removeItem(key);
++    throw error;
++  }
++}
+diff --git a/migration-transfer.mjs b/migration-transfer.mjs
+new file mode 100644
+index 0000000..5b2994d
+--- /dev/null
++++ b/migration-transfer.mjs
+@@ -0,0 +1,31 @@
++import { trustedOrigin } from './migration-storage.mjs';
++
++export function requestSettings(config) {
++  return new Promise((resolve, reject) => {
++    const frame = document.createElement('iframe');
++    frame.hidden = true;
++    frame.title = 'Transfer Daily Grind settings';
++    frame.referrerPolicy = 'no-referrer';
++    frame.src = `${config.oldOrigin}/migration-bridge.html`;
++    const nonce = crypto.randomUUID();
++    const finish = (error, backup) => {
++      clearTimeout(timer);
++      window.removeEventListener('message', receive);
++      frame.remove();
++      if (error) reject(error);
++      else resolve(backup);
++    };
++    const receive = event => {
++      if (event.source !== frame.contentWindow || !trustedOrigin(event.origin, config.oldOrigin)) return;
++      if (event.data?.type === 'daily-grind:bridge-ready') {
++        frame.contentWindow.postMessage({ type: 'daily-grind:request-settings', nonce }, config.oldOrigin);
++      } else if (event.data?.type === 'daily-grind:settings' && event.data.nonce === nonce) {
++        finish(event.data.error ? new Error('Source storage unavailable.') : null, event.data.backup);
++      }
++    };
++    const timer = setTimeout(() => finish(new Error('Transfer timed out.')), 10000);
++    frame.addEventListener('error', () => finish(new Error('Source unavailable.')), { once: true });
++    window.addEventListener('message', receive);
++    document.body.append(frame);
++  });
++}
+diff --git a/migration.config.json b/migration.config.json
+new file mode 100644
+index 0000000..ed3f881
+--- /dev/null
++++ b/migration.config.json
+@@ -0,0 +1,7 @@
++{
++  "oldOrigin": "https://old.dailygrind.example",
++  "newOrigin": "https://app.dailygrind.example",
++  "oldAppId": "/",
++  "newAppId": "/",
++  "settingsKeys": ["daily-grind:preferences", "daily-grind:settings"]
++}
+diff --git a/migration.mjs b/migration.mjs
+new file mode 100644
+index 0000000..b828c2e
+--- /dev/null
++++ b/migration.mjs
+@@ -0,0 +1,80 @@
++import { importSettings, readSettings, validateBackup,
++  MAX_BACKUP_BYTES, MIGRATION_MARKER } from './migration-storage.mjs';
++import { requestSettings } from './migration-transfer.mjs';
++
++const notice = document.querySelector('[data-migration-notice]');
++if (notice) initialize().catch(() => {
++  notice.querySelector('[role="status"]').textContent =
++    'Settings transfer is unavailable. Your settings remain safe at the original address.';
++});
++
++async function initialize() {
++  const response = await fetch('/migration.config.json', { cache: 'no-store' });
++  if (!response.ok) throw new Error('Migration configuration unavailable.');
++  const config = await response.json();
++  const status = notice.querySelector('[role="status"]');
++  const report = message => { status.textContent = message; };
++
++  if (location.origin === config.oldOrigin) {
++    notice.querySelector('[data-export]').addEventListener('click', () => {
++      try {
++        const backup = validateBackup(readSettings(localStorage, config.settingsKeys), config.settingsKeys);
++        const url = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: 'application/json' }));
++        const link = document.createElement('a');
++        link.href = url;
++        link.download = 'daily-grind-settings.json';
++        link.click();
++        setTimeout(() => URL.revokeObjectURL(url), 1000);
++        report('Backup downloaded. You can import it at the new address.');
++      } catch {
++        report('Unable to read settings. Enable site storage and try downloading again.');
++      }
++    });
++    return;
++  }
++  if (location.origin !== config.newOrigin) return;
++
++  const marker = `${config.oldOrigin}${config.oldAppId}`;
++  const apply = backup => importSettings(localStorage, backup, config.settingsKeys, marker);
++  notice.querySelector('[data-import]').addEventListener('change', async event => {
++    const input = event.target;
++    const file = input.files[0];
++    if (!file) return;
++    try {
++      if (file.size > MAX_BACKUP_BYTES) throw new Error('Backup too large.');
++      apply(JSON.parse(await file.text()));
++      report('Your settings are ready. Any settings already saved here were kept.');
++    } catch {
++      report('Could not import settings. Choose a valid Daily Grind backup and allow site storage.');
++    } finally {
++      input.value = '';
++    }
++  });
++
++  let pending = false;
++  const retry = notice.querySelector('[data-retry]');
++  async function transfer() {
++    if (pending) return;
++    pending = true;
++    retry.disabled = true;
++    report('Bringing your settings over from the original address…');
++    try {
++      apply(await requestSettings(config));
++      report('Your settings are ready. Any settings already saved here were kept.');
++    } catch {
++      report('Automatic transfer was unavailable. Retry, or download a settings backup at the original address and import it here.');
++    } finally {
++      pending = false;
++      retry.disabled = false;
++    }
++  }
++  retry.addEventListener('click', transfer);
++  try {
++    if (localStorage.getItem(MIGRATION_MARKER) === marker) {
++      report('Your settings have already been transferred.');
++      return;
++    }
++  } catch { /* Show the import controls even when storage is disabled. */ }
++  await transfer();
++}
++
+diff --git a/package.json b/package.json
+index 2bd4d77..f9c5cc2 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,14 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node scripts/build-migration.mjs",
++    "test": "node --test"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "tldts": "^7.5.1"
+   }
+ }
+diff --git a/scripts/build-migration.mjs b/scripts/build-migration.mjs
+new file mode 100644
+index 0000000..8ded4e9
+--- /dev/null
++++ b/scripts/build-migration.mjs
+@@ -0,0 +1,99 @@
++import { mkdir, readFile, writeFile, copyFile, rm } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import { resolve, join } from 'node:path';
++import { getDomain } from 'tldts';
++
++const root = fileURLToPath(new URL('../', import.meta.url));
++const configPath = resolve(root, process.argv[2] ?? 'migration.config.json');
++const config = JSON.parse(await readFile(configPath, 'utf8'));
++const old = parseOrigin(config.oldOrigin);
++const next = parseOrigin(config.newOrigin);
++const domain = getDomain(old.hostname, { allowPrivateDomains: true });
++if (old.origin === next.origin || !domain ||
++    domain !== getDomain(next.hostname, { allowPrivateDomains: true })) {
++  throw new Error('Migration requires distinct HTTPS origins on the same registrable domain.');
++}
++config.oldOrigin = old.origin;
++config.newOrigin = next.origin;
++const oldId = appId(config.oldAppId, old);
++const newId = appId(config.newAppId, next);
++if (!Array.isArray(config.settingsKeys) || config.settingsKeys.some(key =>
++  typeof key !== 'string' || !key || key === 'daily-grind:origin-migration:v1') ||
++  new Set(config.settingsKeys).size !== config.settingsKeys.length) {
++  throw new Error('settingsKeys must contain unique, explicit configuration keys.');
++}
++
++const template = await readFile(join(root, 'index.html'), 'utf8');
++const manifest = JSON.parse(await readFile(join(root, 'manifest.webmanifest'), 'utf8'));
++for (const role of ['old', 'new']) {
++  const out = join(root, 'dist', role);
++  await rm(out, { recursive: true, force: true });
++  await mkdir(join(out, '.well-known'), { recursive: true });
++  for (const file of ['icon.svg', 'migration.mjs', 'migration-storage.mjs', 'migration-transfer.mjs',
++    'migration-bridge.html', 'migration-bridge.mjs']) {
++    await copyFile(join(root, file), join(out, file));
++  }
++  await writeFile(join(out, 'migration.config.json'), JSON.stringify(config, null, 2));
++  const generated = { ...manifest, id: role === 'old' ? oldId : newId };
++  if (role === 'old') {
++    generated.migrate_to = { id: newId, install_url: `${next.origin}/` };
++    await writeFile(join(out, '.well-known/web-app-origin-association'),
++      JSON.stringify({ [newId]: { allow_migration: true } }, null, 2));
++  } else {
++    generated.migrate_from = [{ id: oldId, install_url: `${old.origin}/`, behavior: 'suggest' }];
++  }
++  await writeFile(join(out, 'manifest.webmanifest'), JSON.stringify(generated, null, 2));
++  const notice = role === 'old' ? `
++  <aside class="migration-notice" data-migration-notice aria-label="Our new address">
++    <p><strong>The Daily Grind is moving.</strong> Your coffee, at a new address.</p>
++    <p><a href="${next.origin}/">Continue to our new home</a>. We'll bring your settings over.</p>
++    <p>If your browser offers an app update, accept it to keep your installed shortcut.
++      Otherwise, install from the new address after checking your settings.</p>
++    <button type="button" data-export>Download settings backup</button>
++    <p role="status" aria-live="polite"></p>
++  </aside>` : `
++  <aside class="migration-notice" data-migration-notice aria-label="Welcome to our new address">
++    <p><strong>Welcome to our new home.</strong> Same Daily Grind.</p>
++    <p role="status" aria-live="polite">Preparing to transfer your settings…</p>
++    <button type="button" data-retry>Retry settings transfer</button>
++    <label>Import settings backup <input type="file" accept="application/json,.json" data-import></label>
++    <p><a href="${old.origin}/">Visit the original address to download a backup</a>.</p>
++    <noscript>Enable JavaScript to transfer your saved settings.</noscript>
++  </aside>`;
++  await writeFile(join(out, 'index.html'), template.replace('<!-- MIGRATION_NOTICE -->', notice));
++  await writeFile(join(out, '_headers'), `
++/manifest.webmanifest
++  Content-Type: application/manifest+json
++  Cache-Control: no-cache
++/.well-known/web-app-origin-association
++  Content-Type: application/json
++  Cache-Control: no-cache
++/migration.config.json
++  Cache-Control: no-store
++/migration-bridge.html
++  Cache-Control: no-store
++  Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors ${next.origin}
++`);
++}
++console.log(`Built dist/old for ${old.origin} and dist/new for ${next.origin}.`);
++if ([old.hostname, next.hostname].some(host => host.endsWith('.example'))) {
++  console.log('Example origins only: configure your actual domains before deployment.');
++}
++
++function parseOrigin(value) {
++  const url = new URL(value);
++  if (url.protocol !== 'https:' || url.username || url.password ||
++      url.pathname !== '/' || url.search || url.hash) {
++    throw new Error('Origins must be bare HTTPS origins, without credentials, paths, queries, or fragments.');
++  }
++  return url;
++}
++
++function appId(value, origin) {
++  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) {
++    throw new Error('App IDs must be origin-relative paths matching the installed manifest identity.');
++  }
++  const url = new URL(value, origin);
++  if (url.origin !== origin.origin || url.hash) throw new Error('Invalid app ID.');
++  return url.href;
++}
+diff --git a/test/migration-transfer.test.mjs b/test/migration-transfer.test.mjs
+new file mode 100644
+index 0000000..55c2b68
+--- /dev/null
++++ b/test/migration-transfer.test.mjs
+@@ -0,0 +1,78 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { requestSettings } from '../migration-transfer.mjs';
++
++const config = { oldOrigin: 'https://old.dailygrind.example' };
++
++// Unit-test the actual message protocol with window/frame stand-ins, not a browser.
++function setup(t) {
++  const listeners = new Set();
++  const messages = [];
++  let timeout;
++  let removed = false;
++  const frame = {
++    contentWindow: { postMessage: (data, origin) => messages.push({ data, origin }) },
++    addEventListener() {},
++    remove() { removed = true; },
++  };
++  for (const [key, value] of Object.entries({
++    window: {
++      addEventListener: (_, callback) => listeners.add(callback),
++      removeEventListener: (_, callback) => listeners.delete(callback),
++    },
++    document: { createElement: () => frame, body: { append() {} } },
++  })) {
++    const previous = Object.getOwnPropertyDescriptor(globalThis, key);
++    Object.defineProperty(globalThis, key, { value, configurable: true });
++    t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
++  }
++  t.mock.method(globalThis, 'setTimeout', callback => { timeout = callback; return 1; });
++  t.mock.method(globalThis, 'clearTimeout', () => {});
++  return {
++    frame, messages, listeners,
++    removed: () => removed,
++    timeout: () => timeout(),
++    send(data, origin = config.oldOrigin, source = frame.contentWindow) {
++      for (const listener of listeners) listener({ data, origin, source });
++    },
++  };
++}
++
++test('message protocol requires exact sender window, origin and response nonce; cleans up after success', async t => {
++  const env = setup(t);
++  const result = requestSettings(config);
++  const ready = { type: 'daily-grind:bridge-ready' };
++  env.send(ready, `${config.oldOrigin}.attacker.example`);
++  env.send(ready, config.oldOrigin, {});
++  assert.equal(env.messages.length, 0);
++  env.send(ready);
++  assert.equal(env.messages[0].origin, config.oldOrigin);
++  const nonce = env.messages[0].data.nonce;
++  const backup = { version: 1, settings: {} };
++  env.send({ type: 'daily-grind:settings', nonce: 'wrong', backup });
++  assert.equal(env.removed(), false);
++  env.send({ type: 'daily-grind:settings', nonce, backup });
++  assert.deepEqual(await result, backup);
++  assert.equal(env.removed(), true);
++  assert.equal(env.listeners.size, 0);
++});
++
++test('blocked bridge times out and removes its frame and listener', async t => {
++  const env = setup(t);
++  const result = requestSettings(config);
++  const rejection = assert.rejects(result, /timed out/);
++  env.timeout();
++  await rejection;
++  assert.equal(env.removed(), true);
++  assert.equal(env.listeners.size, 0);
++});
++
++test('source storage errors reject the transfer instead of marking empty settings as migrated', async t => {
++  const env = setup(t);
++  const result = requestSettings(config);
++  env.send({ type: 'daily-grind:bridge-ready' });
++  const rejection = assert.rejects(result, /storage unavailable/);
++  env.send({ type: 'daily-grind:settings', nonce: env.messages[0].data.nonce, error: true });
++  await rejection;
++  assert.equal(env.removed(), true);
++});
+diff --git a/test/migration.test.mjs b/test/migration.test.mjs
+new file mode 100644
+index 0000000..5667f45
+--- /dev/null
++++ b/test/migration.test.mjs
+@@ -0,0 +1,108 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { execFileSync, spawnSync } from 'node:child_process';
++import { readFile, mkdtemp, writeFile, rm } from 'node:fs/promises';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { importSettings, readSettings, validateBackup, trustedOrigin,
++  MAX_BACKUP_BYTES, MIGRATION_MARKER } from '../migration-storage.mjs';
++
++const keys = ['daily-grind:preferences', 'daily-grind:settings'];
++const marker = 'https://old.dailygrind.example/';
++function memoryStorage(entries = []) {
++  const data = new Map(entries);
++  return {
++    getItem: key => data.get(key) ?? null,
++    setItem: (key, value) => data.set(key, value),
++    removeItem: key => data.delete(key),
++  };
++}
++
++test('transfers only configuration, preserves destination values and leaves source intact', () => {
++  const source = memoryStorage([[keys[0], '{"milk":"oat"}'], [keys[1], 'old'], ['auth-token', 'secret']]);
++  const destination = memoryStorage([[keys[1], 'new']]);
++  const backup = readSettings(source, keys);
++  assert.equal(backup.settings['auth-token'], undefined);
++  importSettings(destination, backup, keys, marker);
++  assert.equal(destination.getItem(keys[0]), '{"milk":"oat"}');
++  assert.equal(destination.getItem(keys[1]), 'new');
++  assert.equal(destination.getItem(MIGRATION_MARKER), marker);
++  assert.equal(source.getItem(keys[0]), '{"milk":"oat"}');
++  importSettings(destination, backup, keys, marker);
++  assert.equal(destination.getItem(keys[1]), 'new');
++});
++
++test('rolls back copied settings if storage fills before the completion marker is saved', () => {
++  const storage = memoryStorage([[keys[1], 'existing']]);
++  const write = storage.setItem;
++  storage.setItem = (key, value) => {
++    if (key === MIGRATION_MARKER) throw new Error('QuotaExceededError');
++    write(key, value);
++  };
++  assert.throws(() => importSettings(storage, { version: 1, settings: { [keys[0]]: 'copy' } }, keys, marker));
++  assert.equal(storage.getItem(keys[0]), null);
++  assert.equal(storage.getItem(keys[1]), 'existing');
++  assert.equal(storage.getItem(MIGRATION_MARKER), null);
++});
++
++test('rejects malformed, oversized, non-string and unapproved backup data before any writes', () => {
++  for (const backup of [null, {}, { version: 2, settings: {} }, { version: 1, settings: [] },
++    { version: 1, settings: { token: 'secret' } }, { version: 1, settings: { [keys[0]]: 7 } },
++    { version: 1, settings: { [keys[0]]: 'a'.repeat(MAX_BACKUP_BYTES) } }]) {
++    const storage = memoryStorage();
++    assert.throws(() => importSettings(storage, backup, keys, marker));
++    assert.equal(storage.getItem(MIGRATION_MARKER), null);
++  }
++  assert.deepEqual(validateBackup({ version: 1, settings: {} }, keys), { version: 1, settings: {} });
++});
++
++test('normalizes origins while rejecting opaque, spoofed, downgraded, and wrong-port senders', () => {
++  const expected = 'https://app.dailygrind.example';
++  assert.equal(trustedOrigin(`${expected}:443/`, expected), true);
++  for (const origin of ['null', 'data:text/html,hello', 'invalid',
++    `${expected}.attacker.example`, `${expected}:444`, 'http://app.dailygrind.example']) {
++    assert.equal(trustedOrigin(origin, expected), false);
++  }
++});
++
++test('build outputs mutually authorized manifests, settings controls, and frame restrictions', async () => {
++  execFileSync(process.execPath, ['scripts/build-migration.mjs']);
++  const json = async path => JSON.parse(await readFile(path, 'utf8'));
++  const oldManifest = await json('dist/old/manifest.webmanifest');
++  const newManifest = await json('dist/new/manifest.webmanifest');
++  const association = await json('dist/old/.well-known/web-app-origin-association');
++  assert.equal(oldManifest.migrate_to.id, newManifest.id);
++  assert.equal(newManifest.migrate_from[0].id, oldManifest.id);
++  assert.equal(newManifest.migrate_from[0].behavior, 'suggest');
++  assert.equal(association[newManifest.id].allow_migration, true);
++  assert.match(await readFile('dist/old/index.html', 'utf8'), /data-export/);
++  assert.match(await readFile('dist/new/index.html', 'utf8'), /data-import/);
++  assert.match(await readFile('dist/old/_headers', 'utf8'), /frame-ancestors https:\/\/app.dailygrind.example/);
++  for (const role of ['old', 'new']) {
++    assert.match(await readFile(`dist/${role}/migration-bridge.mjs`, 'utf8'), /event.source !== parent/);
++    assert.deepEqual(await json(`dist/${role}/migration.config.json`), await json('migration.config.json'));
++  }
++});
++
++test('build rejects cross-site/private-suffix tenants, non-HTTPS URLs and invalid identities', async () => {
++  const dir = await mkdtemp(join(tmpdir(), 'daily-grind-test-'));
++  const config = JSON.parse(await readFile('migration.config.json', 'utf8'));
++  try {
++    for (const changes of [
++      { newOrigin: 'https://app.other.example' },
++      { oldOrigin: 'https://one.github.io', newOrigin: 'https://two.github.io' },
++      { oldOrigin: 'http://old.dailygrind.example' },
++      { newOrigin: 'https://app.dailygrind.example/path' },
++      { newOrigin: config.oldOrigin },
++      { oldAppId: '//attacker.example/' },
++      { oldAppId: '/\\attacker.example/' },
++    ]) {
++      const file = join(dir, 'config.json');
++      await writeFile(file, JSON.stringify({ ...config, ...changes }));
++      const result = spawnSync(process.execPath, ['scripts/build-migration.mjs', file]);
++      assert.notEqual(result.status, 0, JSON.stringify(changes));
++    }
++  } finally {
++    await rm(dir, { recursive: true, force: true });
++  }
++});

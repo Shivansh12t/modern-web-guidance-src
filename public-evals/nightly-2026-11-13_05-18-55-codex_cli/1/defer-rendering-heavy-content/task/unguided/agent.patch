@@ -1,0 +1,121 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -86,13 +86,34 @@
+       transition: transform 0.3s ease;
+       /* Stacked expensive drop-shadows */
+       filter:
+         drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1)) drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1)) drop-shadow(0 30px 60px rgba(0, 0, 0, 0.1));
+-      will-change: transform;
+       position: relative;
+       overflow: hidden;
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto 330px;
++    }
++
++    .debug-panel {
++      max-width: 752px;
++      margin: 2rem auto;
++      padding: 1.5rem;
++      border: 1px solid #e2e8f0;
++      border-radius: 1rem;
++      background: var(--card-bg);
++      content-visibility: hidden;
++      contain-intrinsic-size: auto 160px;
++      visibility: hidden;
++    }
++
++    .debug-panel.is-visible {
++      content-visibility: visible;
++      visibility: visible;
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -207,8 +228,9 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn secondary" aria-controls="debug-panel" aria-expanded="false">Show Debug</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,20 +241,31 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <section id="debug-panel" class="debug-panel" aria-labelledby="debug-title" aria-hidden="true" inert>
++    <h2 id="debug-title">Rendering debug</h2>
++    <p>Cards: <span id="debug-card-count">0</span></p>
++    <p>Offscreen cards use automatic rendering containment.</p>
++    <p>Last initial render: <span id="debug-render-time">Pending</span></p>
++  </section>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
++    const debugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
++    const debugCardCount = document.getElementById('debug-card-count');
++    const debugRenderTime = document.getElementById('debug-render-time');
+     const cardCount = 500;
+ 
+ 
+ 
+     function createCard(index) {
+       const card = document.createElement('div');
+-      card.className = 'card';
++      card.className = 'card off-screen-card';
+ 
+       const layer = document.createElement('div');
+       layer.className = 'nested-layer';
+       card.appendChild(layer);
+@@ -265,8 +298,9 @@
+       requestAnimationFrame(() => {
+         setTimeout(() => {
+           const duration = Math.round(performance.now() - startTime);
+           timerSpan.textContent = `${duration}ms${suffix}`;
++          debugRenderTime.textContent = timerSpan.textContent;
+ 
+           if (duration < 75) {
+             detectedSpan.textContent = 'fast rendering! :)';
+             detectedSpan.style.color = '#16a34a';
+@@ -288,8 +322,9 @@
+       for (let i = 0; i < cardCount; i++) {
+         fragment.appendChild(createCard(i));
+       }
+       feed.appendChild(fragment);
++      debugCardCount.textContent = cardCount;
+ 
+       measureRender(startTime);
+     }
+ 
+@@ -298,9 +333,16 @@
+     });
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    debugBtn.addEventListener('click', () => {
++      const visible = debugPanel.classList.toggle('is-visible');
++      debugPanel.inert = !visible;
++      debugPanel.setAttribute('aria-hidden', String(!visible));
++      debugBtn.setAttribute('aria-expanded', String(visible));
++      debugBtn.textContent = visible ? 'Hide Debug' : 'Show Debug';
++    });
+ 
+   </script>
+ </body>
+ 
+-</html>
+\ No newline at end of file
++</html>

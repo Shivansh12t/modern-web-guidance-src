@@ -1,0 +1,101 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -108,9 +108,13 @@
+     }
+ 
+     .card {
+       background: white;
++      /* Padding derives from the inherited --card-density custom property,
++         so updating it on an ancestor re-styles every descendant card. */
+       padding: 20px;
++      padding: calc(20px * var(--card-density, 1));
++      transition: padding 0.3s;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+     }
+@@ -130,8 +134,41 @@
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
++    /* Layout density toggle */
++    #target-container {
++      --card-density: 1;
++    }
++
++    .density-controls {
++      text-align: center;
++      margin-top: 15px;
++    }
++
++    #toggle-spacious {
++      display: none;
++      border: 2px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      padding: 8px 16px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #toggle-spacious[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    /* Only show the toggle where CSS custom properties are supported */
++    @supports (--card-density: 1) {
++      #toggle-spacious {
++        display: inline-block;
++      }
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
+@@ -176,10 +213,15 @@
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++      <div class="density-controls">
++        <button type="button" id="toggle-spacious" aria-pressed="false" aria-controls="target-container">
++          Spacious layout
++        </button>
++      </div>
++      <div class="grid" id="target-container">
++        <div class="card" id="target-item">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+@@ -206,7 +248,23 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var toggle = document.getElementById('toggle-spacious');
++      var container = document.getElementById('target-container');
++      if (!toggle || !container) return;
++      if (!(window.CSS && CSS.supports && CSS.supports('--card-density', '1'))) return;
++
++      // A single property change on the container; cards inherit it via CSS.
++      toggle.addEventListener('click', function () {
++        var spacious = toggle.getAttribute('aria-pressed') !== 'true';
++        container.style.setProperty('--card-density', spacious ? '2' : '1');
++        toggle.setAttribute('aria-pressed', String(spacious));
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

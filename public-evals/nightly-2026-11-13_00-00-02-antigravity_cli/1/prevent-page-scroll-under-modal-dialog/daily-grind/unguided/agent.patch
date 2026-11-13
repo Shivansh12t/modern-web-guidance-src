@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..b6ed11e 100644
+--- a/index.html
++++ b/index.html
+@@ -153,13 +153,44 @@
+       font-size: 0.85rem;
+     }
+ 
++    html:has(dialog[open]) {
++      overflow: hidden;
++    }
++
+     body.modal-open {
+       overflow: hidden;
+       position: fixed;
++      width: 100%;
+     }
+ 
+     dialog {
+       overflow: visible;
++      margin: auto;
++      padding: 2rem;
++      border: none;
++      border-radius: 8px;
++      max-width: 420px;
++      width: 90%;
++      text-align: center;
++      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
++      color: var(--text);
++      background: white;
++    }
++
++    dialog h2 {
++      color: var(--primary);
++      margin-bottom: 0.75rem;
++    }
++
++    dialog p {
++      margin-bottom: 0.5rem;
++    }
++
++    dialog .btn {
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
++      font-family: inherit;
+     }
+ 
+     dialog::backdrop {
+@@ -230,10 +261,23 @@
+ 
+   <script>
+     const noticeDialog = document.getElementById("notice-dialog");
++    const closeNoticeBtn = document.getElementById("close-notice");
++
+     if (noticeDialog) {
+-      noticeDialog.show();
++      noticeDialog.showModal();
+       document.body.classList.add("modal-open");
+       document.body.style.overflow = "hidden";
++
++      noticeDialog.addEventListener("close", () => {
++        document.body.classList.remove("modal-open");
++        document.body.style.overflow = "";
++      });
++    }
++
++    if (closeNoticeBtn && noticeDialog) {
++      closeNoticeBtn.addEventListener("click", () => {
++        noticeDialog.close();
++      });
+     }
+   </script>
+ </body>

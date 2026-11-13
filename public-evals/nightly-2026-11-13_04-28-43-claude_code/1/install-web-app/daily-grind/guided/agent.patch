@@ -1,0 +1,202 @@
+diff --git a/icons/app-192.png b/icons/app-192.png
+new file mode 100644
+index 0000000..2d2ecf5
+Binary files /dev/null and b/icons/app-192.png differ
+diff --git a/icons/app-512.png b/icons/app-512.png
+new file mode 100644
+index 0000000..15c750b
+Binary files /dev/null and b/icons/app-512.png differ
+diff --git a/icons/app.svg b/icons/app.svg
+new file mode 100644
+index 0000000..5aa893e
+--- /dev/null
++++ b/icons/app.svg
+@@ -0,0 +1,9 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" fill="#4e342e"/>
++  <path fill="#ffab40" d="M352 222h18a52 52 0 0 1 0 104h-30v-28h30a24 24 0 0 0 0-48h-18z"/>
++  <path fill="#ffab40" d="M128 204h232v84a116 116 0 0 1-116 116a116 116 0 0 1-116-116z"/>
++  <rect fill="#ffab40" x="110" y="412" width="268" height="24" rx="12"/>
++  <rect fill="#ffab40" x="188" y="100" width="22" height="80" rx="11"/>
++  <rect fill="#ffab40" x="234" y="84" width="22" height="96" rx="11"/>
++  <rect fill="#ffab40" x="280" y="100" width="22" height="80" rx="11"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..0aaebc8 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,10 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="theme-color" content="#4e342e">
++  <link rel="manifest" href="/manifest.webmanifest">
++  <link rel="icon" href="/icons/app.svg" type="image/svg+xml">
++  <link rel="apple-touch-icon" href="/icons/app-192.png">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -93,6 +97,55 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .hero-actions {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-top: 15px;
++    }
++
++    .hero-actions .btn {
++      margin-top: 0;
++    }
++
++    .btn-secondary {
++      background: transparent;
++      border: 2px solid var(--accent);
++      color: white;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .btn-secondary:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .btn-secondary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .btn[aria-disabled="true"] {
++      opacity: 0.7;
++      cursor: progress;
++    }
++
++    .btn[hidden] {
++      display: none;
++    }
++
++    .install-status:empty {
++      display: none;
++    }
++
++    .install-status {
++      margin-top: 10px;
++      font-size: 0.9rem;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -171,7 +224,12 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <!-- Revealed only when the browser can show its own install consent UI. -->
++      <button id="install-app" type="button" class="btn btn-secondary" hidden>Install App</button>
++    </div>
++    <p id="install-status" class="install-status" role="status"></p>
+   </header>
+ 
+   <main class="container">
+@@ -207,6 +265,71 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const installButton = document.querySelector("#install-app");
++    const installStatus = document.querySelector("#install-status");
++    const supportsWebInstall = typeof Navigator.prototype.install === "function";
++    const isInstalled = window.matchMedia("(display-mode: standalone)").matches;
++    let deferredInstallPrompt;
++
++    if (supportsWebInstall && !isInstalled) {
++      installButton.hidden = false;
++    }
++
++    // Fallback for browsers without navigator.install() (e.g. current Chrome/Edge).
++    window.addEventListener("beforeinstallprompt", (event) => {
++      event.preventDefault();
++      deferredInstallPrompt = event;
++      if (!supportsWebInstall) {
++        installButton.hidden = false;
++      }
++    });
++
++    window.addEventListener("appinstalled", () => {
++      deferredInstallPrompt = undefined;
++      installButton.hidden = true;
++    });
++
++    installButton.addEventListener("click", async () => {
++      if (installButton.getAttribute("aria-disabled") === "true") {
++        return;
++      }
++      // aria-disabled (not disabled) keeps focus on the button.
++      installButton.setAttribute("aria-disabled", "true");
++
++      try {
++        if (supportsWebInstall) {
++          // Must be called directly in the click handler to keep user activation.
++          await navigator.install();
++          installStatus.textContent = "The Daily Grind app was installed or opened.";
++          installButton.hidden = true;
++        } else if (deferredInstallPrompt) {
++          // The event is single-use: clear it before awaiting the user's choice.
++          const promptEvent = deferredInstallPrompt;
++          deferredInstallPrompt = undefined;
++          await promptEvent.prompt();
++          const { outcome } = await promptEvent.userChoice;
++          installStatus.textContent =
++            outcome === "accepted"
++              ? "The Daily Grind app was installed."
++              : "Installation canceled.";
++          if (!deferredInstallPrompt) {
++            installButton.hidden = true;
++          }
++        }
++      } catch (error) {
++        if (error.name === "AbortError") {
++          installStatus.textContent = "Installation was canceled or could not complete.";
++        } else {
++          installStatus.textContent = "Installation could not start.";
++          console.error(error);
++        }
++      } finally {
++        installButton.removeAttribute("aria-disabled");
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..dd00e20
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,16 @@
++{
++  "id": "/",
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Order ethically sourced, locally roasted coffee from The Daily Grind.",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
++    { "src": "/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
++    { "src": "/icons/app.svg", "sizes": "any", "type": "image/svg+xml" }
++  ]
++}

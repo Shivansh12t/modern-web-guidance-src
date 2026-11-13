@@ -1,0 +1,240 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,30 +26,74 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Navigation
++       -----------------------------------------------------------------
++       The nav shrinks as the user scrolls through the first
++       --nav-shrink-distance pixels of the page. Every size is derived from
++       a single custom property, --shrink (0 = full size, 1 = compact),
++       which is driven by:
++         1. A CSS scroll-driven animation (modern browsers, no JS, runs
++            off the main thread).
++         2. A tiny rAF-throttled scroll listener (fallback for browsers
++            without animation-timeline support - see script at bottom).
++         3. A class toggle + CSS transition (last-resort fallback for very
++            old browsers without CSS custom properties, e.g. IE11).
++       The nav is position: fixed and the body reserves its full height,
++       so shrinking it never shifts the layout or the scroll position. */
++    @property --shrink {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 0;
++    }
++
++    :root {
++      --nav-height: 4.5rem;
++      --nav-height-compact: 3rem;
++      --nav-shrink-distance: 200px;
++    }
++
++    body {
++      /* Static value first for browsers without custom properties */
++      padding-top: 72px;
++      padding-top: var(--nav-height);
++    }
++
+     nav {
++      --shrink: 0;
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
++      position: fixed;
+       top: 0;
++      left: 0;
++      right: 0;
+       z-index: 1000;
++      height: 72px;
++      height: calc(var(--nav-height) - (var(--nav-height) - var(--nav-height-compact)) * var(--shrink));
++      box-shadow: 0 2px 12px rgba(0, 0, 0, 0);
++      box-shadow: 0 2px 12px rgba(0, 0, 0, calc(0.35 * var(--shrink)));
++      -webkit-backdrop-filter: blur(6px);
++      backdrop-filter: blur(6px);
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
++      font-size: calc(1.5rem - 0.3rem * var(--shrink));
+       font-weight: bold;
+       letter-spacing: 1px;
++      letter-spacing: calc(1px + 1px * var(--shrink));
++      white-space: nowrap;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -58,15 +102,89 @@
+     nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
++      font-size: calc(0.9rem - 0.05rem * var(--shrink));
+       transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    /* 1. Native scroll-linked animation */
++    @supports (animation-timeline: scroll()) {
++      @keyframes nav-shrink {
++        from { --shrink: 0; }
++        to   { --shrink: 1; }
++      }
++
++      nav {
++        animation: nav-shrink linear both;
++        animation-timeline: scroll(root block);
++        animation-range: 0 var(--nav-shrink-distance);
++      }
++    }
++
++    /* 3. Legacy fallback (no custom properties): discrete compact state
++          with a smooth transition, toggled by the script below. */
++    nav.nav--legacy {
++      -webkit-transition: height 0.25s ease, box-shadow 0.25s ease;
++      transition: height 0.25s ease, box-shadow 0.25s ease;
++    }
++
++    nav.nav--legacy .logo,
++    nav.nav--legacy a {
++      -webkit-transition: font-size 0.25s ease, color 0.3s;
++      transition: font-size 0.25s ease, color 0.3s;
++    }
++
++    nav.nav--legacy.nav--compact {
++      height: 48px;
++      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
++    }
++
++    nav.nav--legacy.nav--compact .logo {
++      font-size: 1.2rem;
++    }
++
++    nav.nav--legacy.nav--compact a {
++      font-size: 0.85rem;
++    }
++
++    /* Small screens: stack logo above links, so reserve more room */
++    @media (max-width: 700px) {
++      :root {
++        --nav-height: 6rem;
++        --nav-height-compact: 4.25rem;
++      }
++
++      body {
++        padding-top: 96px;
++        padding-top: var(--nav-height);
++      }
++
++      nav {
++        height: 96px;
++        height: calc(var(--nav-height) - (var(--nav-height) - var(--nav-height-compact)) * var(--shrink));
++        flex-direction: column;
++        justify-content: center;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        justify-content: center;
++      }
++
++      nav ul li {
++        margin: 0 8px;
++      }
++
++      nav.nav--legacy.nav--compact {
++        height: 68px;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+@@ -206,7 +324,68 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /* Fallbacks for browsers without CSS scroll-driven animations.
++       Written in ES5 so it also runs in old browsers. */
++    (function () {
++      var supports = window.CSS && CSS.supports;
++      if (supports && CSS.supports('animation-timeline', 'scroll()')) {
++        return; // Native CSS handles everything.
++      }
++
++      var nav = document.querySelector('nav');
++      if (!nav) return;
++
++      var hasCustomProps = supports && CSS.supports('--a', '0');
++      var distance = 200; // keep in sync with --nav-shrink-distance
++      var ticking = false;
++      var last = -1;
++
++      if (!hasCustomProps) {
++        nav.className += ' nav--legacy';
++      }
++
++      function getScrollY() {
++        return window.pageYOffset ||
++          document.documentElement.scrollTop ||
++          document.body.scrollTop || 0;
++      }
++
++      function update() {
++        ticking = false;
++        var progress = Math.min(Math.max(getScrollY() / distance, 0), 1);
++        if (progress === last) return;
++        last = progress;
++
++        if (hasCustomProps) {
++          // 2. Continuous, scroll-linked: same visuals as the native path.
++          nav.style.setProperty('--shrink', progress.toFixed(3));
++        } else {
++          // 3. Discrete toggle, smoothed by CSS transitions.
++          var compact = progress >= 0.5;
++          var has = /\bnav--compact\b/.test(nav.className);
++          if (compact && !has) {
++            nav.className += ' nav--compact';
++          } else if (!compact && has) {
++            nav.className = nav.className.replace(/\s*\bnav--compact\b/, '');
++          }
++        }
++      }
++
++      function onScroll() {
++        if (!ticking) {
++          ticking = true;
++          (window.requestAnimationFrame || function (cb) { setTimeout(cb, 16); })(update);
++        }
++      }
++
++      window.addEventListener('scroll', onScroll, false);
++      window.addEventListener('resize', onScroll, false);
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

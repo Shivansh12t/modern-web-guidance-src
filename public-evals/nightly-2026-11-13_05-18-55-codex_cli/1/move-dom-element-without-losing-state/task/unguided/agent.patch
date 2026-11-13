@@ -1,0 +1,195 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,80 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .roasting-section {
++      margin-top: 60px;
++      text-align: center;
++    }
++
++    .eyebrow {
++      color: #805b45;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.18em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .roasting-section h2 { font-size: 2rem; }
++    .roasting-section > p { margin: 8px 0 24px; }
++    .video-home { max-width: 860px; margin: auto; }
++    .hero, .video-home { scroll-margin-top: 90px; }
++    .video-player {
++      width: 100%;
++      overflow: hidden;
++      border-radius: 10px;
++      background: #241b17;
++      color: white;
++      text-align: left;
++      box-shadow: 0 12px 35px rgba(62, 39, 35, 0.18);
++    }
++
++    .video-frame { aspect-ratio: 16 / 9; }
++    .video-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
++    .video-toolbar {
++      min-height: 66px;
++      padding: 12px 18px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .video-toolbar span { font-size: 0.85rem; color: #e1d4cb; }
++    .theater-toggle {
++      border: 1px solid #b79b85;
++      border-radius: 4px;
++      background: transparent;
++      color: white;
++      padding: 8px 14px;
++      font: inherit;
++      font-size: 0.85rem;
++      cursor: pointer;
++    }
++
++    .theater-toggle:hover { background: #4e342e; }
++    .theater-toggle:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .hero-video-slot { display: none; width: 100%; max-width: 1100px; }
++    .hero.theater-active { height: auto; min-height: 60vh; padding: 36px 20px; }
++    .hero.theater-active > h1,
++    .hero.theater-active > p,
++    .hero.theater-active > a { display: none; }
++    .hero.theater-active .hero-video-slot { display: block; }
++    .hero-video-slot.is-overlay-slot::before { content: ''; display: block; aspect-ratio: 16 / 9; }
++    .hero-video-slot.is-overlay-slot::after { content: ''; display: block; height: var(--toolbar-height, 66px); }
++    .video-player.is-positioned { position: absolute; z-index: 1; }
++    .video-placeholder { padding: 26px 20px; border: 1px dashed var(--secondary); border-radius: 8px; }
++    .video-placeholder[hidden] { display: none; }
++
++    @media (max-width: 600px) {
++      .video-toolbar { padding: 12px; }
++      .video-toolbar span { flex-basis: 100%; }
++      .hero h1 { font-size: 2.4rem; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -171,8 +243,9 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-video-slot" id="hero-video-slot"></div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -194,8 +267,33 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="roasting-section" aria-labelledby="roasting-title">
++      <div class="eyebrow">From bean to brew</div>
++      <h2 id="roasting-title">The Art of the Roast</h2>
++      <p>Discover how a little heat brings out a world of flavor.</p>
++      <div class="video-home" id="video-home">
++        <div class="video-player" id="roasting-player">
++          <div class="video-frame">
++            <iframe id="roasting-video" src="https://www.youtube.com/embed/N6BJVM5tvnw"
++              title="Coffee Roasting Explained by James Hoffmann"
++              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
++              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
++          </div>
++          <div class="video-toolbar">
++            <span>Coffee Roasting Explained · James Hoffmann</span>
++            <button class="theater-toggle" id="theater-toggle" type="button"
++              aria-pressed="false" aria-controls="roasting-player">Enter theater mode</button>
++          </div>
++        </div>
++        <p class="video-placeholder" id="video-placeholder" role="status" hidden>
++          Now playing in the hero above. Use “Exit theater mode” to bring the video back.
++        </p>
++      </div>
++      <noscript><p>Theater mode requires JavaScript. You can still play the video here.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +304,66 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const hero = document.querySelector('.hero');
++    const heroSlot = document.getElementById('hero-video-slot');
++    const videoHome = document.getElementById('video-home');
++    const player = document.getElementById('roasting-player');
++    const toggle = document.getElementById('theater-toggle');
++    const placeholder = document.getElementById('video-placeholder');
++    const canMoveWithoutReloading = typeof heroSlot.moveBefore === 'function';
++    let theaterActive = false;
++
++    // Older browsers reinitialize iframes when reparented. Position the same
++    // player over the hero slot instead, keeping its browsing context alive.
++    function positionPlayer() {
++      if (!theaterActive || canMoveWithoutReloading) return;
++      const bounds = heroSlot.getBoundingClientRect();
++      player.style.width = `${bounds.width}px`;
++      heroSlot.style.setProperty('--toolbar-height', `${player.querySelector('.video-toolbar').offsetHeight}px`);
++      player.style.left = `${bounds.left + window.scrollX}px`;
++      player.style.top = `${bounds.top + window.scrollY}px`;
++    }
++
++    toggle.addEventListener('click', () => {
++      theaterActive = !theaterActive;
++      hero.classList.toggle('theater-active', theaterActive);
++      placeholder.hidden = !theaterActive;
++
++      if (canMoveWithoutReloading) {
++        // Atomic moves preserve the iframe's playback, fullscreen, and focus state.
++        const destination = theaterActive ? heroSlot : videoHome;
++        destination.moveBefore(player, theaterActive ? null : placeholder);
++      } else {
++        heroSlot.classList.toggle('is-overlay-slot', theaterActive);
++        player.classList.toggle('is-positioned', theaterActive);
++        if (theaterActive) positionPlayer();
++        else {
++          player.style.removeProperty('width');
++          player.style.removeProperty('left');
++          player.style.removeProperty('top');
++        }
++      }
++
++      toggle.setAttribute('aria-pressed', String(theaterActive));
++      toggle.textContent = theaterActive ? 'Exit theater mode' : 'Enter theater mode';
++      (theaterActive ? hero : videoHome).scrollIntoView({ block: 'start', behavior: 'instant' });
++    });
++
++    // Account for responsive wrapping, font loading, and other layout changes.
++    if (typeof ResizeObserver === 'function') {
++      const layoutObserver = new ResizeObserver(positionPlayer);
++      layoutObserver.observe(heroSlot);
++      layoutObserver.observe(player);
++      layoutObserver.observe(document.querySelector('nav'));
++    }
++    window.addEventListener('resize', positionPlayer);
++    window.addEventListener('keydown', (event) => {
++      if (event.key === 'Escape' && theaterActive) toggle.click();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,163 @@
+diff --git a/index.html b/index.html
+index 66c9173..55b1f15 100644
+--- a/index.html
++++ b/index.html
+@@ -28,7 +28,7 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -46,23 +46,23 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+@@ -94,6 +94,43 @@
+     }
+ 
+     /* Content Sections */
++    .breadcrumbs {
++      max-width: 1100px;
++      margin: 24px auto 0;
++      padding: 0 20px;
++      font-size: 0.9rem;
++    }
++
++    .breadcrumbs ol {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem;
++      list-style: none;
++    }
++
++    .breadcrumbs li {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    .breadcrumbs .separator {
++      color: var(--primary);
++    }
++
++    .breadcrumbs a {
++      color: var(--primary);
++      text-underline-offset: 3px;
++    }
++
++    .breadcrumbs a:hover {
++      text-decoration-thickness: 2px;
++    }
++
++    .breadcrumbs [aria-current="page"] {
++      font-weight: 600;
++    }
++
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -157,7 +194,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -174,6 +211,12 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <nav class="breadcrumbs" aria-label="Breadcrumb">
++    <ol id="breadcrumb-list">
++      <li><span aria-current="page">Home</span></li>
++    </ol>
++  </nav>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +250,55 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const breadcrumbLabels = {
++      menu: 'Menu',
++      seasonal: 'Maple Oat Latte',
++      espresso: 'Dark Roast Espresso',
++      'cold-brew': 'Cold Brew',
++      locations: 'Locations',
++      rewards: 'Rewards',
++      account: 'My Account',
++      logout: 'Logout',
++      'order-online': 'Order Online',
++      about: 'Our Story',
++      careers: 'Join the Team',
++      contact: 'Contact Us',
++      'privacy-policy': 'Privacy'
++    };
++    const pathSegments = window.location.pathname.split('/').filter(Boolean);
++    if (pathSegments[pathSegments.length - 1] === 'index.html') {
++      pathSegments.pop();
++    }
++    const crumbs = [{ label: 'Home', href: '/' }];
++    pathSegments.forEach((segment, index) => {
++      const label = breadcrumbLabels[segment] || segment.replace(/[-_]/g, ' ')
++        .replace(/\b\w/g, character => character.toUpperCase());
++      crumbs.push({ label, href: '/' + pathSegments.slice(0, index + 1).join('/') });
++    });
++    const breadcrumbList = document.getElementById('breadcrumb-list');
++    breadcrumbList.replaceChildren(...crumbs.map((crumb, index) => {
++      const item = document.createElement('li');
++      if (index > 0) {
++        const separator = document.createElement('span');
++        separator.className = 'separator';
++        separator.textContent = '/';
++        separator.setAttribute('aria-hidden', 'true');
++        item.append(separator);
++      }
++      const isCurrent = index === crumbs.length - 1;
++      const label = document.createElement(isCurrent ? 'span' : 'a');
++      label.textContent = crumb.label;
++      if (isCurrent) {
++        label.setAttribute('aria-current', 'page');
++      } else {
++        label.href = crumb.href;
++      }
++      item.append(label);
++      return item;
++    }));
++  </script>
++
+ </body>
+ 
+ </html>

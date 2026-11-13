@@ -1,0 +1,138 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,76 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .payment-section {
++      max-width: 580px;
++      margin: 50px auto 0;
++      padding: 30px;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .payment-section > p {
++      margin: 8px 0 24px;
++    }
++
++    .payment-form label {
++      display: block;
++      font-weight: 600;
++      margin-bottom: 6px;
++    }
++
++    .payment-form input {
++      width: 100%;
++      padding: 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .payment-form input:focus-visible,
++    .payment-form button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .payment-field {
++      margin-bottom: 18px;
++    }
++
++    .payment-row {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 18px;
++    }
++
++    .payment-form .btn {
++      width: 100%;
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .payment-status {
++      margin-top: 16px;
++    }
++
++    @media (max-width: 480px) {
++      .payment-section {
++        padding: 20px;
++      }
++
++      .payment-row {
++        grid-template-columns: 1fr;
++        gap: 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +262,42 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="payment-section" aria-labelledby="payment-heading">
++      <h2 id="payment-heading">Payment details</h2>
++      <p>Enter your card details below. This demo form does not process payments.</p>
++      <form class="payment-form" id="payment-form">
++        <div class="payment-field">
++          <label for="card-number">Card number</label>
++          <input id="card-number" type="text" inputmode="numeric" autocomplete="cc-number"
++            placeholder="1234 5678 9012 3456" pattern="[0-9]( ?[0-9]){11,18}" maxlength="37"
++            title="Enter 12 to 19 digits, with optional spaces." required>
++        </div>
++        <div class="payment-field">
++          <label for="card-name">Name on card</label>
++          <input id="card-name" type="text" autocomplete="cc-name" placeholder="Alex Morgan"
++            maxlength="100" pattern=".*\S.*" required>
++        </div>
++        <div class="payment-row">
++          <div class="payment-field">
++            <label for="card-expiry">Expiry date</label>
++            <input id="card-expiry" type="text" inputmode="numeric" autocomplete="cc-exp"
++              placeholder="MM/YY" pattern="(0[1-9]|1[0-2])/[0-9]{2}" maxlength="5"
++              title="Enter a month and year in MM/YY format." required>
++          </div>
++          <div class="payment-field">
++            <label for="card-security">Security code</label>
++            <input id="card-security" type="password" inputmode="numeric" autocomplete="cc-csc"
++              placeholder="CVV" pattern="[0-9]{3,4}" maxlength="4"
++              title="Enter the 3 or 4 digit security code on your card." required>
++          </div>
++        </div>
++        <button class="btn" type="submit">Check payment details</button>
++        <p class="payment-status" id="payment-status" role="status"></p>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +308,14 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.getElementById('payment-form').addEventListener('submit', function (event) {
++      event.preventDefault();
++      document.getElementById('payment-status').textContent =
++        'Form completed. No payment has been processed or card details sent.';
++    });
++  </script>
+ </body>
+ 
+ </html>

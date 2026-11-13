@@ -1,0 +1,318 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -27,9 +27,9 @@
+       background-color: var(--light);
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,34 +45,169 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .menu-btn {
++      display: inline-flex;
++      flex-direction: column;
++      justify-content: center;
++      gap: 5px;
++      width: 44px;
++      height: 44px;
++      padding: 10px;
++      background: transparent;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      cursor: pointer;
++      transition: border-color 0.3s;
++    }
++
++    .menu-btn:hover,
++    .menu-btn:focus-visible {
++      border-color: var(--accent);
++    }
++
++    .menu-btn span {
++      display: block;
++      height: 2px;
++      background: white;
++      border-radius: 1px;
++    }
++
++    /* Navigation drawer */
++    .Drawer {
++      /* Leaves a peek of page content visible on phones as a tap-outside affordance. */
++      --drawer-width: min(20em, 80dvw, 100dvw - 24px);
++      /* 0 = fully closed, 1 = fully open; driven by scroll position. */
++      --drawer-backdrop: 0;
++
++      inset: 0;
++      width: auto;
++      height: auto;
++      max-width: none;
++      max-height: none;
++      margin: 0;
++      padding: 0;
++      background: transparent;
++      border: 0;
++      overflow: visible;
++    }
++
++    .Drawer::backdrop {
++      background: #000;
++      opacity: calc(var(--drawer-backdrop) / 2);
++    }
++
++    .Drawer-scroller {
++      position: relative;
++      display: grid;
++      grid-template-columns: var(--drawer-width) 100%;
++      overflow-x: scroll;
++      overscroll-behavior: none;
++      scrollbar-width: none;
++      scroll-snap-type: x mandatory;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .Drawer-scroller {
++        scroll-behavior: smooth;
++      }
++    }
++
++    /* Empty spacer creating the "closed" snap stop. */
++    .Drawer-scroller::after {
++      content: '';
++      scroll-snap-align: end;
++      scroll-initial-target: nearest;
++    }
++
++    .Drawer-sheet {
++      display: grid;
++      grid-template-rows: auto 1fr;
++      height: 100svh;
++      background: var(--primary);
++      color: white;
++      overflow-y: auto;
++      scroll-snap-align: start;
++      scrollbar-width: none;
++      box-shadow: 4px 0 16px rgba(0, 0, 0, 0.3);
++    }
++
++    .Drawer-header {
+       display: flex;
+-      list-style: none;
++      justify-content: space-between;
++      align-items: center;
++      padding: 1rem 1.25rem;
++      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .Drawer-close {
++      width: 44px;
++      height: 44px;
++      font-size: 1.75rem;
++      line-height: 1;
++      color: white;
++      background: transparent;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      cursor: pointer;
+     }
+ 
+-    nav a {
++    .Drawer-close:hover,
++    .Drawer-close:focus-visible {
++      border-color: var(--accent);
++    }
++
++    .Drawer-sheet ul {
++      list-style: none;
++      padding: 1rem 0;
++    }
++
++    .Drawer-sheet li a {
++      display: block;
++      padding: 0.85rem 1.25rem;
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 1rem;
++      transition: color 0.3s, background-color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .Drawer-sheet li a:hover,
++    .Drawer-sheet li a:focus-visible {
+       color: var(--accent);
++      background: rgba(255, 255, 255, 0.06);
+     }
+ 
+-    .logout-link {
++    .Drawer-sheet .logout-link {
++      margin: 1rem 1.25rem 0;
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+       border-radius: 4px;
++      text-align: center;
+     }
+ 
++    @supports (animation-timeline: scroll()) {
++      .Drawer {
++        timeline-scope: --drawer-fade;
++        animation: fade-drawer-backdrop linear both;
++        animation-timeline: --drawer-fade;
++      }
++
++      .Drawer-scroller {
++        scroll-timeline: --drawer-fade x;
++      }
++
++      @property --drawer-backdrop {
++        syntax: '<number>';
++        inherits: true;
++        initial-value: 0;
++      }
++
++      @keyframes fade-drawer-backdrop {
++        0% { --drawer-backdrop: 1 }
++        100% { --drawer-backdrop: 0 }
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -156,19 +291,38 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Site">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <button id="drawer-open" class="menu-btn" type="button" aria-label="Menu" aria-expanded="false"
++      aria-controls="drawer">
++      <span aria-hidden="true"></span>
++      <span aria-hidden="true"></span>
++      <span aria-hidden="true"></span>
++    </button>
+   </nav>
+ 
++  <dialog class="Drawer" id="drawer" aria-label="Navigation menu">
++    <div class="Drawer-scroller">
++      <nav class="Drawer-sheet" aria-label="Main">
++        <div class="Drawer-header">
++          <div class="logo">THE DAILY GRIND</div>
++          <button id="drawer-close" class="Drawer-close" type="button" aria-label="Close menu" autofocus>
++            <span aria-hidden="true">&times;</span>
++          </button>
++        </div>
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++  </dialog>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +360,76 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const drawer = document.getElementById('drawer');
++    const openBtn = document.getElementById('drawer-open');
++    const closeBtn = document.getElementById('drawer-close');
++    const scroller = drawer.querySelector('.Drawer-scroller');
++    const sheet = drawer.querySelector('.Drawer-sheet');
++
++    async function openDrawer() {
++      drawer.showModal();
++
++      if (!CSS.supports('scroll-initial-target', 'nearest')) {
++        // Jump to the closed stop so the scroll below animates the sheet in.
++        scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'instant' });
++        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
++      }
++
++      scroller.scrollTo({ left: 0, behavior: 'auto' });
++    }
++
++    function closeDrawer() {
++      // Slide out; the IntersectionObserver closes the dialog once the sheet is gone.
++      scroller.scrollTo({ left: scroller.offsetWidth, behavior: 'auto' });
++    }
++
++    function onDrawerOpened() {
++      openBtn.setAttribute('aria-expanded', 'true');
++    }
++
++    function onDrawerClosed() {
++      if (drawer.open) drawer.close();
++      openBtn.setAttribute('aria-expanded', 'false');
++    }
++
++    const visibleThreshold = 1 / window.innerWidth;
++    const observer = new IntersectionObserver(
++      (entries) => {
++        const entry = entries.at(-1);
++        if (entry.intersectionRatio < visibleThreshold) onDrawerClosed();
++        if (entry.intersectionRatio === 1) onDrawerOpened();
++      },
++      { root: drawer, threshold: [visibleThreshold, 1] },
++    );
++    observer.observe(sheet);
++
++    openBtn.addEventListener('click', openDrawer);
++    closeBtn.addEventListener('click', closeDrawer);
++
++    // Tap outside the sheet (on the dimmed area) closes the drawer.
++    drawer.addEventListener('click', (event) => {
++      if (!sheet.contains(event.target)) closeDrawer();
++    });
++
++    // Escape: slide out instead of closing instantly.
++    drawer.addEventListener('cancel', (event) => {
++      if (event.cancelable) {
++        event.preventDefault();
++        closeDrawer();
++      }
++    });
++
++    // Fallback backdrop fade where scroll-driven animations are unsupported.
++    if (!CSS.supports('animation-timeline: scroll()')) {
++      scroller.addEventListener('scroll', () => {
++        const ratio = 1 - scroller.scrollLeft / sheet.offsetWidth;
++        drawer.style.setProperty('--drawer-backdrop', Math.min(1, Math.max(0, ratio)));
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

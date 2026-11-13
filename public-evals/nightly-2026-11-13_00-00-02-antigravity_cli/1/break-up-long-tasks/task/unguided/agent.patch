@@ -1,0 +1,1551 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -7,12 +7,19 @@
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #e68a00;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --surface-warm: #fdfaf7;
++      --border: #e0d6d1;
++      --success: #2e7d32;
+     }
+ 
+     * {
+       box-sizing: border-box;
+@@ -48,8 +55,10 @@
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      flex-wrap: wrap;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
+@@ -127,15 +136,554 @@
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background 0.3s, transform 0.1s;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-family: inherit;
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .btn:hover:not(:disabled) {
++      background: var(--primary-dark);
+     }
+ 
++    .btn:active:not(:disabled) {
++      transform: translateY(1px);
++    }
++
++    .btn:disabled {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    /* Coffee Flavor Profile Simulation Tool */
++    .simulator-section {
++      margin-top: 48px;
++      background: var(--surface);
++      border-radius: 12px;
++      box-shadow: 0 4px 18px rgba(62, 39, 35, 0.1);
++      border: 1px solid var(--border);
++      overflow: hidden;
++    }
++
++    .simulator-header {
++      background: linear-gradient(135deg, #4e342e 0%, #3e2723 100%);
++      color: white;
++      padding: 28px 32px;
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      flex-wrap: wrap;
++      gap: 16px;
++    }
++
++    .simulator-header h2 {
++      font-size: 1.75rem;
++      margin-bottom: 6px;
++    }
++
++    .simulator-header p {
++      color: var(--secondary);
++      font-size: 0.95rem;
++      max-width: 680px;
++    }
++
++    .worker-badge {
++      background: rgba(255, 171, 64, 0.18);
++      border: 1px solid var(--accent);
++      color: var(--accent);
++      padding: 6px 12px;
++      border-radius: 999px;
++      font-size: 0.8rem;
++      font-weight: 600;
++      letter-spacing: 0.3px;
++      white-space: nowrap;
++    }
++
++    .simulator-body {
++      padding: 28px 32px;
++    }
++
++    /* Preset Bar */
++    .presets-bar {
++      display: flex;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-bottom: 24px;
++      padding-bottom: 18px;
++      border-bottom: 1px solid var(--border);
++    }
++
++    .presets-label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--text-muted);
++      margin-right: 4px;
++    }
++
++    .preset-chip {
++      background: var(--surface-warm);
++      border: 1px solid var(--secondary);
++      color: var(--primary);
++      padding: 6px 14px;
++      border-radius: 20px;
++      font-size: 0.85rem;
++      font-weight: 500;
++      cursor: pointer;
++      transition: all 0.2s;
++    }
++
++    .preset-chip:hover,
++    .preset-chip.active {
++      background: var(--primary);
++      color: white;
++      border-color: var(--primary);
++    }
++
++    /* Controls and Radar Layout */
++    .sim-config-grid {
++      display: grid;
++      grid-template-columns: 1.2fr 1fr;
++      gap: 28px;
++      align-items: start;
++    }
++
++    @media (max-width: 860px) {
++      .sim-config-grid {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    .panel-box {
++      background: var(--surface-warm);
++      border: 1px solid var(--border);
++      border-radius: 10px;
++      padding: 20px;
++    }
++
++    .panel-box h3 {
++      font-size: 1.1rem;
++      color: var(--primary);
++      margin-bottom: 14px;
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++    }
++
++    .slider-group {
++      margin-bottom: 14px;
++    }
++
++    .slider-header {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.9rem;
++      font-weight: 600;
++      margin-bottom: 4px;
++    }
++
++    .slider-header span.desc {
++      font-weight: 400;
++      color: var(--text-muted);
++      font-size: 0.8rem;
++    }
++
++    .slider-input {
++      width: 100%;
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .options-row {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
++      gap: 12px;
++      margin-top: 16px;
++    }
++
++    .field-group label {
++      display: block;
++      font-size: 0.82rem;
++      font-weight: 600;
++      color: var(--text-muted);
++      margin-bottom: 4px;
++    }
++
++    .field-group select,
++    .field-group input[type="number"],
++    .field-group input[type="text"] {
++      width: 100%;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.9rem;
++      color: var(--text);
++      background: white;
++      font-family: inherit;
++    }
++
++    .action-bar {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 20px;
++      align-items: center;
++    }
++
++    .btn-simulate {
++      background: var(--accent);
++      color: #2b1712;
++      font-weight: 700;
++      margin-top: 0;
++      padding: 11px 22px;
++    }
++
++    .btn-simulate:hover:not(:disabled) {
++      background: var(--accent-dark);
++      color: white;
++    }
++
++    .btn-secondary {
++      background: white;
++      color: var(--primary);
++      border: 1px solid var(--secondary);
++      margin-top: 0;
++      padding: 10px 16px;
++    }
++
++    .btn-secondary:hover:not(:disabled) {
++      background: var(--secondary);
++    }
++
++    /* Progress & Responsiveness Monitor */
++    .execution-monitor {
++      margin-top: 24px;
++      padding: 18px 20px;
++      border-radius: 10px;
++      background: #f6f0ed;
++      border: 1px solid var(--secondary);
++    }
++
++    .monitor-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-bottom: 10px;
++    }
++
++    .status-pill {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.85rem;
++      font-weight: 700;
++      padding: 4px 12px;
++      border-radius: 999px;
++      background: #e0d6d1;
++      color: var(--primary);
++    }
++
++    .status-pill.running {
++      background: #fff3e0;
++      color: #e65100;
++    }
++
++    .status-pill.completed {
++      background: #e8f5e9;
++      color: var(--success);
++    }
++
++    .status-dot {
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      background: currentColor;
++    }
++
++    .status-pill.running .status-dot {
++      animation: pulseDot 0.9s infinite alternate;
++    }
++
++    @keyframes pulseDot {
++      from {
++        opacity: 0.3;
++        transform: scale(0.85);
++      }
++      to {
++        opacity: 1;
++        transform: scale(1.25);
++      }
++    }
++
++    .progress-track {
++      width: 100%;
++      height: 14px;
++      background: #dfd5d0;
++      border-radius: 999px;
++      overflow: hidden;
++      margin-bottom: 10px;
++    }
++
++    .progress-fill {
++      height: 100%;
++      width: 0%;
++      background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
++      transition: width 0.08s linear;
++    }
++
++    .sr-only-progress {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++    }
++
++    .monitor-stats {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      font-size: 0.85rem;
++      color: var(--text-muted);
++    }
++
++    .responsiveness-widget {
++      display: flex;
++      align-items: center;
++      gap: 10px;
++      background: white;
++      padding: 6px 12px;
++      border-radius: 6px;
++      border: 1px solid var(--border);
++    }
++
++    .btn-mini {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 4px 10px;
++      border-radius: 4px;
++      font-size: 0.8rem;
++      cursor: pointer;
++    }
++
++    .btn-mini:hover {
++      background: var(--primary-dark);
++    }
++
++    /* Radar SVG Chart */
++    .chart-wrapper {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++    }
++
++    .radar-svg {
++      width: 100%;
++      max-width: 300px;
++      height: auto;
++    }
++
++    .chart-legend {
++      display: flex;
++      gap: 18px;
++      font-size: 0.82rem;
++      margin-top: 8px;
++    }
++
++    .legend-item {
++      display: flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .legend-swatch {
++      width: 12px;
++      height: 12px;
++      border-radius: 3px;
++    }
++
++    .comparison-bars {
++      width: 100%;
++      margin-top: 14px;
++      border-top: 1px solid var(--border);
++      padding-top: 12px;
++      display: grid;
++      gap: 8px;
++    }
++
++    .comp-row {
++      display: grid;
++      grid-template-columns: 76px 1fr 56px;
++      align-items: center;
++      gap: 8px;
++      font-size: 0.8rem;
++    }
++
++    .comp-track {
++      height: 8px;
++      background: #e6ddd8;
++      border-radius: 4px;
++      position: relative;
++      overflow: hidden;
++    }
++
++    .comp-bar-sim {
++      height: 100%;
++      background: var(--primary);
++      border-radius: 4px;
++      transition: width 0.2s ease;
++    }
++
++    /* Summary KPI Row */
++    .kpi-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 16px;
++      margin-top: 24px;
++    }
++
++    .kpi-card {
++      background: var(--surface-warm);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 14px 16px;
++    }
++
++    .kpi-label {
++      font-size: 0.78rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: var(--text-muted);
++      font-weight: 600;
++    }
++
++    .kpi-value {
++      font-size: 1.5rem;
++      font-weight: 700;
++      color: var(--primary);
++      margin-top: 2px;
++    }
++
++    .kpi-sub {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++    }
++
++    /* Top Matching Blends Results */
++    .results-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      flex-wrap: wrap;
++      gap: 12px;
++      margin-top: 28px;
++      margin-bottom: 14px;
++    }
++
++    .results-header h3 {
++      color: var(--primary);
++      font-size: 1.2rem;
++    }
++
++    .results-filter {
++      display: flex;
++      gap: 10px;
++      align-items: center;
++    }
++
++    .results-filter input {
++      padding: 7px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-size: 0.88rem;
++      min-width: 220px;
++    }
++
++    .blends-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 16px;
++    }
++
++    .blend-card {
++      background: white;
++      border: 1px solid var(--border);
++      border-radius: 10px;
++      padding: 16px;
++      cursor: pointer;
++      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
++      text-align: left;
++    }
++
++    .blend-card:hover {
++      border-color: var(--accent);
++      box-shadow: 0 4px 12px rgba(62, 39, 35, 0.08);
++      transform: translateY(-2px);
++    }
++
++    .blend-card.selected {
++      border: 2px solid var(--primary);
++      background: #fdfaf7;
++    }
++
++    .blend-card-top {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-bottom: 8px;
++    }
++
++    .blend-id {
++      font-weight: 700;
++      color: var(--primary);
++      font-size: 0.95rem;
++    }
++
++    .match-badge {
++      background: #e8f5e9;
++      color: var(--success);
++      font-weight: 700;
++      font-size: 0.82rem;
++      padding: 3px 9px;
++      border-radius: 999px;
++    }
++
++    .blend-formula {
++      font-size: 0.88rem;
++      font-weight: 600;
++      color: var(--text);
++      margin-bottom: 8px;
++    }
++
++    .blend-meta {
++      font-size: 0.8rem;
++      color: var(--text-muted);
++      margin-bottom: 10px;
++    }
++
++    .notes-tags {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 6px;
++    }
++
++    .note-tag {
++      background: #efebe9;
++      color: var(--primary);
++      font-size: 0.75rem;
++      padding: 2px 8px;
++      border-radius: 4px;
++      font-weight: 500;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -160,8 +708,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
++      <li><a href="#flavor-simulator">Flavor Simulator</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+@@ -194,8 +743,285 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <!-- Coffee Flavor Profile Simulation Tool -->
++    <section id="flavor-simulator" class="simulator-section" aria-labelledby="simulator-heading">
++      <div class="simulator-header">
++        <div>
++          <h2 id="simulator-heading">Coffee Flavor Profile Simulation Tool</h2>
++          <p>Simulate thousands of multi-origin coffee recipe blends, roast curves, and extraction parameters in parallel without blocking or freezing the page.</p>
++        </div>
++        <span id="execution-engine-badge" class="worker-badge">Non-Blocking Web Worker Engine</span>
++      </div>
++
++      <div class="simulator-body">
++        <!-- Quick Flavor Presets -->
++        <div class="presets-bar" role="group" aria-label="Flavor Profile Presets">
++          <span class="presets-label">Quick Presets:</span>
++          <button type="button" class="preset-chip active" data-preset="signature">House Velvet Pour Over</button>
++          <button type="button" class="preset-chip" data-preset="espresso">Bold Espresso Crema</button>
++          <button type="button" class="preset-chip" data-preset="floral">Bright Ethiopian Floral</button>
++          <button type="button" class="preset-chip" data-preset="coldbrew">Caramel Cold Brew Reserve</button>
++        </div>
++
++        <div class="sim-config-grid">
++          <!-- Left Column: Target Flavor Sliders & Batch Settings -->
++          <div class="panel-box">
++            <h3>
++              <span>Target Sensory Profile</span>
++              <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted);">Scale: 0 – 100</span>
++            </h3>
++
++            <div class="slider-group">
++              <div class="slider-header">
++                <label for="slider-acidity">Acidity <span class="desc">(Bright / Citrusy)</span></label>
++                <span id="val-acidity">68</span>
++              </div>
++              <input id="slider-acidity" class="slider-input" type="range" min="10" max="100" value="68">
++            </div>
++
++            <div class="slider-group">
++              <div class="slider-header">
++                <label for="slider-body">Body <span class="desc">(Mouthfeel / Richness)</span></label>
++                <span id="val-body">74</span>
++              </div>
++              <input id="slider-body" class="slider-input" type="range" min="10" max="100" value="74">
++            </div>
++
++            <div class="slider-group">
++              <div class="slider-header">
++                <label for="slider-sweetness">Sweetness <span class="desc">(Caramel / Honey)</span></label>
++                <span id="val-sweetness">82</span>
++              </div>
++              <input id="slider-sweetness" class="slider-input" type="range" min="10" max="100" value="82">
++            </div>
++
++            <div class="slider-group">
++              <div class="slider-header">
++                <label for="slider-bitterness">Bitterness <span class="desc">(Dark Cocoa / Roast)</span></label>
++                <span id="val-bitterness">40</span>
++              </div>
++              <input id="slider-bitterness" class="slider-input" type="range" min="10" max="100" value="40">
++            </div>
++
++            <div class="slider-group">
++              <div class="slider-header">
++                <label for="slider-aroma">Aroma <span class="desc">(Floral / Spice Complexity)</span></label>
++                <span id="val-aroma">85</span>
++              </div>
++              <input id="slider-aroma" class="slider-input" type="range" min="10" max="100" value="85">
++            </div>
++
++            <div class="options-row">
++              <div class="field-group">
++                <label for="select-roast">Roast Profile</label>
++                <select id="select-roast">
++                  <option value="All">All Roasts (Auto-Optimize)</option>
++                  <option value="Light">Light Roast</option>
++                  <option value="Medium" selected>Medium Roast</option>
++                  <option value="Medium-Dark">Medium-Dark Roast</option>
++                  <option value="Dark">Dark Roast</option>
++                </select>
++              </div>
++
++              <div class="field-group">
++                <label for="select-brew">Brewing Method</label>
++                <select id="select-brew">
++                  <option value="Pour Over" selected>Pour Over (V60 / Chemex)</option>
++                  <option value="Espresso">Espresso (9 Bar)</option>
++                  <option value="Cold Brew">Cold Brew (18h Steep)</option>
++                  <option value="French Press">French Press</option>
++                  <option value="AeroPress">AeroPress</option>
++                </select>
++              </div>
++
++              <div class="field-group">
++                <label for="select-batch-size">Recipe Batch Size</label>
++                <select id="select-batch-size">
++                  <option value="5000">5,000 Recipe Blends</option>
++                  <option value="15000">15,000 Recipe Blends</option>
++                  <option value="25000" selected>25,000 Recipe Blends</option>
++                  <option value="50000">50,000 Recipe Blends</option>
++                  <option value="100000">100,000 Recipe Blends</option>
++                </select>
++              </div>
++            </div>
++
++            <div class="action-bar">
++              <button id="run-simulation-btn" type="button" class="btn btn-simulate">
++                Run Batch Simulation
++              </button>
++              <button id="cancel-simulation-btn" type="button" class="btn btn-secondary" disabled>
++                Cancel
++              </button>
++              <button id="reset-simulation-btn" type="button" class="btn btn-secondary">
++                Reset Defaults
++              </button>
++            </div>
++          </div>
++
++          <!-- Right Column: Visual Flavor Radar & Best Match Breakdown -->
++          <div class="panel-box">
++            <h3>
++              <span>Sensory Profile Radar</span>
++              <span id="inspected-blend-label" style="font-size: 0.82rem; color: var(--text-muted);">Best Simulated Match</span>
++            </h3>
++
++            <div class="chart-wrapper">
++              <svg id="flavor-radar-svg" class="radar-svg" viewBox="0 0 260 250" role="img" aria-label="Flavor Profile Radar Comparison Chart">
++                <!-- Background pentagon rings -->
++                <g stroke="#dfd5d0" stroke-width="1" fill="none">
++                  <polygon points="130,30 225,99 189,211 71,211 35,99" fill="#faf6f3" />
++                  <polygon points="130,50 206,105 177,195 83,195 54,105" />
++                  <polygon points="130,70 187,111 165,179 95,179 73,111" />
++                  <polygon points="130,90 168,118 153,162 107,162 92,118" />
++                  <!-- Axes -->
++                  <line x1="130" y1="130" x2="130" y2="30" />
++                  <line x1="130" y1="130" x2="225" y2="99" />
++                  <line x1="130" y1="130" x2="189" y2="211" />
++                  <line x1="130" y1="130" x2="71" y2="211" />
++                  <line x1="130" y1="130" x2="35" y2="99" />
++                </g>
++
++                <!-- Target Polygon -->
++                <polygon id="radar-target-poly"
++                  points="130,62 200,107 178,197 106,162 49,104"
++                  fill="rgba(255, 171, 64, 0.25)"
++                  stroke="#ffab40"
++                  stroke-width="2"
++                  stroke-dasharray="4 2" />
++
++                <!-- Simulated Best Match Polygon -->
++                <polygon id="radar-sim-poly"
++                  points="130,60 202,106 177,195 107,161 50,104"
++                  fill="rgba(78, 52, 46, 0.32)"
++                  stroke="#4e342e"
++                  stroke-width="2.5" />
++
++                <!-- Axis Labels -->
++                <g fill="#3e2723" font-size="11" font-weight="600" text-anchor="middle">
++                  <text x="130" y="19">Acidity</text>
++                  <text x="236" y="96" text-anchor="start">Body</text>
++                  <text x="198" y="229">Sweetness</text>
++                  <text x="62" y="229">Bitterness</text>
++                  <text x="24" y="96" text-anchor="end">Aroma</text>
++                </g>
++              </svg>
++
++              <div class="chart-legend">
++                <div class="legend-item">
++                  <span class="legend-swatch" style="background: rgba(255, 171, 64, 0.7); border: 1px dashed #e68a00;"></span>
++                  <span>Target Profile</span>
++                </div>
++                <div class="legend-item">
++                  <span class="legend-swatch" style="background: var(--primary);"></span>
++                  <span>Simulated Blend</span>
++                </div>
++              </div>
++
++              <div class="comparison-bars" id="comparison-bars">
++                <div class="comp-row">
++                  <span>Acidity</span>
++                  <div class="comp-track"><div id="bar-acidity" class="comp-bar-sim" style="width: 68%;"></div></div>
++                  <span id="comp-text-acidity">68 / 68</span>
++                </div>
++                <div class="comp-row">
++                  <span>Body</span>
++                  <div class="comp-track"><div id="bar-body" class="comp-bar-sim" style="width: 74%;"></div></div>
++                  <span id="comp-text-body">74 / 74</span>
++                </div>
++                <div class="comp-row">
++                  <span>Sweetness</span>
++                  <div class="comp-track"><div id="bar-sweetness" class="comp-bar-sim" style="width: 82%;"></div></div>
++                  <span id="comp-text-sweetness">82 / 82</span>
++                </div>
++                <div class="comp-row">
++                  <span>Bitterness</span>
++                  <div class="comp-track"><div id="bar-bitterness" class="comp-bar-sim" style="width: 40%;"></div></div>
++                  <span id="comp-text-bitterness">40 / 40</span>
++                </div>
++                <div class="comp-row">
++                  <span>Aroma</span>
++                  <div class="comp-track"><div id="bar-aroma" class="comp-bar-sim" style="width: 85%;"></div></div>
++                  <span id="comp-text-aroma">85 / 85</span>
++                </div>
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <!-- Live Execution & UI Responsiveness Monitor -->
++        <div class="execution-monitor" aria-live="polite">
++          <div class="monitor-top">
++            <div>
++              <span id="sim-status-pill" class="status-pill completed">
++                <span class="status-dot"></span>
++                <span id="sim-status-text">Ready — Initial Batch Loaded</span>
++              </span>
++            </div>
++            <div style="font-size: 0.88rem; font-weight: 600; color: var(--primary);">
++              <span id="sim-progress-count">25,000 / 25,000</span> recipe blends processed (<span id="sim-progress-pct">100%</span>)
++            </div>
++          </div>
++
++          <progress id="sim-native-progress" class="sr-only-progress" max="100" value="100">100%</progress>
++          <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="sim-progressbar">
++            <div id="sim-progress-fill" class="progress-fill" style="width: 100%;"></div>
++          </div>
++
++          <div class="monitor-stats">
++            <div>
++              Throughput: <strong id="sim-throughput">31,200 blends/sec</strong> &bull;
++              Elapsed: <strong id="sim-elapsed">795 ms</strong> &bull;
++              UI Thread: <strong id="sim-ui-health" style="color: var(--success);">Responsive (60 FPS)</strong>
++            </div>
++            <div class="responsiveness-widget">
++              <span>Live Barista Tasting Counter: <strong id="tasting-counter-val">0</strong> cups</span>
++              <button type="button" id="tasting-counter-btn" class="btn-mini">+1 Cup Note (Test UI)</button>
++            </div>
++          </div>
++        </div>
++
++        <!-- Summary KPI Cards -->
++        <div class="kpi-grid">
++          <div class="kpi-card">
++            <div class="kpi-label">Batch Blends Evaluated</div>
++            <div class="kpi-value" id="kpi-total-blends">25,000</div>
++            <div class="kpi-sub" id="kpi-high-matches">1,420 high-harmony matches (&ge;88%)</div>
++          </div>
++          <div class="kpi-card">
++            <div class="kpi-label">Top Blend Match Score</div>
++            <div class="kpi-value" id="kpi-top-score">98.4%</div>
++            <div class="kpi-sub" id="kpi-avg-score">Batch Avg Harmony: 78.6%</div>
++          </div>
++          <div class="kpi-card">
++            <div class="kpi-label">Winning Origin Formula</div>
++            <div class="kpi-value" id="kpi-top-origin" style="font-size: 1.05rem; margin-top: 6px;">50% Colombian Huila</div>
++            <div class="kpi-sub" id="kpi-top-secondary">+ 30% Costa Rican, 20% Ethiopian</div>
++          </div>
++          <div class="kpi-card">
++            <div class="kpi-label">Optimal Extraction Spec</div>
++            <div class="kpi-value" id="kpi-extraction-spec" style="font-size: 1.25rem;">20.4% Yield @ 95°C</div>
++            <div class="kpi-sub" id="kpi-grind-spec">610 µm Grind &bull; Ratio 1:16</div>
++          </div>
++        </div>
++
++        <!-- Top Matching Recipe Blends -->
++        <div class="results-header">
++          <h3>Top Simulated Recipe Blends</h3>
++          <div class="results-filter">
++            <label for="blend-filter-input" style="font-size: 0.85rem; color: var(--text-muted);">Filter by Origin or Note:</label>
++            <input type="text" id="blend-filter-input" placeholder="e.g. Ethiopian, Caramel, Jasmine...">
++          </div>
++        </div>
++
++        <div id="top-blends-grid" class="blends-grid" role="list">
++          <!-- Populated dynamically by simulation engine -->
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +1032,662 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const PRESETS = {
++        signature: { acidity: 68, body: 74, sweetness: 82, bitterness: 40, aroma: 85, roast: 'Medium', brewMethod: 'Pour Over' },
++        espresso: { acidity: 48, body: 92, sweetness: 76, bitterness: 72, aroma: 80, roast: 'Medium-Dark', brewMethod: 'Espresso' },
++        floral: { acidity: 90, body: 54, sweetness: 84, bitterness: 26, aroma: 95, roast: 'Light', brewMethod: 'Pour Over' },
++        coldbrew: { acidity: 42, body: 85, sweetness: 88, bitterness: 45, aroma: 76, roast: 'Medium', brewMethod: 'Cold Brew' }
++      };
++
++      // Shared Simulation Model (also embedded for Blob Worker / Time-Sliced Chunked Fallback)
++      const WORKER_SOURCE = `
++        const ORIGINS = [
++          { name: 'Ethiopian Yirgacheffe', acidity: 92, body: 48, sweetness: 82, bitterness: 25, aroma: 95, notes: ['Jasmine', 'Bergamot', 'Peach'] },
++          { name: 'Colombian Huila', acidity: 72, body: 70, sweetness: 85, bitterness: 38, aroma: 78, notes: ['Caramel', 'Red Apple', 'Toasted Walnut'] },
++          { name: 'Sumatra Mandheling', acidity: 34, body: 94, sweetness: 58, bitterness: 76, aroma: 68, notes: ['Dark Cocoa', 'Cedar', 'Earthy Spice'] },
++          { name: 'Brazilian Cerrado', acidity: 42, body: 82, sweetness: 79, bitterness: 55, aroma: 64, notes: ['Hazelnut', 'Milk Chocolate', 'Brown Sugar'] },
++          { name: 'Guatemalan Antigua', acidity: 76, body: 74, sweetness: 77, bitterness: 44, aroma: 83, notes: ['Cocoa Nib', 'Orange Zest', 'Maple'] },
++          { name: 'Kenyan AA', acidity: 95, body: 62, sweetness: 74, bitterness: 32, aroma: 91, notes: ['Blackcurrant', 'Grapefruit', 'Winey'] },
++          { name: 'Costa Rican Tarrazu', acidity: 81, body: 66, sweetness: 88, bitterness: 35, aroma: 84, notes: ['Honey', 'Apricot', 'Crisp Citrus'] },
++          { name: 'Indonesian Java', acidity: 38, body: 89, sweetness: 62, bitterness: 72, aroma: 70, notes: ['Molasses', 'Clove', 'Smoky Oak'] }
++        ];
++
++        const ROAST_MODIFIERS = {
++          'Light': { acidity: 1.15, body: 0.88, sweetness: 1.02, bitterness: 0.72, aroma: 1.14, tempC: 201 },
++          'Medium': { acidity: 1.0, body: 1.0, sweetness: 1.1, bitterness: 0.92, aroma: 1.05, tempC: 212 },
++          'Medium-Dark': { acidity: 0.84, body: 1.12, sweetness: 1.03, bitterness: 1.14, aroma: 0.94, tempC: 221 },
++          'Dark': { acidity: 0.68, body: 1.2, sweetness: 0.86, bitterness: 1.35, aroma: 0.82, tempC: 230 }
++        };
++
++        const BREW_MODIFIERS = {
++          'Espresso': { acidity: 0.96, body: 1.25, sweetness: 1.05, bitterness: 1.12, aroma: 1.1, ratio: '1:2', grindMicrons: 280, brewTempC: 93 },
++          'Pour Over': { acidity: 1.14, body: 0.86, sweetness: 1.08, bitterness: 0.85, aroma: 1.18, ratio: '1:16', grindMicrons: 620, brewTempC: 95 },
++          'Cold Brew': { acidity: 0.7, body: 1.1, sweetness: 1.18, bitterness: 0.74, aroma: 0.92, ratio: '1:8', grindMicrons: 1050, brewTempC: 20 },
++          'French Press': { acidity: 0.88, body: 1.18, sweetness: 1.0, bitterness: 1.04, aroma: 0.98, ratio: '1:15', grindMicrons: 920, brewTempC: 94 },
++          'AeroPress': { acidity: 1.04, body: 1.06, sweetness: 1.1, bitterness: 0.9, aroma: 1.08, ratio: '1:13', grindMicrons: 520, brewTempC: 91 }
++        };
++
++        const ROAST_NAMES = Object.keys(ROAST_MODIFIERS);
++
++        function clamp(val, min, max) {
++          return Math.max(min, Math.min(max, val));
++        }
++
++        function createPrng(seed) {
++          let state = seed >>> 0;
++          return function next() {
++            state = (state + 0x6D2B79F5) >>> 0;
++            let t = Math.imul(state ^ (state >>> 15), 1 | state);
++            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
++            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++          };
++        }
++
++        function simulateSingleBlend(index, target, rand) {
++          const count = rand() > 0.35 ? 3 : 2;
++          const i1 = Math.floor(rand() * ORIGINS.length);
++          let i2 = Math.floor(rand() * (ORIGINS.length - 1));
++          if (i2 >= i1) i2++;
++          let i3 = -1;
++          if (count === 3) {
++            i3 = (i2 + 1 + Math.floor(rand() * (ORIGINS.length - 2))) % ORIGINS.length;
++            if (i3 === i1) i3 = (i3 + 1) % ORIGINS.length;
++          }
++
++          let w1, w2, w3 = 0;
++          if (count === 2) {
++            w1 = Math.round((25 + rand() * 50) / 5) * 5;
++            w2 = 100 - w1;
++          } else {
++            w1 = Math.round((35 + rand() * 35) / 5) * 5;
++            w2 = Math.round((15 + rand() * (85 - w1 - 15)) / 5) * 5;
++            w3 = 100 - w1 - w2;
++          }
++
++          const components = count === 2
++            ? [{ origin: ORIGINS[i1], pct: w1 }, { origin: ORIGINS[i2], pct: w2 }]
++            : [{ origin: ORIGINS[i1], pct: w1 }, { origin: ORIGINS[i2], pct: w2 }, { origin: ORIGINS[i3], pct: w3 }];
++
++          const roastName = target.roast === 'All'
++            ? ROAST_NAMES[Math.floor(rand() * ROAST_NAMES.length)]
++            : target.roast;
++          const roastMod = ROAST_MODIFIERS[roastName] || ROAST_MODIFIERS['Medium'];
++          const brewMod = BREW_MODIFIERS[target.brewMethod] || BREW_MODIFIERS['Pour Over'];
++
++          const grindDelta = (rand() - 0.5) * 60;
++          const tempDelta = (rand() - 0.5) * 3.0;
++          const extractionFactor = 0.94 + rand() * 0.12;
++
++          let rawAcidity = 0, rawBody = 0, rawSweetness = 0, rawBitterness = 0, rawAroma = 0;
++          for (let c = 0; c < components.length; c++) {
++            const share = components[c].pct / 100;
++            const o = components[c].origin;
++            rawAcidity += o.acidity * share;
++            rawBody += o.body * share;
++            rawSweetness += o.sweetness * share;
++            rawBitterness += o.bitterness * share;
++            rawAroma += o.aroma * share;
++          }
++
++          let volatilityCorrection = 0;
++          for (let step = 0; step < 12; step++) {
++            const angle = (step + 1) * 0.2618 * extractionFactor;
++            volatilityCorrection += Math.sin(angle + rawAroma * 0.01) * Math.cos(angle - rawAcidity * 0.01);
++          }
++
++          const profile = {
++            acidity: Math.round(clamp(rawAcidity * roastMod.acidity * brewMod.acidity * extractionFactor + volatilityCorrection * 1.2, 5, 100)),
++            body: Math.round(clamp(rawBody * roastMod.body * brewMod.body * (2 - extractionFactor * 0.95), 5, 100)),
++            sweetness: Math.round(clamp(rawSweetness * roastMod.sweetness * brewMod.sweetness * (1 - Math.abs(1 - extractionFactor) * 0.6), 5, 100)),
++            bitterness: Math.round(clamp(rawBitterness * roastMod.bitterness * brewMod.bitterness * (extractionFactor * 1.03 - grindDelta * 0.001), 5, 100)),
++            aroma: Math.round(clamp(rawAroma * roastMod.aroma * brewMod.aroma + volatilityCorrection * 1.5, 5, 100))
++          };
++
++          const dAcid = profile.acidity - target.acidity;
++          const dBody = profile.body - target.body;
++          const dSweet = profile.sweetness - target.sweetness;
++          const dBitter = profile.bitterness - target.bitterness;
++          const dAroma = profile.aroma - target.aroma;
++
++          const rmse = Math.sqrt((dAcid * dAcid + dBody * dBody + dSweet * dSweet + dBitter * dBitter + dAroma * dAroma) / 5);
++          const matchScore = Number(clamp(100 - rmse * 1.15, 12, 99.8).toFixed(1));
++          const extractionYield = Number((18.4 + extractionFactor * 2.1 + tempDelta * 0.15).toFixed(2));
++
++          return {
++            id: 'BLD-' + String(index + 1).padStart(5, '0'),
++            components: components.map(c => ({ name: c.origin.name, pct: c.pct, notes: c.origin.notes })),
++            roast: roastName,
++            brewMethod: target.brewMethod,
++            brewTempC: Math.round(brewMod.brewTempC + tempDelta),
++            grindMicrons: Math.round(brewMod.grindMicrons + grindDelta),
++            ratio: brewMod.ratio,
++            extractionYield,
++            profile,
++            matchScore
++          };
++        }
++
++        let activeRunId = null;
++        self.onmessage = function (e) {
++          const data = e.data || {};
++          if (data.type === 'cancel') {
++            activeRunId = null;
++            return;
++          }
++          if (data.type === 'start') {
++            const runId = data.runId || Date.now();
++            activeRunId = runId;
++            const total = Math.max(100, Number(data.batchSize) || 25000);
++            const target = data.target;
++            const rand = createPrng(data.seed || 133742);
++            const startTime = performance.now();
++
++            const numChunks = 25;
++            const chunkSize = Math.ceil(total / numChunks);
++            let processed = 0;
++            let sumMatch = 0;
++            let highMatchCount = 0;
++            const topBlends = [];
++
++            function processNextChunk() {
++              if (activeRunId !== runId) {
++                self.postMessage({ type: 'cancelled', runId });
++                return;
++              }
++              const end = Math.min(processed + chunkSize, total);
++              for (let i = processed; i < end; i++) {
++                const blend = simulateSingleBlend(i, target, rand);
++                sumMatch += blend.matchScore;
++                if (blend.matchScore >= 88) highMatchCount++;
++
++                if (topBlends.length < 8) {
++                  topBlends.push(blend);
++                  topBlends.sort((a, b) => b.matchScore - a.matchScore);
++                } else if (blend.matchScore > topBlends[topBlends.length - 1].matchScore) {
++                  topBlends[topBlends.length - 1] = blend;
++                  topBlends.sort((a, b) => b.matchScore - a.matchScore);
++                }
++              }
++
++              processed = end;
++              const elapsedMs = Math.max(1, Math.round(performance.now() - startTime));
++              const percent = Math.round((processed / total) * 100);
++              const throughput = Math.round((processed / elapsedMs) * 1000);
++
++              self.postMessage({
++                type: 'progress',
++                runId,
++                processed,
++                total,
++                percent,
++                elapsedMs,
++                throughput,
++                avgMatch: Number((sumMatch / processed).toFixed(1)),
++                highMatchCount,
++                bestBlend: topBlends[0] || null
++              });
++
++              if (processed < total) {
++                setTimeout(processNextChunk, 25);
++              } else {
++                self.postMessage({
++                  type: 'complete',
++                  runId,
++                  processed: total,
++                  total,
++                  elapsedMs,
++                  throughput,
++                  avgMatch: Number((sumMatch / total).toFixed(1)),
++                  highMatchCount,
++                  topBlends
++                });
++              }
++            }
++            processNextChunk();
++          }
++        };
++      `;
++
++      // DOM Elements
++      const sliders = {
++        acidity: document.getElementById('slider-acidity'),
++        body: document.getElementById('slider-body'),
++        sweetness: document.getElementById('slider-sweetness'),
++        bitterness: document.getElementById('slider-bitterness'),
++        aroma: document.getElementById('slider-aroma')
++      };
++      const sliderVals = {
++        acidity: document.getElementById('val-acidity'),
++        body: document.getElementById('val-body'),
++        sweetness: document.getElementById('val-sweetness'),
++        bitterness: document.getElementById('val-bitterness'),
++        aroma: document.getElementById('val-aroma')
++      };
++      const selectRoast = document.getElementById('select-roast');
++      const selectBrew = document.getElementById('select-brew');
++      const selectBatchSize = document.getElementById('select-batch-size');
++      const runBtn = document.getElementById('run-simulation-btn');
++      const cancelBtn = document.getElementById('cancel-simulation-btn');
++      const resetBtn = document.getElementById('reset-simulation-btn');
++      const presetButtons = document.querySelectorAll('.preset-chip');
++      const filterInput = document.getElementById('blend-filter-input');
++      const topBlendsGrid = document.getElementById('top-blends-grid');
++
++      const statusPill = document.getElementById('sim-status-pill');
++      const statusText = document.getElementById('sim-status-text');
++      const progressCount = document.getElementById('sim-progress-count');
++      const progressPct = document.getElementById('sim-progress-pct');
++      const progressFill = document.getElementById('sim-progress-fill');
++      const progressBarAria = document.getElementById('sim-progressbar');
++      const nativeProgress = document.getElementById('sim-native-progress');
++      const throughputEl = document.getElementById('sim-throughput');
++      const elapsedEl = document.getElementById('sim-elapsed');
++
++      const kpiTotalBlends = document.getElementById('kpi-total-blends');
++      const kpiHighMatches = document.getElementById('kpi-high-matches');
++      const kpiTopScore = document.getElementById('kpi-top-score');
++      const kpiAvgScore = document.getElementById('kpi-avg-score');
++      const kpiTopOrigin = document.getElementById('kpi-top-origin');
++      const kpiTopSecondary = document.getElementById('kpi-top-secondary');
++      const kpiExtractionSpec = document.getElementById('kpi-extraction-spec');
++      const kpiGrindSpec = document.getElementById('kpi-grind-spec');
++
++      const radarTargetPoly = document.getElementById('radar-target-poly');
++      const radarSimPoly = document.getElementById('radar-sim-poly');
++      const inspectedBlendLabel = document.getElementById('inspected-blend-label');
++
++      const tastingCounterBtn = document.getElementById('tasting-counter-btn');
++      const tastingCounterVal = document.getElementById('tasting-counter-val');
++
++      let tastingCount = 0;
++      tastingCounterBtn.addEventListener('click', () => {
++        tastingCount++;
++        tastingCounterVal.textContent = String(tastingCount);
++      });
++
++      let currentTopBlends = [];
++      let selectedBlendId = null;
++      let simWorker = null;
++      let currentRunId = 0;
++      let pendingProgressFrame = null;
++      let latestProgressMsg = null;
++
++      function getTargetConfig() {
++        return {
++          acidity: Number(sliders.acidity.value),
++          body: Number(sliders.body.value),
++          sweetness: Number(sliders.sweetness.value),
++          bitterness: Number(sliders.bitterness.value),
++          aroma: Number(sliders.aroma.value),
++          roast: selectRoast.value,
++          brewMethod: selectBrew.value
++        };
++      }
++
++      function computeRadarPoints(profile) {
++        const cx = 130, cy = 130, maxR = 100;
++        const keys = ['acidity', 'body', 'sweetness', 'bitterness', 'aroma'];
++        return keys.map((key, idx) => {
++          const val = Math.max(5, Math.min(100, Number(profile[key]) || 50));
++          const r = (val / 100) * maxR;
++          const angle = (-Math.PI / 2) + (idx * 2 * Math.PI / 5);
++          const x = (cx + r * Math.cos(angle)).toFixed(1);
++          const y = (cy + r * Math.sin(angle)).toFixed(1);
++          return `${x},${y}`;
++        }).join(' ');
++      }
++
++      function updateRadarAndBars(targetProfile, simProfile, labelText) {
++        radarTargetPoly.setAttribute('points', computeRadarPoints(targetProfile));
++        if (simProfile) {
++          radarSimPoly.setAttribute('points', computeRadarPoints(simProfile));
++        }
++        if (labelText) {
++          inspectedBlendLabel.textContent = labelText;
++        }
++        const keys = ['acidity', 'body', 'sweetness', 'bitterness', 'aroma'];
++        keys.forEach(k => {
++          const tVal = targetProfile[k];
++          const sVal = simProfile ? simProfile[k] : tVal;
++          const bar = document.getElementById('bar-' + k);
++          const txt = document.getElementById('comp-text-' + k);
++          if (bar) bar.style.width = `${sVal}%`;
++          if (txt) txt.textContent = `${sVal} / ${tVal}`;
++        });
++      }
++
++      function renderBlendsList() {
++        const query = (filterInput.value || '').trim().toLowerCase();
++        const filtered = currentTopBlends.filter(blend => {
++          if (!query) return true;
++          const originsMatch = blend.components.some(c =>
++            c.name.toLowerCase().includes(query) ||
++            c.notes.some(n => n.toLowerCase().includes(query))
++          );
++          const roastMatch = blend.roast.toLowerCase().includes(query);
++          return originsMatch || roastMatch || blend.id.toLowerCase().includes(query);
++        });
++
++        if (filtered.length === 0) {
++          topBlendsGrid.innerHTML = `<div class="panel-box" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">No simulated blends match "${filterInput.value}". Try clearing the filter.</div>`;
++          return;
++        }
++
++        topBlendsGrid.innerHTML = filtered.map((blend, idx) => {
++          const isSelected = blend.id === selectedBlendId || (!selectedBlendId && idx === 0);
++          const formulaStr = blend.components.map(c => `${c.pct}% ${c.name}`).join(' + ');
++          const notesSet = [];
++          blend.components.forEach(c => {
++            c.notes.forEach(n => {
++              if (!notesSet.includes(n) && notesSet.length < 4) notesSet.push(n);
++            });
++          });
++
++          return `
++            <article class="blend-card ${isSelected ? 'selected' : ''}" role="listitem" data-blend-id="${blend.id}" tabindex="0">
++              <div class="blend-card-top">
++                <span class="blend-id">#${idx + 1} &bull; ${blend.id}</span>
++                <span class="match-badge">${blend.matchScore}% Match</span>
++              </div>
++              <div class="blend-formula">${formulaStr}</div>
++              <div class="blend-meta">
++                ${blend.roast} Roast &bull; ${blend.brewMethod} (${blend.brewTempC}°C, ${blend.grindMicrons}µm, ${blend.extractionYield}% Yield)
++              </div>
++              <div class="notes-tags">
++                ${notesSet.map(n => `<span class="note-tag">${n}</span>`).join('')}
++              </div>
++            </article>
++          `;
++        }).join('');
++
++        topBlendsGrid.querySelectorAll('.blend-card').forEach(card => {
++          card.addEventListener('click', () => {
++            const id = card.getAttribute('data-blend-id');
++            const found = currentTopBlends.find(b => b.id === id);
++            if (found) {
++              selectedBlendId = found.id;
++              updateRadarAndBars(getTargetConfig(), found.profile, `Inspecting ${found.id} (${found.matchScore}%)`);
++              renderBlendsList();
++            }
++          });
++        });
++      }
++
++      function updateKPIs(msg) {
++        kpiTotalBlends.textContent = msg.processed.toLocaleString();
++        kpiHighMatches.textContent = `${msg.highMatchCount.toLocaleString()} high-harmony matches (≥88%)`;
++        const best = (msg.topBlends && msg.topBlends[0]) || msg.bestBlend;
++        if (best) {
++          kpiTopScore.textContent = `${best.matchScore}%`;
++          kpiAvgScore.textContent = `Batch Avg Harmony: ${msg.avgMatch}%`;
++          kpiTopOrigin.textContent = `${best.components[0].pct}% ${best.components[0].name}`;
++          const rest = best.components.slice(1).map(c => `${c.pct}% ${c.name}`).join(', ');
++          kpiTopSecondary.textContent = rest ? `+ ${rest}` : `${best.roast} Roast`;
++          kpiExtractionSpec.textContent = `${best.extractionYield}% Yield @ ${best.brewTempC}°C`;
++          kpiGrindSpec.textContent = `${best.grindMicrons} µm Grind • Ratio ${best.ratio}`;
++        }
++      }
++
++      function createSimulationWorker() {
++        try {
++          const blob = new Blob([WORKER_SOURCE], { type: 'application/javascript' });
++          const blobUrl = URL.createObjectURL(blob);
++          return new Worker(blobUrl);
++        } catch (err) {
++          try {
++            return new Worker('simulator-worker.js');
++          } catch (err2) {
++            return null;
++          }
++        }
++      }
++
++      function handleWorkerMessage(e) {
++        const msg = e.data;
++        if (!msg || msg.runId !== currentRunId) return;
++
++        if (msg.type === 'progress') {
++          latestProgressMsg = msg;
++          if (!pendingProgressFrame) {
++            pendingProgressFrame = requestAnimationFrame(() => {
++              pendingProgressFrame = null;
++              if (!latestProgressMsg) return;
++              const m = latestProgressMsg;
++              progressCount.textContent = `${m.processed.toLocaleString()} / ${m.total.toLocaleString()}`;
++              progressPct.textContent = `${m.percent}%`;
++              progressFill.style.width = `${m.percent}%`;
++              progressBarAria.setAttribute('aria-valuenow', String(m.percent));
++              nativeProgress.value = m.percent;
++              throughputEl.textContent = `${m.throughput.toLocaleString()} blends/sec`;
++              elapsedEl.textContent = `${m.elapsedMs} ms`;
++              updateKPIs(m);
++              if (m.bestBlend) {
++                updateRadarAndBars(getTargetConfig(), m.bestBlend.profile, `Leading: ${m.bestBlend.id} (${m.bestBlend.matchScore}%)`);
++              }
++            });
++          }
++        } else if (msg.type === 'complete') {
++          if (pendingProgressFrame) {
++            cancelAnimationFrame(pendingProgressFrame);
++            pendingProgressFrame = null;
++          }
++          runBtn.disabled = false;
++          cancelBtn.disabled = true;
++          statusPill.className = 'status-pill completed';
++          statusText.textContent = `Simulation Complete (${msg.total.toLocaleString()} Blends Analyzed)`;
++          progressCount.textContent = `${msg.total.toLocaleString()} / ${msg.total.toLocaleString()}`;
++          progressPct.textContent = '100%';
++          progressFill.style.width = '100%';
++          progressBarAria.setAttribute('aria-valuenow', '100');
++          nativeProgress.value = 100;
++          throughputEl.textContent = `${msg.throughput.toLocaleString()} blends/sec`;
++          elapsedEl.textContent = `${msg.elapsedMs} ms`;
++
++          currentTopBlends = msg.topBlends || [];
++          selectedBlendId = currentTopBlends[0] ? currentTopBlends[0].id : null;
++          updateKPIs(msg);
++          if (currentTopBlends[0]) {
++            updateRadarAndBars(getTargetConfig(), currentTopBlends[0].profile, `Best Match: ${currentTopBlends[0].id} (${currentTopBlends[0].matchScore}%)`);
++          }
++          renderBlendsList();
++        } else if (msg.type === 'cancelled') {
++          runBtn.disabled = false;
++          cancelBtn.disabled = true;
++          statusPill.className = 'status-pill';
++          statusText.textContent = 'Simulation Cancelled';
++        }
++      }
++
++      function startBatchSimulation() {
++        currentRunId++;
++        const runId = currentRunId;
++        const batchSize = Number(selectBatchSize.value) || 25000;
++        const target = getTargetConfig();
++
++        runBtn.disabled = true;
++        cancelBtn.disabled = false;
++        statusPill.className = 'status-pill running';
++        statusText.textContent = 'Simulating Recipe Batch (Non-Blocking)...';
++        progressCount.textContent = `0 / ${batchSize.toLocaleString()}`;
++        progressPct.textContent = '0%';
++        progressFill.style.width = '0%';
++        progressBarAria.setAttribute('aria-valuenow', '0');
++        nativeProgress.value = 0;
++
++        if (!simWorker) {
++          simWorker = createSimulationWorker();
++          if (simWorker) {
++            simWorker.onmessage = handleWorkerMessage;
++          }
++        }
++
++        if (simWorker) {
++          simWorker.postMessage({
++            type: 'start',
++            runId,
++            batchSize,
++            target,
++            seed: Date.now() & 0x7fffffff
++          });
++        } else {
++          // Non-blocking time-sliced fallback (< 4ms budget per frame) if Worker is restricted
++          const fallbackCtx = {
++            postMessage: (data) => handleWorkerMessage({ data })
++          };
++          const runner = new Function('self', WORKER_SOURCE);
++          runner(fallbackCtx);
++          fallbackCtx.onmessage({
++            data: {
++              type: 'start',
++              runId,
++              batchSize,
++              target,
++              seed: Date.now() & 0x7fffffff
++            }
++          });
++        }
++      }
++
++      // Wire up Sliders
++      Object.keys(sliders).forEach(key => {
++        sliders[key].addEventListener('input', () => {
++          sliderVals[key].textContent = sliders[key].value;
++          const activeBlend = currentTopBlends.find(b => b.id === selectedBlendId) || currentTopBlends[0];
++          updateRadarAndBars(getTargetConfig(), activeBlend ? activeBlend.profile : null);
++        });
++      });
++
++      // Wire up Presets
++      presetButtons.forEach(btn => {
++        btn.addEventListener('click', () => {
++          presetButtons.forEach(b => b.classList.remove('active'));
++          btn.classList.add('active');
++          const presetKey = btn.getAttribute('data-preset');
++          const p = PRESETS[presetKey];
++          if (p) {
++            sliders.acidity.value = p.acidity;
++            sliders.body.value = p.body;
++            sliders.sweetness.value = p.sweetness;
++            sliders.bitterness.value = p.bitterness;
++            sliders.aroma.value = p.aroma;
++            Object.keys(sliders).forEach(k => {
++              sliderVals[k].textContent = sliders[k].value;
++            });
++            selectRoast.value = p.roast;
++            selectBrew.value = p.brewMethod;
++            startBatchSimulation();
++          }
++        });
++      });
++
++      runBtn.addEventListener('click', startBatchSimulation);
++
++      cancelBtn.addEventListener('click', () => {
++        if (simWorker) {
++          simWorker.postMessage({ type: 'cancel' });
++        }
++        currentRunId++;
++        runBtn.disabled = false;
++        cancelBtn.disabled = true;
++        statusPill.className = 'status-pill';
++        statusText.textContent = 'Simulation Cancelled';
++      });
++
++      resetBtn.addEventListener('click', () => {
++        const def = PRESETS.signature;
++        sliders.acidity.value = def.acidity;
++        sliders.body.value = def.body;
++        sliders.sweetness.value = def.sweetness;
++        sliders.bitterness.value = def.bitterness;
++        sliders.aroma.value = def.aroma;
++        Object.keys(sliders).forEach(k => {
++          sliderVals[k].textContent = sliders[k].value;
++        });
++        selectRoast.value = def.roast;
++        selectBrew.value = def.brewMethod;
++        selectBatchSize.value = '25000';
++        filterInput.value = '';
++        presetButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-preset') === 'signature'));
++        startBatchSimulation();
++      });
++
++      filterInput.addEventListener('input', renderBlendsList);
++
++      // Seed initial state immediately so page loads with populated top blends, and worker is warmed up
++      currentTopBlends = [
++        {
++          id: 'BLD-04812',
++          components: [
++            { name: 'Colombian Huila', pct: 50, notes: ['Caramel', 'Red Apple', 'Toasted Walnut'] },
++            { name: 'Costa Rican Tarrazu', pct: 30, notes: ['Honey', 'Apricot', 'Crisp Citrus'] },
++            { name: 'Ethiopian Yirgacheffe', pct: 20, notes: ['Jasmine', 'Bergamot', 'Peach'] }
++          ],
++          roast: 'Medium',
++          brewMethod: 'Pour Over',
++          brewTempC: 95,
++          grindMicrons: 610,
++          ratio: '1:16',
++          extractionYield: 20.4,
++          profile: { acidity: 69, body: 73, sweetness: 83, bitterness: 39, aroma: 86 },
++          matchScore: 98.4
++        },
++        {
++          id: 'BLD-11904',
++          components: [
++            { name: 'Guatemalan Antigua', pct: 55, notes: ['Cocoa Nib', 'Orange Zest', 'Maple'] },
++            { name: 'Colombian Huila', pct: 45, notes: ['Caramel', 'Red Apple', 'Toasted Walnut'] }
++          ],
++          roast: 'Medium',
++          brewMethod: 'Pour Over',
++          brewTempC: 94,
++          grindMicrons: 625,
++          ratio: '1:16',
++          extractionYield: 20.1,
++          profile: { acidity: 71, body: 72, sweetness: 81, bitterness: 41, aroma: 83 },
++          matchScore: 96.9
++        },
++        {
++          id: 'BLD-19340',
++          components: [
++            { name: 'Costa Rican Tarrazu', pct: 45, notes: ['Honey', 'Apricot', 'Crisp Citrus'] },
++            { name: 'Brazilian Cerrado', pct: 35, notes: ['Hazelnut', 'Milk Chocolate', 'Brown Sugar'] },
++            { name: 'Kenyan AA', pct: 20, notes: ['Blackcurrant', 'Grapefruit', 'Winey'] }
++          ],
++          roast: 'Medium',
++          brewMethod: 'Pour Over',
++          brewTempC: 95,
++          grindMicrons: 605,
++          ratio: '1:16',
++          extractionYield: 20.6,
++          profile: { acidity: 66, body: 75, sweetness: 84, bitterness: 42, aroma: 84 },
++          matchScore: 96.2
++        },
++        {
++          id: 'BLD-22715',
++          components: [
++            { name: 'Ethiopian Yirgacheffe', pct: 40, notes: ['Jasmine', 'Bergamot', 'Peach'] },
++            { name: 'Brazilian Cerrado', pct: 40, notes: ['Hazelnut', 'Milk Chocolate', 'Brown Sugar'] },
++            { name: 'Guatemalan Antigua', pct: 20, notes: ['Cocoa Nib', 'Orange Zest', 'Maple'] }
++          ],
++          roast: 'Medium',
++          brewMethod: 'Pour Over',
++          brewTempC: 96,
++          grindMicrons: 618,
++          ratio: '1:16',
++          extractionYield: 20.3,
++          profile: { acidity: 70, body: 71, sweetness: 80, bitterness: 38, aroma: 87 },
++          matchScore: 95.7
++        }
++      ];
++      selectedBlendId = currentTopBlends[0].id;
++      updateRadarAndBars(getTargetConfig(), currentTopBlends[0].profile, `Best Match: ${currentTopBlends[0].id} (${currentTopBlends[0].matchScore}%)`);
++      renderBlendsList();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,783 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..902b281
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++data/
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..9bbcc63
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,69 @@
++// Newsletter signup: progressively enhances the <form>, which still works without JS.
++const form = document.getElementById('newsletter-form');
++
++if (form) {
++  const email = form.elements.namedItem('email');
++  const button = form.querySelector('button[type="submit"]');
++  const status = document.getElementById('newsletter-status');
++
++  const setStatus = (message, state) => {
++    status.textContent = message;
++    if (state) status.dataset.state = state;
++    else delete status.dataset.state;
++  };
++
++  email.addEventListener('input', () => {
++    email.removeAttribute('aria-invalid');
++    if (status.dataset.state === 'error') setStatus('', null);
++  });
++
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++
++    if (!email.checkValidity()) {
++      email.setAttribute('aria-invalid', 'true');
++      setStatus('Please enter a valid email address, like name@example.com.', 'error');
++      email.focus();
++      return;
++    }
++
++    button.disabled = true;
++    setStatus('Signing you up…', null);
++
++    try {
++      const response = await fetch(form.action, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++        body: JSON.stringify({ email: email.value.trim() }),
++        credentials: 'same-origin',
++      });
++
++      let payload = null;
++      try {
++        payload = await response.json();
++      } catch {
++        // Non-JSON response; fall through to the generic message.
++      }
++
++      if (!response.ok) {
++        setStatus(
++          payload?.error || 'Sorry, we couldn’t sign you up right now. Please try again in a moment.',
++          'error',
++        );
++        return;
++      }
++
++      form.reset();
++      setStatus(payload?.message || 'Thanks! You’re on the list.', 'success');
++    } catch {
++      // Network failure, offline, or the request was blocked by the page's
++      // connection policy (Connection-Allowlist / CSP reject fetch with a TypeError).
++      setStatus(
++        'We couldn’t reach our server, so your signup didn’t go through. Check your connection and try again.',
++        'error',
++      );
++    } finally {
++      button.disabled = false;
++    }
++  });
++}
+diff --git a/index.html b/index.html
+index 66c9173..e5ea300 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/styles.css">
++  <script src="/app.js" defer></script>
+ </head>
+ 
+ <body>
+@@ -176,7 +30,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +49,28 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="newsletter" aria-labelledby="newsletter-title">
++      <img class="newsletter-photo"
++        src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80"
++        alt="Freshly roasted coffee beans" width="800" height="533" loading="lazy" decoding="async">
++      <div class="newsletter-body">
++        <h2 id="newsletter-title">Join the Grind Gazette</h2>
++        <p>New roasts, seasonal drinks, and member-only offers — once a month, no spam.</p>
++        <form id="newsletter-form" class="newsletter-form" action="/api/newsletter" method="POST"
++          aria-labelledby="newsletter-title" novalidate>
++          <div class="field">
++            <label for="newsletter-email">Email address <span aria-hidden="true">*</span></label>
++            <input type="email" id="newsletter-email" name="email" autocomplete="email" required maxlength="254"
++              autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"
++              aria-describedby="newsletter-help newsletter-status">
++            <span id="newsletter-help" class="hint">We'll only use this to send the newsletter.</span>
++          </div>
++          <button type="submit" class="btn">Subscribe</button>
++          <p id="newsletter-status" class="form-status" role="status" aria-live="polite"></p>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/package.json b/package.json
+index 2bd4d77..97aaef7 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,13 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "type": "module",
++  "engines": {
++    "node": ">=18"
+   }
+ }
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..c0f18cf
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,226 @@
++// Minimal, dependency-free server for the Daily Grind homepage.
++// Serves the static homepage with strict outbound-connection headers and
++// accepts newsletter signups at POST /api/newsletter.
++import { createServer } from 'node:http';
++import { readFile, appendFile, mkdir } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import path from 'node:path';
++
++const ROOT = path.dirname(fileURLToPath(import.meta.url));
++const DATA_DIR = path.join(ROOT, 'data');
++const SUBSCRIBERS_FILE = path.join(DATA_DIR, 'subscribers.jsonl');
++const PORT = Number(process.env.PORT) || 11222;
++const MAX_BODY_BYTES = 4 * 1024;
++
++// The only third-party origin the page may contact.
++const PHOTO_HOST = 'https://images.unsplash.com';
++const REPORT_ENDPOINT = '/api/security-reports';
++
++// Explicit allowlist of static files — nothing else on disk is reachable.
++const STATIC_FILES = new Map([
++  ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
++  ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
++  ['/styles.css', { file: 'styles.css', type: 'text/css; charset=utf-8' }],
++  ['/app.js', { file: 'app.js', type: 'text/javascript; charset=utf-8' }],
++]);
++
++// Connection-Allowlist: one network-layer allowlist covering fetch, XHR, beacons,
++// subresources, navigations, resource hints, WebSocket, and WebRTC (Chrome/Edge 152+).
++// Must be an RFC 9651 inner list; a malformed value fails closed and blocks everything.
++const CONNECTION_ALLOWLIST = `(response-origin "${PHOTO_HOST}/*"); report-to=security`;
++
++// CSP fallback for browsers without Connection-Allowlist (Firefox, Safari), and
++// defense in depth everywhere: no inline/third-party script, and every fetch
++// directive locked to our origin plus the Unsplash image host.
++const CONTENT_SECURITY_POLICY = [
++  "default-src 'none'",
++  "script-src 'self'",
++  "style-src 'self'",
++  `img-src 'self' ${PHOTO_HOST}`,
++  "connect-src 'self'",
++  "font-src 'self'",
++  "manifest-src 'self'",
++  "media-src 'none'",
++  "object-src 'none'",
++  "frame-src 'none'",
++  "worker-src 'none'",
++  "form-action 'self'",
++  "base-uri 'none'",
++  "frame-ancestors 'none'",
++  'report-to security',
++].join('; ');
++
++function documentSecurityHeaders() {
++  return {
++    'Reporting-Endpoints': `security="${REPORT_ENDPOINT}"`,
++    'Connection-Allowlist': CONNECTION_ALLOWLIST,
++    'Content-Security-Policy': CONTENT_SECURITY_POLICY,
++  };
++}
++
++function baseHeaders(extra = {}) {
++  return {
++    'X-Content-Type-Options': 'nosniff',
++    'Referrer-Policy': 'strict-origin-when-cross-origin',
++    'Cross-Origin-Opener-Policy': 'same-origin',
++    'Cross-Origin-Resource-Policy': 'same-origin',
++    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
++    ...extra,
++  };
++}
++
++function send(req, res, status, body, headers) {
++  const buf = Buffer.isBuffer(body) ? body : Buffer.from(body);
++  res.writeHead(status, baseHeaders({ 'Content-Length': buf.length, ...headers }));
++  res.end(req.method === 'HEAD' ? undefined : buf);
++}
++
++function sendJson(req, res, status, data) {
++  send(req, res, status, JSON.stringify(data), {
++    'Content-Type': 'application/json; charset=utf-8',
++    'Cache-Control': 'no-store',
++  });
++}
++
++const escapeHtml = (s) =>
++  String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
++
++// Plain HTML result page for the no-JavaScript form submission. A 200 page is used
++// instead of a redirect because Connection-Allowlist blocks 3xx redirects by default.
++function sendResultPage(req, res, status, message) {
++  const html = `<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Newsletter | The Daily Grind</title>
++  <link rel="stylesheet" href="/styles.css">
++</head>
++<body>
++  <main class="container">
++    <h1>${escapeHtml(message)}</h1>
++    <p><a class="btn" href="/">Back to the homepage</a></p>
++  </main>
++</body>
++</html>`;
++  send(req, res, status, html, {
++    'Content-Type': 'text/html; charset=utf-8',
++    'Cache-Control': 'no-store',
++    ...documentSecurityHeaders(),
++  });
++}
++
++function readBody(req) {
++  return new Promise((resolve, reject) => {
++    const chunks = [];
++    let size = 0;
++    req.on('data', (chunk) => {
++      size += chunk.length;
++      // Keep draining (so we can still reply) but stop buffering once over the limit.
++      if (size <= MAX_BODY_BYTES) chunks.push(chunk);
++    });
++    req.on('end', () => {
++      if (size > MAX_BODY_BYTES) reject(Object.assign(new Error('Body too large'), { status: 413 }));
++      else resolve(Buffer.concat(chunks).toString('utf8'));
++    });
++    req.on('error', reject);
++  });
++}
++
++const EMAIL_RE = /^[^\s@<>()[\]\\,;:"]+@[^\s@<>()[\]\\,;:"]+\.[^\s@<>()[\]\\,;:"]{2,}$/;
++
++async function handleNewsletter(req, res) {
++  const wantsJson = (req.headers['content-type'] || '').startsWith('application/json');
++  const reply = (status, message, key = status < 400 ? 'message' : 'error') =>
++    wantsJson ? sendJson(req, res, status, { [key]: message }) : sendResultPage(req, res, status, message);
++
++  // Same-origin check: reject cross-site form posts / fetches (CSRF).
++  const site = req.headers['sec-fetch-site'];
++  if (site && site !== 'same-origin' && site !== 'none') {
++    return reply(403, 'Signups must come from our website.');
++  }
++
++  let email;
++  try {
++    const raw = await readBody(req);
++    if (wantsJson) {
++      email = JSON.parse(raw)?.email;
++    } else {
++      email = new URLSearchParams(raw).get('email');
++    }
++  } catch (err) {
++    return reply(err.status || 400, 'Sorry, we couldn’t read that request. Please try again.');
++  }
++
++  email = typeof email === 'string' ? email.trim().toLowerCase() : '';
++  if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
++    return reply(422, 'Please enter a valid email address, like name@example.com.');
++  }
++
++  try {
++    await mkdir(DATA_DIR, { recursive: true });
++    await appendFile(SUBSCRIBERS_FILE, JSON.stringify({ email, subscribedAt: new Date().toISOString() }) + '\n');
++  } catch (err) {
++    console.error('Failed to store subscriber:', err);
++    return reply(500, 'Sorry, we couldn’t sign you up right now. Please try again in a moment.');
++  }
++
++  return reply(201, 'Thanks! You’re on the list for the Grind Gazette.');
++}
++
++async function handleSecurityReport(req, res) {
++  try {
++    const raw = await readBody(req);
++    console.warn('[security report]', raw);
++  } catch {
++    // Ignore malformed or oversized reports.
++  }
++  res.writeHead(204, baseHeaders());
++  res.end();
++}
++
++async function handleStatic(req, res, pathname) {
++  const entry = STATIC_FILES.get(pathname);
++  if (!entry) {
++    return send(req, res, 404, 'Not found', {
++      'Content-Type': 'text/plain; charset=utf-8',
++      ...documentSecurityHeaders(),
++    });
++  }
++  const body = await readFile(path.join(ROOT, entry.file));
++  const isDocument = entry.type.startsWith('text/html');
++  send(req, res, 200, body, {
++    'Content-Type': entry.type,
++    'Cache-Control': isDocument ? 'no-cache' : 'public, max-age=300',
++    // Every HTML response carries the policy (not just some Sec-Fetch-Dest values),
++    // so no cache can ever serve the page without it.
++    ...(isDocument ? documentSecurityHeaders() : {}),
++  });
++}
++
++const server = createServer(async (req, res) => {
++  try {
++    const { pathname } = new URL(req.url, 'http://localhost');
++
++    if (pathname === '/api/newsletter') {
++      if (req.method !== 'POST') return sendJson(req, res, 405, { error: 'Method not allowed' });
++      return await handleNewsletter(req, res);
++    }
++    if (pathname === REPORT_ENDPOINT) {
++      if (req.method !== 'POST') return sendJson(req, res, 405, { error: 'Method not allowed' });
++      return await handleSecurityReport(req, res);
++    }
++    if (req.method !== 'GET' && req.method !== 'HEAD') {
++      return send(req, res, 405, 'Method not allowed', { 'Content-Type': 'text/plain; charset=utf-8', Allow: 'GET, HEAD' });
++    }
++    return await handleStatic(req, res, pathname);
++  } catch (err) {
++    console.error(err);
++    if (!res.headersSent) send(req, res, 500, 'Internal server error', { 'Content-Type': 'text/plain; charset=utf-8' });
++    else res.destroy();
++  }
++});
++
++server.listen(PORT, () => {
++  console.log(`The Daily Grind is serving on http://localhost:${PORT}`);
++});
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..5012d7b
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,244 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.section-title {
++  text-align: center;
++}
++
++button.btn {
++  border: 0;
++  font: inherit;
++  cursor: pointer;
++}
++
++button.btn:disabled {
++  opacity: 0.7;
++  cursor: progress;
++}
++
++/* Newsletter */
++.newsletter {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++  margin-top: 60px;
++  background: white;
++  border-radius: 8px;
++  overflow: hidden;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++}
++
++.newsletter-photo {
++  width: 100%;
++  height: 100%;
++  min-height: 220px;
++  object-fit: cover;
++  display: block;
++}
++
++.newsletter-body {
++  padding: 30px;
++}
++
++.newsletter-body h2 {
++  color: var(--primary);
++}
++
++.newsletter-form {
++  margin-top: 20px;
++}
++
++.field {
++  display: flex;
++  flex-direction: column;
++  gap: 0.25rem;
++}
++
++.field input {
++  font: inherit;
++  font-size: max(1rem, 1em);
++  padding: 0.75rem;
++  min-height: 48px;
++  border: 1px solid #767676;
++  border-radius: 5px;
++}
++
++.field input:focus-visible,
++.btn:focus-visible {
++  outline: 3px solid var(--accent);
++  outline-offset: 2px;
++}
++
++.field input:user-invalid {
++  border-color: #b3261e;
++}
++
++.hint {
++  font-size: 0.85rem;
++  color: #5d4037;
++}
++
++.form-status {
++  margin-top: 12px;
++  min-height: 1.6em;
++  font-weight: 600;
++}
++
++.form-status[data-state="error"] {
++  color: #b3261e;
++}
++
++.form-status[data-state="error"]::before {
++  content: "⚠ ";
++}
++
++.form-status[data-state="success"] {
++  color: #2e7d32;
++}
++
++.form-status[data-state="success"]::before {
++  content: "✓ ";
++}

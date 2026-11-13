@@ -1,0 +1,49 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -0,0 +1,45 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>Minimal Fetch App</title>
++</head>
++<body>
++  <button id="action-btn" type="button">Load Data</button>
++  <pre id="output"></pre>
++
++  <script>
++    const button = document.getElementById('action-btn');
++    const output = document.getElementById('output');
++
++    button.addEventListener('click', () => {
++      // Mission-critical data request with high priority
++      const dataPromise = fetch('/api/data', {
++        priority: 'high'
++      })
++        .then((res) => res.json())
++        .then((data) => {
++          output.textContent = JSON.stringify(data, null, 2);
++          return data;
++        })
++        .catch((err) => {
++          console.error('Failed to load mission-critical data:', err);
++        });
++
++      // Background analytics POST request with low priority and keepalive
++      const analyticsPromise = fetch('/api/analytics', {
++        method: 'POST',
++        headers: {
++          'Content-Type': 'application/json'
++        },
++        body: JSON.stringify({ click: 1 }),
++        priority: 'low',
++        keepalive: true
++      }).catch((err) => {
++        console.error('Failed to send analytics:', err);
++      });
++    });
++  </script>
++</body>
++</html>

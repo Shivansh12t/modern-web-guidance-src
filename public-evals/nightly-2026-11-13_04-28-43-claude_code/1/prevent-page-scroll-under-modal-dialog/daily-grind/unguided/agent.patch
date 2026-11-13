@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+index 9f33a6d..47e8104 100644
+--- a/index.html
++++ b/index.html
+@@ -153,18 +153,67 @@
+       font-size: 0.85rem;
+     }
+ 
+-    body.modal-open {
++    /* Scroll lock while a modal is open (html + body for cross-browser support) */
++    html.modal-open,
++    html.modal-open body {
+       overflow: hidden;
+-      position: fixed;
+     }
+ 
+-    dialog {
+-      overflow: visible;
++    /* Seasonal notice dialog */
++    .notice-dialog {
++      border: none;
++      border-radius: 10px;
++      padding: 0;
++      width: min(90vw, 440px);
++      max-height: 90vh;
++      overflow: auto;
++      margin: auto;
++      color: var(--text);
++      background: white;
++      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
++      overscroll-behavior: contain;
+     }
+ 
+-    dialog::backdrop {
+-      overflow: visible;
+-      background: rgba(0, 0, 0, 0.5);
++    .notice-dialog::backdrop {
++      background: rgba(0, 0, 0, 0.55);
++    }
++
++    .notice-body {
++      padding: 28px 28px 24px;
++      text-align: center;
++    }
++
++    .notice-eyebrow {
++      display: inline-block;
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 1.5px;
++      text-transform: uppercase;
++      color: var(--primary);
++      background: var(--secondary);
++      padding: 3px 10px;
++      border-radius: 999px;
++      margin-bottom: 12px;
++    }
++
++    .notice-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .notice-dialog p {
++      margin-bottom: 8px;
++    }
++
++    .notice-dialog .btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .notice-dialog .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
+     }
+   </style>
+ </head>
+@@ -212,10 +261,16 @@
+   </main>
+ 
+ 
+-  <dialog id="notice-dialog">
+-    <h2>Special Notice</h2>
+-    <p>Our patio is open for the season.</p>
+-    <button type="button" id="close-notice" class="btn">Close</button>
++  <dialog id="notice-dialog" class="notice-dialog" aria-labelledby="notice-title" aria-describedby="notice-desc">
++    <div class="notice-body">
++      <span class="notice-eyebrow">Seasonal Notice</span>
++      <h2 id="notice-title">Our Patio Is Open!</h2>
++      <div id="notice-desc">
++        <p>Patio seating is back for the season. Grab your favorite drink and enjoy it outdoors.</p>
++        <p>Open daily, weather permitting.</p>
++      </div>
++      <button type="button" id="close-notice" class="btn" autofocus>Close</button>
++    </div>
+   </dialog>
+ 
+   <footer>
+@@ -229,12 +284,37 @@
+   </footer>
+ 
+   <script>
+-    const noticeDialog = document.getElementById("notice-dialog");
+-    if (noticeDialog) {
+-      noticeDialog.show();
+-      document.body.classList.add("modal-open");
+-      document.body.style.overflow = "hidden";
+-    }
++    (function () {
++      const noticeDialog = document.getElementById("notice-dialog");
++      const closeButton = document.getElementById("close-notice");
++      if (!noticeDialog || typeof noticeDialog.showModal !== "function") return;
++
++      const root = document.documentElement;
++
++      function lockScroll() {
++        // Compensate for the disappearing scrollbar to avoid layout shift.
++        const scrollbarWidth = window.innerWidth - root.clientWidth;
++        if (scrollbarWidth > 0) {
++          document.body.style.paddingRight = scrollbarWidth + "px";
++        }
++        root.classList.add("modal-open");
++      }
++
++      function unlockScroll() {
++        root.classList.remove("modal-open");
++        document.body.style.paddingRight = "";
++      }
++
++      // Fires for the Close button and for Escape, so scroll is always restored.
++      noticeDialog.addEventListener("close", unlockScroll);
++
++      closeButton.addEventListener("click", function () {
++        noticeDialog.close();
++      });
++
++      lockScroll();
++      noticeDialog.showModal();
++    })();
+   </script>
+ </body>
+ 

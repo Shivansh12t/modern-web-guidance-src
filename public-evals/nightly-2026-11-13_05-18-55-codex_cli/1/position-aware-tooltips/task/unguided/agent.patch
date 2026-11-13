@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -119,8 +119,61 @@
+       margin-bottom: 10px;
+       color: var(--primary);
+     }
+ 
++    .info-button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 22px;
++      height: 22px;
++      margin-left: 6px;
++      border: 1px solid currentColor;
++      border-radius: 50%;
++      background: transparent;
++      color: var(--primary);
++      font: italic bold 14px Georgia, serif;
++      vertical-align: middle;
++      cursor: pointer;
++    }
++
++    .info-button:hover {
++      background: var(--secondary);
++    }
++
++    .info-button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .info-tooltip {
++      position: fixed;
++      z-index: 1100;
++      width: 260px;
++      max-width: calc(100vw - 24px);
++      padding: 14px 16px;
++      border-radius: 8px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 6px 20px rgba(62, 39, 35, 0.2);
++      font-size: 0.875rem;
++      line-height: 1.5;
++      text-align: left;
++    }
++
++    .tooltip-arrow {
++      position: absolute;
++      width: 10px;
++      height: 10px;
++      background: inherit;
++      transform: rotate(45deg);
++    }
++
++    .info-tooltip[data-side="top"] .tooltip-arrow { bottom: -5px; }
++    .info-tooltip[data-side="bottom"] .tooltip-arrow { top: -5px; }
++    .info-tooltip[data-side="left"] .tooltip-arrow { right: -5px; }
++    .info-tooltip[data-side="right"] .tooltip-arrow { left: -5px; }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -178,9 +231,10 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3>Maple Oat Latte <button id="anchor" class="info-button" type="button"
++              aria-label="About the Maple Oat Latte" aria-describedby="maple-tooltip">i</button></h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+@@ -206,7 +260,113 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <div id="maple-tooltip" class="info-tooltip" role="tooltip" hidden>
++    A cozy blend of espresso, creamy oat milk, and Vermont maple syrup. Available for the season.
++    <span class="tooltip-arrow" aria-hidden="true"></span>
++  </div>
++
++  <script>
++    const anchor = document.getElementById('anchor');
++    const tooltip = document.getElementById('maple-tooltip');
++    const arrow = tooltip.querySelector('.tooltip-arrow');
++    let pinned = false;
++    let closeTimer;
++    let positionFrame;
++
++    function positionTooltip() {
++      if (tooltip.hidden) return;
++      const padding = 12;
++      const gap = 12;
++      const viewport = window.visualViewport;
++      const left = (viewport?.offsetLeft ?? 0) + padding;
++      const top = (viewport?.offsetTop ?? 0) + padding;
++      const right = left + (viewport?.width ?? window.innerWidth) - padding * 2;
++      const bottom = top + (viewport?.height ?? window.innerHeight) - padding * 2;
++      tooltip.style.maxWidth = `${Math.max(0, right - left)}px`;
++      const rect = anchor.getBoundingClientRect();
++      const { width, height } = tooltip.getBoundingClientRect();
++      const centerX = rect.left + rect.width / 2;
++      const centerY = rect.top + rect.height / 2;
++      const space = {
++        top: rect.top - top - gap,
++        bottom: bottom - rect.bottom - gap,
++        right: right - rect.right - gap,
++        left: rect.left - left - gap,
++      };
++      const sides = ['top', 'bottom', 'right', 'left'];
++      const required = side => side === 'top' || side === 'bottom' ? height : width;
++      // Prefer above, then flip to a side that fits within the viewport.
++      const side = sides.find(side => space[side] >= required(side)) ??
++        sides.reduce((best, side) =>
++          space[side] / required(side) > space[best] / required(best) ? side : best);
++      const vertical = side === 'top' || side === 'bottom';
++      let x = vertical ? centerX - width / 2 :
++        side === 'left' ? rect.left - gap - width : rect.right + gap;
++      let y = vertical ?
++        (side === 'top' ? rect.top - gap - height : rect.bottom + gap) : centerY - height / 2;
++      const clamp = (value, min, max) => Math.max(min, Math.min(value, Math.max(min, max)));
++      x = clamp(x, left, right - width);
++      y = clamp(y, top, bottom - height);
++      tooltip.dataset.side = side;
++      tooltip.style.left = `${x}px`;
++      tooltip.style.top = `${y}px`;
++      // Keep the pointer aimed at the button even when the tooltip is shifted.
++      arrow.style.left = vertical ? `${clamp(centerX - x - 5, 12, width - 22)}px` : '';
++      arrow.style.top = vertical ? '' : `${clamp(centerY - y - 5, 12, height - 22)}px`;
++    }
++
++    function openTooltip() {
++      clearTimeout(closeTimer);
++      tooltip.hidden = false;
++      positionTooltip();
++    }
++
++    function closeTooltip() {
++      clearTimeout(closeTimer);
++      tooltip.hidden = true;
++      pinned = false;
++    }
++
++    function scheduleClose() {
++      clearTimeout(closeTimer);
++      closeTimer = setTimeout(() => {
++        if (!pinned && document.activeElement !== anchor &&
++            !anchor.matches(':hover') && !tooltip.matches(':hover')) closeTooltip();
++      }, 120);
++    }
++
++    anchor.addEventListener('pointerenter', openTooltip);
++    anchor.addEventListener('focus', openTooltip);
++    anchor.addEventListener('pointerleave', scheduleClose);
++    anchor.addEventListener('blur', scheduleClose);
++    anchor.addEventListener('click', () => {
++      if (pinned) closeTooltip();
++      else {
++        pinned = true;
++        openTooltip();
++      }
++    });
++    tooltip.addEventListener('pointerenter', () => clearTimeout(closeTimer));
++    tooltip.addEventListener('pointerleave', scheduleClose);
++    document.addEventListener('keydown', event => {
++      if (event.key === 'Escape') closeTooltip();
++    });
++    document.addEventListener('pointerdown', event => {
++      if (!anchor.contains(event.target) && !tooltip.contains(event.target)) closeTooltip();
++    });
++
++    function schedulePosition() {
++      cancelAnimationFrame(positionFrame);
++      positionFrame = requestAnimationFrame(positionTooltip);
++    }
++    window.addEventListener('resize', schedulePosition);
++    window.addEventListener('scroll', schedulePosition, true);
++    window.visualViewport?.addEventListener('resize', schedulePosition);
++    window.visualViewport?.addEventListener('scroll', schedulePosition);
++    new ResizeObserver(schedulePosition).observe(tooltip);
++  </script>
++
+ </body>
+ 
+ </html>

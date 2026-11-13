@@ -1,0 +1,460 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -66,13 +66,263 @@
+       color: var(--accent);
+     }
+ 
+     .logout-link {
++      background: transparent;
+       border: 1px solid var(--accent);
++      color: white;
+       padding: 5px 12px;
+       border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: color 0.3s, border-color 0.3s;
+     }
+ 
++    .logout-link:hover {
++      color: var(--accent);
++    }
++
++    :where(a:any-link, button):focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Visually Hidden Utility */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    /* Scroll containment for modal dialogs */
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++    }
++
++    /* Top-layer animations for Dialog and Popover */
++    dialog,
++    [popover] {
++      opacity: 0;
++      transition-property: opacity, transform, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++
++      @media (prefers-reduced-motion: no-preference) {
++        transform: scale(0.95) translateY(8px);
++      }
++    }
++
++    dialog::backdrop,
++    [popover]::backdrop {
++      background-color: rgb(0 0 0 / 0);
++      backdrop-filter: blur(0px);
++      transition-property: background-color, backdrop-filter, display, overlay;
++      transition-duration: 0.3s;
++      transition-timing-function: ease-out;
++      transition-behavior: allow-discrete;
++    }
++
++    :is(dialog[open], [popover]:is(:popover-open, .\:popover-open)):where(:not([data-closing])) {
++      opacity: 1;
++
++      @starting-style {
++        opacity: 0;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        transform: scale(1) translateY(0);
++
++        @starting-style {
++          transform: scale(0.95) translateY(8px);
++        }
++      }
++
++      &::backdrop {
++        background-color: rgb(0 0 0 / 0.55);
++        backdrop-filter: blur(2px);
++
++        @starting-style {
++          background-color: rgb(0 0 0 / 0);
++          backdrop-filter: blur(0px);
++        }
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      dialog,
++      [popover],
++      dialog::backdrop,
++      [popover]::backdrop {
++        transition-duration: 0.1s;
++      }
++    }
++
++    /* Logout Confirmation Dialog Styling */
++    #logout-dialog {
++      margin: auto;
++      border: none;
++      border-radius: 10px;
++      padding: 28px;
++      max-width: 420px;
++      width: calc(100% - 32px);
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++    }
++
++    #logout-dialog h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.4rem;
++    }
++
++    #logout-dialog p {
++      margin-bottom: 24px;
++      color: #5d4037;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 12px;
++      flex-wrap: wrap;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++      border: none;
++      padding: 10px 18px;
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      transition: background 0.2s;
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .btn-danger {
++      background: #c62828;
++      color: white;
++      border: none;
++      padding: 10px 18px;
++      border-radius: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      text-decoration: none;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      transition: background 0.2s;
++    }
++
++    .btn-danger:hover {
++      background: #b71c1c;
++    }
++
++    .hero-actions {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      justify-content: center;
++      margin-top: 15px;
++    }
++
++    .hero-actions .btn {
++      margin-top: 0;
++      border: none;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    .btn-outline {
++      background: rgba(255, 255, 255, 0.15);
++      border: 1px solid var(--accent) !important;
++      color: white;
++    }
++
++    .btn-outline:hover {
++      background: rgba(255, 171, 64, 0.25);
++    }
++
++    /* Floating Informational Notice (Toast Popover) */
++    #info-notice {
++      position: fixed;
++      inset: auto 20px 20px auto;
++      margin: 0;
++      max-width: min(380px, calc(100vw - 40px));
++      width: 100%;
++      border: none;
++      border-left: 5px solid var(--accent);
++      border-radius: 8px;
++      padding: 16px 18px;
++      background: var(--primary);
++      color: white;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++    }
++
++    .notice-content {
++      display: flex;
++      align-items: flex-start;
++      justify-content: space-between;
++      gap: 14px;
++    }
++
++    .notice-text strong {
++      display: block;
++      color: var(--accent);
++      margin-bottom: 4px;
++      font-size: 0.95rem;
++    }
++
++    .notice-text p {
++      font-size: 0.9rem;
++      line-height: 1.45;
++    }
++
++    .notice-dismiss {
++      background: rgba(255, 255, 255, 0.12);
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.25);
++      border-radius: 4px;
++      padding: 4px 10px;
++      font-family: inherit;
++      font-size: 0.8rem;
++      cursor: pointer;
++      flex-shrink: 0;
++      min-block-size: 24px;
++      min-inline-size: 24px;
++      transition: background 0.2s;
++    }
++
++    .notice-dismiss:hover {
++      background: rgba(255, 255, 255, 0.25);
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -156,23 +406,26 @@
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" id="open-dialog-btn" class="logout-link" command="show-modal" commandfor="logout-dialog">Logout</button></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <div class="hero-actions">
++      <a href="/order-online" class="btn">Order Now</a>
++      <button type="button" id="foobar" class="btn btn-outline" command="show-popover" commandfor="info-notice">Roastery Hours &amp; Info</button>
++    </div>
+   </header>
+ 
+   <main class="container">
+     <section>
+@@ -196,8 +449,31 @@
+       </div>
+     </section>
+   </main>
+ 
++  <dialog id="logout-dialog" closedby="any" aria-labelledby="logout-dialog-title">
++    <h2 id="logout-dialog-title">Confirm Logout</h2>
++    <p>Are you sure you want to log out of your Daily Grind Rewards account?</p>
++    <div class="dialog-actions">
++      <button type="button" id="close-dialog-btn" class="btn-secondary" command="close" commandfor="logout-dialog" autofocus>Cancel</button>
++      <a href="/logout" class="btn-danger">Log Out</a>
++    </div>
++  </dialog>
++
++  <div role="region" aria-label="Notifications">
++    <div id="info-notice" popover="manual">
++      <div class="notice-content">
++        <div class="notice-text">
++          <strong>Fresh Batch Alert</strong>
++          <p id="info-notice-body">Our downtown roastery is open daily from 6:00 AM to 8:00 PM. Beans ordered before 2:00 PM ship the same day!</p>
++        </div>
++        <button type="button" id="dismiss-notice-btn" class="notice-dismiss" command="hide-popover" commandfor="info-notice" aria-label="Dismiss notice">Dismiss</button>
++      </div>
++    </div>
++    <p id="sr-announcement-label" class="visually-hidden" hidden>Screen reader announcements</p>
++    <div id="sr-live-region" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
++  </div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +482,130 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.run/invokers-polyfill');
++    }
++    if (!Object.hasOwn(HTMLElement.prototype, 'popover')) {
++      import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
++    }
++
++    const logoutDialog = document.getElementById('logout-dialog');
++    const closeDialogBtn = document.getElementById('close-dialog-btn');
++    const infoNotice = document.getElementById('info-notice');
++    const foobarBtn = document.getElementById('foobar');
++    const dismissNoticeBtn = document.getElementById('dismiss-notice-btn');
++    const srLiveRegion = document.getElementById('sr-live-region');
++    const srAnnouncementLabel = document.getElementById('sr-announcement-label');
++
++    let supportsDisplayTransition;
++    function canTransitionDisplay() {
++      if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
++      if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
++        return false;
++      }
++      const probe = document.createElement('div');
++      probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
++      document.body.appendChild(probe);
++      getComputedStyle(probe).display;
++      probe.style.display = 'none';
++      supportsDisplayTransition = getComputedStyle(probe).display === 'block';
++      probe.remove();
++      return supportsDisplayTransition;
++    }
++
++    function supportsTopLayerExit() {
++      return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
++    }
++
++    async function closeTopLayer(element) {
++      if (!supportsTopLayerExit()) {
++        element.setAttribute('data-closing', '');
++        const animations = element.getAnimations({ subtree: true });
++        if (animations.length > 0) {
++          await Promise.race([
++            Promise.allSettled(animations.map((a) => a.finished)),
++            new Promise((r) => setTimeout(r, 2000)),
++          ]);
++        }
++        if (!element.hasAttribute('data-closing')) return;
++        element.removeAttribute('data-closing');
++      }
++
++      if (element instanceof HTMLDialogElement) {
++        element.close();
++      } else if (typeof element.hidePopover === 'function') {
++        element.hidePopover();
++      }
++    }
++
++    // Intercept cancel (Esc / closedby) to ensure exit transitions run in fallback browsers
++    logoutDialog.addEventListener('cancel', (event) => {
++      if (!supportsTopLayerExit()) {
++        event.preventDefault();
++        closeTopLayer(logoutDialog);
++      }
++    });
++
++    logoutDialog.addEventListener('close', () => {
++      logoutDialog.returnValue = '';
++    });
++
++    closeDialogBtn.addEventListener('click', (event) => {
++      if (!supportsTopLayerExit()) {
++        event.preventDefault();
++        event.stopImmediatePropagation();
++        closeTopLayer(logoutDialog);
++      }
++    });
++
++    // Fallback for browsers without closedby="any" support
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      const outside = (e, dialog) => {
++        const r = dialog.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      };
++      let pressedOutside = false;
++      logoutDialog.addEventListener('pointerdown', (e) => {
++        pressedOutside = outside(e, logoutDialog);
++      });
++      logoutDialog.addEventListener('pointerup', (e) => {
++        if (pressedOutside && outside(e, logoutDialog)) {
++          closeTopLayer(logoutDialog);
++        }
++      });
++    }
++
++    // Announce toast notice content on open via ariaNotify() with live region fallback
++    infoNotice.addEventListener('toggle', (event) => {
++      if (event.newState === 'open') {
++        const message = 'Fresh Batch Alert: ' + document.getElementById('info-notice-body').textContent;
++        if ('ariaNotify' in document) {
++          document.ariaNotify(message);
++        } else if ('ariaNotify' in infoNotice) {
++          infoNotice.ariaNotify(message);
++        } else if (srLiveRegion) {
++          srAnnouncementLabel?.removeAttribute('hidden');
++          srLiveRegion.textContent = message;
++        }
++      }
++    });
++
++    // Manage focus return and smooth exit transition when manually dismissing the floating notice
++    dismissNoticeBtn.addEventListener('click', async (event) => {
++      const hadFocus = infoNotice.contains(document.activeElement);
++      if (!supportsTopLayerExit()) {
++        event.preventDefault();
++        event.stopImmediatePropagation();
++        await closeTopLayer(infoNotice);
++      }
++      if (hadFocus) {
++        foobarBtn?.focus();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,204 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,133 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Shaped features */
++    .shape-definitions {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++      pointer-events: none;
++    }
++
++    .barista-feature {
++      display: flex;
++      align-items: center;
++      gap: clamp(24px, 5vw, 60px);
++      margin-top: 56px;
++      padding: 32px;
++      border-radius: 16px;
++      background: #f0e9e3;
++    }
++
++    .shaped-avatar {
++      display: block;
++      width: 260px;
++      max-width: 100%;
++      height: auto;
++      aspect-ratio: 1;
++      flex: 0 0 auto;
++      object-fit: cover;
++      object-position: center 35%;
++      -webkit-mask-image: url(#barista-splat);
++      mask-image: url(#barista-splat);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .eyebrow {
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++      margin-bottom: 8px;
++    }
++
++    .barista-feature h2 {
++      margin-bottom: 12px;
++    }
++
++    .rewards-section {
++      margin-top: 48px;
++    }
++
++    .rewards-grid {
++      display: grid;
++      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
++      align-items: stretch;
++      gap: 28px;
++      margin-top: 20px;
++    }
++
++    .unified-card {
++      display: flex;
++      filter: drop-shadow(0 10px 14px rgba(62, 39, 35, 0.18));
++    }
++
++    .card-body,
++    .card-accent {
++      background-color: var(--primary);
++    }
++
++    .card-body {
++      flex: 1;
++      min-width: 0;
++      color: white;
++      padding: 32px;
++      border-radius: 16px 0 0 16px;
++    }
++
++    .card-body h3,
++    .gradient-masked-card h3 {
++      font-size: 1.5rem;
++      margin-bottom: 12px;
++    }
++
++    .card-body .btn {
++      color: var(--text);
++      background: var(--accent);
++    }
++
++    .card-body .btn:hover {
++      background: #ffc16f;
++    }
++
++    .card-accent {
++      flex: 0 0 clamp(40px, 6vw, 72px);
++      border-radius: 0 16px 16px 0;
++      -webkit-mask-image: url(#loyalty-curve);
++      mask-image: url(#loyalty-curve);
++      -webkit-mask-size: 100% 100%;
++      mask-size: 100% 100%;
++      -webkit-mask-repeat: no-repeat;
++      mask-repeat: no-repeat;
++    }
++
++    .gradient-masked-card {
++      padding: 44px 28px 28px;
++      border-radius: 16px;
++      background: #f5d6ac;
++      text-align: center;
++      -webkit-mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
++      mask-image: radial-gradient(circle at 50% 0%, transparent 20px, black 21px);
++    }
++
++    @media (max-width: 650px) {
++      .barista-feature {
++        flex-direction: column;
++        padding: 24px;
++        text-align: center;
++      }
++
++      .rewards-grid {
++        grid-template-columns: minmax(0, 1fr);
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -156,8 +281,24 @@
+ </head>
+ 
+ <body>
+ 
++  <svg class="shape-definitions" width="0" height="0" aria-hidden="true" focusable="false">
++    <defs>
++      <!-- Fractional coordinates let the vector scale with the image dimensions. -->
++      <mask id="barista-splat" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox"
++        x="0" y="0" width="1" height="1" style="mask-type: luminance;">
++        <path fill="white" d="M .48 .04 C .57 .01 .56 .18 .65 .16 C .74 .14 .78 .04 .84 .11 C .91 .18 .81 .29 .87 .35 C .93 .41 1 .41 .98 .51 C .96 .61 .82 .6 .8 .69 C .78 .78 .91 .87 .83 .94 C .75 1 .65 .85 .57 .9 C .49 .95 .46 1 .38 .96 C .3 .92 .33 .79 .24 .78 C .15 .77 .04 .89 .03 .78 C .02 .68 .16 .62 .14 .53 C .12 .44 .01 .42 .03 .33 C .05 .24 .21 .28 .27 .21 C .33 .14 .28 .03 .37 .02 C .44 .01 .42 .06 .48 .04 Z" />
++      </mask>
++      <mask id="loyalty-curve" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox"
++        x="0" y="0" width="1" height="1" style="mask-type: luminance;">
++        <rect width="1" height="1" fill="white" />
++        <!-- Extend beyond the edge to avoid a thin visible seam at the cutout. -->
++        <path d="M 1.1 0 C .4 .1 .4 .9 1.1 1 Z" fill="black" />
++      </mask>
++    </defs>
++  </svg>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -194,8 +335,41 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="barista-feature" aria-labelledby="barista-heading">
++      <img class="shaped-avatar"
++        src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&amp;fit=crop&amp;w=600&amp;h=600&amp;q=80"
++        alt="Alex, our featured barista, smiling outdoors" width="600" height="600" loading="lazy" decoding="async">
++      <div>
++        <p class="eyebrow">The people behind your pour</p>
++        <h2 id="barista-heading">Meet Alex, your morning coffee person.</h2>
++        <p>Our featured barista brings a little artistry to every cup. Alex’s go-to? A velvety oat flat white, made slowly and served with a smile.</p>
++        <a href="/about" class="btn">Meet the team</a>
++      </div>
++    </section>
++
++    <section class="rewards-section" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading">A little extra in your daily ritual</h2>
++      <div class="rewards-grid">
++        <article class="unified-card" aria-labelledby="loyalty-heading">
++          <div class="card-body">
++            <p class="eyebrow">The Daily Grind Rewards</p>
++            <h3 id="loyalty-heading">Good coffee. Great perks.</h3>
++            <p>Make every visit more rewarding. Join our loyalty club for member treats, birthday surprises, and more reasons to stop by.</p>
++            <a href="/rewards" class="btn">Explore rewards</a>
++          </div>
++          <div class="card-accent" aria-hidden="true"></div>
++        </article>
++        <article class="gradient-masked-card" aria-labelledby="promo-heading">
++          <p class="eyebrow">Your next coffee break</p>
++          <h3 id="promo-heading">Find your new favorite.</h3>
++          <p>A maple-kissed latte or a perfectly bold espresso? There’s something delicious waiting for you.</p>
++          <a href="/menu/seasonal" class="btn">Explore seasonal sips</a>
++        </article>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

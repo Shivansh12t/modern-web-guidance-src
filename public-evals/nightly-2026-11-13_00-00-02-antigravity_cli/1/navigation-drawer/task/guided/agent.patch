@@ -1,0 +1,357 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -26,10 +26,10 @@
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Header & Navigation Bar */
++    .site-header {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+       display: flex;
+@@ -45,32 +45,140 @@
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
++    .menu-btn,
++    .close-btn {
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.3);
++      border-radius: 6px;
++      padding: 0.45rem 0.6rem;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      transition: color 0.3s, border-color 0.3s, background-color 0.3s;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .menu-btn:hover,
++    .close-btn:hover {
++      color: var(--accent);
++      border-color: var(--accent);
++      background-color: rgba(255, 255, 255, 0.08);
+     }
+ 
+-    nav a {
++    .close-btn {
++      justify-self: end;
++      margin-bottom: 1.5rem;
++    }
++
++    /* Navigation Drawer */
++    .Drawer {
++      --drawer-width: min(20em, 80dvw, 100dvw - 24px);
++      --drawer-backdrop: 0;
++      inset: 0;
++      width: auto;
++      height: auto;
++      max-width: none;
++      max-height: none;
++      margin: 0;
++      padding: 0;
++      background: transparent;
++      border: 0;
++      overflow: visible;
++    }
++
++    .Drawer::backdrop {
++      background: #000;
++      opacity: calc(var(--drawer-backdrop) / 2);
++    }
++
++    .Drawer-scroller {
++      position: relative;
++      display: grid;
++      grid-template-columns: var(--drawer-width) 100%;
++      overflow-x: scroll;
++      overscroll-behavior: none;
++      scrollbar-width: none;
++      scroll-snap-type: x mandatory;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .Drawer-scroller {
++        scroll-behavior: smooth;
++      }
++    }
++
++    .Drawer-scroller::after {
++      content: '';
++      scroll-snap-align: end;
++      scroll-initial-target: nearest;
++    }
++
++    .Drawer-sheet {
++      display: grid;
++      grid-template-rows: auto 1fr;
++      height: 100svh;
++      background: var(--primary);
++      color: #fff;
++      overflow-y: auto;
++      scroll-snap-align: start;
++      scrollbar-width: none;
++      padding: 1.5rem;
++      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.35);
++    }
++
++    @supports (animation-timeline: scroll()) {
++      .Drawer {
++        timeline-scope: --drawer-fade;
++        animation: fade-drawer-backdrop linear both;
++        animation-timeline: --drawer-fade;
++      }
++
++      .Drawer-scroller {
++        scroll-timeline: --drawer-fade x;
++      }
++
++      @property --drawer-backdrop {
++        syntax: '<number>';
++        inherits: true;
++        initial-value: 0;
++      }
++
++      @keyframes fade-drawer-backdrop {
++        0% { --drawer-backdrop: 1; }
++        100% { --drawer-backdrop: 0; }
++      }
++    }
++
++    .Drawer-sheet ul {
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++      list-style: none;
++      align-content: start;
++    }
++
++    .Drawer-sheet a {
+       color: white;
+       text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      font-size: 1.05rem;
++      display: block;
++      padding: 0.6rem 0.75rem;
++      border-radius: 6px;
++      transition: color 0.3s, background-color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .Drawer-sheet a:hover {
+       color: var(--accent);
++      background-color: rgba(255, 255, 255, 0.08);
+     }
+ 
+     .logout-link {
+       border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++      text-align: center;
++      margin-top: 0.5rem;
+     }
+ 
+     /* Hero Section */
+     .hero {
+@@ -151,51 +259,79 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .section-title {
++      text-align: center;
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <dialog class="Drawer" id="drawer" aria-label="Navigation drawer">
++    <div class="Drawer-scroller">
++      <nav class="Drawer-sheet" aria-label="Primary">
++        <button id="drawer-close" class="close-btn" type="button" aria-label="Close menu" autofocus>
++          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++            <path d="M18 6 6 18M6 6l12 12" />
++          </svg>
++        </button>
++        <ul>
++          <li><a href="/menu">Menu</a></li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++  </dialog>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <header class="site-header">
++    <div class="logo">THE DAILY GRIND</div>
++    <button id="drawer-open"
++            class="menu-btn"
++            type="button"
++            aria-label="Menu"
++            aria-expanded="false"
++            aria-controls="drawer">
++      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
++        <path d="M3 6h18M3 12h18M3 18h18" />
++      </svg>
++    </button>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++  <main>
++    <section class="hero">
++      <h1>Wake Up Your Senses</h1>
++      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn">Order Now</a>
+     </section>
++
++    <div class="container">
++      <section>
++        <h2 class="section-title">Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn">View Details</a>
++          </div>
++          <div class="card">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn">View Details</a>
++          </div>
++        </div>
++      </section>
++    </div>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +342,74 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const drawer = document.getElementById('drawer');
++    const openBtn = document.getElementById('drawer-open');
++    const scroller = drawer.querySelector('.Drawer-scroller');
++    const sheet = drawer.querySelector('.Drawer-sheet');
++    const closeBtn = document.getElementById('drawer-close');
++
++    async function openDrawer() {
++      drawer.showModal();
++
++      if (!CSS.supports('scroll-initial-target', 'nearest')) {
++        scroller.scrollTo({left: scroller.offsetWidth, behavior: 'instant'});
++        await new Promise((r) =>
++          requestAnimationFrame(() => requestAnimationFrame(r))
++        );
++      }
++
++      scroller.scrollTo({left: 0, behavior: 'auto'});
++    }
++
++    function closeDrawer() {
++      scroller.scrollTo({left: scroller.offsetWidth, behavior: 'auto'});
++    }
++
++    if (!CSS.supports('animation-timeline: scroll()')) {
++      scroller.addEventListener('scroll', () => {
++        const ratio = 1 - scroller.scrollLeft / sheet.offsetWidth;
++        drawer.style.setProperty('--drawer-backdrop', ratio);
++      });
++    }
++
++    function onDrawerOpened() {
++      openBtn.setAttribute('aria-expanded', 'true');
++    }
++
++    function onDrawerClosed() {
++      drawer.close();
++      openBtn.setAttribute('aria-expanded', 'false');
++    }
++
++    const visibleThreshold = 1 / window.innerWidth;
++
++    const observer = new IntersectionObserver(
++      (entries) => {
++        const entry = entries.at(-1);
++        if (entry.intersectionRatio < visibleThreshold) onDrawerClosed();
++        if (entry.intersectionRatio === 1) onDrawerOpened();
++      },
++      {root: drawer, threshold: [visibleThreshold, 1]},
++    );
++    observer.observe(sheet);
++
++    openBtn.addEventListener('click', openDrawer);
++    closeBtn.addEventListener('click', closeDrawer);
++
++    drawer.addEventListener('click', (event) => {
++      if (!sheet.contains(event.target)) closeDrawer();
++    });
++
++    drawer.addEventListener('cancel', (event) => {
++      if (event.cancelable) {
++        event.preventDefault();
++        closeDrawer();
++      }
++    });
++  </script>
++
+ </body>
+ 
+ </html>

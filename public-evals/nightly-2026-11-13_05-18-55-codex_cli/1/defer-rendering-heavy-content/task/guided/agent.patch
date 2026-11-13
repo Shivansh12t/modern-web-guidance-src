@@ -1,0 +1,141 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -86,13 +86,45 @@
+       transition: transform 0.3s ease;
+       /* Stacked expensive drop-shadows */
+       filter:
+         drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1)) drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1)) drop-shadow(0 30px 60px rgba(0, 0, 0, 0.1));
+-      will-change: transform;
+       position: relative;
+       overflow: hidden;
+     }
+ 
++    .off-screen-card {
++      content-visibility: auto;
++      contain-intrinsic-size: auto none auto var(--card-intrinsic-height, 20rem);
++    }
++
++    .debug-panel {
++      display: none;
++      visibility: hidden;
++      content-visibility: hidden;
++      box-sizing: border-box;
++      max-width: 800px;
++      height: 10rem;
++      margin: 2rem auto;
++      padding: 1rem;
++      overflow: auto;
++      background: var(--card-bg);
++      border: 1px solid #e2e8f0;
++      border-radius: 0.5rem;
++    }
++
++    .debug-panel.is-open {
++      display: block;
++      visibility: visible;
++      content-visibility: visible;
++    }
++
++    @supports (content-visibility: hidden) {
++      .debug-panel {
++        /* Keep its box and cached rendering state between toggles. */
++        display: block;
++      }
++    }
++
+     .card:hover {
+       transform: translateY(-4px);
+     }
+ 
+@@ -207,8 +239,10 @@
+ 
+   <div class="controls">
+ 
+     <button id="regenerate" class="toggle-btn secondary">Regenerate Cards</button>
++    <button id="toggle-debug" class="toggle-btn secondary" type="button" aria-controls="debug-panel"
++      aria-expanded="false">Show debug panel</button>
+     <div>
+       Initial Render: <span id="timer" class="metric">0ms</span> <span id="detected"
+         style="font-size: 0.8rem; margin-left: 0.5rem; font-weight: bold;"></span>
+     </div>
+@@ -219,13 +253,21 @@
+       <p>This page contains 500 complex cards. Is good? <strong>no</strong>.</p>
+     </div>
+   </div>
+ 
++  <section id="debug-panel" class="debug-panel" aria-labelledby="debug-title" aria-hidden="true" inert>
++    <h2 id="debug-title">Rendering debug</h2>
++    <p>Cards: <span id="debug-card-count">0</span></p>
++    <p>Initially deferred cards: <span id="debug-deferred-count">0</span></p>
++  </section>
++
+   <script>
+     const feed = document.getElementById('feed');
+     const regenBtn = document.getElementById('regenerate');
+     const timerSpan = document.getElementById('timer');
+     const detectedSpan = document.getElementById('detected');
++    const debugBtn = document.getElementById('toggle-debug');
++    const debugPanel = document.getElementById('debug-panel');
+     const cardCount = 500;
+ 
+ 
+ 
+@@ -283,24 +325,50 @@
+       feed.innerHTML = '';
+       feed.appendChild(info);
+ 
+       const startTime = performance.now();
++      // Measure one representative card before building the rest. All cards
++      // share the same layout; avoid forcing layout for every deferred subtree.
++      const firstCard = createCard(0);
++      feed.appendChild(firstCard);
++      const firstRect = firstCard.getBoundingClientRect();
++      const cardStyle = getComputedStyle(firstCard);
++      const cardStep = firstRect.height + parseFloat(cardStyle.marginBottom);
++      const contentHeight = firstRect.height
++        - parseFloat(cardStyle.paddingTop) - parseFloat(cardStyle.paddingBottom)
++        - parseFloat(cardStyle.borderTopWidth) - parseFloat(cardStyle.borderBottomWidth);
++      const viewportHeight = window.innerHeight;
++      feed.style.setProperty('--card-intrinsic-height', `${contentHeight}px`);
++
++      let deferredCount = 0;
+       const fragment = document.createDocumentFragment();
+-      for (let i = 0; i < cardCount; i++) {
+-        fragment.appendChild(createCard(i));
++      for (let i = 1; i < cardCount; i++) {
++        const card = createCard(i);
++        if (firstRect.top + i * cardStep >= viewportHeight) {
++          card.classList.add('off-screen-card');
++          deferredCount++;
++        }
++        fragment.appendChild(card);
+       }
+       feed.appendChild(fragment);
++      document.getElementById('debug-card-count').textContent = cardCount;
++      document.getElementById('debug-deferred-count').textContent = deferredCount;
+ 
+       measureRender(startTime);
+     }
+ 
+-    window.addEventListener('load', () => {
+-      setTimeout(renderCards, 500);
+-    });
++    renderCards();
+ 
+     regenBtn.addEventListener('click', renderCards);
+ 
++    debugBtn.addEventListener('click', () => {
++      const isOpen = debugPanel.classList.toggle('is-open');
++      debugPanel.inert = !isOpen;
++      debugPanel.setAttribute('aria-hidden', String(!isOpen));
++      debugBtn.setAttribute('aria-expanded', String(isOpen));
++      debugBtn.textContent = isOpen ? 'Hide debug panel' : 'Show debug panel';
++    });
+ 
+   </script>
+ </body>
+ 
+-</html>
+\ No newline at end of file
++</html>

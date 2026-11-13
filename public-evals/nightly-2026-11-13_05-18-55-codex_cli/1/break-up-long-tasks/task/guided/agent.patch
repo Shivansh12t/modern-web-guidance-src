@@ -1,0 +1,127 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,56 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .blend-lab {
++      margin-bottom: 48px;
++      padding: 32px;
++      border: 1px solid #e4d9ce;
++      border-radius: 12px;
++      background: #f5f0e9;
++    }
++
++    .lab-eyebrow { color: #795548; font-size: .75rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
++    .blend-lab h2 { font-size: 2rem; line-height: 1.25; margin: 6px 0 10px; }
++    .lab-intro { max-width: 620px; color: #705c53; }
++    .lab-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 32px; margin-top: 28px; }
++    .lab-form label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 6px; }
++    .lab-form select, .lab-form input[type="number"] { width: 100%; padding: 11px 12px; border: 1px solid #cbbdb0; border-radius: 5px; background: white; color: var(--text); font: inherit; }
++    .lab-field { margin-bottom: 18px; }
++    .lab-form input[type="range"] { width: 100%; accent-color: var(--primary); }
++    .range-labels, .lab-progress-label { display: flex; justify-content: space-between; font-size: .75rem; color: #705c53; }
++    .lab-hint { font-size: .75rem; color: #705c53; margin-top: 5px; }
++    .lab-actions { display: flex; gap: 10px; flex-wrap: wrap; }
++    .lab-actions button { border: 0; cursor: pointer; font: inherit; font-size: .875rem; margin-top: 0; }
++    .lab-actions .cancel-btn { background: transparent; border: 1px solid #b5a293; color: var(--primary); }
++    .lab-actions button:disabled { opacity: .55; cursor: default; }
++    .blend-lab :focus-visible { outline: 3px solid #b86c26; outline-offset: 3px; }
++    .lab-results { background: white; border-radius: 8px; padding: 24px; min-width: 0; }
++    .lab-results h3 { font-size: 1rem; }
++    .lab-status { font-size: .85rem; color: #705c53; margin: 8px 0 16px; min-height: 2.8em; }
++    .lab-status[data-error="true"] { color: #a12d22; }
++    .lab-results progress { display: block; width: 100%; height: 7px; accent-color: #6a8060; margin: 8px 0 22px; border: 0; border-radius: 10px; overflow: hidden; }
++    .lab-results progress::-webkit-progress-bar { background: #eee8e1; }
++    .lab-results progress::-webkit-progress-value { background: #6a8060; }
++    .flavor-row { display: grid; grid-template-columns: 80px 1fr 30px; align-items: center; gap: 12px; font-size: .8rem; margin: 10px 0; }
++    .flavor-track { height: 7px; border-radius: 5px; background: #eee8e1; overflow: hidden; }
++    .flavor-fill { height: 100%; background: #a57b55; border-radius: inherit; }
++    .flavor-value { text-align: right; font-variant-numeric: tabular-nums; }
++    .lab-best { border-top: 1px solid #eee8e1; margin-top: 22px; padding-top: 18px; }
++    .lab-best ol { padding-left: 20px; margin-top: 10px; }
++    .lab-best li { padding: 6px 0; font-size: .8rem; }
++    .lab-best li span { display: block; color: #705c53; font-size: .75rem; }
++    .lab-note { margin-top: 20px; font-size: .75rem; color: #705c53; }
++    [hidden] { display: none !important; }
++    @media (max-width: 700px) {
++      .blend-lab { padding: 22px; }
++      .lab-layout { grid-template-columns: 1fr; gap: 24px; }
++      nav { flex-wrap: wrap; gap: 12px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -174,8 +222,57 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
++    <section class="blend-lab" aria-labelledby="lab-title">
++      <p class="lab-eyebrow">A little curiosity. A better cup.</p>
++      <h2 id="lab-title">Find your flavor.</h2>
++      <p class="lab-intro">Step into the Blend Lab. Explore thousands of coffee recipes and discover the blend that brings your favorite notes to life.</p>
++      <div class="lab-layout">
++        <form id="blend-form" class="lab-form">
++          <fieldset id="blend-settings" style="border: 0; min-width: 0;">
++            <legend class="lab-eyebrow" style="margin-bottom: 16px;">01 / Make it yours</legend>
++            <div class="lab-field">
++              <label for="blend-target">Your ideal cup</label>
++              <select id="blend-target" name="target">
++                <option value="balanced">Balanced &amp; smooth</option>
++                <option value="bright">Bright &amp; fruity</option>
++                <option value="bold">Bold &amp; chocolatey</option>
++              </select>
++            </div>
++            <div class="lab-field">
++              <label for="blend-roast">Roast level · <output id="roast-label" for="blend-roast">Medium</output></label>
++              <input id="blend-roast" name="roast" type="range" min="1" max="5" value="3" step="1">
++              <div class="range-labels"><span>Light</span><span>Dark</span></div>
++            </div>
++            <div class="lab-field">
++              <label for="blend-count">Recipes to explore</label>
++              <input id="blend-count" name="count" type="number" min="1000" max="1000000" step="1000" value="100000" required aria-describedby="batch-hint">
++              <p class="lab-hint" id="batch-hint">1,000–1,000,000 recipes, in steps of 1,000.</p>
++            </div>
++          </fieldset>
++          <div class="lab-actions">
++            <button type="submit" class="btn" id="simulate-btn">Explore blends <span aria-hidden="true">→</span></button>
++            <button type="button" class="btn cancel-btn" id="cancel-btn" hidden>Cancel</button>
++          </div>
++        </form>
++        <div class="lab-results" aria-labelledby="profile-title">
++          <h3 id="profile-title">02 / Your flavor forecast</h3>
++          <p id="lab-status" class="lab-status" role="status">Your next favorite is out there. Choose your cup and explore.</p>
++          <div class="lab-progress-label"><span id="processed-label">Ready to blend</span><span id="percent-label">0%</span></div>
++          <progress id="blend-progress" value="0" max="100" aria-label="Recipe simulation progress"></progress>
++          <div id="flavor-bars" aria-label="Average flavor intensity out of 10">
++            <div class="flavor-row"><span>Acidity</span><div class="flavor-track"><div class="flavor-fill" style="width: 0%"></div></div><span class="flavor-value">—</span></div>
++            <div class="flavor-row"><span>Sweetness</span><div class="flavor-track"><div class="flavor-fill" style="width: 0%"></div></div><span class="flavor-value">—</span></div>
++            <div class="flavor-row"><span>Body</span><div class="flavor-track"><div class="flavor-fill" style="width: 0%"></div></div><span class="flavor-value">—</span></div>
++            <div class="flavor-row"><span>Bitterness</span><div class="flavor-track"><div class="flavor-fill" style="width: 0%"></div></div><span class="flavor-value">—</span></div>
++          </div>
++          <div class="lab-best" id="best-blends" hidden><h3>Five blends to try</h3><ol id="blend-ranking"></ol></div>
++        </div>
++      </div>
++      <p class="lab-note">A virtual tasting, inspired by Brazilian, Colombian, and Ethiopian beans. Flavor scores are illustrative estimates; your brew method and beans will make every cup unique.</p>
++      <noscript><p>Enable JavaScript to explore blends.</p></noscript>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -206,7 +303,8 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./blend-lab.mjs"></script>
+ </body>
+ 
+ </html>

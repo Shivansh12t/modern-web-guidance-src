@@ -1,0 +1,484 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,164 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Flavor Profile Simulator */
++    .simulator {
++      margin-top: 60px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .simulator h2 {
++      color: var(--primary);
++      margin-bottom: 5px;
++    }
++
++    .sim-intro {
++      margin-bottom: 20px;
++      color: #6d4c41;
++    }
++
++    .sim-form {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
++      gap: 15px;
++      align-items: end;
++    }
++
++    .sim-form label {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      font-size: 0.85rem;
++      font-weight: 600;
++    }
++
++    .sim-form input,
++    .sim-form select {
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      font: inherit;
++      font-weight: normal;
++    }
++
++    .sim-actions {
++      display: flex;
++      gap: 10px;
++    }
++
++    .sim-actions button {
++      flex: 1;
++      border: 0;
++      padding: 10px 16px;
++      border-radius: 5px;
++      font: inherit;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      transition: background 0.3s;
++    }
++
++    .sim-actions button:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .sim-actions button[type="button"] {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .sim-actions button:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .sim-progress {
++      margin-top: 20px;
++    }
++
++    .sim-progress label {
++      display: block;
++      font-size: 0.85rem;
++      margin-bottom: 4px;
++    }
++
++    .sim-progress progress {
++      inline-size: 100%;
++      accent-color: var(--primary);
++    }
++
++    .sim-status {
++      margin-top: 8px;
++      font-size: 0.9rem;
++      min-height: 1.6em;
++    }
++
++    .sim-results {
++      margin-top: 25px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
++      gap: 25px;
++    }
++
++    .sim-results h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++      font-size: 1.1rem;
++    }
++
++    .flavor-bars {
++      list-style: none;
++    }
++
++    .flavor-bars li {
++      display: grid;
++      grid-template-columns: 90px 1fr 40px;
++      gap: 10px;
++      align-items: center;
++      margin-bottom: 8px;
++      font-size: 0.9rem;
++    }
++
++    .flavor-bar {
++      height: 10px;
++      background: var(--secondary);
++      border-radius: 5px;
++      overflow: clip;
++    }
++
++    .flavor-bar span {
++      display: block;
++      height: 100%;
++      background: var(--accent);
++    }
++
++    .blend-table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: 0.85rem;
++    }
++
++    .blend-table th,
++    .blend-table td {
++      padding: 6px 8px;
++      text-align: left;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .blend-table th {
++      background: #efebe9;
++    }
++
++    .blend-table td:last-child,
++    .blend-table th:last-child {
++      text-align: right;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +350,79 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="simulator" aria-labelledby="sim-heading">
++      <h2 id="sim-heading">Flavor Profile Simulator</h2>
++      <p class="sim-intro">Simulate thousands of recipe blends from our green-bean library and discover the
++        flavor profiles that best match your taste. Feel free to keep browsing while it brews.</p>
++
++      <form class="sim-form" id="sim-form">
++        <label>
++          Number of blends
++          <input type="number" name="count" min="1000" max="500000" step="1000" value="100000" required>
++        </label>
++        <label>
++          Roast level
++          <select name="roast">
++            <option value="light">Light</option>
++            <option value="medium" selected>Medium</option>
++            <option value="dark">Dark</option>
++          </select>
++        </label>
++        <label>
++          Brew method
++          <select name="method">
++            <option value="espresso">Espresso</option>
++            <option value="pourover" selected>Pour-over</option>
++            <option value="frenchpress">French press</option>
++            <option value="coldbrew">Cold brew</option>
++          </select>
++        </label>
++        <label>
++          Favorite note
++          <select name="target">
++            <option value="balanced" selected>Balanced</option>
++            <option value="acidity">Bright &amp; fruity</option>
++            <option value="sweetness">Sweet &amp; caramel</option>
++            <option value="body">Rich &amp; full-bodied</option>
++            <option value="aroma">Floral &amp; aromatic</option>
++          </select>
++        </label>
++        <div class="sim-actions">
++          <button type="submit" id="sim-run">Run simulation</button>
++          <button type="button" id="sim-cancel" disabled>Cancel</button>
++        </div>
++      </form>
++
++      <div class="sim-progress">
++        <label for="sim-progress-bar">Simulation progress</label>
++        <progress id="sim-progress-bar" max="1" value="0"></progress>
++        <p class="sim-status" id="sim-status" role="status">Ready to brew.</p>
++      </div>
++
++      <div class="sim-results" id="sim-results" hidden>
++        <div>
++          <h3>Average Flavor Profile</h3>
++          <ul class="flavor-bars" id="sim-averages"></ul>
++        </div>
++        <div>
++          <h3>Top 10 Blends</h3>
++          <table class="blend-table">
++            <thead>
++              <tr>
++                <th scope="col">#</th>
++                <th scope="col">Blend</th>
++                <th scope="col">Dominant note</th>
++                <th scope="col">Score</th>
++              </tr>
++            </thead>
++            <tbody id="sim-top"></tbody>
++          </table>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +433,235 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const ORIGINS = [
++        { name: 'Ethiopia Yirgacheffe', acidity: 0.9, body: 0.4, sweetness: 0.6, bitterness: 0.2, aroma: 0.95 },
++        { name: 'Colombia Huila', acidity: 0.6, body: 0.6, sweetness: 0.7, bitterness: 0.35, aroma: 0.6 },
++        { name: 'Brazil Cerrado', acidity: 0.3, body: 0.75, sweetness: 0.8, bitterness: 0.4, aroma: 0.45 },
++        { name: 'Sumatra Mandheling', acidity: 0.2, body: 0.95, sweetness: 0.4, bitterness: 0.6, aroma: 0.5 },
++        { name: 'Kenya Nyeri', acidity: 0.95, body: 0.55, sweetness: 0.5, bitterness: 0.3, aroma: 0.8 },
++        { name: 'Guatemala Antigua', acidity: 0.65, body: 0.7, sweetness: 0.65, bitterness: 0.4, aroma: 0.65 },
++        { name: 'Costa Rica Tarrazú', acidity: 0.8, body: 0.5, sweetness: 0.7, bitterness: 0.25, aroma: 0.7 },
++        { name: 'Yemen Mocha', acidity: 0.55, body: 0.8, sweetness: 0.55, bitterness: 0.5, aroma: 0.85 },
++      ];
++      const NOTES = ['acidity', 'body', 'sweetness', 'bitterness', 'aroma'];
++      const NOTE_LABELS = { acidity: 'Acidity', body: 'Body', sweetness: 'Sweetness', bitterness: 'Bitterness', aroma: 'Aroma' };
++      const ROAST = {
++        light: { acidity: 1.2, body: 0.85, sweetness: 0.95, bitterness: 0.7, aroma: 1.15 },
++        medium: { acidity: 1, body: 1, sweetness: 1.1, bitterness: 1, aroma: 1 },
++        dark: { acidity: 0.65, body: 1.2, sweetness: 0.9, bitterness: 1.45, aroma: 0.85 },
++      };
++      const METHODS = {
++        espresso: { steps: 30, rate: 0.12, body: 1.25 },
++        pourover: { steps: 60, rate: 0.05, body: 0.9 },
++        frenchpress: { steps: 90, rate: 0.035, body: 1.15 },
++        coldbrew: { steps: 120, rate: 0.012, body: 1 },
++      };
++      const TIME_BUDGET_MS = 50;
++
++      // Yield to the main thread so input and rendering can run between chunks.
++      const yieldToMain = () => {
++        if (globalThis.scheduler?.yield) return scheduler.yield();
++        return new Promise((resolve) => setTimeout(resolve, 0));
++      };
++
++      // Deterministic PRNG (mulberry32) so a given configuration is reproducible.
++      const createRng = (seed) => () => {
++        seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
++        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
++        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
++        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
++      };
++
++      const clamp01 = (v) => Math.min(1, Math.max(0, v));
++
++      function generateBlend(rng) {
++        const componentCount = 2 + Math.floor(rng() * 3);
++        const picks = [];
++        let total = 0;
++        for (let i = 0; i < componentCount; i++) {
++          const weight = 0.2 + rng();
++          picks.push({ origin: ORIGINS[Math.floor(rng() * ORIGINS.length)], weight });
++          total += weight;
++        }
++        for (const p of picks) p.weight /= total;
++        return picks;
++      }
++
++      // Simulates extraction over time; soluble compounds extract at different rates.
++      function simulateBlend(blend, roast, method) {
++        const profile = { acidity: 0, body: 0, sweetness: 0, bitterness: 0, aroma: 0 };
++        for (const { origin, weight } of blend) {
++          for (const note of NOTES) profile[note] += origin[note] * weight * roast[note];
++        }
++        const extracted = { acidity: 0, body: 0, sweetness: 0, bitterness: 0, aroma: 0 };
++        const speeds = { acidity: 1.6, aroma: 1.4, sweetness: 1, body: 0.8, bitterness: 0.5 };
++        for (let step = 0; step < method.steps; step++) {
++          for (const note of NOTES) {
++            const remaining = profile[note] - extracted[note];
++            extracted[note] += remaining * method.rate * speeds[note];
++          }
++        }
++        extracted.body *= method.body;
++        for (const note of NOTES) extracted[note] = clamp01(extracted[note]);
++        return extracted;
++      }
++
++      function scoreProfile(p, target) {
++        // Penalize excessive bitterness; reward the chosen note or overall balance.
++        const harshness = Math.max(0, p.bitterness - 0.55) * 2;
++        if (target === 'balanced') {
++          const mean = (p.acidity + p.body + p.sweetness + p.aroma) / 4;
++          const variance = ['acidity', 'body', 'sweetness', 'aroma']
++            .reduce((sum, n) => sum + (p[n] - mean) ** 2, 0) / 4;
++          return (mean - variance * 3 - harshness) * 100;
++        }
++        const others = (p.acidity + p.body + p.sweetness + p.aroma - p[target]) / 3;
++        return (p[target] * 0.7 + others * 0.3 - harshness) * 100;
++      }
++
++      function describeBlend(blend) {
++        const merged = new Map();
++        for (const { origin, weight } of blend) {
++          merged.set(origin.name, (merged.get(origin.name) || 0) + weight);
++        }
++        return [...merged]
++          .sort((a, b) => b[1] - a[1])
++          .map(([name, w]) => `${Math.round(w * 100)}% ${name}`)
++          .join(', ');
++      }
++
++      function dominantNote(p) {
++        return NOTES.reduce((best, n) => (p[n] > p[best] ? n : best), NOTES[0]);
++      }
++
++      async function runSimulation({ count, roast, method, target, seedKey }, { signal, onProgress }) {
++        const rng = createRng(count ^ (seedKey.length * 7919) ^ (method.steps * 104729));
++        const totals = { acidity: 0, body: 0, sweetness: 0, bitterness: 0, aroma: 0 };
++        const top = [];
++        let deadline = performance.now() + TIME_BUDGET_MS;
++
++        for (let i = 0; i < count; i++) {
++          const blend = generateBlend(rng);
++          const profile = simulateBlend(blend, roast, method);
++          const score = scoreProfile(profile, target);
++          for (const note of NOTES) totals[note] += profile[note];
++
++          if (top.length < 10 || score > top[top.length - 1].score) {
++            top.push({ blend, profile, score });
++            top.sort((a, b) => b.score - a.score);
++            if (top.length > 10) top.pop();
++          }
++
++          if (performance.now() >= deadline) {
++            onProgress(i + 1);
++            await yieldToMain();
++            signal.throwIfAborted();
++            deadline = performance.now() + TIME_BUDGET_MS;
++          }
++        }
++        onProgress(count);
++
++        const averages = {};
++        for (const note of NOTES) averages[note] = totals[note] / count;
++        return { averages, top };
++      }
++
++      const form = document.getElementById('sim-form');
++      const runBtn = document.getElementById('sim-run');
++      const cancelBtn = document.getElementById('sim-cancel');
++      const progressBar = document.getElementById('sim-progress-bar');
++      const status = document.getElementById('sim-status');
++      const results = document.getElementById('sim-results');
++      const averagesList = document.getElementById('sim-averages');
++      const topBody = document.getElementById('sim-top');
++      const numberFormat = new Intl.NumberFormat();
++      let controller = null;
++
++      function renderResults({ averages, top }) {
++        averagesList.replaceChildren(...NOTES.map((note) => {
++          const li = document.createElement('li');
++          const label = document.createElement('span');
++          label.textContent = NOTE_LABELS[note];
++          const bar = document.createElement('div');
++          bar.className = 'flavor-bar';
++          const fill = document.createElement('span');
++          fill.style.width = `${(averages[note] * 100).toFixed(1)}%`;
++          bar.append(fill);
++          const value = document.createElement('span');
++          value.textContent = (averages[note] * 10).toFixed(1);
++          li.append(label, bar, value);
++          return li;
++        }));
++
++        topBody.replaceChildren(...top.map((entry, idx) => {
++          const tr = document.createElement('tr');
++          const cells = [
++            String(idx + 1),
++            describeBlend(entry.blend),
++            NOTE_LABELS[dominantNote(entry.profile)],
++            entry.score.toFixed(1),
++          ];
++          for (const text of cells) {
++            const td = document.createElement('td');
++            td.textContent = text;
++            tr.append(td);
++          }
++          return tr;
++        }));
++        results.hidden = false;
++      }
++
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        if (controller) return;
++
++        const data = new FormData(form);
++        const count = Math.max(1, Math.floor(Number(data.get('count'))));
++        const config = {
++          count,
++          roast: ROAST[data.get('roast')],
++          method: METHODS[data.get('method')],
++          target: data.get('target'),
++          seedKey: `${data.get('roast')}-${data.get('method')}-${data.get('target')}`,
++        };
++
++        controller = new AbortController();
++        runBtn.disabled = true;
++        cancelBtn.disabled = false;
++        progressBar.max = count;
++        progressBar.value = 0;
++        status.textContent = `Simulating ${numberFormat.format(count)} blends…`;
++        const started = performance.now();
++
++        try {
++          const result = await runSimulation(config, {
++            signal: controller.signal,
++            onProgress: (done) => { progressBar.value = done; },
++          });
++          renderResults(result);
++          const seconds = ((performance.now() - started) / 1000).toFixed(1);
++          status.textContent = `Done! Simulated ${numberFormat.format(count)} blends in ${seconds}s.`;
++        } catch (err) {
++          if (err.name === 'AbortError') {
++            status.textContent = 'Simulation cancelled.';
++          } else {
++            status.textContent = 'Something went wrong while brewing. Please try again.';
++            console.error(err);
++          }
++        } finally {
++          controller = null;
++          runBtn.disabled = false;
++          cancelBtn.disabled = true;
++        }
++      });
++
++      cancelBtn.addEventListener('click', () => controller?.abort());
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

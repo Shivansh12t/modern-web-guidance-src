@@ -1,0 +1,235 @@
+diff --git a/analytics.js b/analytics.js
+new file mode 100644
+--- a/analytics.js
++++ b/analytics.js
+@@ -0,0 +1,230 @@
++/*
++ * The Daily Grind – lightweight client-side analytics.
++ *
++ * Records page views and click interactions, then coalesces them into a
++ * single batched POST so rapid interactions don't hammer the server:
++ *
++ *   - Each event is pushed onto an in-memory queue.
++ *   - A trailing debounce (DEBOUNCE_MS) restarts on every new event, so a
++ *     burst of clicks results in one request once things go quiet.
++ *   - A max-wait ceiling (MAX_WAIT_MS) guarantees a flush even during
++ *     continuous activity, and MAX_BATCH_SIZE forces an early flush.
++ *   - The actual send is deferred to browser idle time (requestIdleCallback)
++ *     and uses navigator.sendBeacon / fetch keepalive so it never blocks UI.
++ *   - On pagehide / tab hidden, any pending events are flushed immediately
++ *     via sendBeacon so clicks that trigger navigation aren't lost.
++ *
++ * Privacy: honours Do Not Track / Global Privacy Control, strips query
++ * strings and fragments from URLs, and never records form input values.
++ */
++(function () {
++  'use strict';
++
++  var CONFIG = {
++    endpoint: '/api/analytics',
++    DEBOUNCE_MS: 2000,
++    MAX_WAIT_MS: 10000,
++    MAX_BATCH_SIZE: 25,
++    MAX_QUEUE_SIZE: 200,
++    MAX_TEXT_LENGTH: 60
++  };
++
++  // Allow overriding config before this script loads:
++  //   window.DAILY_GRIND_ANALYTICS = { endpoint: '...' }
++  var overrides = window.DAILY_GRIND_ANALYTICS || {};
++  for (var key in overrides) {
++    if (Object.prototype.hasOwnProperty.call(overrides, key)) CONFIG[key] = overrides[key];
++  }
++
++  var optedOut =
++    navigator.doNotTrack === '1' ||
++    window.doNotTrack === '1' ||
++    navigator.globalPrivacyControl === true;
++  if (optedOut || overrides.disabled) return;
++
++  // ---------------------------------------------------------------------------
++  // Session / identity (anonymous, per-tab)
++  // ---------------------------------------------------------------------------
++  function randomId() {
++    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
++    return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
++  }
++
++  var sessionId;
++  try {
++    sessionId = sessionStorage.getItem('dg_session_id');
++    if (!sessionId) {
++      sessionId = randomId();
++      sessionStorage.setItem('dg_session_id', sessionId);
++    }
++  } catch (e) {
++    sessionId = randomId(); // storage blocked – fall back to in-memory id
++  }
++
++  // ---------------------------------------------------------------------------
++  // Queue + debounced batching
++  // ---------------------------------------------------------------------------
++  var queue = [];
++  var debounceTimer = null;
++  var maxWaitTimer = null;
++  var idleHandle = null;
++
++  var scheduleIdle =
++    window.requestIdleCallback
++      ? function (cb) { return window.requestIdleCallback(cb, { timeout: 2000 }); }
++      : function (cb) { return setTimeout(cb, 1); };
++  var cancelIdle =
++    window.cancelIdleCallback
++      ? function (h) { window.cancelIdleCallback(h); }
++      : function (h) { clearTimeout(h); };
++
++  function cleanUrl(href) {
++    try {
++      var u = new URL(href, location.href);
++      return u.origin === location.origin ? u.pathname : u.origin + u.pathname;
++    } catch (e) {
++      return null;
++    }
++  }
++
++  function enqueue(type, data) {
++    if (queue.length >= CONFIG.MAX_QUEUE_SIZE) queue.shift(); // drop oldest
++    queue.push({
++      type: type,
++      ts: Date.now(),
++      path: location.pathname,
++      data: data || {}
++    });
++
++    if (queue.length >= CONFIG.MAX_BATCH_SIZE) {
++      scheduleFlush();
++      return;
++    }
++
++    clearTimeout(debounceTimer);
++    debounceTimer = setTimeout(scheduleFlush, CONFIG.DEBOUNCE_MS);
++    if (!maxWaitTimer) maxWaitTimer = setTimeout(scheduleFlush, CONFIG.MAX_WAIT_MS);
++  }
++
++  function clearTimers() {
++    clearTimeout(debounceTimer);
++    clearTimeout(maxWaitTimer);
++    debounceTimer = maxWaitTimer = null;
++  }
++
++  // Defer the network work to idle time.
++  function scheduleFlush() {
++    clearTimers();
++    if (idleHandle !== null) return;
++    idleHandle = scheduleIdle(function () {
++      idleHandle = null;
++      flush(false);
++    });
++  }
++
++  function buildPayload(events) {
++    return JSON.stringify({
++      sessionId: sessionId,
++      sentAt: Date.now(),
++      page: location.pathname,
++      referrer: document.referrer ? cleanUrl(document.referrer) : null,
++      viewport: { w: window.innerWidth, h: window.innerHeight },
++      events: events
++    });
++  }
++
++  function send(body, urgent) {
++    // sendBeacon is fire-and-forget, survives unload, and is low priority.
++    if (navigator.sendBeacon) {
++      try {
++        var blob = new Blob([body], { type: 'application/json' });
++        if (navigator.sendBeacon(CONFIG.endpoint, blob)) return;
++      } catch (e) { /* fall through */ }
++    }
++    if (window.fetch) {
++      fetch(CONFIG.endpoint, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: body,
++        keepalive: true,
++        credentials: 'same-origin',
++        priority: urgent ? 'auto' : 'low'
++      }).catch(function () { /* analytics must never break the page */ });
++    }
++  }
++
++  function flush(urgent) {
++    clearTimers();
++    if (idleHandle !== null) {
++      cancelIdle(idleHandle);
++      idleHandle = null;
++    }
++    while (queue.length) {
++      // Chunk to keep each body well under the 64KB beacon/keepalive limit.
++      send(buildPayload(queue.splice(0, CONFIG.MAX_BATCH_SIZE)), urgent);
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // Event capture
++  // ---------------------------------------------------------------------------
++  function describe(el) {
++    var text = (el.getAttribute('aria-label') || el.textContent || '')
++      .replace(/\s+/g, ' ')
++      .trim()
++      .slice(0, CONFIG.MAX_TEXT_LENGTH);
++    var info = {
++      tag: el.tagName.toLowerCase(),
++      text: text || null,
++      id: el.id || null,
++      classes: el.className && typeof el.className === 'string' ? el.className.trim() || null : null
++    };
++    var section = el.closest('nav, header, main, footer, section, .card');
++    if (section) {
++      info.section = section.classList.contains('card')
++        ? 'card:' + ((section.querySelector('h3') || {}).textContent || '').trim()
++        : section.tagName.toLowerCase();
++    }
++    if (el.tagName === 'A' && el.getAttribute('href')) info.href = cleanUrl(el.href);
++    return info;
++  }
++
++  function onClick(e) {
++    var target = e.target instanceof Element ? e.target : null;
++    if (!target) return;
++    // Attribute the click to the nearest meaningful interactive element.
++    var el = target.closest('a, button, [role="button"], input[type="submit"], [data-track]') || target;
++    var data = describe(el);
++    data.x = Math.round(e.clientX);
++    data.y = Math.round(e.clientY);
++    enqueue('click', data);
++  }
++
++  // Capture phase so we record the click before any navigation handlers run.
++  document.addEventListener('click', onClick, { capture: true, passive: true });
++
++  // Flush pending events when the page is being hidden or unloaded. This is
++  // what saves clicks on links that navigate away before the debounce fires.
++  document.addEventListener('visibilitychange', function () {
++    if (document.visibilityState === 'hidden') flush(true);
++  });
++  window.addEventListener('pagehide', function () { flush(true); });
++
++  // Page view (also re-fires when restored from the back/forward cache).
++  function trackPageView() {
++    enqueue('pageview', {
++      title: document.title,
++      url: location.pathname
++    });
++  }
++  trackPageView();
++  window.addEventListener('pageshow', function (e) {
++    if (e.persisted) trackPageView();
++  });
++
++  // Small public API for custom events / manual flushing.
++  window.dailyGrindAnalytics = {
++    track: function (name, data) { enqueue(String(name), data); },
++    flush: function () { flush(true); }
++  };
++})();

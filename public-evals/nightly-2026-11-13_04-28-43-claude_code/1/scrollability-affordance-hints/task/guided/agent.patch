@@ -1,0 +1,229 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,146 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* Customer Reviews */
++    .reviews {
++      margin-top: 60px;
++    }
++
++    .reviews h2 {
++      text-align: center;
++    }
++
++    .reviews-scroller {
++      --surface: white;
++      --hint-size: .75rem;
++      max-width: 700px;
++      height: 360px;
++      margin: 20px auto 0;
++      padding: 0 20px;
++      list-style: none;
++      overflow-y: auto;
++      overscroll-behavior: contain;
++      container-type: scroll-state;
++      background: var(--surface);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .reviews-scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    /* Scrollability hints: sticky pseudo-elements pinned to the scrollport edges */
++    .reviews-scroller::before,
++    .reviews-scroller::after {
++      content: "";
++      display: block;
++      position: sticky;
++      block-size: var(--hint-size);
++      margin-inline: -20px;
++      z-index: 1;
++      pointer-events: none;
++      opacity: 0;
++      transition: opacity .2s;
++    }
++
++    .reviews-scroller::before {
++      inset-block-start: 0;
++      margin-block-end: calc(-1 * var(--hint-size));
++      background: radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / .2), transparent);
++    }
++
++    .reviews-scroller::after {
++      inset-block-end: 0;
++      margin-block-start: calc(-1 * var(--hint-size));
++      background: radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / .2), transparent);
++    }
++
++    @container scroll-state(scrollable: block-start) {
++      .reviews-scroller::before {
++        opacity: 1;
++      }
++    }
++
++    @container scroll-state(scrollable: block-end) {
++      .reviews-scroller::after {
++        opacity: 1;
++      }
++    }
++
++    /* Fallback 1: scroll-driven animations */
++    @supports not (container-type: scroll-state) {
++      .reviews-scroller::before,
++      .reviews-scroller::after {
++        animation: show-hint linear both;
++        animation-timeline: scroll();
++      }
++
++      .reviews-scroller::before {
++        animation-range: 0 2rem;
++      }
++
++      .reviews-scroller::after {
++        animation-direction: reverse;
++        animation-range: calc(100% - 2rem) 100%;
++      }
++    }
++
++    @keyframes show-hint {
++      to {
++        opacity: 1;
++      }
++    }
++
++    /* Fallback 2: background-attachment shadows (solid background, no JS) */
++    @supports not ((container-type: scroll-state) or (animation-timeline: scroll())) {
++      .reviews-scroller {
++        background:
++          linear-gradient(var(--surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
++          linear-gradient(transparent, var(--surface) 70%) bottom / 100% 2.5rem no-repeat local,
++          radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / .2), transparent) top / 100% var(--hint-size) no-repeat,
++          radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / .2), transparent) bottom / 100% var(--hint-size) no-repeat,
++          var(--surface);
++      }
++    }
++
++    .review {
++      padding: 20px 0;
++      border-bottom: 1px solid var(--secondary);
++    }
++
++    .review:last-child {
++      border-bottom: none;
++    }
++
++    .review-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 10px;
++      margin-bottom: 6px;
++    }
++
++    .review-author {
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .review-rating {
++      color: #e65100;
++      letter-spacing: 2px;
++      white-space: nowrap;
++    }
++
++    .review-date {
++      display: block;
++      font-size: 0.8rem;
++      color: #6d4c41;
++      margin-top: 6px;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +332,78 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="reviews" aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading">Customer Reviews</h2>
++      <ul class="reviews-scroller" tabindex="0" aria-labelledby="reviews-heading">
++        <li class="review">
++          <div class="review-header">
++            <span class="review-author">Sarah M.</span>
++            <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++          </div>
++          <p>The Maple Oat Latte is everything I want in a fall drink. Not too sweet, perfectly creamy, and the baristas always remember my name.</p>
++          <span class="review-date">October 28, 2026</span>
++        </li>
++        <li class="review">
++          <div class="review-header">
++            <span class="review-author">James T.</span>
++            <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++          </div>
++          <p>Best cold brew in town, hands down. Smooth with zero bitterness. I've stopped making my own at home.</p>
++          <span class="review-date">October 21, 2026</span>
++        </li>
++        <li class="review">
++          <div class="review-header">
++            <span class="review-author">Priya K.</span>
++            <span class="review-rating" role="img" aria-label="4 out of 5 stars">★★★★☆</span>
++          </div>
++          <p>Cozy atmosphere and great espresso. It gets busy on weekend mornings, so ordering ahead through the app is a lifesaver.</p>
++          <span class="review-date">October 15, 2026</span>
++        </li>
++        <li class="review">
++          <div class="review-header">
++            <span class="review-author">Marcus L.</span>
++            <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++          </div>
++          <p>The Dark Roast Espresso is bold and rich without tasting burnt. You can tell they really care about their roasting.</p>
++          <span class="review-date">October 9, 2026</span>
++        </li>
++        <li class="review">
++          <div class="review-header">
++            <span class="review-author">Elena R.</span>
++            <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++          </div>
++          <p>Love that their beans are ethically sourced. The rewards program pays off quickly if you're a daily visitor like me.</p>
++          <span class="review-date">September 30, 2026</span>
++        </li>
++        <li class="review">
++          <div class="review-header">
++            <span class="review-author">David C.</span>
++            <span class="review-rating" role="img" aria-label="4 out of 5 stars">★★★★☆</span>
++          </div>
++          <p>Solid coffee and friendly staff. I'd love to see a few more pastry options, but the drinks more than make up for it.</p>
++          <span class="review-date">September 22, 2026</span>
++        </li>
++        <li class="review">
++          <div class="review-header">
++            <span class="review-author">Aisha B.</span>
++            <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++          </div>
++          <p>My go-to spot for remote work. Reliable Wi-Fi, plenty of outlets, and a refill discount that keeps me going all afternoon.</p>
++          <span class="review-date">September 14, 2026</span>
++        </li>
++        <li class="review">
++          <div class="review-header">
++            <span class="review-author">Tom W.</span>
++            <span class="review-rating" role="img" aria-label="5 out of 5 stars">★★★★★</span>
++          </div>
++          <p>Tried the seasonal menu on a whim and now I'm hooked. The staff gave great recommendations for a first-timer.</p>
++          <span class="review-date">September 3, 2026</span>
++        </li>
++      </ul>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

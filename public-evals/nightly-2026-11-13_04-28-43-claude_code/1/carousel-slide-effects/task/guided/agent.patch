@@ -1,0 +1,224 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,128 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Product carousel */
++    .carousel {
++      margin: 60px 0 0;
++    }
++
++    .carousel h2 {
++      text-align: center;
++    }
++
++    .carousel-hint {
++      text-align: center;
++      font-size: 0.9rem;
++      color: #6d4c41;
++    }
++
++    .scroller {
++      --card-width: min(260px, 75vw);
++      display: flex;
++      gap: 24px;
++      list-style: none;
++      overflow-x: auto;
++      overscroll-behavior-inline: contain;
++      scroll-snap-type: x mandatory;
++      /* Let the first and last cards reach the center of the scroller */
++      padding: 24px calc(50% - var(--card-width) / 2) 32px;
++      scroll-padding-inline: calc(50% - var(--card-width) / 2);
++      scrollbar-color: var(--primary) var(--secondary);
++    }
++
++    .scroller:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .product-card {
++      flex: 0 0 var(--card-width);
++      scroll-snap-align: center;
++      background: white;
++      border-radius: 12px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
++      overflow: hidden;
++      display: flex;
++      flex-direction: column;
++      text-align: center;
++    }
++
++    .product-card img {
++      display: block;
++      width: 100%;
++      aspect-ratio: 4 / 3;
++      object-fit: cover;
++    }
++
++    .product-card .product-body {
++      padding: 16px 18px 20px;
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++    }
++
++    .product-card h3 {
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .product-card .price {
++      font-weight: bold;
++      color: #8d5524;
++      margin-bottom: 8px;
++    }
++
++    .product-card .btn {
++      margin-top: auto;
++      align-self: center;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Scale cards up as they approach the center of the scroller, down as they leave.
++       Pure CSS scroll-driven animation; decorative, so it is a progressive enhancement
++       and is skipped entirely for users who prefer reduced motion. */
++    @keyframes card-focus-scale {
++      0% {
++        scale: 0.8;
++      }
++
++      50% {
++        scale: 1;
++      }
++
++      100% {
++        scale: 0.8;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      @supports ((animation-timeline: view()) and (animation-range: entry)) {
++        .scroller > .product-card {
++          animation: card-focus-scale auto linear both;
++          /* Must come after the shorthand, which would otherwise reset it */
++          animation-timeline: view(inline);
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,9 +293,10 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
++  <main>
++    <div class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+@@ -194,8 +315,79 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    </div>
++
++  <section class="carousel" aria-labelledby="carousel-heading">
++    <h2 id="carousel-heading">Shop Our Favorites</h2>
++    <p class="carousel-hint" id="carousel-hint">Scroll sideways or use Tab to browse products.</p>
++    <ul class="scroller" aria-labelledby="carousel-heading" aria-describedby="carousel-hint">
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=75" alt="A latte with heart-shaped foam art" width="600" height="450" loading="lazy" decoding="async">
++        <div class="product-body">
++          <h3>Classic Latte</h3>
++          <p class="price">$4.50</p>
++          <p>Velvety steamed milk over a double shot of our house espresso.</p>
++          <a href="/menu/latte" class="btn">View details<span class="visually-hidden"> for Classic Latte</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=75" alt="An iced coffee in a tall glass" width="600" height="450" loading="lazy" decoding="async">
++        <div class="product-body">
++          <h3>Iced Caramel Coffee</h3>
++          <p class="price">$5.25</p>
++          <p>Chilled coffee swirled with house-made salted caramel.</p>
++          <a href="/menu/iced-caramel" class="btn">View details<span class="visually-hidden"> for Iced Caramel Coffee</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=75" alt="A white mug of black coffee" width="600" height="450" loading="lazy" decoding="async">
++        <div class="product-body">
++          <h3>House Drip</h3>
++          <p class="price">$2.95</p>
++          <p>Our signature medium roast, brewed fresh every 30 minutes.</p>
++          <a href="/menu/drip" class="btn">View details<span class="visually-hidden"> for House Drip</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=75" alt="A flat white with rosetta latte art" width="600" height="450" loading="lazy" decoding="async">
++        <div class="product-body">
++          <h3>Flat White</h3>
++          <p class="price">$4.25</p>
++          <p>Ristretto shots with a thin layer of microfoam.</p>
++          <a href="/menu/flat-white" class="btn">View details<span class="visually-hidden"> for Flat White</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=75" alt="Roasted coffee beans" width="600" height="450" loading="lazy" decoding="async">
++        <div class="product-body">
++          <h3>Whole Bean Blend</h3>
++          <p class="price">$16.00</p>
++          <p>A 12oz bag of our Daily Grind blend for brewing at home.</p>
++          <a href="/shop/whole-bean" class="btn">View details<span class="visually-hidden"> for Whole Bean Blend</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=75" alt="A cappuccino in a ceramic cup" width="600" height="450" loading="lazy" decoding="async">
++        <div class="product-body">
++          <h3>Cappuccino</h3>
++          <p class="price">$4.25</p>
++          <p>Equal parts espresso, steamed milk, and airy foam.</p>
++          <a href="/menu/cappuccino" class="btn">View details<span class="visually-hidden"> for Cappuccino</span></a>
++        </div>
++      </li>
++      <li class="product-card">
++        <img src="https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=600&q=75" alt="A cup of black coffee on a saucer" width="600" height="450" loading="lazy" decoding="async">
++        <div class="product-body">
++          <h3>Americano</h3>
++          <p class="price">$3.50</p>
++          <p>Espresso lengthened with hot water for a smooth, rich cup.</p>
++          <a href="/menu/americano" class="btn">View details<span class="visually-hidden"> for Americano</span></a>
++        </div>
++      </li>
++    </ul>
++  </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

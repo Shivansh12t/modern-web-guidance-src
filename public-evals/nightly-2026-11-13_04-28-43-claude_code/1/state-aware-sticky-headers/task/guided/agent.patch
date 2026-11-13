@@ -1,0 +1,233 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -11,10 +11,20 @@
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --stuck-blue: #1565c0;
++      /* Height of the sticky site nav; section headers stick just below it */
++      --nav-height: 4.5rem;
++      /* Approximate height of a stuck section header */
++      --section-header-height: 3rem;
+     }
+ 
++    html {
++      /* Keep focused/anchored content clear of the nav + a stuck section header */
++      scroll-padding-top: calc(var(--nav-height) + var(--section-header-height) + 1rem);
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+       padding: 0;
+@@ -34,8 +44,9 @@
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      height: var(--nav-height);
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+@@ -134,8 +145,79 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Sticky section headers (scroll-state container queries) */
++    .content-section {
++      margin-bottom: 60px;
++      /* Prevent scroll anchoring from fighting the stuck-state padding change */
++      overflow-anchor: none;
++    }
++
++    .sticky-container {
++      position: sticky;
++      /* Stick directly below the site nav rather than underneath it */
++      top: var(--nav-height);
++      z-index: 10;
++      /* Named container so it never collides with other (e.g. nav) containers */
++      container-type: scroll-state;
++      container-name: section-header;
++      margin-bottom: 20px;
++    }
++
++    .sticky-header {
++      background: var(--secondary);
++      color: var(--primary);
++      padding: 20px 24px;
++      border-radius: 8px;
++      text-align: center;
++      transition: background-color 0.3s, color 0.3s, box-shadow 0.3s, padding 0.3s, border-radius 0.3s;
++    }
++
++    @container section-header scroll-state(stuck: top) {
++      .sticky-header {
++        background: var(--stuck-blue);
++        color: white;
++        padding: 8px 24px;
++        border-radius: 0 0 8px 8px;
++        box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .sticky-header {
++        transition: none;
++      }
++    }
++
++    .intro {
++      text-align: center;
++      max-width: 700px;
++      margin: 0 auto 60px;
++      font-size: 1.1rem;
++    }
++
++    .intro h2 {
++      margin-bottom: 15px;
++      color: var(--primary);
++    }
++
++    .intro p + p {
++      margin-top: 15px;
++    }
++
++    .card img {
++      width: 100%;
++      height: 180px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 15px;
++    }
++
++    .prose p {
++      margin-bottom: 15px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -174,28 +256,116 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section class="intro">
++      <h2>Welcome to The Daily Grind</h2>
++      <p>Since 2009 we've been roasting small batches of specialty coffee right here in the neighborhood. Every bean is traceable to the farm it came from, and every cup is brewed by baristas who care about the details.</p>
++      <p>Scroll on to explore this season's favorites, our house roasts, brewing guides for home, and where to find us.</p>
++    </section>
++
++    <section class="content-section" aria-labelledby="seasonal">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="seasonal">Seasonal Favorites</h2>
++      </div>
+       <div class="grid">
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=70" alt="Maple Oat Latte" loading="lazy" width="600" height="360">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=70" alt="Dark Roast Espresso" loading="lazy" width="600" height="360">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=70" alt="Cold Brew" loading="lazy" width="600" height="360">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="content-section" aria-labelledby="roasts">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="roasts">Our Roasts</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Sunrise Blend</h3>
++          <p>A light roast with bright citrus notes and a clean, honeyed finish.</p>
++          <a href="/menu/roasts/sunrise" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Neighborhood House</h3>
++          <p>Medium roast, balanced and chocolatey. Our everyday cup.</p>
++          <a href="/menu/roasts/house" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Midnight Reserve</h3>
++          <p>Dark roast with notes of molasses, cedar, and toasted walnut.</p>
++          <a href="/menu/roasts/midnight" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Ethiopia Yirgacheffe</h3>
++          <p>Single origin, floral and tea-like with hints of blueberry.</p>
++          <a href="/menu/roasts/ethiopia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Colombia Huila</h3>
++          <p>Single origin with caramel sweetness and a juicy red-apple acidity.</p>
++          <a href="/menu/roasts/colombia" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Decaf Swiss Water</h3>
++          <p>All the flavor, none of the jitters. Chemical-free decaffeination.</p>
++          <a href="/menu/roasts/decaf" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
++
++    <section class="content-section" aria-labelledby="brewing">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="brewing">Brewing Guides</h2>
++      </div>
++      <div class="card prose" style="text-align: left;">
++        <h3>Pour-Over</h3>
++        <p>Use a 1:16 ratio of coffee to water: about 22g of medium-fine coffee for 350g of water just off the boil (around 94&deg;C). Bloom with 50g of water for 30 seconds, then pour slowly in steady spirals until you reach your target weight. Total brew time should land between 3 and 3.5 minutes.</p>
++        <h3>French Press</h3>
++        <p>Grind coarse, like sea salt. Combine 30g of coffee with 500g of hot water, stir gently, and let it steep for 4 minutes. Break the crust, skim off the foam, and press slowly. Pour immediately so the coffee doesn't keep extracting and turn bitter.</p>
++        <h3>AeroPress</h3>
++        <p>For a concentrated, smooth cup, use 15g of fine-medium coffee with 220g of water at 85&deg;C. Stir for 10 seconds, steep for 1 minute, then press for about 30 seconds. Dilute with hot water to taste, or pour over ice for a quick iced coffee.</p>
++        <h3>Cold Brew at Home</h3>
++        <p>Combine 100g of coarsely ground coffee with 1 liter of cold, filtered water. Steep in the fridge for 16 to 18 hours, then strain through a paper filter. Dilute the concentrate 1:1 with water or milk and serve over ice. It keeps for up to two weeks refrigerated.</p>
++      </div>
++    </section>
++
++    <section class="content-section" aria-labelledby="locations">
++      <div class="sticky-container">
++        <h2 class="sticky-header" id="locations">Visit Us</h2>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h3>Downtown</h3>
++          <p>142 Main Street &middot; Open daily 6am&ndash;8pm</p>
++          <a href="/locations/downtown" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>Riverside</h3>
++          <p>8 Harbor Lane &middot; Open daily 7am&ndash;6pm</p>
++          <a href="/locations/riverside" class="btn">View Details</a>
++        </div>
++        <div class="card">
++          <h3>University District</h3>
++          <p>310 College Ave &middot; Open daily 6am&ndash;10pm</p>
++          <a href="/locations/university" class="btn">View Details</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

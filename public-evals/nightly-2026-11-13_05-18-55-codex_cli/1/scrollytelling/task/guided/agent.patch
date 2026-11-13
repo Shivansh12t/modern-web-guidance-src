@@ -1,0 +1,301 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,223 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Text and visuals share timelines through their common ancestor. */
++    .coffee-story {
++      --story-ink: #283d32;
++      --story-muted: #697268;
++      background: #f3f1e9;
++      color: var(--story-ink);
++      padding: 76px max(24px, calc((100vw - 1100px) / 2));
++      timeline-scope: --source, --roast, --brew;
++    }
++
++    .story-intro {
++      display: flex;
++      justify-content: space-between;
++      align-items: end;
++      gap: 32px;
++      padding-bottom: 44px;
++      border-bottom: 1px solid #283d3226;
++    }
++
++    .story-eyebrow {
++      font-size: 0.7rem;
++      font-weight: 600;
++      letter-spacing: 0.18em;
++      text-transform: uppercase;
++    }
++
++    .story-intro h2 {
++      font-family: Georgia, 'Times New Roman', serif;
++      font-size: clamp(2.8rem, 5vw, 4.5rem);
++      font-weight: normal;
++      line-height: 1.08;
++      letter-spacing: -0.045em;
++      margin-top: 18px;
++    }
++
++    .story-intro h2 em { color: #7b866b; }
++
++    .story-intro > p {
++      max-width: 280px;
++      color: var(--story-muted);
++      font-size: 0.9rem;
++      padding-bottom: 6px;
++    }
++
++    .story-chapters {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 24px;
++      padding: 22px 0;
++    }
++
++    .story-chapters a {
++      color: var(--story-ink);
++      text-decoration: none;
++      font-size: 0.75rem;
++    }
++
++    .story-chapters a span { color: #828978; margin-right: 8px; }
++    .story-chapters a:hover { text-decoration: underline; text-underline-offset: 5px; }
++    .coffee-story a:focus-visible { outline: 2px solid currentColor; outline-offset: 6px; }
++
++    .story-layout {
++      display: grid;
++      grid-template-columns: 0.9fr 1.1fr;
++      column-gap: 70px;
++    }
++
++    #tracked, #animated { display: contents; }
++
++    #tracked > section {
++      grid-column: 1;
++      min-height: 570px;
++      display: flex;
++      flex-direction: column;
++      justify-content: center;
++      align-items: start;
++      padding: 48px 0;
++      scroll-margin-top: 90px;
++    }
++
++    #tracked > section:nth-child(1) { grid-row: 1; view-timeline: --source block; }
++    #tracked > section:nth-child(2) { grid-row: 2; view-timeline: --roast block; }
++    #tracked > section:nth-child(3) { grid-row: 3; view-timeline: --brew block; }
++
++    .step-number {
++      display: grid;
++      place-items: center;
++      width: 38px;
++      height: 38px;
++      border: 1px solid #9da58f;
++      border-radius: 50%;
++      font-size: 0.7rem;
++      margin-bottom: 28px;
++    }
++
++    .story-step h3 {
++      font: normal clamp(2rem, 3.2vw, 2.8rem)/1.15 Georgia, 'Times New Roman', serif;
++      letter-spacing: -0.035em;
++      margin: 14px 0 22px;
++    }
++
++    .story-step > p:not(.story-eyebrow) {
++      color: var(--story-muted);
++      font-size: 0.95rem;
++      max-width: 345px;
++    }
++
++    .story-note {
++      border-top: 1px solid #283d3226;
++      margin-top: 30px;
++      padding-top: 16px;
++      font-size: 0.7rem;
++      letter-spacing: 0.04em;
++    }
++
++    #animated > section {
++      grid-column: 2;
++      position: relative;
++      height: 520px;
++      align-self: center;
++      overflow: hidden;
++      border-radius: 4px;
++      background: #344137;
++      color: white;
++      isolation: isolate;
++    }
++
++    #animated > section:nth-child(1) { grid-row: 1; }
++    #animated > section:nth-child(2) { grid-row: 2; }
++    #animated > section:nth-child(3) { grid-row: 3; }
++
++    .story-visual img {
++      position: absolute;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      z-index: -2;
++    }
++
++    .story-visual::after {
++      content: '';
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(transparent 45%, #142219c9);
++      z-index: -1;
++    }
++
++    .visual-label {
++      position: absolute;
++      top: 24px;
++      left: 24px;
++      border: 1px solid #ffffff70;
++      border-radius: 24px;
++      padding: 6px 12px;
++      background: #14221955;
++      font-size: 0.65rem;
++      letter-spacing: 0.12em;
++      text-transform: uppercase;
++    }
++
++    .visual-caption { position: absolute; inset: auto 30px 28px; }
++    .visual-caption p { font: italic 1.8rem/1.2 Georgia, 'Times New Roman', serif; }
++    .visual-caption span { display: block; font-size: 0.65rem; letter-spacing: 0.1em; margin-top: 12px; }
++    .story-end { border-top: 1px solid #283d3226; padding-top: 25px; text-align: center; font-size: 0.75rem; color: var(--story-muted); }
++
++    @keyframes story-reveal {
++      0% { opacity: 0; transform: translateY(28px) scale(0.98); }
++      25%, 70% { opacity: 1; transform: translateY(0) scale(1); }
++      100% { opacity: 0; transform: translateY(-28px) scale(0.98); }
++    }
++
++    /* Static, paired cards are the default for reduced motion and older browsers. */
++    @media (min-width: 701px) and (prefers-reduced-motion: no-preference) {
++      @supports (animation-timeline: view()) and (animation-range: 0% 100%) and (timeline-scope: --source) {
++        #tracked { display: block; }
++        #tracked > section { min-height: 80vh; }
++        #animated {
++          display: grid;
++          position: sticky;
++          top: 100px;
++          align-self: start;
++          height: min(520px, calc(100svh - 130px));
++          margin: 40px 0;
++        }
++        #animated > section {
++          grid-area: 1 / 1;
++          width: 100%;
++          height: 100%;
++          animation: story-reveal auto linear both;
++          animation-range: cover 0% cover 100%;
++        }
++        #animated > section:nth-child(1) { animation-timeline: --source; }
++        #animated > section:nth-child(2) { animation-timeline: --roast; }
++        #animated > section:nth-child(3) { animation-timeline: --brew; }
++      }
++    }
++
++    @media (max-width: 700px) {
++      nav { flex-wrap: wrap; gap: 10px; }
++      nav ul { flex-wrap: wrap; gap: 12px; }
++      nav ul li { margin-left: 0; }
++      .coffee-story { padding: 48px 24px; }
++      .story-intro { display: block; }
++      .story-intro > p { margin-top: 22px; }
++      .story-layout { grid-template-columns: 1fr; }
++      #tracked > section { grid-column: 1; min-height: auto; padding: 38px 0 28px; }
++      #animated > section { grid-column: 1; height: 380px; margin-bottom: 28px; }
++      #tracked > section:nth-child(1) { grid-row: 1; }
++      #tracked > section:nth-child(2) { grid-row: 3; }
++      #tracked > section:nth-child(3) { grid-row: 5; }
++      #animated > section:nth-child(1) { grid-row: 2; }
++      #animated > section:nth-child(2) { grid-row: 4; }
++      #animated > section:nth-child(3) { grid-row: 6; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -173,10 +388,71 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main>
++    <section class="coffee-story" aria-labelledby="story-title">
++      <div class="story-intro">
++        <div>
++          <p class="story-eyebrow">From seed to sip</p>
++          <h2 id="story-title">Good coffee.<br><em>A great story.</em></h2>
++        </div>
++        <p>Every cup has a journey. Follow the little details that make yours worth slowing down for.</p>
++      </div>
++      <div class="story-chapters" aria-label="Coffee story chapters">
++        <a href="#story-source"><span>01</span> The origin</a>
++        <a href="#story-roast"><span>02</span> The roast</a>
++        <a href="#story-brew"><span>03</span> Your ritual</a>
++      </div>
++
++      <div class="story-layout">
++        <div id="tracked">
++          <section id="story-source" class="story-step" aria-labelledby="source-title">
++            <span class="step-number" aria-hidden="true">01</span>
++            <p class="story-eyebrow">Rooted in something good</p>
++            <h3 id="source-title">A better cup starts<br>at the source.</h3>
++            <p>Long before the first pour, there’s a place, a harvest, and a pair of careful hands. We choose ethically sourced beans with character, and people who care as much as we do.</p>
++            <div class="story-note">Thoughtfully sourced. Full of possibility.</div>
++          </section>
++          <section id="story-roast" class="story-step" aria-labelledby="roast-title">
++            <span class="step-number" aria-hidden="true">02</span>
++            <p class="story-eyebrow">A little heat. A lot of care.</p>
++            <h3 id="roast-title">Small batches.<br>Big personality.</h3>
++            <p>Roasted locally, with patience. We draw out each bean’s natural sweetness and depth, finding that lovely balance between a comforting classic and something you haven’t tasted before.</p>
++            <div class="story-note">Locally roasted. Never rushed.</div>
++          </section>
++          <section id="story-brew" class="story-step" aria-labelledby="brew-title">
++            <span class="step-number" aria-hidden="true">03</span>
++            <p class="story-eyebrow">Made for your everyday</p>
++            <h3 id="brew-title">Your moment.<br>Beautifully brewed.</h3>
++            <p>The aroma. The first sip. That quiet moment before the day begins. From a bright espresso to a slow Sunday pour-over, the journey ends exactly where it should: in your favorite cup.</p>
++            <div class="story-note">Find your favorite. Make it a ritual.</div>
++            <a href="/order-online" class="btn">Find your daily grind &rarr;</a>
++          </section>
++        </div>
++
++        <div id="animated">
++          <section class="story-visual" aria-label="The origin: coffee before the roast">
++            <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1000&q=85" alt="Fresh coffee beans gathered before roasting" width="1000" height="1100" loading="lazy">
++            <span class="visual-label">01 / The origin</span>
++            <div class="visual-caption"><p>Good things grow<br>from good beginnings.</p><span>THE DAILY GRIND · THOUGHTFULLY SOURCED</span></div>
++          </section>
++          <section class="story-visual" aria-label="The roast: bringing out the flavor">
++            <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=1000&q=85" alt="Rich brown roasted coffee beans" width="1000" height="1100" loading="lazy">
++            <span class="visual-label">02 / The roast</span>
++            <div class="visual-caption"><p>A craft you can taste.</p><span>THE DAILY GRIND · LOCALLY ROASTED</span></div>
++          </section>
++          <section class="story-visual" aria-label="Your ritual: the finished cup">
++            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1000&q=85" alt="Freshly prepared coffee, ready to enjoy" width="1000" height="1100" loading="lazy">
++            <span class="visual-label">03 / Your ritual</span>
++            <div class="visual-caption"><p>A little pause.<br>A better day.</p><span>THE DAILY GRIND · BREWED FOR YOU</span></div>
++          </section>
++        </div>
++      </div>
++      <p class="story-end">Care in every step. Character in every cup.</p>
++    </section>
++
++    <section class="container">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

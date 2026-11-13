@@ -1,0 +1,353 @@
+diff --git a/index.html b/index.html
+index 66c9173..3c6319a 100644
+--- a/index.html
++++ b/index.html
+@@ -27,49 +27,105 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* One navigation tree, measured against the space available. */
++    .site-header {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+       position: sticky;
+-      top: 0;
++      inset-block-start: 0;
+       z-index: 1000;
+     }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
++    .header-inner {
+       display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      align-items: center;
++      justify-content: space-between;
++      gap: 2rem;
++      padding: 1rem 5%;
+     }
+ 
+-    nav a {
++    .header-inner > * { flex-shrink: 0; white-space: nowrap; }
++    .logo { font-size: clamp(1rem, 4vw, 1.5rem); font-weight: bold; letter-spacing: 1px; }
++    .site-header a { color: white; text-decoration: none; }
++    .site-header button { font: inherit; cursor: pointer; }
++    .site-header a:hover, .site-header button:hover { color: var(--accent); }
++    .site-header :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
++    .site-header [aria-current] { color: var(--accent); text-decoration: underline; text-underline-offset: 0.4em; text-decoration-thickness: 2px; }
++    .menu-button, .submenu-button {
+       color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      background: transparent;
++      border: 1px solid var(--secondary);
++      border-radius: 4px;
++      min-block-size: 44px;
++      padding: 0.5rem 0.8rem;
+     }
+-
+-    nav a:hover {
+-      color: var(--accent);
++    .menu-button { anchor-name: --menu-button; }
++    .submenu-button { border: 0; padding: 0.5rem; min-inline-size: 44px; }
++    .submenu-button span { display: inline-block; }
++    .submenu-button[aria-expanded="true"] span { rotate: 180deg; }
++    .site-menu, .submenu { list-style: none; color: white; background: var(--primary); border: 1px solid var(--secondary); border-radius: 6px; }
++    .site-menu {
++      position: fixed;
++      inset: auto;
++      inset-block-start: var(--menu-top, 4.75rem);
++      inset-block-start: anchor(--menu-button bottom);
++      inset-inline-end: 5%;
++      inline-size: min(24rem, 90vw);
++      inline-size: min(24rem, 90dvw);
++      max-block-size: calc(100vh - 6rem);
++      max-block-size: calc(100dvh - 6rem);
++      overflow: auto;
++      margin: 0.5rem 0 0;
++      padding: 0.75rem;
++      box-shadow: 0 8px 24px #0003;
+     }
++    .site-menu > li > a, .submenu a { display: block; padding: 0.65rem 0.75rem; font-size: 0.9rem; }
++    .nav-dropdown { display: grid; grid-template-columns: 1fr auto; align-items: center; }
++    .submenu { grid-column: 1 / -1; margin: 0.25rem 0 0.5rem 0.75rem; padding: 0.35rem; }
++    .logout-link { border: 1px solid var(--accent); border-radius: 4px; }
++    .site-menu > li:last-child { margin-block-start: 0.5rem; }
++    [hidden] { display: none !important; }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    .site-header.is-wide .menu-button { display: none; }
++    .site-header.is-wide .site-menu {
++      position: static;
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      inline-size: auto;
++      max-block-size: none;
++      overflow: visible;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      background: transparent;
++      box-shadow: none;
++    }
++    .site-header.is-wide .site-menu > li:last-child { margin: 0 0 0 0.5rem; }
++    .site-header.is-wide .nav-dropdown { display: flex; }
++    .site-header.is-wide .nav-dropdown > a { padding-inline-end: 0; }
++    .site-header.is-wide .submenu {
++      position: fixed;
++      position-area: block-end span-inline-end;
++      position-try-fallbacks: flip-block, flip-inline;
++      inset: auto;
++      block-size: auto;
++      min-inline-size: 12rem;
++      inline-size: max-content;
++      max-inline-size: calc(100vw - 2rem);
++      margin: 0.5rem 0 0;
++      overflow: visible;
++      box-shadow: 0 8px 24px #0003;
++    }
++    .site-header.is-wide .submenu::before { content: ""; position: absolute; inset-inline: 0; inset-block-end: 100%; block-size: 0.5rem; }
++    .site-header.is-wide .submenu:not(:popover-open):not(.fallback-open) { display: none; }
++    .site-header.is-wide .submenu:is(:popover-open, .fallback-open) { display: block; }
++    @supports not (position-area: block-end) {
++      .site-header.is-wide .submenu { position: fixed; margin: 0; }
++    }
++    @media (forced-colors: active) {
++      .site-header :focus-visible { outline-color: Highlight; }
++      .site-header [aria-current] { color: LinkText; }
+     }
+ 
+     /* Hero Section */
+@@ -157,16 +213,31 @@
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <header class="site-header">
++    <div class="header-inner">
++      <a href="/" class="logo">THE DAILY GRIND</a>
++      <nav aria-label="Primary">
++        <button class="menu-button" type="button" popovertarget="site-menu" aria-controls="site-menu" aria-expanded="false">
++          <span aria-hidden="true">☰</span> Menu
++        </button>
++        <ul id="site-menu" class="site-menu" popover="auto">
++          <li class="nav-dropdown">
++            <a href="/menu">Menu</a>
++            <button class="submenu-button" type="button" aria-label="Menu categories" aria-controls="menu-categories" aria-expanded="false" popovertarget="menu-categories"><span aria-hidden="true">⌄</span></button>
++            <ul id="menu-categories" class="submenu">
++              <li><a href="/menu/seasonal">Seasonal</a></li>
++              <li><a href="/menu/espresso">Espresso</a></li>
++              <li><a href="/menu/cold-brew">Cold Brew</a></li>
++            </ul>
++          </li>
++          <li><a href="/locations">Locations</a></li>
++          <li><a href="/rewards">Rewards</a></li>
++          <li><a href="/account">My Account</a></li>
++          <li><a href="/logout" class="logout-link">Logout</a></li>
++        </ul>
++      </nav>
++    </div>
++  </header>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+@@ -207,6 +278,170 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const header = document.querySelector('.site-header');
++      const inner = header.querySelector('.header-inner');
++      const menu = document.querySelector('#site-menu');
++      const menuButton = header.querySelector('.menu-button');
++      const submenu = document.querySelector('#menu-categories');
++      const submenuButton = header.querySelector('.submenu-button');
++      const dropdown = header.querySelector('.nav-dropdown');
++      const nativePopover = 'popover' in HTMLElement.prototype;
++      let wide = false;
++      let lastWidth = 0;
++      let preview = false;
++
++      const isOpen = element => nativePopover
++        ? element.matches(':popover-open') : element.classList.contains('fallback-open');
++      const setOpen = (element, open, source) => {
++        if (nativePopover) {
++          if (isOpen(element) !== open) {
++            if (open) element.showPopover({ source });
++            else element.hidePopover();
++          }
++        } else {
++          element.classList.toggle('fallback-open', open);
++          element.hidden = !open;
++        }
++      };
++      const positionSubmenu = () => {
++        if (!wide || !isOpen(submenu)) return;
++        if (nativePopover && CSS.supports('position-area', 'block-end')) return;
++        const trigger = submenuButton.getBoundingClientRect();
++        const size = submenu.getBoundingClientRect();
++        submenu.style.top = `${Math.max(8, trigger.bottom + size.height + 8 > innerHeight ? trigger.top - size.height - 8 : trigger.bottom + 8)}px`;
++        submenu.style.left = `${Math.max(8, Math.min(trigger.left, innerWidth - size.width - 8))}px`;
++      };
++      const syncSubmenu = () => {
++        submenuButton.setAttribute('aria-expanded', String(wide ? isOpen(submenu) : !submenu.hidden));
++        positionSubmenu();
++      };
++      const closeSubmenu = () => {
++        if (wide) setOpen(submenu, false);
++        else submenu.hidden = true;
++        preview = false;
++        syncSubmenu();
++      };
++
++      // Normalize trailing slashes while keeping exact page matches.
++      const normalize = path => path.replace(/\/+$/, '') || '/';
++      const path = normalize(location.pathname);
++      header.querySelectorAll('a[href]').forEach(link => {
++        if (normalize(new URL(link.href).pathname) === path) link.setAttribute('aria-current', 'page');
++      });
++      if (path.startsWith('/menu/')) {
++        dropdown.querySelector('a').setAttribute('aria-current', 'true');
++      }
++
++      const layout = () => {
++        const width = inner.clientWidth;
++        if (!wide && width <= lastWidth) return;
++        lastWidth = width;
++        const menuWasOpen = !wide && isOpen(menu);
++        const focusWasInside = menu.contains(document.activeElement);
++        const focusWasButton = document.activeElement === menuButton;
++        if (nativePopover && isOpen(menu)) menu.hidePopover();
++        menu.removeAttribute('popover');
++        menu.hidden = false;
++        header.classList.add('is-wide');
++        const nextWide = inner.scrollWidth <= inner.clientWidth;
++        header.classList.toggle('is-wide', nextWide);
++        if (nextWide !== wide || !submenu.hasAttribute('data-ready')) {
++          if (wide && isOpen(submenu)) setOpen(submenu, false);
++          submenu.style.top = '';
++          submenu.style.left = '';
++          submenu.classList.remove('fallback-open');
++          if (nextWide && nativePopover) submenu.setAttribute('popover', 'auto');
++          else submenu.removeAttribute('popover');
++          submenu.hidden = !nextWide || !nativePopover;
++          submenu.setAttribute('data-ready', '');
++          submenuButton.setAttribute('aria-expanded', 'false');
++          preview = false;
++        }
++        wide = nextWide;
++        if (!wide) {
++          menu.setAttribute('popover', 'auto');
++          menu.style.setProperty('--menu-top', `${menuButton.getBoundingClientRect().bottom}px`);
++          if (nativePopover) {
++            if (menuWasOpen) menu.showPopover();
++          } else setOpen(menu, menuWasOpen);
++          if (focusWasInside && !menuWasOpen) menuButton.focus();
++        } else {
++          menu.classList.remove('fallback-open');
++          if (focusWasButton) menu.querySelector('a').focus();
++        }
++        menuButton.setAttribute('aria-expanded', String(!wide && isOpen(menu)));
++        positionSubmenu();
++      };
++
++      menuButton.addEventListener('click', () => {
++        if (!nativePopover) {
++          setOpen(menu, !isOpen(menu));
++          menuButton.setAttribute('aria-expanded', String(isOpen(menu)));
++        }
++      });
++      menu.addEventListener('toggle', () => {
++        menuButton.setAttribute('aria-expanded', String(!wide && isOpen(menu)));
++        if (!wide && !isOpen(menu)) closeSubmenu();
++      });
++      submenuButton.addEventListener('click', event => {
++        if (!wide) {
++          submenu.hidden = !submenu.hidden;
++          syncSubmenu();
++        } else if (preview) {
++          event.preventDefault();
++          preview = false;
++        } else if (!nativePopover) {
++          setOpen(submenu, !isOpen(submenu));
++          syncSubmenu();
++        }
++      });
++      submenu.addEventListener('toggle', syncSubmenu);
++      dropdown.addEventListener('pointerenter', event => {
++        if (wide && event.pointerType !== 'touch' && matchMedia('(hover: hover)').matches && !isOpen(submenu)) {
++          preview = true;
++          setOpen(submenu, true, submenuButton);
++          syncSubmenu();
++        }
++      });
++      dropdown.addEventListener('pointerleave', () => { if (preview) closeSubmenu(); });
++      dropdown.addEventListener('focusout', event => {
++        if (event.relatedTarget && !dropdown.contains(event.relatedTarget)) closeSubmenu();
++      });
++      // Older browsers get the same controls with manual light dismissal.
++      if (!nativePopover) {
++        document.addEventListener('click', event => {
++          if (!dropdown.contains(event.target)) closeSubmenu();
++          if (!wide && !header.contains(event.target)) {
++            setOpen(menu, false);
++            menuButton.setAttribute('aria-expanded', 'false');
++          }
++        });
++      }
++      header.addEventListener('keydown', event => {
++        if (event.key !== 'Escape') return;
++        if (!wide && !submenu.hidden) {
++          closeSubmenu();
++          submenuButton.focus();
++          event.preventDefault();
++        } else if (!nativePopover) {
++          if (wide && isOpen(submenu)) { closeSubmenu(); submenuButton.focus(); }
++          else if (!wide && isOpen(menu)) {
++            setOpen(menu, false);
++            menuButton.setAttribute('aria-expanded', 'false');
++            menuButton.focus();
++          }
++        }
++      });
++      layout();
++      const observer = new ResizeObserver(layout);
++      observer.observe(inner);
++      observer.observe(menu);
++      window.addEventListener('resize', positionSubmenu);
++      window.addEventListener('scroll', positionSubmenu, { passive: true });
++    })();
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,74 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,13 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="operations.css">
++  <script type="importmap">
++    {"imports":{"scheduler-polyfill":"./node_modules/scheduler-polyfill/dist/scheduler-polyfill.js"}}
++  </script>
++  <script type="module" src="operations.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -194,8 +199,56 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++    <section class="operations" aria-labelledby="operations-title">
++      <div class="operations-heading">
++        <div>
++          <p class="operations-eyebrow">BEHIND THE COUNTER</p>
++          <h2 id="operations-title">Operations queue</h2>
++          <p class="operations-description">A little order for the daily rush. Run tasks and watch priority at work.</p>
++        </div>
++        <span class="queue-status" id="queue-status" role="status">Preparing queue</span>
++      </div>
++
++      <div class="task-actions" aria-label="Add an operation">
++        <button class="task-action urgent" data-task="checkout" type="button" disabled>
++          <span class="task-priority"><span class="priority-dot"></span>URGENT <span aria-hidden="true">01</span></span>
++          <span class="task-name">Run checkout <span aria-hidden="true">↗</span></span>
++          <span class="task-description">Keep the coffee line moving.</span>
++        </button>
++        <button class="task-action standard" data-task="menu" type="button" disabled>
++          <span class="task-priority"><span class="priority-dot"></span>STANDARD <span aria-hidden="true">02</span></span>
++          <span class="task-name">Update menu <span aria-hidden="true">↗</span></span>
++          <span class="task-description">Freshen up the daily favorites.</span>
++        </button>
++        <button class="task-action background" data-task="telemetry" type="button" disabled>
++          <span class="task-priority"><span class="priority-dot"></span>BACKGROUND <span aria-hidden="true">03</span></span>
++          <span class="task-name">Log telemetry <span aria-hidden="true">↗</span></span>
++          <span class="task-description">Take care of the quiet details.</span>
++        </button>
++      </div>
++
++      <div class="batch-bar">
++        <p><strong>See the queue in action</strong><br>One of each task, processed from highest to lowest priority.</p>
++        <button class="batch-button" id="run-batch" type="button" disabled><span aria-hidden="true">▶</span> Run mixed batch</button>
++      </div>
++
++      <div class="queue-metrics" aria-label="Queue totals">
++        <p><strong id="pending-count">0</strong><span>In queue</span></p>
++        <p><strong id="completed-count">0</strong><span>Completed</span></p>
++        <p><strong>Responsive</strong><span>Short work slices · input stays available</span></p>
++      </div>
++
++      <div class="execution-panel">
++        <div class="execution-heading"><h3>Live activity</h3><button id="clear-log" type="button" disabled>Clear history</button></div>
++        <div class="active-operation"><span id="active-task">Ready when you are</span><span id="active-progress">Idle</span></div>
++        <progress id="task-progress" max="100" value="0" aria-label="Current operation progress"></progress>
++        <ol id="activity-log" aria-label="Execution history, newest first"><li class="empty-log">Your next operation starts here. Choose a task above.</li></ol>
++      </div>
++      <p class="queue-note">Checkout first. Menu next. Telemetry last. Urgent work can jump ahead between work slices.</p>
++      <noscript><p>Enable JavaScript to use the operations queue simulator.</p></noscript>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">

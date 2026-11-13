@@ -1,0 +1,666 @@
+diff --git a/index.html b/index.html
+index 66c9173..23b0d5f 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,11 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      /* Derived tints used by native UI theming */
++      --primary-hover: #3e2723;
++      --crema: #fff3e0;
++      --foam: #efebe9;
++      --muted: #8d6e63;
+     }
+ 
+     * {
+@@ -20,6 +25,65 @@
+       padding: 0;
+     }
+ 
++    /* ===== Browser-native UI theming ===== */
++    html {
++      /* Tell the UA we're a light page so built-in widgets render light */
++      color-scheme: light;
++      /* Checkboxes, radios, range, progress, meter, date-picker highlights */
++      accent-color: var(--primary);
++      /* Standard scrollbar styling (Firefox, Chromium 121+) */
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-gutter: stable;
++    }
++
++    /* WebKit fallback for browsers without standard scrollbar-color (Safari) */
++    @supports not (scrollbar-color: auto) {
++      ::-webkit-scrollbar {
++        width: 12px;
++        height: 12px;
++      }
++
++      ::-webkit-scrollbar-track {
++        background: var(--secondary);
++      }
++
++      ::-webkit-scrollbar-thumb {
++        background: var(--primary);
++        border-radius: 6px;
++        border: 3px solid var(--secondary);
++      }
++
++      ::-webkit-scrollbar-thumb:hover {
++        background: var(--primary-hover);
++      }
++
++      ::-webkit-scrollbar-corner {
++        background: var(--secondary);
++      }
++    }
++
++    /* Text selection */
++    ::selection {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    nav ::selection,
++    .hero ::selection {
++      background: var(--accent);
++      color: var(--primary-hover);
++    }
++
++    /* Text caret & keyboard focus ring */
++    :root {
++      caret-color: var(--primary);
++    }
++
++    :focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+@@ -135,6 +199,372 @@
+       background: #3e2723;
+     }
+ 
++    /* ===== Favorites + Order layout ===== */
++    .menu-layout {
++      display: grid;
++      grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
++      gap: 30px;
++      align-items: start;
++      margin-top: 20px;
++    }
++
++    .menu-layout .grid {
++      margin-top: 0;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++    }
++
++    .section-title {
++      text-align: center;
++      color: var(--primary);
++    }
++
++    @media (max-width: 860px) {
++      .menu-layout {
++        grid-template-columns: 1fr;
++      }
++    }
++
++    /* ===== Order customization panel ===== */
++    .order-panel {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-top: 5px solid var(--accent);
++      padding: 24px;
++      scroll-margin-top: 80px;
++    }
++
++    .card .customize-btn {
++      background: transparent;
++      color: var(--primary);
++      border: 2px solid var(--accent);
++      padding: 8px 18px;
++    }
++
++    .card .customize-btn:hover {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .order-panel h3 {
++      scroll-margin-top: 80px;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .order-panel .subtitle {
++      font-size: 0.9rem;
++      color: var(--muted);
++      margin-bottom: 18px;
++    }
++
++    .field {
++      margin-bottom: 16px;
++    }
++
++    .field-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 12px;
++    }
++
++    .order-panel label,
++    .order-panel legend {
++      display: block;
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .order-panel fieldset {
++      border: none;
++      margin-bottom: 16px;
++    }
++
++    .choice-group {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px 16px;
++    }
++
++    .order-panel .choice-group label {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-weight: normal;
++      color: var(--text);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    /* Text-like native inputs */
++    .order-panel input[type="text"],
++    .order-panel input[type="number"],
++    .order-panel input[type="date"],
++    .order-panel input[type="time"],
++    .order-panel select,
++    .order-panel textarea {
++      width: 100%;
++      font: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background-color: var(--light);
++      border: 2px solid var(--secondary);
++      border-radius: 6px;
++      padding: 8px 10px;
++      transition: border-color 0.2s, background-color 0.2s;
++    }
++
++    .order-panel input:hover,
++    .order-panel select:hover,
++    .order-panel textarea:hover {
++      border-color: var(--muted);
++    }
++
++    .order-panel input:focus,
++    .order-panel select:focus,
++    .order-panel textarea:focus {
++      border-color: var(--primary);
++      background-color: white;
++    }
++
++    .order-panel input:user-invalid,
++    .order-panel select:user-invalid {
++      border-color: #c62828;
++    }
++
++    .order-panel textarea {
++      resize: vertical;
++      min-height: 70px;
++      max-height: 160px;
++      /* Inherits the themed scrollbar; slimmer inside the panel */
++      scrollbar-width: thin;
++    }
++
++    ::placeholder {
++      color: var(--muted);
++      opacity: 0.8;
++    }
++
++    /* Autofill: replace the UA's blue/yellow wash with crema */
++    .order-panel input:autofill {
++      -webkit-text-fill-color: var(--text);
++      box-shadow: inset 0 0 0 100px var(--crema);
++    }
++
++    /* Native date/time picker parts (Chromium/WebKit) */
++    .order-panel ::-webkit-calendar-picker-indicator {
++      cursor: pointer;
++      opacity: 0.7;
++      /* tint the default black glyph toward espresso brown */
++      filter: invert(22%) sepia(18%) saturate(1400%) hue-rotate(335deg) brightness(90%);
++    }
++
++    .order-panel ::-webkit-calendar-picker-indicator:hover {
++      opacity: 1;
++    }
++
++    .order-panel ::-webkit-datetime-edit-hour-field:focus,
++    .order-panel ::-webkit-datetime-edit-minute-field:focus,
++    .order-panel ::-webkit-datetime-edit-ampm-field:focus,
++    .order-panel ::-webkit-datetime-edit-month-field:focus,
++    .order-panel ::-webkit-datetime-edit-day-field:focus,
++    .order-panel ::-webkit-datetime-edit-year-field:focus {
++      background-color: var(--accent);
++      color: var(--text);
++      border-radius: 3px;
++    }
++
++    /* Native <select>: opt into the customizable select where supported,
++       which lets ::picker(select) and <option> take our palette. */
++    @supports (appearance: base-select) {
++
++      .order-panel select,
++      .order-panel select::picker(select) {
++        appearance: base-select;
++      }
++
++      .order-panel select::picker-icon {
++        color: var(--primary);
++        transition: rotate 0.2s;
++      }
++
++      .order-panel select:open::picker-icon {
++        rotate: 180deg;
++      }
++
++      .order-panel select::picker(select) {
++        background: white;
++        border: 2px solid var(--primary);
++        border-radius: 6px;
++        box-shadow: 0 6px 18px rgba(62, 39, 35, 0.25);
++        padding: 4px 0;
++        margin-top: 4px;
++        scrollbar-color: var(--primary) var(--foam);
++      }
++
++      .order-panel option {
++        padding: 6px 12px;
++        color: var(--text);
++      }
++
++      .order-panel option:hover,
++      .order-panel option:focus-visible {
++        background: var(--foam);
++        outline: none;
++      }
++
++      .order-panel option:checked {
++        background: var(--secondary);
++        font-weight: 600;
++      }
++
++      .order-panel option::checkmark {
++        color: var(--primary);
++      }
++
++      .order-panel optgroup legend {
++        padding: 6px 12px 2px;
++        font-size: 0.75rem;
++        text-transform: uppercase;
++        letter-spacing: 1px;
++        color: var(--muted);
++      }
++    }
++
++    /* Native range slider */
++    .range-wrap {
++      display: flex;
++      align-items: center;
++      gap: 12px;
++    }
++
++    .range-wrap output {
++      min-width: 3.5em;
++      text-align: right;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .order-panel input[type="range"] {
++      flex: 1;
++      appearance: none;
++      -webkit-appearance: none;
++      background: transparent;
++      height: 22px;
++      cursor: pointer;
++    }
++
++    .order-panel input[type="range"]::-webkit-slider-runnable-track {
++      height: 6px;
++      border-radius: 3px;
++      background: var(--secondary);
++    }
++
++    .order-panel input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      width: 18px;
++      height: 18px;
++      margin-top: -6px;
++      border-radius: 50%;
++      background: var(--primary);
++      border: 3px solid var(--accent);
++    }
++
++    .order-panel input[type="range"]::-moz-range-track {
++      height: 6px;
++      border-radius: 3px;
++      background: var(--secondary);
++    }
++
++    .order-panel input[type="range"]::-moz-range-progress {
++      height: 6px;
++      border-radius: 3px;
++      background: var(--accent);
++    }
++
++    .order-panel input[type="range"]::-moz-range-thumb {
++      width: 14px;
++      height: 14px;
++      border-radius: 50%;
++      background: var(--primary);
++      border: 3px solid var(--accent);
++    }
++
++    /* Checkboxes & radios use accent-color; just size them up */
++    .order-panel input[type="checkbox"],
++    .order-panel input[type="radio"] {
++      width: 1.1em;
++      height: 1.1em;
++      cursor: pointer;
++    }
++
++    /* Native meter */
++    .order-panel meter {
++      width: 100%;
++      height: 12px;
++    }
++
++    .meter-caption {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.8rem;
++      color: var(--muted);
++    }
++
++    /* Buttons */
++    .form-actions {
++      display: flex;
++      gap: 10px;
++      margin-top: 8px;
++    }
++
++    .order-panel button {
++      font: inherit;
++      cursor: pointer;
++      border-radius: 5px;
++      padding: 10px 18px;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .order-panel button[type="submit"] {
++      flex: 1;
++      background: var(--primary);
++      color: white;
++      border: 2px solid var(--primary);
++    }
++
++    .order-panel button[type="submit"]:hover {
++      background: var(--primary-hover);
++    }
++
++    .order-panel button[type="reset"] {
++      background: transparent;
++      color: var(--primary);
++      border: 2px solid var(--secondary);
++    }
++
++    .order-panel button[type="reset"]:hover {
++      background: var(--foam);
++    }
++
++    .order-total {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      border-top: 1px dashed var(--secondary);
++      padding-top: 12px;
++      margin-top: 4px;
++      margin-bottom: 12px;
++      color: var(--primary);
++    }
++
++    .order-total output {
++      font-size: 1.4rem;
++      font-weight: bold;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,7 +606,8 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
++      <div class="menu-layout">
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -194,6 +625,133 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <aside class="order-panel" aria-labelledby="order-heading">
++        <h3 id="order-heading">Customize Your Order</h3>
++        <p class="subtitle">Build your perfect cup and pick it up fresh.</p>
++
++        <form id="order-form" action="/order-online" method="post">
++          <div class="field">
++            <label for="drink">Drink</label>
++            <select id="drink" name="drink" required>
++              <optgroup label="Seasonal">
++                <option value="maple-oat-latte" data-price="5.25" selected>Maple Oat Latte</option>
++                <option value="dark-roast-espresso" data-price="3.50">Dark Roast Espresso</option>
++                <option value="cold-brew" data-price="4.50">Cold Brew</option>
++              </optgroup>
++              <optgroup label="Classics">
++                <option value="cappuccino" data-price="4.25">Cappuccino</option>
++                <option value="americano" data-price="3.75">Americano</option>
++                <option value="mocha" data-price="5.00">Mocha</option>
++              </optgroup>
++            </select>
++          </div>
++
++          <fieldset>
++            <legend>Size</legend>
++            <div class="choice-group">
++              <label><input type="radio" name="size" value="small" data-price="0"> Small</label>
++              <label><input type="radio" name="size" value="medium" data-price="0.50" checked> Medium</label>
++              <label><input type="radio" name="size" value="large" data-price="1.00"> Large</label>
++            </div>
++          </fieldset>
++
++          <fieldset>
++            <legend>Temperature</legend>
++            <div class="choice-group">
++              <label><input type="radio" name="temp" value="hot" checked> Hot</label>
++              <label><input type="radio" name="temp" value="iced"> Iced</label>
++            </div>
++          </fieldset>
++
++          <div class="field-row">
++            <div class="field">
++              <label for="milk">Milk</label>
++              <select id="milk" name="milk">
++                <option value="whole">Whole</option>
++                <option value="skim">Skim</option>
++                <option value="oat" selected>Oat</option>
++                <option value="almond">Almond</option>
++                <option value="soy">Soy</option>
++                <option value="none">No milk</option>
++              </select>
++            </div>
++            <div class="field">
++              <label for="shots">Espresso shots</label>
++              <input type="number" id="shots" name="shots" min="1" max="4" value="2" required>
++            </div>
++          </div>
++
++          <div class="field">
++            <label for="sweetness">Sweetness</label>
++            <div class="range-wrap">
++              <input type="range" id="sweetness" name="sweetness" min="0" max="100" step="25" value="50">
++              <output id="sweetness-out" for="sweetness">50%</output>
++            </div>
++          </div>
++
++          <div class="field">
++            <label for="caffeine">Caffeine kick</label>
++            <meter id="caffeine" min="0" max="4" low="1.5" high="3" optimum="2" value="2"></meter>
++            <div class="meter-caption"><span>Mellow</span><span>Jolted</span></div>
++          </div>
++
++          <fieldset>
++            <legend>Extras</legend>
++            <div class="choice-group">
++              <label><input type="checkbox" name="extras" value="whipped-cream" data-price="0.50"> Whipped cream</label>
++              <label><input type="checkbox" name="extras" value="cinnamon" data-price="0"> Cinnamon</label>
++              <label><input type="checkbox" name="extras" value="vanilla" data-price="0.75"> Vanilla syrup</label>
++              <label><input type="checkbox" name="extras" value="caramel" data-price="0.75"> Caramel drizzle</label>
++            </div>
++          </fieldset>
++
++          <div class="field">
++            <label for="location">Pickup location</label>
++            <input type="text" id="location" name="location" list="location-list"
++              placeholder="Start typing a store…" autocomplete="off" required>
++            <datalist id="location-list">
++              <option value="Downtown — 12 Main St"></option>
++              <option value="Riverside — 480 Water Ave"></option>
++              <option value="University — 9 College Rd"></option>
++              <option value="Airport — Terminal B"></option>
++            </datalist>
++          </div>
++
++          <div class="field-row">
++            <div class="field">
++              <label for="pickup-date">Pickup date</label>
++              <input type="date" id="pickup-date" name="pickup_date" required>
++            </div>
++            <div class="field">
++              <label for="pickup-time">Pickup time</label>
++              <input type="time" id="pickup-time" name="pickup_time" min="06:00" max="20:00" step="300"
++                value="08:00" required>
++            </div>
++          </div>
++
++          <div class="field">
++            <label for="name">Name for the cup</label>
++            <input type="text" id="name" name="name" autocomplete="given-name" placeholder="e.g. Sam" required>
++          </div>
++
++          <div class="field">
++            <label for="notes">Special instructions</label>
++            <textarea id="notes" name="notes" rows="3" placeholder="Extra hot, light ice, etc."></textarea>
++          </div>
++
++          <div class="order-total">
++            <span>Estimated total</span>
++            <output id="order-total" form="order-form">$5.75</output>
++          </div>
++
++          <div class="form-actions">
++            <button type="reset">Reset</button>
++            <button type="submit">Place Order</button>
++          </div>
++        </form>
++      </aside>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +765,66 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const form = document.getElementById('order-form');
++      const drink = form.elements.drink;
++      const shots = form.elements.shots;
++      const sweetness = form.elements.sweetness;
++      const sweetOut = document.getElementById('sweetness-out');
++      const caffeine = document.getElementById('caffeine');
++      const total = document.getElementById('order-total');
++      const date = form.elements.pickup_date;
++
++      // Default pickup date: today, and disallow past dates
++      const now = new Date();
++      const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
++      date.min = today;
++      date.value = today;
++      date.defaultValue = today;
++
++      const EXTRA_SHOT = 0.80;
++
++      function update() {
++        sweetOut.value = sweetness.value + '%';
++        const shotCount = Math.min(4, Math.max(1, Number(shots.value) || 1));
++        caffeine.value = shotCount;
++
++        let price = Number(drink.selectedOptions[0]?.dataset.price || 0);
++        const size = form.querySelector('input[name="size"]:checked');
++        price += Number(size?.dataset.price || 0);
++        form.querySelectorAll('input[name="extras"]:checked').forEach(function (el) {
++          price += Number(el.dataset.price || 0);
++        });
++        price += Math.max(0, shotCount - 2) * EXTRA_SHOT;
++        total.value = '$' + price.toFixed(2);
++      }
++
++      form.addEventListener('input', update);
++      form.addEventListener('change', update);
++      // Reset restores defaults after the event finishes
++      form.addEventListener('reset', function () { setTimeout(update); });
++
++      // Preselect drink when a Seasonal Favorites card is clicked
++      document.querySelectorAll('.menu-layout .card').forEach(function (card) {
++        const name = card.querySelector('h3').textContent.trim();
++        const opt = Array.from(drink.options).find(function (o) { return o.text === name; });
++        if (!opt) return;
++        card.querySelector('.btn').insertAdjacentHTML('afterend',
++          ' <a href="#order-heading" class="btn customize-btn">Customize</a>');
++        card.querySelector('.customize-btn').addEventListener('click', function (e) {
++          e.preventDefault();
++          drink.value = opt.value;
++          update();
++          document.getElementById('order-heading').scrollIntoView({ behavior: 'smooth', block: 'start' });
++          drink.focus({ preventScroll: true });
++        });
++      });
++
++      update();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

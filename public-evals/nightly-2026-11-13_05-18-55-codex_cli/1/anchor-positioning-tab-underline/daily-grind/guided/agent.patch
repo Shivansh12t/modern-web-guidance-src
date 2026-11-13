@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+index 66c9173..0e55556 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,45 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
++    }
++
++    nav ul::before {
++      content: '';
++      position: absolute;
++      top: var(--indicator-top, 100%);
++      left: 0;
++      width: var(--indicator-width, 0px);
++      transform: translateX(var(--indicator-left, 0px));
++      border-bottom: 3px solid var(--accent);
++      pointer-events: none;
++    }
++
++    nav a[aria-current="page"] {
++      anchor-name: --active-nav-item;
++    }
++
++    @supports (position-anchor: --active-nav-item) {
++      nav ul::before {
++        position-anchor: --active-nav-item;
++        top: calc(anchor(bottom) + 5px);
++        left: anchor(left);
++        right: anchor(right);
++        width: auto;
++        transform: none;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul.indicator-ready::before {
++        transition: transform 0.3s ease, width 0.3s ease, top 0.3s ease;
++      }
++
++      @supports (position-anchor: --active-nav-item) {
++        nav ul.indicator-ready::before {
++          transition: left 0.3s ease, right 0.3s ease, top 0.3s ease;
++        }
++      }
+     }
+ 
+     nav ul li {
+@@ -157,13 +196,13 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li><a href="/menu" data-nav-item aria-current="page">Menu</a></li>
++      <li><a href="/locations" data-nav-item>Locations</a></li>
++      <li><a href="/rewards" data-nav-item>Rewards</a></li>
++      <li><a href="/account" data-nav-item>My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -207,6 +246,43 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const navList = document.querySelector('nav ul');
++    const navItems = [...navList.querySelectorAll('[data-nav-item]')];
++    let activeItem = navItems.find(item => item.pathname === location.pathname) || navItems[0];
++
++    function updateIndicator() {
++      const listBounds = navList.getBoundingClientRect();
++      const itemBounds = activeItem.getBoundingClientRect();
++      navList.style.setProperty('--indicator-left', `${itemBounds.left - listBounds.left}px`);
++      navList.style.setProperty('--indicator-width', `${itemBounds.width}px`);
++      navList.style.setProperty('--indicator-top', `${itemBounds.bottom - listBounds.top + 5}px`);
++    }
++
++    function selectItem(item) {
++      navItems.forEach(link => link.removeAttribute('aria-current'));
++      activeItem = item;
++      activeItem.setAttribute('aria-current', 'page');
++      updateIndicator();
++    }
++
++    navItems.forEach(item => {
++      item.addEventListener('click', event => {
++        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        // Keep this static page visible while the selection slides to the clicked link.
++        event.preventDefault();
++        selectItem(item);
++      });
++    });
++
++    selectItem(activeItem);
++    requestAnimationFrame(() => requestAnimationFrame(() => navList.classList.add('indicator-ready')));
++    // Keep the JavaScript fallback aligned after resizing or font changes.
++    const navObserver = new ResizeObserver(updateIndicator);
++    navObserver.observe(navList);
++    navItems.forEach(item => navObserver.observe(item));
++    document.fonts.ready.then(updateIndicator);
++  </script>
+ </body>
+ 
+ </html>

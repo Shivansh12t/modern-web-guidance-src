@@ -1,0 +1,449 @@
+diff --git a/index.html b/index.html
+index 66c9173..a168b6e 100644
+--- a/index.html
++++ b/index.html
+@@ -27,7 +27,7 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Navigation / Application Menu Bar */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -46,24 +46,112 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .nav-bar-items {
++      display: flex;
++      align-items: center;
++      gap: 20px;
++    }
++
++    nav ul[role="menubar"],
++    .nav-actions {
+       display: flex;
+       list-style: none;
++      align-items: center;
+     }
+ 
+-    nav ul li {
++    nav ul[role="menubar"] > li,
++    .nav-actions > li {
++      position: relative;
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    nav a,
++    nav button[role="menuitem"] {
+       color: white;
++      background: transparent;
++      border: none;
++      font-family: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
++      cursor: pointer;
++      padding: 6px 10px;
++      border-radius: 4px;
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      transition: color 0.3s, background-color 0.2s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav button[role="menuitem"]:hover,
++    nav a:focus-visible,
++    nav button[role="menuitem"]:focus-visible,
++    nav button[role="menuitem"][aria-expanded="true"] {
+       color: var(--accent);
++      outline: none;
++    }
++
++    nav a:focus-visible,
++    nav button[role="menuitem"]:focus-visible {
++      box-shadow: 0 0 0 2px var(--accent);
++    }
++
++    .submenu-arrow {
++      font-size: 0.7rem;
++      transition: transform 0.2s ease;
++    }
++
++    nav button[role="menuitem"][aria-expanded="true"] .submenu-arrow {
++      transform: rotate(180deg);
++    }
++
++    /* Dropdown Menu (role="menu") */
++    ul[role="menu"] {
++      display: none;
++      position: absolute;
++      top: 100%;
++      left: 0;
++      min-width: 200px;
++      background: var(--primary);
++      border: 1px solid rgba(255, 255, 255, 0.15);
++      border-radius: 6px;
++      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
++      padding: 6px 0;
++      margin-top: 6px;
++      list-style: none;
++      flex-direction: column;
++      z-index: 1001;
++    }
++
++    ul[role="menu"].open {
++      display: flex;
++    }
++
++    ul[role="menu"] li {
++      margin: 0;
++      width: 100%;
++    }
++
++    ul[role="menu"] a[role="menuitem"] {
++      display: block;
++      width: 100%;
++      padding: 8px 16px;
++      border-radius: 0;
++      white-space: nowrap;
++    }
++
++    ul[role="menu"] a[role="menuitem"]:hover,
++    ul[role="menu"] a[role="menuitem"]:focus {
++      background: #3e2723;
++      color: var(--accent);
++      box-shadow: none;
++      outline: none;
++    }
++
++    .menu-separator {
++      height: 1px;
++      background: rgba(255, 255, 255, 0.15);
++      margin: 4px 0;
+     }
+ 
+     .logout-link {
+@@ -157,15 +245,53 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main Navigation">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-bar-items">
++      <ul role="menubar" aria-label="The Daily Grind Application Menu">
++        <li role="none">
++          <button type="button" id="menubar-menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-menu" tabindex="0">
++            Menu <span class="submenu-arrow" aria-hidden="true">&#9662;</span>
++          </button>
++          <ul id="submenu-menu" role="menu" aria-labelledby="menubar-menu-btn">
++            <li role="none"><a role="menuitem" href="/menu" tabindex="-1">All Menu Items</a></li>
++            <li role="separator" class="menu-separator"></li>
++            <li role="none"><a role="menuitem" href="/menu/seasonal" tabindex="-1">Seasonal Favorites</a></li>
++            <li role="none"><a role="menuitem" href="/menu/espresso" tabindex="-1">Espresso &amp; Coffee</a></li>
++            <li role="none"><a role="menuitem" href="/menu/cold-brew" tabindex="-1">Cold Brew &amp; Iced</a></li>
++            <li role="none"><a role="menuitem" href="/menu/bakery" tabindex="-1">Pastries &amp; Bakery</a></li>
++          </ul>
++        </li>
++        <li role="none">
++          <button type="button" id="menubar-locations-btn" role="menuitem" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-locations" tabindex="-1">
++            Locations <span class="submenu-arrow" aria-hidden="true">&#9662;</span>
++          </button>
++          <ul id="submenu-locations" role="menu" aria-labelledby="menubar-locations-btn">
++            <li role="none"><a role="menuitem" href="/locations" tabindex="-1">All Locations</a></li>
++            <li role="separator" class="menu-separator"></li>
++            <li role="none"><a role="menuitem" href="/locations/downtown" tabindex="-1">Downtown Flagship</a></li>
++            <li role="none"><a role="menuitem" href="/locations/westside" tabindex="-1">Westside Roastery</a></li>
++            <li role="none"><a role="menuitem" href="/locations/university" tabindex="-1">University District</a></li>
++          </ul>
++        </li>
++        <li role="none">
++          <button type="button" id="menubar-rewards-btn" role="menuitem" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-rewards" tabindex="-1">
++            Rewards <span class="submenu-arrow" aria-hidden="true">&#9662;</span>
++          </button>
++          <ul id="submenu-rewards" role="menu" aria-labelledby="menubar-rewards-btn">
++            <li role="none"><a role="menuitem" href="/rewards" tabindex="-1">Rewards Overview</a></li>
++            <li role="separator" class="menu-separator"></li>
++            <li role="none"><a role="menuitem" href="/rewards/points" tabindex="-1">My Points &amp; Perks</a></li>
++            <li role="none"><a role="menuitem" href="/rewards/redeem" tabindex="-1">Redeem Rewards</a></li>
++            <li role="none"><a role="menuitem" href="/rewards/gift-cards" tabindex="-1">Gift Cards</a></li>
++          </ul>
++        </li>
++      </ul>
++      <ul class="nav-actions">
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -207,6 +333,255 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const menubar = document.querySelector('ul[role="menubar"]');
++      if (!menubar) return;
++
++      const topLevelItems = Array.from(menubar.querySelectorAll(':scope > li > [role="menuitem"]'));
++
++      function getSubmenu(trigger) {
++        const controlsId = trigger.getAttribute('aria-controls');
++        return controlsId ? document.getElementById(controlsId) : trigger.nextElementSibling;
++      }
++
++      function getSubmenuItems(submenu) {
++        return submenu ? Array.from(submenu.querySelectorAll('[role="menuitem"]')) : [];
++      }
++
++      function closeAllSubmenus(exceptTrigger = null) {
++        topLevelItems.forEach((item) => {
++          if (item !== exceptTrigger && item.getAttribute('aria-haspopup') === 'true') {
++            item.setAttribute('aria-expanded', 'false');
++            const submenu = getSubmenu(item);
++            if (submenu) {
++              submenu.classList.remove('open');
++            }
++          }
++        });
++      }
++
++      function openSubmenu(trigger, focusIndex = null) {
++        closeAllSubmenus(trigger);
++        const submenu = getSubmenu(trigger);
++        if (!submenu) return;
++        trigger.setAttribute('aria-expanded', 'true');
++        submenu.classList.add('open');
++
++        if (focusIndex !== null) {
++          const items = getSubmenuItems(submenu);
++          if (items.length > 0) {
++            const idx = focusIndex < 0 ? items.length - 1 : Math.min(focusIndex, items.length - 1);
++            items[idx].focus();
++          }
++        }
++      }
++
++      function focusTopLevelItem(index) {
++        const count = topLevelItems.length;
++        const targetIndex = ((index % count) + count) % count;
++        topLevelItems.forEach((item, i) => {
++          item.setAttribute('tabindex', i === targetIndex ? '0' : '-1');
++        });
++        const targetItem = topLevelItems[targetIndex];
++        targetItem.focus();
++        return targetItem;
++      }
++
++      topLevelItems.forEach((trigger, index) => {
++        const submenu = getSubmenu(trigger);
++        const submenuItems = getSubmenuItems(submenu);
++
++        // Toggle submenu on click
++        trigger.addEventListener('click', (e) => {
++          if (trigger.getAttribute('aria-haspopup') === 'true') {
++            e.preventDefault();
++            const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
++            focusTopLevelItem(index);
++            if (isExpanded) {
++              closeAllSubmenus();
++            } else {
++              openSubmenu(trigger, 0);
++            }
++          }
++        });
++
++        // Switch active submenu on hover if another submenu in the menubar is already open
++        trigger.addEventListener('mouseenter', () => {
++          const anyExpanded = topLevelItems.some((item) => item.getAttribute('aria-expanded') === 'true');
++          if (anyExpanded && trigger.getAttribute('aria-haspopup') === 'true') {
++            focusTopLevelItem(index);
++            openSubmenu(trigger, null);
++          }
++        });
++
++        // Keyboard navigation for top-level menubar items
++        trigger.addEventListener('keydown', (e) => {
++          const anyExpanded = topLevelItems.some((item) => item.getAttribute('aria-expanded') === 'true');
++
++          switch (e.key) {
++            case 'ArrowRight': {
++              e.preventDefault();
++              const nextTrigger = focusTopLevelItem(index + 1);
++              if (anyExpanded && nextTrigger.getAttribute('aria-haspopup') === 'true') {
++                openSubmenu(nextTrigger, null);
++              } else {
++                closeAllSubmenus();
++              }
++              break;
++            }
++            case 'ArrowLeft': {
++              e.preventDefault();
++              const prevTrigger = focusTopLevelItem(index - 1);
++              if (anyExpanded && prevTrigger.getAttribute('aria-haspopup') === 'true') {
++                openSubmenu(prevTrigger, null);
++              } else {
++                closeAllSubmenus();
++              }
++              break;
++            }
++            case 'ArrowDown':
++            case 'Enter':
++            case ' ': {
++              if (trigger.getAttribute('aria-haspopup') === 'true') {
++                e.preventDefault();
++                openSubmenu(trigger, 0);
++              }
++              break;
++            }
++            case 'ArrowUp': {
++              if (trigger.getAttribute('aria-haspopup') === 'true') {
++                e.preventDefault();
++                openSubmenu(trigger, -1);
++              }
++              break;
++            }
++            case 'Home': {
++              e.preventDefault();
++              closeAllSubmenus();
++              focusTopLevelItem(0);
++              break;
++            }
++            case 'End': {
++              e.preventDefault();
++              closeAllSubmenus();
++              focusTopLevelItem(topLevelItems.length - 1);
++              break;
++            }
++            case 'Escape': {
++              e.preventDefault();
++              closeAllSubmenus();
++              trigger.focus();
++              break;
++            }
++            default: {
++              if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
++                const char = e.key.toLowerCase();
++                const matchIndex = topLevelItems.findIndex((item, i) => {
++                  const candidate = topLevelItems[(index + 1 + i) % topLevelItems.length];
++                  return candidate.textContent.trim().toLowerCase().startsWith(char);
++                });
++                if (matchIndex !== -1) {
++                  e.preventDefault();
++                  focusTopLevelItem((index + 1 + matchIndex) % topLevelItems.length);
++                }
++              }
++              break;
++            }
++          }
++        });
++
++        // Keyboard navigation inside submenus
++        submenuItems.forEach((subItem, subIndex) => {
++          subItem.addEventListener('keydown', (e) => {
++            switch (e.key) {
++              case 'ArrowDown': {
++                e.preventDefault();
++                const nextSub = submenuItems[(subIndex + 1) % submenuItems.length];
++                nextSub.focus();
++                break;
++              }
++              case 'ArrowUp': {
++                e.preventDefault();
++                const prevSub = submenuItems[(subIndex - 1 + submenuItems.length) % submenuItems.length];
++                prevSub.focus();
++                break;
++              }
++              case 'ArrowRight': {
++                e.preventDefault();
++                const nextTrigger = focusTopLevelItem(index + 1);
++                if (nextTrigger.getAttribute('aria-haspopup') === 'true') {
++                  openSubmenu(nextTrigger, 0);
++                } else {
++                  closeAllSubmenus();
++                }
++                break;
++              }
++              case 'ArrowLeft': {
++                e.preventDefault();
++                const prevTrigger = focusTopLevelItem(index - 1);
++                if (prevTrigger.getAttribute('aria-haspopup') === 'true') {
++                  openSubmenu(prevTrigger, 0);
++                } else {
++                  closeAllSubmenus();
++                }
++                break;
++              }
++              case 'Home': {
++                e.preventDefault();
++                submenuItems[0].focus();
++                break;
++              }
++              case 'End': {
++                e.preventDefault();
++                submenuItems[submenuItems.length - 1].focus();
++                break;
++              }
++              case 'Escape': {
++                e.preventDefault();
++                closeAllSubmenus();
++                focusTopLevelItem(index);
++                break;
++              }
++              case 'Tab': {
++                closeAllSubmenus();
++                break;
++              }
++              default: {
++                if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
++                  const char = e.key.toLowerCase();
++                  const offset = submenuItems.findIndex((_, i) => {
++                    const candidate = submenuItems[(subIndex + 1 + i) % submenuItems.length];
++                    return candidate.textContent.trim().toLowerCase().startsWith(char);
++                  });
++                  if (offset !== -1) {
++                    e.preventDefault();
++                    submenuItems[(subIndex + 1 + offset) % submenuItems.length].focus();
++                  }
++                }
++                break;
++              }
++            }
++          });
++        });
++      });
++
++      // Close submenus when clicking outside or moving focus outside the menubar
++      document.addEventListener('click', (e) => {
++        if (!menubar.contains(e.target)) {
++          closeAllSubmenus();
++        }
++      });
++
++      menubar.addEventListener('focusout', (e) => {
++        requestAnimationFrame(() => {
++          if (!menubar.contains(document.activeElement)) {
++            closeAllSubmenus();
++          }
++        });
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

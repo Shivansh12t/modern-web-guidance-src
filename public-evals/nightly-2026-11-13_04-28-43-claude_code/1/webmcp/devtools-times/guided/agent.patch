@@ -1,0 +1,857 @@
+diff --git a/package.json b/package.json
+index bfffcf0..80da7a8 100644
+--- a/package.json
++++ b/package.json
+@@ -20,10 +20,12 @@
+     "react": "^19.3.1",
+     "react-dom": "^19.3.1",
+     "sharp": "^0.35.5",
+-    "tailwindcss": "^4.3.3"
++    "tailwindcss": "^4.3.3",
++    "use-webmcp-tool": "^0.3.0"
+   },
+   "devDependencies": {
+-    "@tailwindcss/typography": "^0.5.20"
++    "@tailwindcss/typography": "^0.5.20",
++    "webmcp-types": "^0.1.11"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": [
+diff --git a/src/components/ArticleAgentTools.tsx b/src/components/ArticleAgentTools.tsx
+new file mode 100644
+index 0000000..b019463
+--- /dev/null
++++ b/src/components/ArticleAgentTools.tsx
+@@ -0,0 +1,124 @@
++import { useWebMCP } from 'use-webmcp-tool';
++import { articleUrl, fetchReadingList, nextPaint, toggleReadingListEntry } from '../utils/agentTools';
++
++interface Props {
++  slug: string;
++  title: string;
++  summary: string;
++  author: string;
++  date: string;
++  category: string;
++  readingTime?: number;
++  /** id of the element that wraps the rendered article body. */
++  bodyId: string;
++}
++
++const WORDS_PER_MINUTE = 230;
++
++/**
++ * Article-page WebMCP tools. Registered only while an article is on screen, so
++ * agents never see tools that don't apply to the current page.
++ */
++export default function ArticleAgentTools({ slug, title, summary, author, date, category, readingTime, bodyId }: Props) {
++  const getBody = () => document.getElementById(bodyId);
++
++  const getHeadings = () =>
++    Array.from(getBody()?.querySelectorAll<HTMLHeadingElement>('h2, h3, h4') ?? []).map((heading) => ({
++      element: heading,
++      level: Number(heading.tagName.slice(1)),
++      text: heading.textContent?.trim() ?? '',
++      id: heading.id,
++    }));
++
++  useWebMCP({
++    name: 'get_current_article',
++    description:
++      'Returns the article open in this tab: its metadata, full body text, word count and reading-list status. Use it to read, summarize or answer questions about the article.',
++    inputSchema: { type: 'object', properties: {} },
++    async execute(_input, { signal }) {
++      const text = getBody()?.innerText.trim() ?? '';
++      const wordCount = text ? text.split(/\s+/).length : 0;
++      const readingList = await fetchReadingList(signal).catch((error) => {
++        if (signal.aborted) throw error;
++        return null;
++      });
++      return {
++        slug,
++        title,
++        summary,
++        author,
++        publishedOn: date,
++        category,
++        url: articleUrl(slug),
++        wordCount,
++        readingTimeMinutes: readingTime ?? Math.max(1, Math.round(wordCount / WORDS_PER_MINUTE)),
++        isOnReadingList: readingList ? readingList.includes(slug) : 'unknown',
++        text,
++      };
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  useWebMCP({
++    name: 'get_article_outline',
++    description: 'Lists the section headings of the article open in this tab, in reading order.',
++    inputSchema: { type: 'object', properties: {} },
++    execute() {
++      const sections = getHeadings().map(({ level, text, id }) => ({ level, heading: text, id }));
++      return sections.length > 0
++        ? { title, sections }
++        : { title, sections, message: 'This article has no section headings.' };
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  useWebMCP<{ heading?: string }>({
++    name: 'scroll_to_article_section',
++    description: 'Scrolls the article open in this tab to one of its sections so the user can see it.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        heading: {
++          type: 'string',
++          description: 'Heading text of the section (or part of it), as listed by get_article_outline.',
++        },
++      },
++      required: ['heading'],
++    },
++    async execute({ heading }) {
++      const headings = getHeadings();
++      if (typeof heading !== 'string' || !heading.trim()) {
++        return { error: 'Provide the heading of the section to scroll to.', headings: headings.map((h) => h.text) };
++      }
++      const term = heading.trim().toLowerCase();
++      const match =
++        headings.find((h) => h.text.toLowerCase() === term || h.id === term) ??
++        headings.find((h) => h.text.toLowerCase().includes(term));
++      if (!match) {
++        return { error: `No section heading matches "${heading}".`, headings: headings.map((h) => h.text) };
++      }
++      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
++      match.element.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
++      await nextPaint();
++      return { message: `Scrolled to "${match.text}".` };
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  useWebMCP({
++    name: 'save_current_article',
++    description: "Saves the article open in this tab to the user's reading list.",
++    inputSchema: { type: 'object', properties: {} },
++    async execute(_input, { signal }) {
++      const readingList = await fetchReadingList(signal);
++      if (readingList.includes(slug)) {
++        return { message: `"${title}" is already on the reading list.` };
++      }
++      await toggleReadingListEntry(slug, signal);
++      return { message: `Saved "${title}" to the reading list.` };
++    },
++    annotations: { readOnlyHint: false },
++  });
++
++  return null;
++}
+diff --git a/src/components/BookmarkButton.tsx b/src/components/BookmarkButton.tsx
+index f089dc0..51db73d 100644
+--- a/src/components/BookmarkButton.tsx
++++ b/src/components/BookmarkButton.tsx
+@@ -1,6 +1,7 @@
+ 
+ import React, { useState, useEffect } from 'react';
+ import { BookmarkIcon } from '@heroicons/react/24/outline'
++import { READING_LIST_CHANGE_EVENT, toggleReadingListEntry, type ReadingListChangeDetail } from '../utils/agentTools';
+ 
+ interface Props {
+   slug: string;
+@@ -10,16 +11,18 @@ interface Props {
+ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
+   const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
+ 
++  // Reflect reading-list changes made by agent tools or other components.
++  useEffect(() => {
++    const handleListChange = (event: Event) => {
++      setIsBookmarked((event as CustomEvent<ReadingListChangeDetail>).detail.readingList.includes(slug));
++    };
++    window.addEventListener(READING_LIST_CHANGE_EVENT, handleListChange);
++    return () => window.removeEventListener(READING_LIST_CHANGE_EVENT, handleListChange);
++  }, [slug]);
++
+   const handleClick = async () => {
+-    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
+-      method: 'POST',
+-      headers: {
+-        'Content-Type': 'application/json',
+-      },
+-      body: JSON.stringify({ slug }),
+-    });
+-    const data = await response.json();
+-    setIsBookmarked(data.readingList.includes(slug));
++    const readingList = await toggleReadingListEntry(slug);
++    setIsBookmarked(readingList.includes(slug));
+   };
+ 
+   return (
+diff --git a/src/components/ReadingListButton.tsx b/src/components/ReadingListButton.tsx
+index 29642be..2fff53f 100644
+--- a/src/components/ReadingListButton.tsx
++++ b/src/components/ReadingListButton.tsx
+@@ -1,6 +1,7 @@
+ 
+ import React, { useState, useEffect } from 'react';
+ import ReadingListFlyout from './ReadingListFlyout';
++import { OPEN_READING_LIST_EVENT } from '../utils/agentTools';
+ 
+ interface Article {
+   slug: string;
+@@ -20,6 +21,11 @@ export default function ReadingListButton() {
+       setArticles(data);
+     };
+     fetchArticles();
++
++    // Lets the `open_reading_list_panel` agent tool open the panel.
++    const handleOpen = () => setIsOpen(true);
++    window.addEventListener(OPEN_READING_LIST_EVENT, handleOpen);
++    return () => window.removeEventListener(OPEN_READING_LIST_EVENT, handleOpen);
+   }, []);
+ 
+   return (
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..64ab401 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,12 @@
+ 
+-import React, { useState, useEffect } from 'react';
++import React, { useState, useEffect, useId } from 'react';
++import {
++  READING_LIST_CHANGE_EVENT,
++  toAgentArticle,
++  toggleReadingListEntry,
++  type AgentSubmitEvent,
++  type ReadingListChangeDetail,
++} from '../utils/agentTools';
+ 
+ interface Article {
+   slug: string;
+@@ -13,8 +20,19 @@ interface Props {
+   onClose: () => void;
+ }
+ 
++// WebMCP declarative form attributes; React passes unknown lowercase attributes through to the DOM.
++// Saving is easy to undo, so the agent may submit without waiting for the user.
++const addToolAttributes = {
++  toolname: 'add_to_reading_list',
++  tooldescription:
++    "Saves a The DevTools Times article to the user's reading list so they can read it later.",
++  toolautosubmit: '',
++} as Record<string, string>;
++
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
++  const [addStatus, setAddStatus] = useState('');
++  const selectId = useId();
+ 
+   const fetchReadingList = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+@@ -32,8 +50,15 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     };
+     window.addEventListener('keydown', handleKeyDown);
+ 
++    // Stay in sync when bookmarks or agent tools change the list elsewhere on the page.
++    const handleListChange = (event: Event) => {
++      setReadingList((event as CustomEvent<ReadingListChangeDetail>).detail.readingList);
++    };
++    window.addEventListener(READING_LIST_CHANGE_EVENT, handleListChange);
++
+     return () => {
+       window.removeEventListener('keydown', handleKeyDown);
++      window.removeEventListener(READING_LIST_CHANGE_EVENT, handleListChange);
+     };
+   }, [onClose]);
+ 
+@@ -49,6 +74,41 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   };
+ 
+   const readingListArticles = articles.filter(article => readingList.includes(article.slug));
++  const unsavedArticles = articles.filter(article => !readingList.includes(article.slug));
++
++  const handleAdd = (event: React.FormEvent<HTMLFormElement>) => {
++    event.preventDefault();
++    const form = event.currentTarget;
++    const nativeEvent = event.nativeEvent as AgentSubmitEvent;
++    const slug = String(new FormData(form).get('slug') ?? '');
++
++    const result = (async () => {
++      const article = articles.find(a => a.slug === slug);
++      if (!article) {
++        return {
++          error: `Unknown article "${slug}". Use one of the slugs offered by this form, or find one with search_articles.`,
++        };
++      }
++      if (readingList.includes(slug)) {
++        return { message: `"${article.title}" is already on the reading list.`, article: toAgentArticle(article) };
++      }
++      try {
++        const updated = await toggleReadingListEntry(slug);
++        setReadingList(updated);
++        setAddStatus(`Saved "${article.title}".`);
++        form.reset();
++        return { message: `Saved "${article.title}" to the reading list.`, article: toAgentArticle(article) };
++      } catch (error) {
++        const message = error instanceof Error ? error.message : String(error);
++        setAddStatus(message);
++        return { error: message };
++      }
++    })();
++
++    if (nativeEvent.agentInvoked && nativeEvent.respondWith) {
++      nativeEvent.respondWith(result);
++    }
++  };
+ 
+   return (
+     <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+@@ -60,6 +120,30 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+         </button>
+         <div className="p-4">
+           <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++          {unsavedArticles.length > 0 && (
++            <form className="agent-tool-form flex flex-wrap items-end gap-2" onSubmit={handleAdd} {...addToolAttributes}>
++              <div className="flex-grow">
++                <label htmlFor={selectId} className="block text-sm font-semibold text-gray-500 mb-1">Save an article</label>
++                <select
++                  id={selectId}
++                  name="slug"
++                  required
++                  defaultValue=""
++                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent"
++                  {...({ toolparamdescription: 'The article to save, identified by its slug.' } as Record<string, string>)}
++                >
++                  <option value="" disabled>Choose an article…</option>
++                  {unsavedArticles.map(article => (
++                    <option key={article.slug} value={article.slug}>{article.title}</option>
++                  ))}
++                </select>
++              </div>
++              <button type="submit" className="bg-gray-800 text-white text-sm font-semibold py-2 px-3 rounded hover:bg-gray-700">
++                Save
++              </button>
++              <p role="status" className="w-full text-sm text-gray-500 min-h-5">{addStatus}</p>
++            </form>
++          )}
+         </div>
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+@@ -72,7 +156,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+                   <h4 className="font-bold text-lg text-gray-800 group-hover:text-amber-400">{article.title}</h4>
+                   <p className="text-sm text-gray-600">{article.summary}</p>
+                 </a>
+-                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400">
++                <button onClick={() => handleRemove(article.slug)} className="p-2 text-gray-500 hover:text-amber-400" aria-label={`Remove "${article.title}" from reading list`}>
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                     </svg>
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..e5fff2a 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -1,6 +1,7 @@
+ 
+-import React, { useState } from 'react';
++import React, { useState, useEffect } from 'react';
+ import SearchFlyout from './SearchFlyout';
++import { OPEN_SEARCH_EVENT, type OpenSearchDetail } from '../utils/agentTools';
+ 
+ interface Article {
+     slug: string;
+@@ -12,10 +13,23 @@ export default function SearchButton() {
+     const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+     const [articles, setArticles] = useState<Article[]>([]);
+     const [isLoading, setIsLoading] = useState(false);
++    const [initialQuery, setInitialQuery] = useState('');
++
++    // Lets the `open_search_panel` agent tool open (and prefill) the panel.
++    useEffect(() => {
++        const handleOpen = (event: Event) => {
++            const { query = '' } = (event as CustomEvent<OpenSearchDetail>).detail ?? {};
++            setInitialQuery(query);
++            setIsFlyoutOpen(true);
++        };
++        window.addEventListener(OPEN_SEARCH_EVENT, handleOpen);
++        return () => window.removeEventListener(OPEN_SEARCH_EVENT, handleOpen);
++    }, []);
+ 
+     const openSearch = async () => {
+         try {
+             setArticles([]);
++            setInitialQuery('');
+             setIsFlyoutOpen(true);
+         } catch (error) {
+             console.error('Failed to fetch articles:', error);
+@@ -43,7 +57,7 @@ export default function SearchButton() {
+                     </svg>
+                 )}
+             </button>
+-            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} />}
++            {isFlyoutOpen && <SearchFlyout articles={[]} onClose={closeSearch} initialQuery={initialQuery} />}
+         </>
+     );
+ }
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..a1e2908 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -1,5 +1,12 @@
+ 
+-import React, { useState, useMemo, useEffect } from 'react';
++import React, { useState, useMemo, useEffect, useId, useRef } from 'react';
++import {
++    fetchArticles,
++    searchArticles,
++    toAgentArticle,
++    type AgentSubmitEvent,
++    type ArticleSummary,
++} from '../utils/agentTools';
+ 
+ interface Article {
+     slug: string;
+@@ -11,6 +18,7 @@ interface Article {
+ interface Props {
+     articles: Article[];
+     onClose: () => void;
++    initialQuery?: string;
+ }
+ 
+ // Function to shuffle an array and get the first N items
+@@ -18,9 +26,25 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
+     return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+ };
+ 
+-export default function SearchFlyout({ articles, onClose }: Props) {
+-    const [searchTerm, setSearchTerm] = useState('');
++// WebMCP declarative form attributes; React passes unknown lowercase attributes through to the DOM.
++const searchToolAttributes = {
++    toolname: 'search_articles',
++    tooldescription:
++        'Searches The DevTools Times articles by keyword in their headlines and summaries, shows the matches in the search panel, and returns each match with its slug and URL.',
++    toolautosubmit: '',
++} as Record<string, string>;
++
++export default function SearchFlyout({ articles, onClose, initialQuery = '' }: Props) {
++    const [searchTerm, setSearchTerm] = useState(initialQuery);
+     const [suggestions, setSuggestions] = useState<Article[]>([]);
++    // Full article list from the suggestions request, used when no articles are passed in.
++    const [allArticles, setAllArticles] = useState<ArticleSummary[]>([]);
++    const allArticlesRef = useRef<Promise<ArticleSummary[]> | null>(null);
++    const inputId = useId();
++
++    useEffect(() => {
++        setSearchTerm(initialQuery);
++    }, [initialQuery]);
+ 
+     useEffect(() => {
+         const handleKeyDown = (event: KeyboardEvent) => {
+@@ -33,8 +57,9 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         // Bug: Redundant fetch for suggestions
+         const fetchSuggestions = async () => {
+             try {
+-                const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+-                const data = await response.json();
++                allArticlesRef.current = fetchArticles();
++                const data = await allArticlesRef.current;
++                setAllArticles(data);
+                 setSuggestions(getShuffledItems(data, 3));
+             } catch (error) {
+                 console.error('Failed to fetch suggestions:', error);
+@@ -48,15 +73,41 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+         };
+     }, [onClose]);
+ 
+-    const filteredArticles = useMemo(() => {
+-        if (!searchTerm) {
+-            return [];
+-        }
+-        return articles.filter(article =>
+-            article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+-            article.summary.toLowerCase().includes(searchTerm.toLowerCase())
++    const searchableArticles = articles.length > 0 ? articles : allArticles;
++
++    const filteredArticles = useMemo(
++        () => searchArticles(searchableArticles, searchTerm),
++        [searchableArticles, searchTerm],
++    );
++
++    // Results filter live as the user types; submitting only matters for agents
++    // invoking the `search_articles` form tool.
++    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
++        event.preventDefault();
++        const nativeEvent = event.nativeEvent as AgentSubmitEvent;
++        const query = String(new FormData(event.currentTarget).get('query') ?? '').trim();
++        setSearchTerm(query);
++
++        if (!nativeEvent.agentInvoked || !nativeEvent.respondWith) return;
++
++        nativeEvent.respondWith(
++            (async () => {
++                if (!query) {
++                    return { error: 'Provide a keyword or phrase to search for.' };
++                }
++                try {
++                    const list =
++                        articles.length > 0 ? articles : await (allArticlesRef.current ?? fetchArticles());
++                    const results = searchArticles(list, query).map(toAgentArticle);
++                    return results.length > 0
++                        ? { query, results }
++                        : { query, results, message: `No articles match "${query}". Try a broader keyword.` };
++                } catch (error) {
++                    return { error: error instanceof Error ? error.message : String(error) };
++                }
++            })(),
+         );
+-    }, [articles, searchTerm]);
++    };
+ 
+     return (
+         <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
+@@ -85,15 +136,21 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                             </ul>
+                         </div>
+                     )}
+-                    <h3 className="text-sm font-semibold text-gray-500 mb-3">Search</h3>
+-                    <input
+-                        type="text"
+-                        placeholder="Search for articles..."
+-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
+-                        value={searchTerm}
+-                        onChange={e => setSearchTerm(e.target.value)}
+-                        autoFocus
+-                    />
++                    <form role="search" className="agent-tool-form" onSubmit={handleSubmit} {...searchToolAttributes}>
++                        <label htmlFor={inputId} className="block text-sm font-semibold text-gray-500 mb-3">Search</label>
++                        <input
++                            id={inputId}
++                            type="search"
++                            name="query"
++                            required
++                            placeholder="Search for articles..."
++                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-transparent transition"
++                            value={searchTerm}
++                            onChange={e => setSearchTerm(e.target.value)}
++                            autoFocus
++                            {...({ toolparamdescription: 'Keyword or phrase to look for, e.g. "housing", "cycling" or "journalism".' } as Record<string, string>)}
++                        />
++                    </form>
+                 </div>
+                 <div className="p-4 max-h-[60vh] overflow-y-auto">
+                     {searchTerm && filteredArticles.length === 0 && (
+diff --git a/src/components/SiteAgentTools.tsx b/src/components/SiteAgentTools.tsx
+new file mode 100644
+index 0000000..a84b537
+--- /dev/null
++++ b/src/components/SiteAgentTools.tsx
+@@ -0,0 +1,123 @@
++import { useWebMCP } from 'use-webmcp-tool';
++import { navigate } from 'astro:transitions/client';
++import {
++  OPEN_READING_LIST_EVENT,
++  OPEN_SEARCH_EVENT,
++  articleUrl,
++  fetchArticles,
++  fetchReadingList,
++  nextPaint,
++  toAgentArticle,
++  toggleReadingListEntry,
++  type OpenSearchDetail,
++} from '../utils/agentTools';
++
++/**
++ * Site-wide WebMCP tools for in-browser AI agents. Renders nothing; tools are
++ * registered while this island is mounted and feature-detected by the hook.
++ * The search and "save an article" forms are exposed declaratively from their panels.
++ */
++export default function SiteAgentTools() {
++  useWebMCP<{ query?: string }>({
++    name: 'open_search_panel',
++    description:
++      'Opens the article search panel, optionally prefilled with a query. The panel provides the search_articles tool.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        query: { type: 'string', description: 'Text to prefill the search box with.' },
++      },
++    },
++    async execute({ query }) {
++      if (query !== undefined && typeof query !== 'string') {
++        return { error: 'query must be text.' };
++      }
++      window.dispatchEvent(
++        new CustomEvent<OpenSearchDetail>(OPEN_SEARCH_EVENT, { detail: { query: query?.trim() ?? '' } }),
++      );
++      await nextPaint();
++      return { message: 'The search panel is open. Use search_articles to run a search.' };
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  useWebMCP({
++    name: 'open_reading_list_panel',
++    description:
++      "Opens the panel showing the user's reading list. The panel provides the add_to_reading_list tool.",
++    inputSchema: { type: 'object', properties: {} },
++    async execute() {
++      window.dispatchEvent(new CustomEvent(OPEN_READING_LIST_EVENT));
++      await nextPaint();
++      return { message: 'The reading list panel is open.' };
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  useWebMCP({
++    name: 'get_reading_list',
++    description: "Lists the articles the user has saved to their reading list.",
++    inputSchema: { type: 'object', properties: {} },
++    async execute(_input, { signal }) {
++      const [readingList, articles] = await Promise.all([fetchReadingList(signal), fetchArticles(signal)]);
++      const saved = articles.filter((article) => readingList.includes(article.slug)).map(toAgentArticle);
++      return { count: saved.length, articles: saved };
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  useWebMCP<{ slug?: string }>({
++    name: 'remove_from_reading_list',
++    description: "Removes an article from the user's reading list.",
++    inputSchema: {
++      type: 'object',
++      properties: {
++        slug: { type: 'string', description: 'Slug of the saved article, as returned by get_reading_list.' },
++      },
++      required: ['slug'],
++    },
++    async execute({ slug }, { signal }) {
++      if (typeof slug !== 'string' || !slug.trim()) {
++        return { error: 'Provide the slug of an article on the reading list.' };
++      }
++      const readingList = await fetchReadingList(signal);
++      if (!readingList.includes(slug)) {
++        return { error: `"${slug}" is not on the reading list.`, savedSlugs: readingList };
++      }
++      const updated = await toggleReadingListEntry(slug, signal);
++      return { message: `Removed "${slug}" from the reading list.`, savedSlugs: updated };
++    },
++    annotations: { readOnlyHint: false },
++  });
++
++  useWebMCP<{ slug?: string }>({
++    name: 'open_article',
++    description: 'Navigates the current tab to an article so its article tools become available.',
++    inputSchema: {
++      type: 'object',
++      properties: {
++        slug: { type: 'string', description: 'Slug of the article, as returned by search_articles or get_reading_list.' },
++      },
++      required: ['slug'],
++    },
++    async execute({ slug }, { signal }) {
++      if (typeof slug !== 'string' || !slug.trim()) {
++        return { error: 'Provide the slug of the article to open.' };
++      }
++      const articles = await fetchArticles(signal);
++      const article = articles.find((a) => a.slug === slug);
++      if (!article) {
++        return {
++          error: `No article has the slug "${slug}". Find one with search_articles.`,
++          availableSlugs: articles.map((a) => a.slug),
++        };
++      }
++      const url = articleUrl(slug);
++      await navigate(url);
++      return { message: `Opened "${article.title}".`, url };
++    },
++    annotations: { readOnlyHint: true },
++  });
++
++  return null;
++}
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..e232870 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -2,6 +2,7 @@
+ import Header from "../components/Header.astro";
+ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
++import SiteAgentTools from "../components/SiteAgentTools.tsx";
+ import "../styles/global.css";
+ 
+ import { ClientRouter } from "astro:transitions";
+@@ -51,5 +52,7 @@ const baseUrl = import.meta.env.BASE_URL;
+       </div>
+     </div>
+     <Footer />
++    <!-- Site-wide WebMCP tools for in-browser AI agents (renders nothing) -->
++    <SiteAgentTools client:idle />
+   </body>
+ </html>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..63b0e81 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import ArticleAgentTools from '../../components/ArticleAgentTools.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -105,10 +106,23 @@ const isBookmarked = readingList.includes(article.slug);
+         </div>
+ 
+         <!-- Article Body Content -->
+-        <div class="prose max-w-none">
++        <div id="article-body" class="prose max-w-none">
+             <Content />
+         </div>
+ 
++        <!-- WebMCP tools for in-browser AI agents (renders nothing) -->
++        <ArticleAgentTools
++            client:idle
++            bodyId="article-body"
++            slug={article.id}
++            title={article.data.title}
++            summary={article.data.summary}
++            author={article.data.author}
++            date={article.data.date.toISOString().slice(0, 10)}
++            category={article.data.category}
++            readingTime={article.data.readingTime}
++        />
++
+         <!-- ADVERTISEMENT -->
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:load />
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..1949dfb 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,14 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* Highlight WebMCP declarative forms while an AI agent is filling them in. */
++.agent-tool-form:tool-form-active {
++  outline: 2px dashed var(--color-amber-400);
++  outline-offset: 4px;
++}
++
++.agent-tool-form button:tool-submit-active {
++  outline: 2px dashed var(--color-amber-400);
++  outline-offset: 2px;
++}
+diff --git a/src/utils/agentTools.ts b/src/utils/agentTools.ts
+new file mode 100644
+index 0000000..34917d1
+--- /dev/null
++++ b/src/utils/agentTools.ts
+@@ -0,0 +1,88 @@
++/**
++ * Shared client-side helpers for the WebMCP tools exposed to in-browser AI agents.
++ *
++ * Header islands (search, reading list) and the tool islands are separate React
++ * roots, so they talk to each other through window CustomEvents.
++ */
++
++export interface ArticleSummary {
++  slug: string;
++  title: string;
++  summary: string;
++  image?: string;
++}
++
++export const OPEN_SEARCH_EVENT = 'dtt:open-search';
++export const OPEN_READING_LIST_EVENT = 'dtt:open-reading-list';
++export const READING_LIST_CHANGE_EVENT = 'dtt:reading-list-change';
++
++export interface OpenSearchDetail {
++  query?: string;
++}
++
++export interface ReadingListChangeDetail {
++  readingList: string[];
++}
++
++/**
++ * Fields Chromium adds to `SubmitEvent` when an agent submits a WebMCP
++ * declarative form. They aren't covered by `webmcp-types` yet.
++ */
++export type AgentSubmitEvent = SubmitEvent & {
++  agentInvoked?: boolean;
++  respondWith?: (result: Promise<unknown>) => void;
++};
++
++const base = import.meta.env.BASE_URL;
++
++export const articleUrl = (slug: string) => new URL(`${base}articles/${slug}`, location.origin).href;
++
++export async function fetchArticles(signal?: AbortSignal): Promise<ArticleSummary[]> {
++  const response = await fetch(`${base}api/articles.json`, { signal });
++  if (!response.ok) throw new Error(`Could not load articles (HTTP ${response.status}).`);
++  return response.json();
++}
++
++export async function fetchReadingList(signal?: AbortSignal): Promise<string[]> {
++  const response = await fetch(`${base}api/reading-list.json`, { signal });
++  if (!response.ok) throw new Error(`Could not load the reading list (HTTP ${response.status}).`);
++  const data = await response.json();
++  return data.readingList ?? [];
++}
++
++/** The API toggles membership, so callers must check the current list first. */
++export async function toggleReadingListEntry(slug: string, signal?: AbortSignal): Promise<string[]> {
++  const response = await fetch(`${base}api/reading-list.json`, {
++    method: 'POST',
++    headers: { 'Content-Type': 'application/json' },
++    body: JSON.stringify({ slug }),
++    signal,
++  });
++  if (!response.ok) throw new Error(`Could not update the reading list (HTTP ${response.status}).`);
++  const data = await response.json();
++  const readingList: string[] = data.readingList ?? [];
++  window.dispatchEvent(
++    new CustomEvent<ReadingListChangeDetail>(READING_LIST_CHANGE_EVENT, { detail: { readingList } }),
++  );
++  return readingList;
++}
++
++export function searchArticles(articles: ArticleSummary[], query: string): ArticleSummary[] {
++  const term = query.trim().toLowerCase();
++  if (!term) return [];
++  return articles.filter(
++    (article) =>
++      article.title.toLowerCase().includes(term) || article.summary.toLowerCase().includes(term),
++  );
++}
++
++export const toAgentArticle = ({ slug, title, summary }: ArticleSummary) => ({
++  slug,
++  title,
++  summary,
++  url: articleUrl(slug),
++});
++
++/** Resolves after React has committed and the browser has painted the change. */
++export const nextPaint = () =>
++  new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+diff --git a/tsconfig.json b/tsconfig.json
+index 69c1600..f74c219 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -9,6 +9,7 @@
+   ],
+   "compilerOptions": {
+     "jsx": "react-jsx",
+-    "jsxImportSource": "react"
++    "jsxImportSource": "react",
++    "types": ["webmcp-types"]
+   }
+ }
+\ No newline at end of file

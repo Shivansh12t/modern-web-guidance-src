@@ -1,0 +1,83 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -85,15 +85,62 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+       padding: 0 20px;
++      position: relative;
++      overflow: hidden;
++      isolation: isolate;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++    /* Hero content stays above the decorative layer */
++    .hero > :not(.shaped-element):not(.shape-defs) {
++      position: relative;
++      z-index: 1;
++    }
++
++    /* Decorative organic shape
++       - Absolutely positioned: removed from flow, so it never shifts hero content.
++       - Fixed aspect-ratio + clamp() width: its box size is known before the
++         image loads, so there is no layout shift (CLS).
++       - Clipped via an SVG clipPath in objectBoundingBox units, so the
++         free-form silhouette scales with the element at any size. */
++    .shaped-element {
++      position: absolute;
++      right: clamp(-60px, -2vw, 0px);
++      bottom: -8%;
++      width: clamp(160px, 26vw, 360px);
++      aspect-ratio: 1 / 1;
++      z-index: 0;
++      pointer-events: none;
++      background:
++        linear-gradient(135deg, rgba(255, 171, 64, 0.35), rgba(78, 52, 46, 0.55)),
++        url('https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=720&q=80') center / cover no-repeat,
++        var(--primary);
++      /* Fallback silhouette for engines without url() clip support */
++      clip-path: polygon(50% 2%, 80% 10%, 97% 38%, 92% 72%, 66% 96%, 30% 94%, 6% 72%, 4% 36%, 22% 10%);
++      clip-path: url(#organic-blob);
++      opacity: 0.85;
++      contain: layout paint;
++    }
++
++    .shape-defs {
++      position: absolute;
++      width: 0;
++      height: 0;
++      overflow: hidden;
++    }
++
++    @media (max-width: 600px) {
++      .shaped-element {
++        opacity: 0.45;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -168,8 +215,16 @@
+     </ul>
+   </nav>
+ 
+   <header class="hero">
++    <svg class="shape-defs" aria-hidden="true" focusable="false">
++      <defs>
++        <clipPath id="organic-blob" clipPathUnits="objectBoundingBox">
++          <path d="M0.52,0.02 C0.70,0.01 0.86,0.10 0.94,0.26 C1.01,0.40 0.99,0.55 0.95,0.68 C0.90,0.84 0.77,0.96 0.60,0.98 C0.44,1.00 0.30,0.95 0.18,0.86 C0.06,0.77 0.00,0.62 0.01,0.47 C0.02,0.32 0.09,0.18 0.21,0.10 C0.31,0.04 0.41,0.02 0.52,0.02 Z" />
++        </clipPath>
++      </defs>
++    </svg>
++    <div class="shaped-element" aria-hidden="true"></div>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>

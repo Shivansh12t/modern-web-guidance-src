@@ -1,0 +1,203 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,93 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .contact {
++      max-width: 720px;
++    }
++
++    .contact > p {
++      margin-block: 8px 24px;
++    }
++
++    .contact-form {
++      display: grid;
++      gap: 18px;
++    }
++
++    .field-group {
++      padding: 16px;
++      border: 2px solid var(--secondary);
++      border-radius: 8px;
++      background: white;
++    }
++
++    .field-group label {
++      display: block;
++      margin-bottom: 6px;
++      font-weight: 600;
++    }
++
++    .field-group input,
++    .field-group textarea {
++      display: block;
++      width: 100%;
++      min-height: 48px;
++      padding: 10px 12px;
++      border: 1px solid #82716b;
++      border-radius: 4px;
++      color: var(--text);
++      background: white;
++      font: inherit;
++      font-size: max(1rem, 1em);
++    }
++
++    .field-group textarea {
++      resize: vertical;
++    }
++
++    .contact-form :focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .field-group:has(:user-invalid),
++    .field-group:has([aria-invalid="true"]) {
++      border-color: #a52a25;
++      background: #fff1ef;
++    }
++
++    .field-error {
++      display: none;
++      margin-top: 8px;
++      color: #a52a25;
++      font-size: 0.9rem;
++    }
++
++    .field-group:has(:user-invalid) .field-error,
++    .field-group:has([aria-invalid="true"]) .field-error {
++      display: block;
++    }
++
++    .contact-form .btn {
++      justify-self: start;
++      min-height: 48px;
++      margin-top: 0;
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      clip-path: inset(50%);
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      white-space: nowrap;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -196,8 +281,37 @@
+       </div>
+     </section>
+   </main>
+ 
++  <section id="contact" class="container contact" aria-labelledby="contact-heading">
++    <h2 id="contact-heading">Let's Talk Coffee</h2>
++    <p>Have a question or something to share? We'd love to hear from you. All fields are required.</p>
++    <form id="contact-form" class="contact-form" aria-labelledby="contact-heading" method="post" action="/contact">
++      <div class="field-group">
++        <label for="contact-name">Name</label>
++        <input id="contact-name" name="name" type="text" autocomplete="name" required
++          aria-invalid="false" data-error="name-error">
++        <p id="name-error" class="field-error">Please enter your name.</p>
++      </div>
++      <div class="field-group">
++        <label for="contact-email">Email</label>
++        <input id="contact-email" name="email" type="email" autocomplete="email" required
++          autocapitalize="none" autocorrect="off" spellcheck="false"
++          aria-invalid="false" data-error="email-error">
++        <p id="email-error" class="field-error">Please enter a valid email address, such as you@example.com.</p>
++      </div>
++      <div class="field-group">
++        <label for="contact-message">Message</label>
++        <textarea id="contact-message" name="message" rows="5" required
++          aria-invalid="false" data-error="message-error"></textarea>
++        <p id="message-error" class="field-error">Please enter a message.</p>
++      </div>
++      <button type="submit" class="btn">Send Message</button>
++      <p id="contact-status" role="status"></p>
++      <div id="contact-errors" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
++    </form>
++  </section>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |
+@@ -206,7 +320,67 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const contactForm = document.getElementById('contact-form');
++    const contactFields = [...contactForm.querySelectorAll('input, textarea')];
++    const errorAnnouncer = document.getElementById('contact-errors');
++    const contactStatus = document.getElementById('contact-status');
++    let announceTimer;
++
++    function validateContent(field) {
++      // Keep names unrestricted while rejecting whitespace-only names and messages.
++      field.setCustomValidity(field.value && !field.value.trim()
++        ? document.getElementById(field.dataset.error).textContent : '');
++    }
++
++    function syncError(field, showError, announce = false) {
++      const previouslyInvalid = field.getAttribute('aria-invalid') === 'true';
++      field.setAttribute('aria-invalid', String(showError));
++      if (showError) {
++        field.setAttribute('aria-describedby', field.dataset.error);
++      } else {
++        field.removeAttribute('aria-describedby');
++      }
++      if (announce && showError && !previouslyInvalid) {
++        clearTimeout(announceTimer);
++        errorAnnouncer.textContent = '';
++        announceTimer = setTimeout(() => {
++          errorAnnouncer.textContent = document.getElementById(field.dataset.error).textContent;
++        }, 500);
++      }
++    }
++
++    contactFields.forEach((field) => {
++      field.addEventListener('blur', () => {
++        validateContent(field);
++        // Leaving a required field blank counts as interaction, even without typing.
++        syncError(field, !field.validity.valid, true);
++      });
++      field.addEventListener('input', () => {
++        validateContent(field);
++        clearTimeout(announceTimer);
++        errorAnnouncer.textContent = '';
++        contactStatus.textContent = '';
++        const showError = !field.validity.valid &&
++          (field.matches(':user-invalid') || field.getAttribute('aria-invalid') === 'true');
++        syncError(field, showError);
++      });
++      field.addEventListener('invalid', () => {
++        clearTimeout(announceTimer);
++        errorAnnouncer.textContent = '';
++        syncError(field, true);
++      });
++    });
++
++    contactForm.addEventListener('submit', (event) => {
++      event.preventDefault();
++      contactFields.forEach(validateContent);
++      if (!contactForm.reportValidity()) return;
++      // No delivery service is configured for this static page; preserve the draft.
++      contactStatus.textContent = 'Message delivery is currently unavailable. Your message has not been sent. Please visit us in store for help.';
++    });
++  </script>
+ </body>
+ 
+ </html>

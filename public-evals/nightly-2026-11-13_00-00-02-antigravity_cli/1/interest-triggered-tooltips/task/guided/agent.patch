@@ -1,0 +1,256 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -130,12 +130,88 @@
+       margin-top: 15px;
+       transition: background 0.3s;
+     }
+ 
+-    .btn:hover {
++    .btn:hover,
++    .btn:is(:interest-source, .interest-source) {
+       background: #3e2723;
+     }
+ 
++    /* Interest Invoker delay and visual indicator */
++    [interestfor] {
++      --interest-delay-start: 0.2s;
++      interest-delay-start: var(--interest-delay-start);
++      --interest-delay-end: 0.1s;
++      interest-delay-end: var(--interest-delay-end);
++    }
++
++    .grid:has([interestfor]:is(:interest-source, .interest-source)) [interestfor] {
++      --interest-delay-start: 0s;
++    }
++
++    .btn[interestfor]::after {
++      content: " ⓘ" / "";
++      font-size: 0.9em;
++      opacity: 0.85;
++    }
++
++    /* Anchor names for explicit trigger-to-tooltip association (required by anchor positioning polyfill) */
++    #btn-maple {
++      anchor-name: --anchor-maple;
++    }
++
++    #tooltip-maple {
++      position-anchor: --anchor-maple;
++    }
++
++    #btn-espresso {
++      anchor-name: --anchor-espresso;
++    }
++
++    #tooltip-espresso {
++      position-anchor: --anchor-espresso;
++    }
++
++    #btn-cold-brew {
++      anchor-name: --anchor-cold-brew;
++    }
++
++    #tooltip-cold-brew {
++      position-anchor: --anchor-cold-brew;
++    }
++
++    /* Tooltip popover styling and anchor positioning */
++    [popover].item-tooltip {
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(left);
++      position-try-fallbacks: flip-block;
++      margin: 0;
++      max-width: 260px;
++      padding: 12px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--text);
++      color: var(--light);
++      font-size: 0.85rem;
++      line-height: 1.45;
++      text-align: left;
++      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
++      z-index: 1100;
++    }
++
++    [popover].item-tooltip:is(:popover-open, .\:popover-open) {
++      display: block;
++    }
++
++    .tooltip-meta {
++      display: block;
++      margin-top: 6px;
++      color: var(--accent);
++      font-weight: 600;
++      font-size: 0.8rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -180,19 +256,31 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" id="btn-maple" class="btn" interestfor="tooltip-maple">View Details</a>
++          <div popover="hint" id="tooltip-maple" class="item-tooltip">
++            Espresso with steamed organic oat milk, pure Grade A Vermont maple syrup, and a dusting of cinnamon.
++            <span class="tooltip-meta">180 cal · 150mg caffeine · Dairy-free</span>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" id="btn-espresso" class="btn" interestfor="tooltip-espresso">View Details</a>
++          <div popover="hint" id="tooltip-espresso" class="item-tooltip">
++            Single-origin Sumatra &amp; Colombian blend roasted to a rich dark profile with notes of dark chocolate and cedar.
++            <span class="tooltip-meta">10 cal · 210mg caffeine · Vegan</span>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" id="btn-cold-brew" class="btn" interestfor="tooltip-cold-brew">View Details</a>
++          <div popover="hint" id="tooltip-cold-brew" class="item-tooltip">
++            Coarse-ground Ethiopian beans cold-steeped for 18 hours and double-filtered for a velvety, low-acidity finish.
++            <span class="tooltip-meta">15 cal · 200mg caffeine · Unsweetened</span>
++          </div>
+         </div>
+       </div>
+     </section>
+   </main>
+@@ -206,7 +294,127 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const ownedExpandedTriggers = new WeakSet();
++
++    function normalizeText(value) {
++      return (value ?? "").replace(/\s+/g, " ").trim();
++    }
++
++    function getTextWithImageAlt(node) {
++      if (node.nodeType === Node.TEXT_NODE) {
++        return node.textContent ?? "";
++      }
++      if (node.nodeType !== Node.ELEMENT_NODE) {
++        return "";
++      }
++      if (node.tagName === "IMG") {
++        return node.getAttribute("alt") ?? "";
++      }
++      let result = "";
++      for (const child of node.childNodes) {
++        result += getTextWithImageAlt(child);
++      }
++      return result;
++    }
++
++    function getAccessibleName(element) {
++      const labelledBy = element.getAttribute("aria-labelledby");
++      if (labelledBy) {
++        const name = labelledBy
++          .trim()
++          .split(/\s+/)
++          .map((id) => document.getElementById(id)?.textContent ?? "")
++          .join(" ");
++        return normalizeText(name);
++      }
++      if (element.hasAttribute("aria-label")) {
++        return normalizeText(element.getAttribute("aria-label"));
++      }
++      const textContent = normalizeText(getTextWithImageAlt(element));
++      if (textContent) {
++        return textContent;
++      }
++      return normalizeText(element.getAttribute("title"));
++    }
++
++    function isPopoverOpen(popover) {
++      try {
++        return popover.matches(":is(:popover-open, .\\:popover-open)");
++      } catch {
++        return popover.classList.contains(":popover-open");
++      }
++    }
++
++    export function wireInterestHints(root = document) {
++      for (const trigger of root.querySelectorAll("[interestfor]")) {
++        const targetId = trigger.getAttribute("interestfor");
++        if (!targetId) continue;
++        const hint = document.getElementById(targetId);
++        if (!hint || hint.getAttribute("popover") !== "hint") continue;
++
++        const triggerName = getAccessibleName(trigger);
++        const hintText = normalizeText(getTextWithImageAlt(hint));
++        if (triggerName && triggerName === hintText) continue;
++
++        if (!hint.hasAttribute("role")) {
++          hint.setAttribute("role", "tooltip");
++        }
++
++        if (!triggerName) {
++          if (!trigger.hasAttribute("aria-labelledby")) {
++            trigger.setAttribute("aria-labelledby", targetId);
++          }
++        } else if (
++          trigger.getAttribute("popovertarget") === targetId ||
++          trigger.getAttribute("commandfor") === targetId
++        ) {
++          if (!trigger.hasAttribute("aria-expanded")) {
++            trigger.setAttribute("aria-expanded", String(isPopoverOpen(hint)));
++            ownedExpandedTriggers.add(trigger);
++          }
++        } else if (!trigger.hasAttribute("aria-describedby")) {
++          trigger.setAttribute("aria-describedby", targetId);
++        }
++      }
++    }
++
++    window.wireInterestHints = wireInterestHints;
++    wireInterestHints();
++
++    document.addEventListener(
++      "toggle",
++      (event) => {
++        const hint = event.target;
++        if (!(hint instanceof HTMLElement) || !hint.id || hint.getAttribute("popover") !== "hint") {
++          return;
++        }
++        const open = event.newState ? event.newState === "open" : isPopoverOpen(hint);
++        for (const trigger of document.querySelectorAll(
++          `[interestfor="${CSS.escape(hint.id)}"]`
++        )) {
++          if (ownedExpandedTriggers.has(trigger)) {
++            trigger.setAttribute("aria-expanded", String(open));
++          }
++        }
++      },
++      true
++    );
++
++    if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++
++    if (!("interestForElement" in HTMLButtonElement.prototype)) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++
++    if (!CSS.supports("anchor-name: --a")) {
++      await import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++  </script>
++
+ </body>
+ 
+ </html>

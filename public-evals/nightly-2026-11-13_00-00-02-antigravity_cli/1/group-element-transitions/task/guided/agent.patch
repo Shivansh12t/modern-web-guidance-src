@@ -1,0 +1,356 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,141 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Group Element Transitions */
++    :root {
++      /* Disable the root transition because we are only transitioning specific elements. */
++      view-transition-name: none;
++    }
++
++    ::view-transition {
++      /* Non-transitioned elements below the view transitions remain interactive */
++      pointer-events: none;
++    }
++
++    .bean-card {
++      view-transition-class: bean-item;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
++      text-align: left;
++      border-top: 4px solid var(--primary);
++    }
++
++    .bean-card h3 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .bean-meta {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-bottom: 10px;
++      font-weight: 600;
++    }
++
++    .bean-notes {
++      font-size: 0.9rem;
++      margin-bottom: 15px;
++      color: var(--text);
++    }
++
++    .bean-footer {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      margin-top: auto;
++      padding-top: 12px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .bean-price {
++      font-weight: bold;
++      font-size: 1.1rem;
++      color: var(--primary);
++    }
++
++    .bean-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 10px;
++      justify-content: center;
++      margin: 20px 0;
++      padding: 15px;
++      background: #efebe9;
++      border-radius: 8px;
++    }
++
++    button.btn {
++      border: none;
++      cursor: pointer;
++      font-family: inherit;
++      font-size: 0.9rem;
++      margin-top: 0;
++    }
++
++    button.btn-secondary {
++      background: #6d4c41;
++    }
++
++    button.btn-secondary:hover {
++      background: var(--primary);
++    }
++
++    button.btn-remove {
++      background: #8d6e63;
++      padding: 6px 12px;
++      font-size: 0.85rem;
++    }
++
++    button.btn-remove:hover {
++      background: #5d4037;
++    }
++
++    ::view-transition-group(.bean-item) {
++      animation-duration: 0.45s;
++      animation-timing-function: ease-in-out;
++    }
++
++    ::view-transition-new(.bean-item):only-child {
++      animation-name: bean-slide-in;
++      animation-duration: 0.45s;
++      animation-timing-function: ease-out;
++    }
++
++    ::view-transition-old(.bean-item):only-child {
++      animation-name: bean-slide-out;
++      animation-duration: 0.45s;
++      animation-timing-function: ease-in;
++    }
++
++    @keyframes bean-slide-in {
++      from {
++        opacity: 0;
++        translate: 0 24px;
++      }
++    }
++
++    @keyframes bean-slide-out {
++      to {
++        opacity: 0;
++        translate: 0 -24px;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +327,19 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="bean-selection-section" style="margin-top: 60px;">
++      <h2 style="text-align: center;">Artisanal Coffee Bean Selection</h2>
++      <p style="text-align: center; max-width: 650px; margin: 8px auto 0;">
++        Curate your own tasting box of single-origin beans. Add new roasts or remove items below to customize your selection.
++      </p>
++
++      <div class="bean-controls" id="bean-add-controls" aria-label="Add coffee beans to selection"></div>
++
++      <div class="grid" id="bean-selection-grid" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +350,190 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const ALL_BEANS = [
++      {
++        id: 'bean-ethiopia',
++        name: 'Ethiopian Yirgacheffe',
++        roast: 'Light Roast',
++        origin: 'Gedeo Zone, Ethiopia',
++        notes: 'Bright bergamot, jasmine blossom, and sweetMeyer lemon finish.',
++        price: '$19.50'
++      },
++      {
++        id: 'bean-colombia',
++        name: 'Colombia Huila Supremo',
++        roast: 'Medium Roast',
++        origin: 'Huila, Colombia',
++        notes: 'Balanced caramel sweetness with toasted hazelnut and red apple.',
++        price: '$17.00'
++      },
++      {
++        id: 'bean-sumatra',
++        name: 'Sumatra Mandheling',
++        roast: 'Dark Roast',
++        origin: 'North Sumatra, Indonesia',
++        notes: 'Full-bodied and earthy with dark chocolate, cedar, and warm spice.',
++        price: '$18.50'
++      },
++      {
++        id: 'bean-guatemala',
++        name: 'Guatemala Antigua',
++        roast: 'Medium Roast',
++        origin: 'Antigua Valley, Guatemala',
++        notes: 'Velvety cocoa, brown sugar, and a crisp orange zest acidity.',
++        price: '$18.00'
++      },
++      {
++        id: 'bean-kenya',
++        name: 'Kenya AA Nyeri',
++        roast: 'Medium-Light Roast',
++        origin: 'Nyeri County, Kenya',
++        notes: 'Vibrant blackcurrant, ruby grapefruit, and winey complexity.',
++        price: '$21.00'
++      },
++      {
++        id: 'bean-costa-rica',
++        name: 'Costa Rica Tarrazú Honey',
++        roast: 'Medium Roast',
++        origin: 'Tarrazú, Costa Rica',
++        notes: 'Honeyed apricot, roasted almond, and silky milk chocolate.',
++        price: '$19.00'
++      }
++    ];
++
++    let selectedBeans = ALL_BEANS.slice(0, 4);
++
++    const gridEl = document.getElementById('bean-selection-grid');
++    const controlsEl = document.getElementById('bean-add-controls');
++
++    function createBeanCard(bean) {
++      const card = document.createElement('article');
++      card.className = 'bean-card';
++      card.dataset.id = bean.id;
++      card.style.viewTransitionName = bean.id;
++
++      const top = document.createElement('div');
++
++      const title = document.createElement('h3');
++      title.textContent = bean.name;
++
++      const meta = document.createElement('div');
++      meta.className = 'bean-meta';
++      meta.textContent = `${bean.roast} • ${bean.origin}`;
++
++      const notes = document.createElement('p');
++      notes.className = 'bean-notes';
++      notes.textContent = bean.notes;
++
++      top.append(title, meta, notes);
++
++      const footer = document.createElement('div');
++      footer.className = 'bean-footer';
++
++      const price = document.createElement('span');
++      price.className = 'bean-price';
++      price.textContent = bean.price;
++
++      const removeBtn = document.createElement('button');
++      removeBtn.type = 'button';
++      removeBtn.className = 'btn btn-remove';
++      removeBtn.textContent = 'Remove';
++      removeBtn.setAttribute('aria-label', `Remove ${bean.name}`);
++      removeBtn.addEventListener('click', () => removeBean(bean.id, card));
++
++      footer.append(price, removeBtn);
++      card.append(top, footer);
++      return card;
++    }
++
++    function syncDOM() {
++      const existingCards = new Map(
++        Array.from(gridEl.children, (el) => [el.dataset.id, el])
++      );
++
++      const selectedIds = new Set(selectedBeans.map((b) => b.id));
++      for (const [id, el] of existingCards) {
++        if (!selectedIds.has(id)) {
++          el.remove();
++        }
++      }
++
++      for (const bean of selectedBeans) {
++        const card = existingCards.get(bean.id) || createBeanCard(bean);
++        gridEl.appendChild(card);
++      }
++
++      controlsEl.replaceChildren();
++      const availableBeans = ALL_BEANS.filter((b) => !selectedIds.has(b.id));
++
++      for (const bean of availableBeans) {
++        const addBtn = document.createElement('button');
++        addBtn.type = 'button';
++        addBtn.className = 'btn';
++        addBtn.textContent = `+ Add ${bean.name}`;
++        addBtn.addEventListener('click', () => addBean(bean));
++        controlsEl.appendChild(addBtn);
++      }
++
++      if (availableBeans.length > 0) {
++        const addAllBtn = document.createElement('button');
++        addAllBtn.type = 'button';
++        addAllBtn.className = 'btn btn-secondary';
++        addAllBtn.textContent = 'Add All Available';
++        addAllBtn.addEventListener('click', addAllBeans);
++        controlsEl.appendChild(addAllBtn);
++      }
++    }
++
++    function runViewTransition(updateCallback) {
++      if (document.startViewTransition) {
++        const transition = document.startViewTransition(() => {
++          updateCallback();
++        });
++        transition.ready.catch(() => {});
++      } else {
++        updateCallback();
++      }
++    }
++
++    function addBean(bean) {
++      if (selectedBeans.some((b) => b.id === bean.id)) return;
++      runViewTransition(() => {
++        selectedBeans.push(bean);
++        syncDOM();
++      });
++    }
++
++    function addAllBeans() {
++      runViewTransition(() => {
++        for (const bean of ALL_BEANS) {
++          if (!selectedBeans.some((b) => b.id === bean.id)) {
++            selectedBeans.push(bean);
++          }
++        }
++        syncDOM();
++      });
++    }
++
++    function removeBean(beanId, cardEl) {
++      const hadFocus = cardEl.contains(document.activeElement);
++      const nextFocusTarget =
++        cardEl.nextElementSibling?.querySelector('button') ??
++        cardEl.previousElementSibling?.querySelector('button');
++
++      runViewTransition(() => {
++        selectedBeans = selectedBeans.filter((b) => b.id !== beanId);
++        syncDOM();
++        if (hadFocus) {
++          (nextFocusTarget ?? controlsEl.querySelector('button'))?.focus();
++        }
++      });
++    }
++
++    syncDOM();
++  </script>
+ </body>
+ 
+ </html>

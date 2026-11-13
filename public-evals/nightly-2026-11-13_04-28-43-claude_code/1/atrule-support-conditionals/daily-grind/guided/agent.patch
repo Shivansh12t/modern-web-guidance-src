@@ -1,0 +1,168 @@
+diff --git a/index.html b/index.html
+index 66c9173..b0cb607 100644
+--- a/index.html
++++ b/index.html
+@@ -35,11 +35,19 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++    }
++
++    .site-header {
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
++    html {
++      /* Keep focused elements from hiding under the sticky nav */
++      scroll-padding-top: 5rem;
++    }
++
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+@@ -152,21 +160,133 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    /* ==========================================================
++       Progressive enhancements
++       Each block below only takes effect in browsers that support
++       the newer CSS @-rule it relies on. Everything above is the
++       baseline experience that works everywhere.
++       ========================================================== */
++
++    /* --- Seasonal favorite cards: @function ---------------------
++       Custom functions compute a warm, tinted surface + lift effect.
++       at-rule() detection is appropriate here because @function
++       support is narrower than at-rule() support; the value-based
++       check covers @function browsers that predate at-rule(). */
++    @function --roast-tint(--strength <percentage>: 12%) returns <color> {
++      result: color-mix(in oklch, var(--accent) var(--strength), white);
++    }
++
++    @function --lift(--depth <length>: 4px) {
++      result: 0 var(--depth) calc(var(--depth) * 3) rgb(78 52 46 / 0.18);
++    }
++
++    @supports at-rule(@function) or (color: --supports-test()) {
++      .card {
++        background: linear-gradient(180deg, white 40%, --roast-tint(14%));
++        border-top: 4px solid var(--accent);
++        box-shadow: --lift(3px);
++        transition: transform 0.25s ease, box-shadow 0.25s ease;
++
++        &:hover,
++        &:focus-within {
++          box-shadow: --lift(10px);
++        }
++
++        @media (prefers-reduced-motion: no-preference) {
++          &:hover,
++          &:focus-within {
++            transform: translateY(-4px);
++          }
++        }
++      }
++    }
++
++    /* --- Hero section: @property ---------------------------------
++       A registered <angle> lets the warm overlay sweep smoothly.
++       @property shipped before at-rule(), so detection uses a
++       registered, non-inheriting properties whose initial values
++       only exist when @property is supported. Without it, the glow
++       falls back to `transparent` and the animation to `none`. */
++    @property --hero-angle {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 135deg;
++    }
++
++    @property --hero-glow {
++      syntax: "*";
++      inherits: false;
++      initial-value: rgb(255 171 64 / 0.28);
++    }
++
++    @property --hero-sheen-animation {
++      syntax: "*";
++      inherits: false;
++      initial-value: hero-sheen 14s linear infinite;
++    }
++
++    @keyframes hero-sheen {
++      to {
++        --hero-angle: 495deg;
++      }
++    }
++
++    .hero {
++      background:
++        linear-gradient(var(--hero-angle, 135deg), var(--hero-glow, transparent), transparent 60%),
++        linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-size: cover;
++      background-position: center;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .hero {
++        animation: var(--hero-sheen-animation, none);
++      }
++    }
++
++    /* --- Navigation bar: @container scroll-state() --------------
++       The nav gains a shadow and accent underline only once it is
++       actually stuck. container-type: scroll-state is the feature
++       check for scroll-state queries (at-rule() cannot detect
++       container query types). Only paint properties change, so no
++       scroll-anchoring flicker. */
++    @supports (container-type: scroll-state) {
++      .site-header {
++        container: site-nav / scroll-state;
++      }
++
++      nav {
++        transition: box-shadow 0.3s, border-color 0.3s, background-color 0.3s;
++        border-bottom: 2px solid transparent;
++      }
++    }
++
++    @container site-nav scroll-state(stuck: top) {
++      nav {
++        background: rgb(62 39 35 / 0.96);
++        border-bottom-color: var(--accent);
++        box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
++  <header class="site-header">
++    <nav>
++      <div class="logo">THE DAILY GRIND</div>
++      <ul>
++        <li><a href="/menu">Menu</a></li>
++        <li><a href="/locations">Locations</a></li>
++        <li><a href="/rewards">Rewards</a></li>
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </nav>
++  </header>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>

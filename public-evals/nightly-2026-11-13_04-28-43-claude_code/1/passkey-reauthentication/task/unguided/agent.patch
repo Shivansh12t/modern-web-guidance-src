@@ -1,0 +1,242 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,39 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Re-authentication */
++    .security-card {
++      max-width: 600px;
++      margin: 40px auto 0;
++    }
++
++    .security-card button.btn {
++      border: none;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .security-card button.btn:disabled {
++      opacity: 0.6;
++      cursor: wait;
++    }
++
++    .reauth-status {
++      margin-top: 12px;
++      min-height: 1.5em;
++      font-size: 0.9rem;
++    }
++
++    .reauth-status.error {
++      color: #b71c1c;
++    }
++
++    .reauth-status.success {
++      color: #2e7d32;
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -194,8 +225,15 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="card security-card" aria-labelledby="security-heading">
++      <h3 id="security-heading">Account Security</h3>
++      <p>Before you change sensitive account details, confirm it's you with your passkey or security key.</p>
++      <button type="button" class="btn" id="reauth-button" data-testid="reauth-button">Confirm it's me</button>
++      <p class="reauth-status" id="reauth-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +244,182 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      'use strict';
++
++      var button = document.getElementById('reauth-button');
++      var statusEl = document.getElementById('reauth-status');
++      if (!button) return;
++
++      function setStatus(message, kind) {
++        statusEl.textContent = message || '';
++        statusEl.className = 'reauth-status' + (kind ? ' ' + kind : '');
++      }
++
++      // --- base64url helpers -------------------------------------------------
++      function b64urlToBuffer(value) {
++        var b64 = String(value).replace(/-/g, '+').replace(/_/g, '/');
++        var pad = b64.length % 4;
++        if (pad) b64 += '===='.slice(pad);
++        var bin = atob(b64);
++        var bytes = new Uint8Array(bin.length);
++        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
++        return bytes.buffer;
++      }
++
++      function bufferToB64url(buf) {
++        if (!buf) return null;
++        var bytes = new Uint8Array(buf);
++        var bin = '';
++        for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
++        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++      }
++
++      function csrfHeaders() {
++        var meta = document.querySelector('meta[name="csrf-token"]');
++        return meta && meta.content ? { 'X-CSRF-Token': meta.content } : {};
++      }
++
++      async function postJSON(url, body) {
++        var headers = Object.assign(
++          { 'Content-Type': 'application/json', 'Accept': 'application/json' },
++          csrfHeaders()
++        );
++        var res = await fetch(url, {
++          method: 'POST',
++          credentials: 'same-origin', // session cookie identifies the signed-in user
++          headers: headers,
++          body: JSON.stringify(body || {})
++        });
++        var data = null;
++        try { data = await res.json(); } catch (_) { /* empty / non-JSON body */ }
++        if (!res.ok) {
++          var msg = (data && (data.error || data.message)) || ('Request failed (' + res.status + ')');
++          var err = new Error(msg);
++          err.status = res.status;
++          throw err;
++        }
++        return data || {};
++      }
++
++      // Convert server JSON (PublicKeyCredentialRequestOptionsJSON) into the
++      // binary form navigator.credentials.get() expects.
++      function toRequestOptions(json) {
++        var opts = json && json.publicKey ? json.publicKey : json;
++        if (!opts || !opts.challenge) throw new Error('Server returned an invalid challenge.');
++        if (!Array.isArray(opts.allowCredentials) || opts.allowCredentials.length === 0) {
++          // Scoped to the user's pre-registered credentials only — never fall
++          // back to a discoverable "any account" prompt.
++          throw new Error('No registered passkey or security key found for your account.');
++        }
++
++        if (window.PublicKeyCredential && typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function') {
++          var parsed = PublicKeyCredential.parseRequestOptionsFromJSON(opts);
++          parsed.userVerification = 'required';
++          return parsed;
++        }
++
++        var publicKey = {
++          challenge: b64urlToBuffer(opts.challenge),
++          allowCredentials: opts.allowCredentials.map(function (c) {
++            var d = { type: c.type || 'public-key', id: b64urlToBuffer(c.id) };
++            if (Array.isArray(c.transports)) d.transports = c.transports;
++            return d;
++          }),
++          // Require a local user-verification gesture (biometric / PIN).
++          userVerification: 'required'
++        };
++        if (opts.rpId) publicKey.rpId = opts.rpId;
++        if (typeof opts.timeout === 'number') publicKey.timeout = opts.timeout;
++        if (opts.extensions) publicKey.extensions = opts.extensions;
++        return publicKey;
++      }
++
++      function serializeAssertion(cred) {
++        if (typeof cred.toJSON === 'function') {
++          try { return cred.toJSON(); } catch (_) { /* fall through to manual */ }
++        }
++        var r = cred.response;
++        return {
++          id: cred.id,
++          rawId: bufferToB64url(cred.rawId),
++          type: cred.type,
++          authenticatorAttachment: cred.authenticatorAttachment || null,
++          clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
++          response: {
++            clientDataJSON: bufferToB64url(r.clientDataJSON),
++            authenticatorData: bufferToB64url(r.authenticatorData),
++            signature: bufferToB64url(r.signature),
++            userHandle: r.userHandle ? bufferToB64url(r.userHandle) : null
++          }
++        };
++      }
++
++      var inFlight = null;
++
++      async function reauthenticate() {
++        if (!window.PublicKeyCredential || !navigator.credentials || !navigator.credentials.get) {
++          setStatus('Your browser does not support passkeys or security keys.', 'error');
++          return;
++        }
++        if (inFlight) return;
++
++        button.disabled = true;
++        button.setAttribute('aria-busy', 'true');
++        setStatus('Requesting a challenge…');
++        inFlight = new AbortController();
++
++        try {
++          var optionsJSON = await postJSON('/api/reauth/options', {});
++          var publicKey = toRequestOptions(optionsJSON);
++
++          setStatus('Follow your browser’s prompt to verify with your passkey or security key…');
++          var credential = await navigator.credentials.get({
++            publicKey: publicKey,
++            mediation: 'required',
++            signal: inFlight.signal
++          });
++          if (!credential) throw new Error('Verification was not completed.');
++
++          setStatus('Verifying…');
++          var result = await postJSON('/api/reauth/verify', serializeAssertion(credential));
++
++          if (result && (result.verified === false || result.success === false)) {
++            throw new Error(result.error || result.message || 'Verification failed.');
++          }
++
++          setStatus('Identity confirmed. You can now make sensitive changes.', 'success');
++          document.dispatchEvent(new CustomEvent('reauth:success', { detail: result }));
++        } catch (err) {
++          var msg;
++          if (err && err.name === 'NotAllowedError') {
++            msg = 'Verification was cancelled or timed out. Please try again.';
++          } else if (err && err.name === 'AbortError') {
++            msg = 'Verification was cancelled.';
++          } else if (err && err.name === 'SecurityError') {
++            msg = 'Verification is not allowed on this site/origin.';
++          } else if (err && err.name === 'InvalidStateError') {
++            msg = 'This authenticator is not registered to your account.';
++          } else if (err && err.status === 401) {
++            msg = 'Your session has expired. Please sign in again.';
++          } else {
++            msg = (err && err.message) || 'Verification failed. Please try again.';
++          }
++          setStatus(msg, 'error');
++          document.dispatchEvent(new CustomEvent('reauth:failure', { detail: { error: msg } }));
++        } finally {
++          inFlight = null;
++          button.disabled = false;
++          button.removeAttribute('aria-busy');
++        }
++      }
++
++      button.addEventListener('click', reauthenticate);
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

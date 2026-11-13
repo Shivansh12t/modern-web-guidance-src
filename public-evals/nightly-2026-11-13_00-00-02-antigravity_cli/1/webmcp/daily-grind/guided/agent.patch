@@ -1,0 +1,699 @@
+diff --git a/index.html b/index.html
+index 66c9173..4853966 100644
+--- a/index.html
++++ b/index.html
+@@ -126,8 +126,13 @@
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      font: inherit;
++      font-size: max(1rem, 1em);
++      min-height: 48px;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,6 +140,162 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible,
++    .order-form input:focus-visible,
++    .order-form select:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .price {
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 8px;
++      font-size: 1.1rem;
++    }
++
++    .order-form {
++      margin-top: 15px;
++      text-align: left;
++      border-top: 1px solid var(--secondary);
++      padding-top: 15px;
++    }
++
++    .order-form fieldset {
++      border: 1px solid #767676;
++      border-radius: 6px;
++      padding: 10px 12px;
++      margin-block-end: 1rem;
++    }
++
++    .order-form legend {
++      font-weight: 600;
++      padding: 0 4px;
++      font-size: 0.95rem;
++    }
++
++    .radio-group {
++      display: flex;
++      gap: 12px;
++      flex-wrap: wrap;
++      margin-top: 4px;
++    }
++
++    .radio-option {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++    }
++
++    .radio-option input[type="radio"] {
++      accent-color: var(--primary);
++      width: 1.15rem;
++      height: 1.15rem;
++    }
++
++    .radio-option label {
++      display: inline-block;
++      padding: 10px 0;
++      margin: -10px 0;
++      cursor: pointer;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 0.25rem;
++      margin-block-end: 1rem;
++    }
++
++    .field label {
++      font-weight: 600;
++      font-size: 0.95rem;
++    }
++
++    .field input,
++    .field select {
++      width: 100%;
++      font: inherit;
++      font-size: max(1rem, 1em);
++      padding: 0.6rem 0.75rem;
++      min-height: 48px;
++      border: 1px solid #767676;
++      border-radius: 5px;
++      background-color: white;
++      color: var(--text);
++    }
++
++    .field input:user-invalid,
++    .field select:user-invalid {
++      border-color: #b3261e;
++    }
++
++    @media (pointer: coarse) {
++      .field input,
++      .field select,
++      .btn {
++        min-height: 52px;
++      }
++    }
++
++    .order-form .btn {
++      width: 100%;
++      margin-top: 4px;
++      font-weight: 600;
++    }
++
++    form:tool-form-active {
++      outline: 2px dashed #0b57d0;
++      outline-offset: 4px;
++      background-color: rgba(11, 87, 208, 0.05);
++    }
++
++    button:tool-submit-active {
++      outline: 2px dashed #b3261e;
++      outline-offset: 2px;
++    }
++
++    .order-status {
++      margin-top: 12px;
++      padding: 10px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      background: #efebe9;
++      color: var(--text);
++      border-left: 4px solid var(--primary);
++    }
++
++    .order-status:empty {
++      display: none;
++    }
++
++    .order-summary-panel {
++      margin-top: 30px;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .order-summary-panel h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .order-list {
++      list-style: none;
++      margin-top: 10px;
++    }
++
++    .order-list li {
++      padding: 8px 0;
++      border-bottom: 1px solid var(--secondary);
++      display: flex;
++      justify-content: space-between;
++      gap: 12px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -179,21 +340,167 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <h3 id="heading-maple-oat-latte">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="price">From $5.50</p>
++          <form class="order-form"
++                action="/order"
++                method="POST"
++                aria-labelledby="heading-maple-oat-latte"
++                data-drink-id="maple-oat-latte"
++                data-drink-name="Maple Oat Latte"
++                data-base-price="5.50"
++                toolname="order-maple-oat-latte"
++                tooldescription="Add a customized Maple Oat Latte to the coffee order.">
++            <fieldset toolparamdescription="Cup size for the Maple Oat Latte.">
++              <legend>Size <span aria-hidden="true">*</span></legend>
++              <div class="radio-group">
++                <div class="radio-option">
++                  <input type="radio" id="maple-size-small" name="size" value="Small" required>
++                  <label for="maple-size-small">Small</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="maple-size-medium" name="size" value="Medium" checked required>
++                  <label for="maple-size-medium">Medium</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="maple-size-large" name="size" value="Large" required>
++                  <label for="maple-size-large">Large</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <fieldset toolparamdescription="Serving temperature for the Maple Oat Latte.">
++              <legend>Temperature <span aria-hidden="true">*</span></legend>
++              <div class="radio-group">
++                <div class="radio-option">
++                  <input type="radio" id="maple-temp-hot" name="temperature" value="Hot" checked required>
++                  <label for="maple-temp-hot">Hot</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="maple-temp-iced" name="temperature" value="Iced" required>
++                  <label for="maple-temp-iced">Iced</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <div class="field">
++              <label for="maple-quantity">Quantity <span aria-hidden="true">*</span></label>
++              <input type="number" id="maple-quantity" name="quantity" min="1" max="10" value="1" required toolparamdescription="Number of Maple Oat Lattes to order.">
++            </div>
++
++            <button type="submit" class="btn">Order Maple Oat Latte</button>
++            <div class="order-status" role="status" aria-live="polite"></div>
++          </form>
+         </div>
++
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <h3 id="heading-dark-roast-espresso">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="price">From $3.50</p>
++          <form class="order-form"
++                action="/order"
++                method="POST"
++                aria-labelledby="heading-dark-roast-espresso"
++                data-drink-id="dark-roast-espresso"
++                data-drink-name="Dark Roast Espresso"
++                data-base-price="3.50"
++                toolname="order-dark-roast-espresso"
++                tooldescription="Add a customized Dark Roast Espresso to the coffee order.">
++            <fieldset toolparamdescription="Number of espresso shots.">
++              <legend>Shots <span aria-hidden="true">*</span></legend>
++              <div class="radio-group">
++                <div class="radio-option">
++                  <input type="radio" id="espresso-shots-single" name="shots" value="Single" required>
++                  <label for="espresso-shots-single">Single</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="espresso-shots-double" name="shots" value="Double" checked required>
++                  <label for="espresso-shots-double">Double</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="espresso-shots-triple" name="shots" value="Triple" required>
++                  <label for="espresso-shots-triple">Triple</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <div class="field">
++              <label for="espresso-quantity">Quantity <span aria-hidden="true">*</span></label>
++              <input type="number" id="espresso-quantity" name="quantity" min="1" max="10" value="1" required toolparamdescription="Number of Dark Roast Espressos to order.">
++            </div>
++
++            <button type="submit" class="btn">Order Dark Roast Espresso</button>
++            <div class="order-status" role="status" aria-live="polite"></div>
++          </form>
+         </div>
++
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <h3 id="heading-cold-brew">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="price">From $4.75</p>
++          <form class="order-form"
++                action="/order"
++                method="POST"
++                aria-labelledby="heading-cold-brew"
++                data-drink-id="cold-brew"
++                data-drink-name="Cold Brew"
++                data-base-price="4.75"
++                toolname="order-cold-brew"
++                tooldescription="Add a customized Cold Brew to the coffee order.">
++            <fieldset toolparamdescription="Cup size for the Cold Brew.">
++              <legend>Size <span aria-hidden="true">*</span></legend>
++              <div class="radio-group">
++                <div class="radio-option">
++                  <input type="radio" id="coldbrew-size-small" name="size" value="Small" required>
++                  <label for="coldbrew-size-small">Small</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="coldbrew-size-medium" name="size" value="Medium" checked required>
++                  <label for="coldbrew-size-medium">Medium</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="coldbrew-size-large" name="size" value="Large" required>
++                  <label for="coldbrew-size-large">Large</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <fieldset toolparamdescription="Ice level for the Cold Brew.">
++              <legend>Ice Level <span aria-hidden="true">*</span></legend>
++              <div class="radio-group">
++                <div class="radio-option">
++                  <input type="radio" id="coldbrew-ice-regular" name="ice" value="Regular Ice" checked required>
++                  <label for="coldbrew-ice-regular">Regular Ice</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="coldbrew-ice-light" name="ice" value="Light Ice" required>
++                  <label for="coldbrew-ice-light">Light Ice</label>
++                </div>
++                <div class="radio-option">
++                  <input type="radio" id="coldbrew-ice-none" name="ice" value="No Ice" required>
++                  <label for="coldbrew-ice-none">No Ice</label>
++                </div>
++              </div>
++            </fieldset>
++
++            <div class="field">
++              <label for="coldbrew-quantity">Quantity <span aria-hidden="true">*</span></label>
++              <input type="number" id="coldbrew-quantity" name="quantity" min="1" max="10" value="1" required toolparamdescription="Number of Cold Brews to order.">
++            </div>
++
++            <button type="submit" class="btn">Order Cold Brew</button>
++            <div class="order-status" role="status" aria-live="polite"></div>
++          </form>
+         </div>
+       </div>
++
++      <div class="order-summary-panel" aria-live="polite">
++        <h3>Current Order (<span id="order-count">0</span> items)</h3>
++        <ul id="order-items" class="order-list">
++          <li id="empty-order-msg">No seasonal drinks ordered yet.</li>
++        </ul>
++      </div>
+     </section>
+   </main>
+ 
+@@ -207,6 +514,343 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const orders = [];
++      const orderItemsEl = document.getElementById('order-items');
++      const orderCountEl = document.getElementById('order-count');
++
++      const SIZES = ['Small', 'Medium', 'Large'];
++      const TEMPERATURES = ['Hot', 'Iced'];
++      const SHOTS = ['Single', 'Double', 'Triple'];
++      const ICE_LEVELS = ['Regular Ice', 'Light Ice', 'No Ice'];
++
++      const SIZE_SURCHARGE = { Small: -0.5, Medium: 0, Large: 0.75 };
++      const SHOTS_SURCHARGE = { Single: -0.5, Double: 0, Triple: 0.75 };
++
++      function renderOrders() {
++        const totalItems = orders.reduce((sum, item) => sum + item.quantity, 0);
++        orderCountEl.textContent = String(totalItems);
++        orderItemsEl.textContent = '';
++
++        if (orders.length === 0) {
++          const emptyLi = document.createElement('li');
++          emptyLi.textContent = 'No seasonal drinks ordered yet.';
++          orderItemsEl.appendChild(emptyLi);
++          return;
++        }
++
++        for (const item of orders) {
++          const li = document.createElement('li');
++          const desc = document.createElement('span');
++          desc.textContent = `${item.quantity}x ${item.drink} (${item.details})`;
++          const price = document.createElement('strong');
++          price.textContent = `$${item.totalPrice.toFixed(2)}`;
++          li.append(desc, price);
++          orderItemsEl.appendChild(li);
++        }
++      }
++
++      function setFormSelection(form, name, value) {
++        if (value == null) return;
++        const radio = form.querySelector(`input[name="${name}"][value="${CSS.escape(String(value))}"]`);
++        if (radio) {
++          radio.checked = true;
++          return;
++        }
++        const input = form.elements.namedItem(name);
++        if (input && 'value' in input) {
++          input.value = String(value);
++        }
++      }
++
++      function addOrderItem({ form, drink, basePrice, details, unitPrice, quantity }) {
++        const totalPrice = Number(((unitPrice) * quantity).toFixed(2));
++        const orderRecord = {
++          orderId: `ORD-${Date.now()}-${orders.length + 1}`,
++          drink,
++          details,
++          quantity,
++          unitPrice: Number(unitPrice.toFixed(2)),
++          totalPrice
++        };
++        orders.push(orderRecord);
++        renderOrders();
++
++        if (form) {
++          const statusEl = form.querySelector('.order-status');
++          if (statusEl) {
++            statusEl.textContent = `Added ${quantity}x ${drink} (${details}) — $${totalPrice.toFixed(2)}`;
++          }
++        }
++        return orderRecord;
++      }
++
++      function validateFormFields(form) {
++        const errors = [];
++        const quantityInput = form.querySelector('input[name="quantity"]');
++        const qty = Number(quantityInput?.value);
++        if (!Number.isInteger(qty) || qty < 1 || qty > 10) {
++          if (quantityInput) {
++            quantityInput.setCustomValidity('Please enter a whole quantity between 1 and 10.');
++            quantityInput.setAttribute('aria-invalid', 'true');
++          }
++          errors.push({ field: 'quantity', message: 'Quantity must be an integer between 1 and 10.' });
++        } else if (quantityInput) {
++          quantityInput.setCustomValidity('');
++          quantityInput.removeAttribute('aria-invalid');
++        }
++        return errors;
++      }
++
++      document.querySelectorAll('.order-form').forEach((form) => {
++        const quantityInput = form.querySelector('input[name="quantity"]');
++        if (quantityInput) {
++          quantityInput.addEventListener('input', () => {
++            quantityInput.setCustomValidity('');
++            quantityInput.removeAttribute('aria-invalid');
++          });
++          quantityInput.addEventListener('blur', () => {
++            validateFormFields(form);
++          });
++        }
++
++        form.addEventListener('submit', (event) => {
++          event.preventDefault();
++          const validationErrors = validateFormFields(form);
++
++          if (validationErrors.length > 0) {
++            const firstInvalid = form.querySelector('[aria-invalid="true"]');
++            if (firstInvalid) firstInvalid.focus();
++            if (event.agentInvoked && typeof event.respondWith === 'function') {
++              const errorString = 'Validation failed: ' + validationErrors.map((err) => `${err.field} (${err.message})`).join(', ');
++              event.respondWith(Promise.resolve(errorString));
++            }
++            return;
++          }
++
++          const formData = new FormData(form);
++          const drink = form.dataset.drinkName;
++          const basePrice = Number(form.dataset.basePrice);
++          const quantity = Number(formData.get('quantity') || 1);
++          let details = '';
++          let surcharge = 0;
++
++          if (form.dataset.drinkId === 'maple-oat-latte') {
++            const size = String(formData.get('size') || 'Medium');
++            const temperature = String(formData.get('temperature') || 'Hot');
++            details = `${size}, ${temperature}`;
++            surcharge = SIZE_SURCHARGE[size] ?? 0;
++          } else if (form.dataset.drinkId === 'dark-roast-espresso') {
++            const shots = String(formData.get('shots') || 'Double');
++            details = `${shots} Shot`;
++            surcharge = SHOTS_SURCHARGE[shots] ?? 0;
++          } else if (form.dataset.drinkId === 'cold-brew') {
++            const size = String(formData.get('size') || 'Medium');
++            const ice = String(formData.get('ice') || 'Regular Ice');
++            details = `${size}, ${ice}`;
++            surcharge = SIZE_SURCHARGE[size] ?? 0;
++          }
++
++          const record = addOrderItem({
++            form,
++            drink,
++            basePrice,
++            details,
++            unitPrice: basePrice + surcharge,
++            quantity
++          });
++
++          if (event.agentInvoked && typeof event.respondWith === 'function') {
++            event.respondWith(Promise.resolve(record));
++          }
++        });
++      });
++
++      const targetFor = (type, listener, options) =>
++        (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
++          .addEventListener(type, listener, options);
++
++      targetFor('toolactivated', ({ toolName }) => {
++        console.log(`Tool "${toolName}" started execution.`);
++      });
++
++      targetFor('toolcancel', ({ toolName }) => {
++        console.log(`Tool "${toolName}" execution is cancelled.`);
++      });
++
++      if ('modelContext' in document && document.modelContext) {
++        const controller = new AbortController();
++        const { signal } = controller;
++
++        window.addEventListener('pagehide', () => controller.abort(), { once: true });
++
++        document.modelContext.registerTool({
++          name: 'order_maple_oat_latte',
++          description: 'Places an order for a Maple Oat Latte and updates the current order summary on the page.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              size: {
++                type: 'string',
++                enum: SIZES,
++                default: 'Medium',
++                description: 'Cup size for the Maple Oat Latte.'
++              },
++              temperature: {
++                type: 'string',
++                enum: TEMPERATURES,
++                default: 'Hot',
++                description: 'Serving temperature for the Maple Oat Latte.'
++              },
++              quantity: {
++                type: 'integer',
++                minimum: 1,
++                maximum: 10,
++                default: 1,
++                description: 'Number of Maple Oat Lattes to order.'
++              }
++            }
++          },
++          execute({ size = 'Medium', temperature = 'Hot', quantity = 1 } = {}) {
++            if (!SIZES.includes(size)) {
++              return { error: `Unsupported size "${size}".`, supportedSizes: SIZES };
++            }
++            if (!TEMPERATURES.includes(temperature)) {
++              return { error: `Unsupported temperature "${temperature}".`, supportedTemperatures: TEMPERATURES };
++            }
++            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
++              return { error: 'Quantity must be an integer between 1 and 10.' };
++            }
++            const form = document.querySelector('form[data-drink-id="maple-oat-latte"]');
++            if (form) {
++              setFormSelection(form, 'size', size);
++              setFormSelection(form, 'temperature', temperature);
++              setFormSelection(form, 'quantity', quantity);
++            }
++            return addOrderItem({
++              form,
++              drink: 'Maple Oat Latte',
++              basePrice: 5.5,
++              details: `${size}, ${temperature}`,
++              unitPrice: 5.5 + (SIZE_SURCHARGE[size] ?? 0),
++              quantity
++            });
++          },
++          annotations: {
++            readOnlyHint: false,
++            consequentialHint: true
++          }
++        }, { signal });
++
++        document.modelContext.registerTool({
++          name: 'order_dark_roast_espresso',
++          description: 'Places an order for a Dark Roast Espresso and updates the current order summary on the page.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              shots: {
++                type: 'string',
++                enum: SHOTS,
++                default: 'Double',
++                description: 'Number of espresso shots.'
++              },
++              quantity: {
++                type: 'integer',
++                minimum: 1,
++                maximum: 10,
++                default: 1,
++                description: 'Number of Dark Roast Espressos to order.'
++              }
++            }
++          },
++          execute({ shots = 'Double', quantity = 1 } = {}) {
++            if (!SHOTS.includes(shots)) {
++              return { error: `Unsupported shot option "${shots}".`, supportedShots: SHOTS };
++            }
++            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
++              return { error: 'Quantity must be an integer between 1 and 10.' };
++            }
++            const form = document.querySelector('form[data-drink-id="dark-roast-espresso"]');
++            if (form) {
++              setFormSelection(form, 'shots', shots);
++              setFormSelection(form, 'quantity', quantity);
++            }
++            return addOrderItem({
++              form,
++              drink: 'Dark Roast Espresso',
++              basePrice: 3.5,
++              details: `${shots} Shot`,
++              unitPrice: 3.5 + (SHOTS_SURCHARGE[shots] ?? 0),
++              quantity
++            });
++          },
++          annotations: {
++            readOnlyHint: false,
++            consequentialHint: true
++          }
++        }, { signal });
++
++        document.modelContext.registerTool({
++          name: 'order_cold_brew',
++          description: 'Places an order for a Cold Brew and updates the current order summary on the page.',
++          inputSchema: {
++            type: 'object',
++            properties: {
++              size: {
++                type: 'string',
++                enum: SIZES,
++                default: 'Medium',
++                description: 'Cup size for the Cold Brew.'
++              },
++              ice: {
++                type: 'string',
++                enum: ICE_LEVELS,
++                default: 'Regular Ice',
++                description: 'Ice level for the Cold Brew.'
++              },
++              quantity: {
++                type: 'integer',
++                minimum: 1,
++                maximum: 10,
++                default: 1,
++                description: 'Number of Cold Brews to order.'
++              }
++            }
++          },
++          execute({ size = 'Medium', ice = 'Regular Ice', quantity = 1 } = {}) {
++            if (!SIZES.includes(size)) {
++              return { error: `Unsupported size "${size}".`, supportedSizes: SIZES };
++            }
++            if (!ICE_LEVELS.includes(ice)) {
++              return { error: `Unsupported ice level "${ice}".`, supportedIceLevels: ICE_LEVELS };
++            }
++            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
++              return { error: 'Quantity must be an integer between 1 and 10.' };
++            }
++            const form = document.querySelector('form[data-drink-id="cold-brew"]');
++            if (form) {
++              setFormSelection(form, 'size', size);
++              setFormSelection(form, 'ice', ice);
++              setFormSelection(form, 'quantity', quantity);
++            }
++            return addOrderItem({
++              form,
++              drink: 'Cold Brew',
++              basePrice: 4.75,
++              details: `${size}, ${ice}`,
++              unitPrice: 4.75 + (SIZE_SURCHARGE[size] ?? 0),
++              quantity
++            });
++          },
++          annotations: {
++            readOnlyHint: false,
++            consequentialHint: true
++          }
++        }, { signal });
++      }
++    })();
++  </script>
+ </body>
+ 
+ </html>

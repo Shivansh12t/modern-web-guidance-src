@@ -1,0 +1,331 @@
+diff --git a/favorites.js b/favorites.js
+new file mode 100644
+index 0000000..81fd022
+--- /dev/null
++++ b/favorites.js
+@@ -0,0 +1,148 @@
++(() => {
++  const grid = document.querySelector('#favorites-grid');
++  const reset = document.querySelector('#reset-favorites');
++  const status = document.querySelector('#favorites-status');
++  const empty = document.querySelector('#favorites-empty');
++  const originalCards = Array.from(grid.children);
++  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
++
++  // Never fall back to a document transition: that would block the page and
++  // cancel unrelated card transitions. Animation is only an enhancement.
++  function transition(scope, update) {
++    if (reducedMotion.matches || typeof scope.startViewTransition !== 'function') {
++      update();
++      return;
++    }
++    const animation = scope.startViewTransition(update);
++    // A rapid second action may skip this animation, but still applies its update.
++    animation.ready.catch(() => {});
++  }
++
++  function move(node, before = null) {
++    if (typeof grid.moveBefore === 'function') {
++      grid.moveBefore(node, before);
++    } else {
++      const focused = node.contains(document.activeElement) ? document.activeElement : null;
++      grid.insertBefore(node, before);
++      focused?.focus({ preventScroll: true });
++    }
++  }
++
++  function refresh() {
++    const cards = Array.from(grid.children);
++    cards.forEach((card, index) => {
++      card.querySelector('[data-action="earlier"]').setAttribute('aria-disabled', String(index === 0));
++      card.querySelector('[data-action="later"]').setAttribute('aria-disabled', String(index === cards.length - 1));
++    });
++    empty.hidden = cards.length !== 0;
++  }
++
++  function button(label, action, accessibleLabel = label) {
++    const control = document.createElement('button');
++    control.type = 'button';
++    control.textContent = label;
++    control.dataset.action = action;
++    control.setAttribute('aria-label', accessibleLabel);
++    return control;
++  }
++
++  originalCards.forEach((wrapper, index) => {
++    const card = wrapper.querySelector('.drink-card');
++    const name = wrapper.dataset.drink;
++    const tools = document.createElement('div');
++    tools.className = 'card-tools';
++    tools.append(
++      button('←', 'earlier', `Move ${name} earlier`),
++      button('→', 'later', `Move ${name} later`),
++      button('Remove', 'remove', `Remove ${name}`),
++    );
++    card.prepend(tools);
++
++    const customize = button('Customize', 'customize', `Customize ${name}`);
++    customize.className = 'customize';
++    customize.setAttribute('aria-expanded', 'false');
++    customize.setAttribute('aria-controls', `drink-options-${index}`);
++
++    const options = document.createElement('div');
++    options.id = `drink-options-${index}`;
++    options.className = 'drink-options';
++    options.hidden = true;
++
++    function select(labelText, values) {
++      const label = document.createElement('label');
++      label.append(labelText);
++      const input = document.createElement('select');
++      input.name = `${labelText.toLowerCase()}-${index}`;
++      values.forEach(value => input.add(new Option(value, value)));
++      label.append(input);
++      options.append(label);
++      return input;
++    }
++
++    const size = select('Size', ['Regular', 'Large']);
++    const milk = select('Milk', index === 0
++      ? ['Oat milk', 'Whole milk', 'Almond milk', 'No milk']
++      : ['No milk', 'Oat milk', 'Whole milk', 'Almond milk']);
++    const summary = document.createElement('p');
++    summary.className = 'drink-summary';
++    summary.textContent = `${size.value} · ${milk.value}`;
++    card.append(customize, options, summary);
++
++    customize.addEventListener('click', () => {
++      transition(card, () => {
++        options.hidden = !options.hidden;
++        customize.setAttribute('aria-expanded', String(!options.hidden));
++        customize.textContent = options.hidden ? 'Customize' : 'Done customizing';
++        customize.setAttribute('aria-label', `${options.hidden ? 'Customize' : 'Done customizing'} ${name}`);
++      });
++    });
++
++    options.addEventListener('change', () => {
++      transition(card, () => {
++        summary.textContent = `${size.value} · ${milk.value}`;
++        status.textContent = `${name}: ${summary.textContent}.`;
++      });
++    });
++
++    tools.addEventListener('click', event => {
++      const control = event.target.closest('button');
++      if (!control || control.getAttribute('aria-disabled') === 'true') return;
++      transition(grid, () => {
++        // Resolve position inside the callback so rapid actions use current order.
++        if (wrapper.parentElement !== grid) return;
++        const action = control.dataset.action;
++        if (action === 'remove') {
++          const hadFocus = wrapper.contains(document.activeElement);
++          const neighbor = wrapper.nextElementSibling || wrapper.previousElementSibling;
++          wrapper.remove();
++          if (hadFocus) {
++            (neighbor?.querySelector('[data-action="remove"]') || reset).focus({ preventScroll: true });
++          }
++          status.textContent = `${name} removed. ${grid.children.length} drinks remaining. Reset favorites to restore it.`;
++        } else {
++          const neighbor = action === 'earlier' ? wrapper.previousElementSibling : wrapper.nextElementSibling;
++          if (!neighbor) return;
++          move(wrapper, action === 'earlier' ? neighbor : neighbor.nextElementSibling);
++          status.textContent = `${name} moved to position ${Array.from(grid.children).indexOf(wrapper) + 1} of ${grid.children.length}.`;
++        }
++        refresh();
++      });
++    });
++  });
++
++  reset.title = 'Restore removed drinks and their original order';
++  reset.addEventListener('click', () => {
++    transition(grid, () => {
++      originalCards.forEach(card => {
++        if (card.parentElement === grid) move(card);
++        else grid.append(card);
++      });
++      refresh();
++      status.textContent = 'All three favorites restored in their original order. Your drink customizations are kept.';
++    });
++  });
++
++  refresh();
++  reset.hidden = false;
++  document.querySelector('#favorites-help').hidden = false;
++})();
+diff --git a/index.html b/index.html
+index 66c9173..df57f27 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,119 @@
+       color: var(--primary);
+     }
+ 
++    .favorites-heading {
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      flex-wrap: wrap;
++      gap: 12px;
++    }
++
++    .favorites-intro {
++      margin-top: 8px;
++    }
++
++    .favorites button, .favorites select {
++      font: inherit;
++    }
++
++    .favorites button {
++      cursor: pointer;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 6px 10px;
++      background: white;
++      color: var(--primary);
++    }
++
++    .favorites button:hover:not([aria-disabled="true"]) {
++      background: #f3eeeb;
++    }
++
++    .favorites button[aria-disabled="true"] {
++      opacity: 0.4;
++      cursor: default;
++    }
++
++    .favorites :focus-visible {
++      outline: 3px solid #996014;
++      outline-offset: 3px;
++    }
++
++    .card-tools {
++      display: flex;
++      gap: 6px;
++      margin-bottom: 16px;
++    }
++
++    .card-tools [data-action="remove"] {
++      margin-left: auto;
++    }
++
++    .card-wrapper {
++      min-width: 0;
++      view-transition-name: match-element;
++    }
++
++    .drink-card {
++      height: 100%;
++      view-transition-scope: all;
++    }
++
++    .drink-card .customize {
++      display: block;
++      margin: 16px auto 0;
++    }
++
++    .drink-options {
++      margin-top: 16px;
++      padding-top: 16px;
++      border-top: 1px solid var(--secondary);
++      text-align: left;
++    }
++
++    .drink-options label {
++      display: block;
++      margin-bottom: 12px;
++    }
++
++    .drink-options select {
++      display: block;
++      width: 100%;
++      padding: 8px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      color: var(--text);
++      background: white;
++    }
++
++    .drink-summary {
++      font-size: 0.85rem;
++      color: var(--primary);
++      margin-top: 12px;
++      view-transition-name: drink-summary;
++    }
++
++    .favorites-status {
++      margin-top: 16px;
++      font-size: 0.9rem;
++      min-height: 1.6em;
++    }
++
++    /* These pseudo-elements belong to component scopes, never the document. */
++    ::view-transition-group(*) {
++      animation-duration: 280ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,25 +288,37 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section class="favorites" aria-labelledby="favorites-title">
++      <div class="favorites-heading">
++        <h2 id="favorites-title">Seasonal Favorites</h2>
++        <button type="button" id="reset-favorites" hidden>Reset favorites</button>
++      </div>
++      <p class="favorites-intro" id="favorites-help" hidden>Make these favorites yours. Move drinks into your preferred order, customize a cup, or remove a card.</p>
++      <div class="grid" id="favorites-grid" role="list" aria-label="Seasonal drinks">
++        <div class="card-wrapper" role="listitem" data-drink="Maple Oat Latte">
++        <article class="card drink-card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++        </article>
+         </div>
+-        <div class="card">
++        <div class="card-wrapper" role="listitem" data-drink="Dark Roast Espresso">
++        <article class="card drink-card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++        </article>
+         </div>
+-        <div class="card">
++        <div class="card-wrapper" role="listitem" data-drink="Cold Brew">
++        <article class="card drink-card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++        </article>
+         </div>
+       </div>
++      <p id="favorites-empty" hidden>All cleared. Reset favorites to bring your drinks back.</p>
++      <p class="favorites-status" id="favorites-status" role="status" aria-atomic="true"></p>
+     </section>
+   </main>
+ 
+@@ -207,6 +332,8 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="favorites.js" defer></script>
++
+ </body>
+ 
+ </html>

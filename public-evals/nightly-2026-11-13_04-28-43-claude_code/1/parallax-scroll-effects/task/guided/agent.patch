@@ -1,0 +1,220 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -92,8 +92,116 @@
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+ 
++
++    /* Parallax Section */
++    .parallax {
++      position: relative;
++      height: 70vh;
++      min-height: 420px;
++      overflow: clip;
++      display: grid;
++      place-items: center;
++      background: var(--primary);
++      color: white;
++      isolation: isolate;
++      view-timeline: --parallax;
++    }
++
++    .parallax-layer {
++      position: absolute;
++      inset: 0;
++    }
++
++    /* Layers are oversized by their travel distance so no gaps appear while moving */
++    .parallax-layer--back {
++      --distance: 12vh;
++      inset: calc(-1 * var(--distance)) 0;
++      z-index: -3;
++    }
++
++    .parallax-layer--back img {
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      display: block;
++    }
++
++    .parallax-layer--back::after {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: linear-gradient(rgba(62, 39, 35, 0.75), rgba(62, 39, 35, 0.6));
++    }
++
++    .parallax-layer--mid {
++      --distance: 28vh;
++      inset: calc(-1 * var(--distance)) 0;
++      z-index: -2;
++    }
++
++    .parallax-layer--front {
++      --distance: 45vh;
++      inset: calc(-1 * var(--distance)) 0;
++      z-index: -1;
++    }
++
++    .bean {
++      position: absolute;
++      width: var(--size, 40px);
++      aspect-ratio: 3 / 4;
++      border-radius: 50%;
++      background: radial-gradient(circle at 35% 30%, #8d6e63, #4e342e 70%);
++      rotate: var(--rotate, 20deg);
++      opacity: 0.85;
++    }
++
++    .bean::after {
++      content: "";
++      position: absolute;
++      inset: 12% 47%;
++      border-radius: 50%;
++      background: #2b1b17;
++    }
++
++    .parallax-layer--mid .bean { --size: 34px; opacity: 0.55; }
++    .parallax-layer--front .bean { --size: 64px; }
++
++    .parallax-content {
++      position: relative;
++      max-width: 640px;
++      padding: 2rem;
++      text-align: center;
++    }
++
++    .parallax-content h2 {
++      font-size: clamp(1.75rem, 4vw, 2.5rem);
++      margin-bottom: 0.75rem;
++    }
++
++    .parallax-content p {
++      font-size: 1.1rem;
++      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
++    }
++
++    /* Native scroll-driven parallax: progressive enhancement, motion only when allowed */
++    @keyframes parallax {
++      from { transform: translateY(var(--distance)); }
++      to { transform: translateY(calc(-1 * var(--distance))); }
++    }
++
++    @supports ((animation-timeline: view()) and (animation-range: entry)) {
++      @media (prefers-reduced-motion: no-preference) {
++        .parallax-layer {
++          will-change: transform;
++          animation: parallax linear both;
++          animation-timeline: --parallax;
++          animation-range: cover;
++        }
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+       margin: 40px auto;
+@@ -173,8 +281,32 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="parallax" aria-labelledby="parallax-heading">
++    <div class="parallax-layer parallax-layer--back" aria-hidden="true">
++      <img src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=70"
++        alt="" loading="lazy" decoding="async" width="1600" height="1067">
++    </div>
++    <div class="parallax-layer parallax-layer--mid" aria-hidden="true">
++      <span class="bean" style="top: 22%; left: 8%; --rotate: -15deg;"></span>
++      <span class="bean" style="top: 60%; left: 20%; --rotate: 40deg;"></span>
++      <span class="bean" style="top: 30%; left: 78%; --rotate: 10deg;"></span>
++      <span class="bean" style="top: 72%; left: 66%; --rotate: -35deg;"></span>
++      <span class="bean" style="top: 48%; left: 92%; --rotate: 70deg;"></span>
++    </div>
++    <div class="parallax-layer parallax-layer--front" aria-hidden="true">
++      <span class="bean" style="top: 35%; left: 3%; --rotate: 25deg;"></span>
++      <span class="bean" style="top: 68%; left: 86%; --rotate: -20deg;"></span>
++      <span class="bean" style="top: 55%; left: 42%; --rotate: 60deg; opacity: 0.4;"></span>
++    </div>
++    <div class="parallax-content">
++      <h2 id="parallax-heading">From Bean to Cup</h2>
++      <p>Every batch is roasted in small lots just down the street, so the beans in your cup were
++        cracking in our roaster only days ago.</p>
++    </div>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +338,66 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-driven animations (rAF-throttled, only active while visible).
++    (() => {
++      if (CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) return;
++
++      const section = document.querySelector('.parallax');
++      if (!section) return;
++      const layers = [...section.querySelectorAll('.parallax-layer')];
++      const motion = matchMedia('(prefers-reduced-motion: reduce)');
++      let ticking = false;
++      let visible = false;
++
++      function update() {
++        ticking = false;
++        const rect = section.getBoundingClientRect();
++        const vh = window.innerHeight;
++        // 0 when the section enters at the bottom, 1 when it leaves at the top (matches `cover`)
++        const progress = Math.min(1, Math.max(0, (vh - rect.top) / (vh + rect.height)));
++        for (const layer of layers) {
++          const distance = parseFloat(getComputedStyle(layer).getPropertyValue('--distance')) * vh / 100;
++          layer.style.transform = `translateY(${distance * (1 - 2 * progress)}px)`;
++        }
++      }
++
++      function onScroll() {
++        if (!ticking) {
++          ticking = true;
++          requestAnimationFrame(update);
++        }
++      }
++
++      function start() {
++        window.addEventListener('scroll', onScroll, { passive: true });
++        window.addEventListener('resize', onScroll, { passive: true });
++        onScroll();
++      }
++
++      function stop() {
++        window.removeEventListener('scroll', onScroll);
++        window.removeEventListener('resize', onScroll);
++      }
++
++      new IntersectionObserver(([entry]) => {
++        visible = entry.isIntersecting;
++        visible && !motion.matches ? start() : stop();
++      }).observe(section);
++
++      // React live if the user toggles their reduced-motion preference
++      motion.addEventListener('change', () => {
++        if (motion.matches) {
++          stop();
++          layers.forEach((layer) => (layer.style.transform = ''));
++        } else if (visible) {
++          start();
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

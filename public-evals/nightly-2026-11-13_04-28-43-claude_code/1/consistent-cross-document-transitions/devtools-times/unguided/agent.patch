@@ -1,0 +1,196 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..b4a288a 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -45,6 +45,9 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                         width={800}
+                         height={533}
+                         format="webp"
++                        loading="eager"
++                        decoding="sync"
++                        fetchpriority="high"
+                         class="w-full h-auto object-cover"
+                     />
+                 </a>
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..efa16f1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,8 +4,6 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
+-
+ export interface Props {
+   title: string;
+ }
+@@ -34,7 +32,30 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <!--
++      Cross-document view transitions (see global.css). Hold the first render of the
++      incoming page until the main content has been parsed, so the transition never
++      snapshots a half-built page (header only, empty content area).
++    -->
++    <link rel="expect" href="#page-content" blocking="render" />
++
++    <!--
++      Prerender same-origin pages on hover/pointerdown so that, by the time the user
++      clicks, the destination's styles, fonts, above-the-fold images and islands are
++      already loaded and the transition animates to a visually complete page.
++    -->
++    <script type="speculationrules" set:html={JSON.stringify({
++      prerender: [{
++        where: {
++          and: [
++            { href_matches: `${baseUrl}*` },
++            { not: { href_matches: `${baseUrl}api/*` } },
++            { not: { selector_matches: "[data-no-prerender], [rel~=nofollow], [target=_blank]" } },
++          ],
++        },
++        eagerness: "moderate",
++      }],
++    })} />
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -42,10 +63,10 @@ const baseUrl = import.meta.env.BASE_URL;
+       <div
+         class="max-w-6xl w-full bg-white shadow-sm min-h-screen z-10 m-auto"
+       >
+-        <div>
++        <div class="site-header">
+           <Header />
+         </div>
+-        <main class="bg-white relative">
++        <main id="page-content" class="page-content bg-white relative">
+           <slot />
+         </main>
+       </div>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..e8c8f30 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -76,6 +76,9 @@ const isBookmarked = readingList.includes(article.slug);
+                     width={1200}
+                     height={675}
+                     format="webp"
++                    loading="eager"
++                    decoding="sync"
++                    fetchpriority="high"
+                     class="w-full h-auto"
+                 />
+             )}
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..6d60154 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -49,6 +49,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                     height={400}
+                     format="webp"
+                     quality={80}
++                    loading="eager"
++                    decoding="sync"
++                    fetchpriority="high"
+                     class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
+                 />
+             )}
+@@ -74,6 +77,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+                             width={1200}
+                             height={675}
+                             format="webp"
++                            loading="eager"
++                            decoding="sync"
++                            fetchpriority="high"
+                             class="w-full h-auto object-cover mb-4 aspect-[16/9]"
+                         />
+                         <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..15cc896 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,79 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++/* ------------------------------------------------------------------
++ * Page transitions (native cross-document View Transitions API)
++ *
++ * The header stays put; only the page content cross-fades and slides.
++ * The new page is only snapshotted once #page-content has been parsed
++ * (see <link rel="expect" blocking="render"> in Layout.astro), so the
++ * animation never reveals an incomplete or unstyled layout.
++ * ------------------------------------------------------------------ */
++@view-transition {
++  navigation: auto;
++}
++
++.site-header {
++  view-transition-name: site-header;
++}
++
++.page-content {
++  view-transition-name: page-content;
++}
++
++/* Keep the root (background, footer) still so nothing flashes behind the content. */
++::view-transition-old(root),
++::view-transition-new(root) {
++  animation: none;
++  mix-blend-mode: normal;
++}
++
++/* Header is identical across pages: no animation, no cross-fade flicker. */
++::view-transition-old(site-header),
++::view-transition-new(site-header) {
++  animation: none;
++  mix-blend-mode: normal;
++}
++
++::view-transition-group(page-content) {
++  animation-duration: 280ms;
++  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
++}
++
++/* Content is taller/shorter per page: anchor to the top instead of stretching. */
++::view-transition-old(page-content),
++::view-transition-new(page-content) {
++  height: auto;
++  object-fit: none;
++  object-position: top;
++  overflow: clip;
++}
++
++::view-transition-old(page-content) {
++  animation: page-out 160ms cubic-bezier(0.4, 0, 1, 1) both;
++}
++
++::view-transition-new(page-content) {
++  animation: page-in 280ms cubic-bezier(0, 0, 0.2, 1) 60ms both;
++}
++
++@keyframes page-out {
++  to {
++    opacity: 0;
++    transform: translateY(-8px);
++  }
++}
++
++@keyframes page-in {
++  from {
++    opacity: 0;
++    transform: translateY(12px);
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
++}

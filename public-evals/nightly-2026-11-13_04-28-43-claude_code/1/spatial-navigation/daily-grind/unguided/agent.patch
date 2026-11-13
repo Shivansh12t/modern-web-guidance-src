@@ -1,0 +1,484 @@
+diff --git a/index.html b/index.html
+index 66c9173..8bdf2f5 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,152 @@
+       color: var(--primary);
+     }
+ 
++    /* ---- Card grid: layout modes + spatial navigation ---- */
++    .visually-hidden {
++      position: absolute !important;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    .section-head {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    .layout-switch {
++      display: inline-flex;
++      border: 1px solid var(--primary);
++      border-radius: 6px;
++      overflow: hidden;
++    }
++
++    .layout-switch button {
++      font: inherit;
++      font-size: 0.85rem;
++      background: white;
++      color: var(--primary);
++      border: 0;
++      padding: 6px 14px;
++      cursor: pointer;
++    }
++
++    .layout-switch button+button {
++      border-inline-start: 1px solid var(--primary);
++    }
++
++    .layout-switch button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .layout-switch button:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .nav-hint {
++      font-size: 0.85rem;
++      color: #6d4c41;
++      margin-top: 8px;
++    }
++
++    .grid {
++      list-style: none;
++    }
++
++    .grid>li {
++      display: flex;
++    }
++
++    .grid .card {
++      flex: 1;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      /* keep focused cards clear of the sticky nav when scrolled into view */
++      scroll-margin-top: 90px;
++      scroll-margin-bottom: 20px;
++    }
++
++    .grid .card p {
++      flex: 1;
++    }
++
++    .card:focus-within {
++      box-shadow: 0 0 0 3px var(--accent), 0 4px 10px rgba(0, 0, 0, 0.15);
++    }
++
++    .card .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    /* List mode: single column, horizontal card */
++    .grid[data-layout="list"] {
++      grid-template-columns: 1fr;
++    }
++
++    .grid[data-layout="list"] .card {
++      flex-direction: row;
++      text-align: start;
++      gap: 20px;
++    }
++
++    .grid[data-layout="list"] .card h3 {
++      margin: 0;
++      flex: 0 0 200px;
++    }
++
++    .grid[data-layout="list"] .card .btn {
++      margin: 0;
++      white-space: nowrap;
++    }
++
++    /* Carousel mode: one horizontally scrolling row */
++    .grid[data-layout="carousel"] {
++      grid-template-columns: none;
++      grid-auto-flow: column;
++      grid-auto-columns: minmax(240px, 30%);
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
++      padding: 6px 4px 14px;
++    }
++
++    .grid[data-layout="carousel"]>li {
++      scroll-snap-align: start;
++    }
++
++    @media (max-width: 600px) {
++      .grid[data-layout="list"] .card {
++        flex-direction: column;
++        text-align: center;
++        gap: 10px;
++      }
++
++      .grid[data-layout="list"] .card h3 {
++        flex-basis: auto;
++      }
++
++      .grid[data-layout="carousel"] {
++        grid-auto-columns: 80%;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .grid[data-layout="carousel"] {
++        scroll-behavior: smooth;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,25 +321,72 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++    <section aria-labelledby="favorites-heading">
++      <div class="section-head">
++        <h2 id="favorites-heading">Seasonal Favorites</h2>
++        <div class="layout-switch" role="group" aria-label="Card layout">
++          <button type="button" data-layout-option="grid" aria-pressed="true">Grid</button>
++          <button type="button" data-layout-option="list" aria-pressed="false">List</button>
++          <button type="button" data-layout-option="carousel" aria-pressed="false">Carousel</button>
+         </div>
+       </div>
++      <p class="nav-hint" id="grid-nav-hint">
++        Tip: Tab into the cards, then use the arrow keys to move between them.
++        Home and End jump to the start or end of a row; Ctrl+Home and Ctrl+End jump to the first or last card.
++      </p>
++      <ul class="grid" id="favorites-grid" data-layout="grid" data-spatial-nav aria-labelledby="favorites-heading"
++        aria-describedby="grid-nav-hint">
++        <li>
++          <article class="card" aria-labelledby="card-maple">
++            <h3 id="card-maple">Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn" data-nav-item aria-describedby="card-maple">View Details</a>
++          </article>
++        </li>
++        <li>
++          <article class="card" aria-labelledby="card-espresso">
++            <h3 id="card-espresso">Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn" data-nav-item aria-describedby="card-espresso">View Details</a>
++          </article>
++        </li>
++        <li>
++          <article class="card" aria-labelledby="card-coldbrew">
++            <h3 id="card-coldbrew">Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn" data-nav-item aria-describedby="card-coldbrew">View Details</a>
++          </article>
++        </li>
++        <li>
++          <article class="card" aria-labelledby="card-chai">
++            <h3 id="card-chai">Spiced Chai</h3>
++            <p>Black tea simmered with cardamom, ginger, and cinnamon.</p>
++            <a href="/menu/chai" class="btn" data-nav-item aria-describedby="card-chai">View Details</a>
++          </article>
++        </li>
++        <li>
++          <article class="card" aria-labelledby="card-mocha">
++            <h3 id="card-mocha">Peppermint Mocha</h3>
++            <p>Rich chocolate, espresso, and a cool peppermint finish.</p>
++            <a href="/menu/mocha" class="btn" data-nav-item aria-describedby="card-mocha">View Details</a>
++          </article>
++        </li>
++        <li>
++          <article class="card" aria-labelledby="card-pourover">
++            <h3 id="card-pourover">Single-Origin Pour Over</h3>
++            <p>Hand-brewed Ethiopian beans with bright citrus notes.</p>
++            <a href="/menu/pour-over" class="btn" data-nav-item aria-describedby="card-pourover">View Details</a>
++          </article>
++        </li>
++        <li>
++          <article class="card" aria-labelledby="card-cortado">
++            <h3 id="card-cortado">Honey Cortado</h3>
++            <p>Equal parts espresso and steamed milk, sweetened with local honey.</p>
++            <a href="/menu/cortado" class="btn" data-nav-item aria-describedby="card-cortado">View Details</a>
++          </article>
++        </li>
++      </ul>
++      <div class="visually-hidden" aria-live="polite" id="layout-status"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +400,236 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    /**
++     * Spatial (2D) arrow-key navigation for card collections.
++     *
++     * Navigation is computed from each item's rendered geometry rather than a
++     * fixed column count, so it behaves correctly in any layout: responsive
++     * auto-fit grids, single-column lists, horizontal carousels, RTL text,
++     * and rows of uneven length.
++     *
++     * Uses a roving tabindex: the collection is a single Tab stop, and the
++     * last focused item is restored when the user tabs back in.
++     */
++    (function () {
++      'use strict';
++
++      const EPS = 2; // px tolerance for sub-pixel layout differences
++
++      function isVisible(el) {
++        const r = el.getBoundingClientRect();
++        return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
++      }
++
++      function initSpatialNav(container) {
++        const itemSelector = '[data-nav-item]';
++        // The rect used for geometry is the card around the focus target.
++        const rectOf = (item) => (item.closest('.card') || item).getBoundingClientRect();
++        const getItems = () => Array.from(container.querySelectorAll(itemSelector)).filter(isVisible);
++
++        let current = null;
++        // Remembered horizontal position for consecutive Up/Down moves, so moving
++        // through a short row and back doesn't drift away from the original column.
++        let anchorX = null;
++
++        function setCurrent(item, { focus = false } = {}) {
++          const all = container.querySelectorAll(itemSelector);
++          all.forEach((el) => el.setAttribute('tabindex', el === item ? '0' : '-1'));
++          current = item;
++          if (focus && item) {
++            item.focus({ preventScroll: true });
++            (item.closest('.card') || item).scrollIntoView({ block: 'nearest', inline: 'nearest' });
++          }
++        }
++
++        function ensureTabStop() {
++          const items = getItems();
++          if (!items.length) return;
++          if (!current || !items.includes(current)) {
++            setCurrent(items[0]);
++          } else {
++            setCurrent(current);
++          }
++        }
++
++        const isRTL = () => getComputedStyle(container).direction === 'rtl';
++
++        /** Find the best item in a direction ('left' | 'right' | 'up' | 'down'). */
++        function findInDirection(from, dir, items) {
++          const a = rectOf(from);
++          const ax = dir === 'up' || dir === 'down'
++            ? (anchorX ?? (a.left + a.right) / 2)
++            : (a.left + a.right) / 2;
++          const ay = (a.top + a.bottom) / 2;
++
++          let best = null;
++          let bestScore = Infinity;
++
++          for (const item of items) {
++            if (item === from) continue;
++            const b = rectOf(item);
++            const bx = (b.left + b.right) / 2;
++            const by = (b.top + b.bottom) / 2;
++            let primary, secondary;
++
++            if (dir === 'left' || dir === 'right') {
++              // Must share a visual row (vertical overlap) and lie in that direction.
++              const overlapsRow = b.top < a.bottom - EPS && b.bottom > a.top + EPS;
++              if (!overlapsRow) continue;
++              if (dir === 'right' && !(bx > ax + EPS)) continue;
++              if (dir === 'left' && !(bx < ax - EPS)) continue;
++              primary = Math.abs(bx - ax);
++              secondary = Math.abs(by - ay);
++            } else {
++              // Must be entirely in the next row(s) above/below.
++              if (dir === 'down' && !(b.top >= a.bottom - EPS)) continue;
++              if (dir === 'up' && !(b.bottom <= a.top + EPS)) continue;
++              primary = dir === 'down' ? b.top - a.bottom : a.top - b.bottom;
++              // Distance from the anchor column to the item's horizontal span (0 if inside).
++              secondary = ax < b.left ? b.left - ax : ax > b.right ? ax - b.right : 0;
++            }
++
++            // Strongly prefer the nearest row/column, then alignment.
++            const score = primary * 1000 + secondary;
++            if (score < bestScore) {
++              bestScore = score;
++              best = item;
++            }
++          }
++          return best;
++        }
++
++        /** Items sharing a visual row with `from`, sorted in visual order. */
++        function rowOf(from, items) {
++          const a = rectOf(from);
++          return items
++            .filter((item) => {
++              const b = rectOf(item);
++              return b.top < a.bottom - EPS && b.bottom > a.top + EPS;
++            })
++            .sort((x, y) => rectOf(x).left - rectOf(y).left);
++        }
++
++        container.addEventListener('keydown', (e) => {
++          const item = e.target.closest(itemSelector);
++          if (!item || !container.contains(item)) return;
++          if (e.altKey || e.metaKey || e.shiftKey) return;
++
++          const items = getItems();
++          if (!items.length) return;
++          const index = items.indexOf(item);
++          const rtl = isRTL();
++          let target = null;
++
++          switch (e.key) {
++            case 'ArrowRight':
++            case 'ArrowLeft': {
++              if (e.ctrlKey) return;
++              const dir = e.key === 'ArrowRight' ? 'right' : 'left';
++              target = findInDirection(item, dir, items);
++              if (!target) {
++                // End of a row: continue in reading order (wraps to the next/previous row).
++                const forward = (dir === 'right') !== rtl;
++                target = items[index + (forward ? 1 : -1)] || null;
++              }
++              anchorX = null;
++              break;
++            }
++            case 'ArrowDown':
++            case 'ArrowUp': {
++              if (e.ctrlKey) return;
++              if (anchorX === null) {
++                const r = rectOf(item);
++                anchorX = (r.left + r.right) / 2;
++              }
++              target = findInDirection(item, e.key === 'ArrowDown' ? 'down' : 'up', items);
++              break;
++            }
++            case 'Home':
++            case 'End': {
++              const start = e.key === 'Home';
++              if (e.ctrlKey) {
++                target = start ? items[0] : items[items.length - 1];
++              } else {
++                const row = rowOf(item, items);
++                // Visual start of row is the right edge in RTL.
++                const takeFirst = start !== rtl;
++                target = takeFirst ? row[0] : row[row.length - 1];
++              }
++              anchorX = null;
++              break;
++            }
++            default:
++              return;
++          }
++
++          // Always consume handled keys so the page doesn't scroll unexpectedly,
++          // even when there's nowhere to go (e.g. ArrowDown on the last row).
++          e.preventDefault();
++          if (target && target !== item) setCurrent(target, { focus: true });
++        });
++
++        // Keep the roving tabindex in sync with mouse clicks / programmatic focus.
++        container.addEventListener('focusin', (e) => {
++          const item = e.target.closest(itemSelector);
++          if (item && item !== current) setCurrent(item);
++        });
++
++        // Reset the vertical anchor when focus leaves via Tab or pointer.
++        container.addEventListener('focusout', (e) => {
++          if (!container.contains(e.relatedTarget)) anchorX = null;
++        });
++        container.addEventListener('pointerdown', () => { anchorX = null; });
++
++        // Layout may change (resize, layout mode, content changes); geometry is
++        // read lazily on each keypress, so we only need to keep the tab stop valid.
++        if ('ResizeObserver' in window) {
++          new ResizeObserver(() => { anchorX = null; ensureTabStop(); }).observe(container);
++        }
++        new MutationObserver(ensureTabStop).observe(container, { childList: true, subtree: true });
++
++        ensureTabStop();
++
++        return {
++          refresh() { anchorX = null; ensureTabStop(); },
++          get current() { return current; },
++        };
++      }
++
++      /* ---- Layout mode switcher ---- */
++      function initLayoutSwitch(grid, nav) {
++        const buttons = document.querySelectorAll('[data-layout-option]');
++        const status = document.getElementById('layout-status');
++        const STORAGE_KEY = 'daily-grind:card-layout';
++        const valid = Array.from(buttons, (b) => b.dataset.layoutOption);
++
++        function apply(mode, announce) {
++          if (!valid.includes(mode)) mode = 'grid';
++          grid.dataset.layout = mode;
++          buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layoutOption === mode)));
++          nav.refresh();
++          // Keep the active card visible after the layout reflows.
++          const card = nav.current && nav.current.closest('.card');
++          if (card && grid.dataset.layout === 'carousel') card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++          if (announce && status) status.textContent = `Layout changed to ${mode}.`;
++          try { localStorage.setItem(STORAGE_KEY, mode); } catch (_) { /* storage unavailable */ }
++        }
++
++        buttons.forEach((b) => b.addEventListener('click', () => apply(b.dataset.layoutOption, true)));
++
++        let saved = null;
++        try { saved = localStorage.getItem(STORAGE_KEY); } catch (_) { /* storage unavailable */ }
++        apply(saved || grid.dataset.layout || 'grid', false);
++      }
++
++      document.querySelectorAll('[data-spatial-nav]').forEach((container) => {
++        const nav = initSpatialNav(container);
++        if (container.id === 'favorites-grid') initLayoutSwitch(container, nav);
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

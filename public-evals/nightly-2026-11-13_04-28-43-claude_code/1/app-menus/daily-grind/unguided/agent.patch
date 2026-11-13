@@ -1,0 +1,367 @@
+diff --git a/index.html b/index.html
+index 66c9173..f351fef 100644
+--- a/index.html
++++ b/index.html
+@@ -27,12 +27,14 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Navigation / application menu bar */
++    nav.site-nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.75rem 5%;
+       display: flex;
++      flex-wrap: wrap;
++      gap: 0.5rem 1.5rem;
+       justify-content: space-between;
+       align-items: center;
+       position: sticky;
+@@ -46,23 +48,123 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .nav-main {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem 1.25rem;
++    }
++
++    .menubar {
+       display: flex;
+       list-style: none;
++      gap: 0.25rem;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .menubar > li {
++      position: relative;
+     }
+ 
+-    nav a {
++    .menubar-item {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.35rem;
++      background: none;
++      border: 0;
++      border-radius: 4px;
++      color: white;
++      font: inherit;
++      font-size: 0.9rem;
++      padding: 6px 10px;
++      cursor: pointer;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .menubar-item::after {
++      content: "";
++      width: 0.4em;
++      height: 0.4em;
++      border-right: 2px solid currentColor;
++      border-bottom: 2px solid currentColor;
++      transform: translateY(-25%) rotate(45deg);
++      transition: transform 0.2s;
++    }
++
++    .menubar-item[aria-expanded="true"]::after {
++      transform: translateY(15%) rotate(-135deg);
++    }
++
++    .menubar-item:hover,
++    .menubar-item[aria-expanded="true"] {
++      background: rgba(255, 255, 255, 0.12);
++      color: var(--accent);
++    }
++
++    .menubar-item:focus-visible,
++    .submenu [role="menuitem"]:focus-visible,
++    .nav-utility a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .submenu {
++      position: absolute;
++      top: calc(100% + 6px);
++      left: 0;
++      min-width: 210px;
++      list-style: none;
++      background: white;
++      border-radius: 6px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
++      padding: 6px 0;
++    }
++
++    .submenu[hidden] {
++      display: none;
++    }
++
++    .submenu [role="separator"] {
++      height: 1px;
++      margin: 6px 0;
++      background: var(--secondary);
++    }
++
++    .submenu [role="menuitem"] {
++      display: block;
++      padding: 8px 16px;
++      color: var(--text);
++      text-decoration: none;
++      font-size: 0.9rem;
++      white-space: nowrap;
++    }
++
++    .submenu [role="menuitem"]:hover,
++    .submenu [role="menuitem"]:focus {
++      background: var(--secondary);
++      color: var(--primary);
++      outline: none;
++    }
++
++    .submenu [role="menuitem"]:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: -2px;
++    }
++
++    .nav-utility {
++      display: flex;
++      align-items: center;
++      gap: 1rem;
++      list-style: none;
++    }
++
++    .nav-utility a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .nav-utility a:hover {
+       color: var(--accent);
+     }
+ 
+@@ -72,6 +174,16 @@
+       border-radius: 4px;
+     }
+ 
++    @media (max-width: 560px) {
++      .submenu {
++        position: fixed;
++        top: auto;
++        left: 5%;
++        right: 5%;
++        min-width: 0;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -157,15 +269,49 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++    <div class="nav-main">
++      <ul class="menubar" role="menubar" aria-label="The Daily Grind">
++        <li role="none">
++          <button type="button" class="menubar-item" role="menuitem" id="menubar-menu"
++            aria-haspopup="menu" aria-expanded="false" aria-controls="submenu-menu" tabindex="0">Menu</button>
++          <ul class="submenu" role="menu" id="submenu-menu" aria-labelledby="menubar-menu" hidden>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/menu">Full Menu</a></li>
++            <li role="separator"></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/menu/seasonal">Seasonal Favorites</a></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/menu/espresso">Espresso &amp; Hot Drinks</a></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/menu/cold-brew">Cold Brew &amp; Iced</a></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/menu/food">Pastries &amp; Food</a></li>
++          </ul>
++        </li>
++        <li role="none">
++          <button type="button" class="menubar-item" role="menuitem" id="menubar-locations"
++            aria-haspopup="menu" aria-expanded="false" aria-controls="submenu-locations" tabindex="-1">Locations</button>
++          <ul class="submenu" role="menu" id="submenu-locations" aria-labelledby="menubar-locations" hidden>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/locations">Find a Store</a></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/locations/hours">Store Hours</a></li>
++            <li role="separator"></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/order-online">Order Ahead for Pickup</a></li>
++          </ul>
++        </li>
++        <li role="none">
++          <button type="button" class="menubar-item" role="menuitem" id="menubar-rewards"
++            aria-haspopup="menu" aria-expanded="false" aria-controls="submenu-rewards" tabindex="-1">Rewards</button>
++          <ul class="submenu" role="menu" id="submenu-rewards" aria-labelledby="menubar-rewards" hidden>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/rewards">Rewards Overview</a></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/rewards/points">My Points</a></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/rewards/redeem">Redeem Rewards</a></li>
++            <li role="separator"></li>
++            <li role="none"><a role="menuitem" tabindex="-1" href="/rewards/join">Join Rewards</a></li>
++          </ul>
++        </li>
++      </ul>
++      <ul class="nav-utility">
++        <li><a href="/account">My Account</a></li>
++        <li><a href="/logout" class="logout-link">Logout</a></li>
++      </ul>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -207,6 +353,140 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Application menu bar (WAI-ARIA menubar pattern):
++    // roving tabindex across top-level items, arrow-key navigation,
++    // typeahead, and submenus that open via click, keyboard, or hover
++    // (hover only once a submenu is already open, like desktop app menus).
++    (function () {
++      const menubar = document.querySelector('[role="menubar"]');
++      if (!menubar) return;
++
++      const topItems = Array.from(menubar.querySelectorAll(':scope > li > [role="menuitem"]'));
++      const submenuOf = (item) => document.getElementById(item.getAttribute('aria-controls'));
++      const itemsOf = (menu) => Array.from(menu.querySelectorAll('[role="menuitem"]'));
++      let openItem = null;
++
++      function setRoving(target) {
++        topItems.forEach((item) => { item.tabIndex = item === target ? 0 : -1; });
++      }
++
++      function closeMenu({ focusParent = false } = {}) {
++        if (!openItem) return;
++        const item = openItem;
++        item.setAttribute('aria-expanded', 'false');
++        submenuOf(item).hidden = true;
++        openItem = null;
++        if (focusParent) item.focus();
++      }
++
++      function openMenu(item, focus) {
++        if (openItem && openItem !== item) closeMenu();
++        setRoving(item);
++        item.setAttribute('aria-expanded', 'true');
++        const menu = submenuOf(item);
++        menu.hidden = false;
++        openItem = item;
++        const items = itemsOf(menu);
++        if (focus === 'first') items[0].focus();
++        else if (focus === 'last') items[items.length - 1].focus();
++        else item.focus();
++      }
++
++      function moveTop(from, delta, keepOpen) {
++        const i = topItems.indexOf(from);
++        const next = topItems[(i + delta + topItems.length) % topItems.length];
++        if (keepOpen) {
++          openMenu(next, 'first');
++        } else {
++          setRoving(next);
++          next.focus();
++        }
++      }
++
++      function typeahead(items, current, char) {
++        const start = items.indexOf(current);
++        const ordered = items.slice(start + 1).concat(items.slice(0, start + 1));
++        return ordered.find((el) => el.textContent.trim().toLowerCase().startsWith(char));
++      }
++
++      topItems.forEach((item) => {
++        item.addEventListener('click', () => {
++          if (openItem === item) closeMenu({ focusParent: true });
++          else openMenu(item);
++        });
++
++        item.addEventListener('mouseenter', () => {
++          if (openItem && openItem !== item) openMenu(item);
++        });
++
++        item.addEventListener('keydown', (e) => {
++          switch (e.key) {
++            case 'ArrowRight': moveTop(item, 1, !!openItem); break;
++            case 'ArrowLeft': moveTop(item, -1, !!openItem); break;
++            case 'Home': setRoving(topItems[0]); topItems[0].focus(); break;
++            case 'End': {
++              const last = topItems[topItems.length - 1];
++              setRoving(last); last.focus(); break;
++            }
++            case 'ArrowDown':
++            case 'Enter':
++            case ' ':
++              openMenu(item, 'first'); break;
++            case 'ArrowUp': openMenu(item, 'last'); break;
++            case 'Escape': closeMenu({ focusParent: true }); break;
++            default:
++              if (e.key.length === 1 && /\S/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
++                const match = typeahead(topItems, item, e.key.toLowerCase());
++                if (match) { setRoving(match); match.focus(); }
++                e.preventDefault();
++              }
++              return;
++          }
++          e.preventDefault();
++        });
++
++        const menu = submenuOf(item);
++        menu.addEventListener('keydown', (e) => {
++          const items = itemsOf(menu);
++          const i = items.indexOf(document.activeElement);
++          switch (e.key) {
++            case 'ArrowDown': items[(i + 1) % items.length].focus(); break;
++            case 'ArrowUp': items[(i - 1 + items.length) % items.length].focus(); break;
++            case 'Home': items[0].focus(); break;
++            case 'End': items[items.length - 1].focus(); break;
++            case 'ArrowRight': moveTop(item, 1, true); break;
++            case 'ArrowLeft': moveTop(item, -1, true); break;
++            case 'Escape': closeMenu({ focusParent: true }); break;
++            case 'Tab': closeMenu(); return; // let focus move naturally
++            case ' ': document.activeElement.click(); break;
++            default:
++              if (e.key.length === 1 && /\S/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
++                const match = typeahead(items, items[i], e.key.toLowerCase());
++                if (match) match.focus();
++                e.preventDefault();
++              }
++              return; // Enter falls through to native link activation
++          }
++          e.preventDefault();
++        });
++
++        menu.addEventListener('mouseover', (e) => {
++          const target = e.target.closest('[role="menuitem"]');
++          if (target) target.focus({ preventScroll: true });
++        });
++      });
++
++      document.addEventListener('pointerdown', (e) => {
++        if (openItem && !menubar.contains(e.target)) closeMenu();
++      });
++
++      menubar.addEventListener('focusout', (e) => {
++        if (openItem && e.relatedTarget && !menubar.contains(e.relatedTarget)) closeMenu();
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

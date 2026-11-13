@@ -1,0 +1,177 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -19,15 +19,104 @@
+       margin: 0;
+       padding: 0;
+     }
+ 
++    /* Scroll container: the page scrolls inside .scroller (not the window) so
++       the initial offset can be set synchronously before first paint. */
++    html,
+     body {
++      height: 100%;
++      overflow: hidden;
++    }
++
++    body {
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+     }
+ 
++    .scroller {
++      height: 100vh;
++      height: 100dvh;
++      overflow-y: auto;
++      overflow-x: hidden;
++      -webkit-overflow-scrolling: touch;
++      overscroll-behavior-y: contain;
++      /* Settle on either "search revealed" or "search tucked away" when the
++         user stops scrolling near the top. */
++      scroll-snap-type: y proximity;
++    }
++
++    /* Everything below the search bar is at least one viewport tall, so the
++       container can always scroll far enough to hide the search bar. */
++    .page {
++      min-height: 100%;
++      scroll-snap-align: start;
++    }
++
++    /* Search bar (hidden above the nav on load) */
++    .search-bar {
++      --search-height: 64px;
++      height: var(--search-height);
++      background: #3e2723;
++      padding: 0 5%;
++      display: flex;
++      align-items: center;
++      scroll-snap-align: start;
++    }
++
++    .search-bar form {
++      display: flex;
++      width: 100%;
++      max-width: 700px;
++      margin: 0 auto;
++      gap: 8px;
++    }
++
++    .search-bar input[type="search"] {
++      flex: 1;
++      min-width: 0;
++      padding: 9px 14px;
++      border: 1px solid transparent;
++      border-radius: 20px;
++      font: inherit;
++      font-size: 0.95rem;
++      background: var(--light);
++      color: var(--text);
++    }
++
++    .search-bar input[type="search"]:focus {
++      outline: none;
++      border-color: var(--accent);
++      box-shadow: 0 0 0 3px rgba(255, 171, 64, 0.35);
++    }
++
++    .search-bar button {
++      padding: 9px 18px;
++      border: none;
++      border-radius: 20px;
++      background: var(--accent);
++      color: var(--text);
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++    }
++
++    .search-bar button:hover {
++      background: #ffc174;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -156,8 +245,28 @@
+ </head>
+ 
+ <body>
+ 
++  <div class="scroller" id="scroller">
++  <div class="search-bar" id="search-bar" role="search">
++    <form action="/search" method="get">
++      <label for="site-search" class="visually-hidden">Search The Daily Grind</label>
++      <input type="search" id="site-search" name="q" placeholder="Search drinks, locations, rewards..." autocomplete="off">
++      <button type="submit">Search</button>
++    </form>
++  </div>
++
++  <div class="page">
++  <script>
++    // Runs synchronously during parsing, before first paint: start the page
++    // scrolled past the search bar so the nav sits at the top with no jump.
++    (function () {
++      var scroller = document.getElementById('scroller');
++      var bar = document.getElementById('search-bar');
++      if (!location.hash) scroller.scrollTop = bar.offsetHeight;
++    })();
++  </script>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -205,8 +314,39 @@
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  </div><!-- /.page -->
++  </div><!-- /.scroller -->
+ 
++  <script>
++    (function () {
++      var scroller = document.getElementById('scroller');
++      var bar = document.getElementById('search-bar');
++      var input = document.getElementById('site-search');
++
++      // Keep the search bar off-screen while unfocused: if focus moves into
++      // it (e.g. via Tab), reveal it.
++      input.addEventListener('focus', function () {
++        if (scroller.scrollTop > 0) scroller.scrollTo({ top: 0, behavior: 'smooth' });
++      });
++
++      // "/" or Ctrl/Cmd+K reveals and focuses the search bar.
++      document.addEventListener('keydown', function (e) {
++        var tag = (e.target.tagName || '').toLowerCase();
++        var typing = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
++        if ((e.key === '/' && !typing) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
++          e.preventDefault();
++          input.focus({ preventScroll: true });
++          scroller.scrollTo({ top: 0, behavior: 'smooth' });
++        }
++        if (e.key === 'Escape' && document.activeElement === input) {
++          input.blur();
++          scroller.scrollTo({ top: bar.offsetHeight, behavior: 'smooth' });
++        }
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

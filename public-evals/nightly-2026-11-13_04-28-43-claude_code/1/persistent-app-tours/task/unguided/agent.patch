@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -151,8 +151,71 @@
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Onboarding tour */
++    #feature {
++      anchor-name: --rewards-link;
++    }
++
++    body.tour-active #feature {
++      outline: 2px solid var(--accent);
++      outline-offset: 4px;
++      border-radius: 4px;
++    }
++
++    #tour-step {
++      /* Reset UA popover styles */
++      inset: auto;
++      margin: 0;
++      border: none;
++      width: 260px;
++      max-width: calc(100vw - 16px);
++      padding: 16px 18px;
++      background: white;
++      color: var(--text);
++      border-radius: 8px;
++      border-top: 4px solid var(--accent);
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++      font-size: 0.9rem;
++      overflow: visible;
++    }
++
++    /* Native anchor positioning: browser keeps the step attached to the link
++       through scroll, resize and layout changes. */
++    @supports (anchor-name: --a) {
++      #tour-step {
++        position: fixed;
++        position-anchor: --rewards-link;
++        position-area: bottom;
++        margin-top: 12px;
++        position-try-fallbacks: bottom span-left, bottom span-right, flip-block;
++      }
++    }
++
++    #tour-step h4 {
++      color: var(--primary);
++      margin-bottom: 6px;
++      font-size: 1rem;
++    }
++
++    #tour-step .tour-close {
++      margin-top: 12px;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 4px;
++      padding: 6px 14px;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    #tour-step .tour-close:hover,
++    #tour-step .tour-close:focus-visible {
++      background: var(--accent);
++      color: var(--text);
++    }
+   </style>
+ </head>
+ 
+ <body>
+@@ -161,14 +224,21 @@
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/rewards" id="feature" aria-describedby="tour-step">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+ 
++  <!-- popover="manual": no light-dismiss, so it stays open until explicitly closed -->
++  <div id="tour-step" popover="manual" role="dialog" aria-labelledby="tour-step-title">
++    <h4 id="tour-step-title">Earn points with Rewards ☕</h4>
++    <p>Earn points on every purchase and redeem them for free drinks and treats.</p>
++    <button type="button" class="tour-close" popovertarget="tour-step" popovertargetaction="hide">Got it</button>
++  </div>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -206,7 +276,93 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      var link = document.getElementById('feature');
++      var step = document.getElementById('tour-step');
++      var closeBtn = step.querySelector('.tour-close');
++      var supportsPopover = typeof step.showPopover === 'function';
++      var supportsAnchor = window.CSS && CSS.supports && CSS.supports('anchor-name: --a');
++      var open = false;
++      var rafId = 0;
++
++      // JS fallback positioning for browsers without CSS anchor positioning.
++      function place() {
++        var r = link.getBoundingClientRect();
++        var w = step.offsetWidth;
++        var h = step.offsetHeight;
++        var gap = 12;
++        var left = r.left + r.width / 2 - w / 2;
++        left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
++        var top = r.bottom + gap;
++        if (top + h > window.innerHeight && r.top - gap - h >= 0) top = r.top - gap - h;
++        step.style.left = left + 'px';
++        step.style.top = top + 'px';
++      }
++
++      function track() {
++        if (!open) return;
++        place();
++        rafId = requestAnimationFrame(track);
++      }
++
++      function setOpen(isOpen) {
++        open = isOpen;
++        document.body.classList.toggle('tour-active', isOpen);
++        if (isOpen) {
++          link.setAttribute('aria-describedby', 'tour-step');
++          if (!supportsAnchor) {
++            step.style.position = 'fixed';
++            cancelAnimationFrame(rafId);
++            track();
++          }
++        } else {
++          link.removeAttribute('aria-describedby');
++          cancelAnimationFrame(rafId);
++        }
++      }
++
++      function openTour() {
++        if (supportsPopover) {
++          step.showPopover();
++        } else {
++          step.style.display = 'block';
++          step.style.zIndex = '1001';
++          setOpen(true);
++        }
++      }
++
++      function closeTour() {
++        if (supportsPopover) {
++          if (step.matches(':popover-open')) step.hidePopover();
++        } else {
++          step.style.display = 'none';
++          setOpen(false);
++        }
++      }
++
++      if (supportsPopover) {
++        step.addEventListener('toggle', function (e) {
++          setOpen(e.newState === 'open');
++        });
++      } else {
++        closeBtn.addEventListener('click', closeTour);
++      }
++
++      // Keep the rewards link from navigating away while the tour is open.
++      link.addEventListener('click', function (e) {
++        if (open) e.preventDefault();
++      });
++
++      document.addEventListener('keydown', function (e) {
++        if (e.key === 'Escape' && open) closeTour();
++      });
++
++      openTour();
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,522 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..3fa080b
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,5 @@
++{
++  "https://app.thedailygrind.coffee/": {
++    "scope": "/"
++  }
++}
+diff --git a/icons/apple-touch-icon.png b/icons/apple-touch-icon.png
+new file mode 100644
+index 0000000..99dce84
+Binary files /dev/null and b/icons/apple-touch-icon.png differ
+diff --git a/icons/icon-192.png b/icons/icon-192.png
+new file mode 100644
+index 0000000..ab84e77
+Binary files /dev/null and b/icons/icon-192.png differ
+diff --git a/icons/icon-512.png b/icons/icon-512.png
+new file mode 100644
+index 0000000..bfe9cf3
+Binary files /dev/null and b/icons/icon-512.png differ
+diff --git a/icons/icon.svg b/icons/icon.svg
+new file mode 100644
+index 0000000..319708d
+--- /dev/null
++++ b/icons/icon.svg
+@@ -0,0 +1,8 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <g fill="none" stroke="#ffab40" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
++    <path d="M136 210h200v86a100 100 0 0 1-100 100h0a100 100 0 0 1-100-100z"/>
++    <path d="M336 236h24a44 44 0 0 1 0 88h-30"/>
++    <path d="M196 110c-18 22 18 38 0 64M256 98c-18 26 18 46 0 76"/>
++  </g>
++</svg>
+diff --git a/icons/maskable-512.png b/icons/maskable-512.png
+new file mode 100644
+index 0000000..2e7bd70
+Binary files /dev/null and b/icons/maskable-512.png differ
+diff --git a/icons/maskable.svg b/icons/maskable.svg
+new file mode 100644
+index 0000000..79f2dfa
+--- /dev/null
++++ b/icons/maskable.svg
+@@ -0,0 +1,8 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" fill="#4e342e"/>
++  <g transform="translate(76.8 76.8) scale(0.7)" fill="none" stroke="#ffab40" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
++    <path d="M136 210h200v86a100 100 0 0 1-100 100h0a100 100 0 0 1-100-100z"/>
++    <path d="M336 236h24a44 44 0 0 1 0 88h-30"/>
++    <path d="M196 110c-18 22 18 38 0 64M256 98c-18 26 18 46 0 76"/>
++  </g>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..d0b1025 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,15 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <meta name="description" content="Ethically sourced, locally roasted, delivered to your cup.">
++  <meta name="theme-color" content="#4e342e">
++  <!-- Origin is sent on the cross-origin hop so the new origin can verify config hand-off. -->
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
++  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
++  <!-- migration.js swaps this to /legacy.webmanifest when served from the legacy origin. -->
++  <link rel="manifest" id="app-manifest" href="/manifest.webmanifest">
++  <script src="/migration.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+diff --git a/legacy.webmanifest b/legacy.webmanifest
+new file mode 100644
+index 0000000..6266517
+--- /dev/null
++++ b/legacy.webmanifest
+@@ -0,0 +1,101 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "id": "/",
++  "start_url": "/?source=pwa",
++  "scope": "/",
++  "display": "standalone",
++  "orientation": "any",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "lang": "en",
++  "categories": [
++    "food",
++    "shopping"
++  ],
++  "icons": [
++    {
++      "src": "/icons/icon-192.png",
++      "sizes": "192x192",
++      "type": "image/png",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/icon-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/maskable-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "maskable"
++    },
++    {
++      "src": "/icons/icon.svg",
++      "sizes": "any",
++      "type": "image/svg+xml",
++      "purpose": "any"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Now",
++      "short_name": "Order",
++      "description": "Start a new online order",
++      "url": "/order-online?source=shortcut",
++      "icons": [
++        {
++          "src": "/icons/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Menu",
++      "short_name": "Menu",
++      "description": "Browse the full menu",
++      "url": "/menu?source=shortcut",
++      "icons": [
++        {
++          "src": "/icons/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Rewards",
++      "short_name": "Rewards",
++      "description": "Check your rewards balance",
++      "url": "/rewards?source=shortcut",
++      "icons": [
++        {
++          "src": "/icons/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Locations",
++      "short_name": "Locations",
++      "description": "Find a Daily Grind near you",
++      "url": "/locations?source=shortcut",
++      "icons": [
++        {
++          "src": "/icons/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    }
++  ],
++  "migrate_to": {
++    "id": "https://app.thedailygrind.coffee/",
++    "install_url": "https://app.thedailygrind.coffee/?source=migration"
++  }
++}
+diff --git a/manifest.webmanifest b/manifest.webmanifest
+new file mode 100644
+index 0000000..0c6fc81
+--- /dev/null
++++ b/manifest.webmanifest
+@@ -0,0 +1,103 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "description": "Ethically sourced, locally roasted, delivered to your cup.",
++  "id": "/",
++  "start_url": "/?source=pwa",
++  "scope": "/",
++  "display": "standalone",
++  "orientation": "any",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "lang": "en",
++  "categories": [
++    "food",
++    "shopping"
++  ],
++  "icons": [
++    {
++      "src": "/icons/icon-192.png",
++      "sizes": "192x192",
++      "type": "image/png",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/icon-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "any"
++    },
++    {
++      "src": "/icons/maskable-512.png",
++      "sizes": "512x512",
++      "type": "image/png",
++      "purpose": "maskable"
++    },
++    {
++      "src": "/icons/icon.svg",
++      "sizes": "any",
++      "type": "image/svg+xml",
++      "purpose": "any"
++    }
++  ],
++  "shortcuts": [
++    {
++      "name": "Order Now",
++      "short_name": "Order",
++      "description": "Start a new online order",
++      "url": "/order-online?source=shortcut",
++      "icons": [
++        {
++          "src": "/icons/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Menu",
++      "short_name": "Menu",
++      "description": "Browse the full menu",
++      "url": "/menu?source=shortcut",
++      "icons": [
++        {
++          "src": "/icons/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Rewards",
++      "short_name": "Rewards",
++      "description": "Check your rewards balance",
++      "url": "/rewards?source=shortcut",
++      "icons": [
++        {
++          "src": "/icons/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    },
++    {
++      "name": "Locations",
++      "short_name": "Locations",
++      "description": "Find a Daily Grind near you",
++      "url": "/locations?source=shortcut",
++      "icons": [
++        {
++          "src": "/icons/icon-192.png",
++          "sizes": "192x192",
++          "type": "image/png"
++        }
++      ]
++    }
++  ],
++  "migrate_from": [
++    {
++      "id": "https://www.thedailygrind.coffee/",
++      "behavior": "suggest"
++    }
++  ]
++}
+diff --git a/migration.js b/migration.js
+new file mode 100644
+index 0000000..4ee6e42
+--- /dev/null
++++ b/migration.js
+@@ -0,0 +1,225 @@
++/*
++ * Origin migration for The Daily Grind web app.
++ *
++ * The app is moving from LEGACY_ORIGIN to NEW_ORIGIN. The same static files are
++ * deployed to both origins; this script decides at runtime which role it plays.
++ *
++ *  1. Manifest selection – the legacy origin serves `legacy.webmanifest`, which
++ *     carries `migrate_to`; the new origin serves `manifest.webmanifest`, which
++ *     carries `migrate_from`. Supporting browsers use this pair to migrate the
++ *     installed app in place, keeping its OS integration (dock / start-menu /
++ *     desktop shortcuts, jump-list shortcuts, launch settings). Both manifests
++ *     declare identical `shortcuts`, so each OS shortcut maps 1:1.
++ *
++ *  2. User configuration – localStorage is per-origin, so the legacy origin
++ *     packs it into the URL fragment (never sent to servers) when sending the
++ *     user to the new origin. The new origin imports it once, without
++ *     overwriting anything already set there, then strips the fragment.
++ *
++ *  3. Deep links – old bookmarks / OS shortcuts pointing at the legacy origin
++ *     are forwarded to the same path on the new origin.
++ *
++ * IMPORTANT: keep serving index.html + legacy.webmanifest on the legacy origin
++ * (no blanket server-side 301) until installs have migrated – the browser has
++ * to be able to fetch the legacy manifest to discover `migrate_to`.
++ */
++(function () {
++  'use strict';
++
++  var LEGACY_ORIGIN = 'https://www.thedailygrind.coffee';
++  var NEW_ORIGIN = 'https://app.thedailygrind.coffee';
++
++  var HANDOFF_PARAM = 'dg-handoff';
++  var STATE_KEY = '__dg_migration__';      // bookkeeping, never transferred
++  var MAX_HANDOFF_CHARS = 64 * 1024;       // keep URLs comfortably small
++  var MAX_ENTRIES = 200;
++
++  var origin = window.location.origin;
++  var isLegacy = origin === LEGACY_ORIGIN;
++  var isNew = origin === NEW_ORIGIN;
++
++  // ---------------------------------------------------------------- helpers
++
++  function storage() {
++    try { return window.localStorage; } catch (e) { return null; }
++  }
++
++  function isStandalone() {
++    return (window.matchMedia && (
++      window.matchMedia('(display-mode: standalone)').matches ||
++      window.matchMedia('(display-mode: window-controls-overlay)').matches ||
++      window.matchMedia('(display-mode: minimal-ui)').matches)) ||
++      window.navigator.standalone === true;
++  }
++
++  function b64urlEncode(str) {
++    var bytes = new TextEncoder().encode(str);
++    var bin = '';
++    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
++    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
++  }
++
++  function b64urlDecode(str) {
++    var b64 = str.replace(/-/g, '+').replace(/_/g, '/');
++    while (b64.length % 4) b64 += '=';
++    var bin = atob(b64);
++    var bytes = new Uint8Array(bin.length);
++    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
++    return new TextDecoder().decode(bytes);
++  }
++
++  function readState(ls) {
++    try { return JSON.parse(ls.getItem(STATE_KEY)) || {}; } catch (e) { return {}; }
++  }
++
++  function writeState(ls, patch) {
++    var s = readState(ls);
++    for (var k in patch) s[k] = patch[k];
++    try { ls.setItem(STATE_KEY, JSON.stringify(s)); } catch (e) { /* quota */ }
++  }
++
++  function parseFragment() {
++    var hash = window.location.hash.replace(/^#/, '');
++    var params = new URLSearchParams(hash);
++    return params;
++  }
++
++  // ------------------------------------------------------- manifest choice
++
++  function selectManifest() {
++    var link = document.getElementById('app-manifest');
++    if (link && isLegacy) link.setAttribute('href', '/legacy.webmanifest');
++  }
++
++  // ------------------------------------------------------ legacy -> export
++
++  function exportConfig() {
++    var ls = storage();
++    if (!ls) return null;
++    var data = {};
++    var count = 0;
++    for (var i = 0; i < ls.length && count < MAX_ENTRIES; i++) {
++      var key = ls.key(i);
++      if (key === null || key === STATE_KEY) continue;
++      data[key] = ls.getItem(key);
++      count++;
++    }
++    if (!count) return null;
++    var encoded = b64urlEncode(JSON.stringify({ v: 1, from: LEGACY_ORIGIN, t: Date.now(), data: data }));
++    return encoded.length <= MAX_HANDOFF_CHARS ? encoded : null;
++  }
++
++  function buildNewOriginUrl() {
++    var loc = window.location;
++    // Keep path + query so deep links and OS shortcuts land on the same screen.
++    var url = new URL(loc.pathname + loc.search, NEW_ORIGIN);
++    var fragment = parseFragment();
++    fragment.delete(HANDOFF_PARAM);
++    var payload = exportConfig();
++    if (payload) fragment.set(HANDOFF_PARAM, payload);
++    var hash = fragment.toString();
++    url.hash = hash;
++    return url.toString();
++  }
++
++  function goToNewOrigin() {
++    var ls = storage();
++    if (ls) writeState(ls, { handedOffAt: Date.now() });
++    window.location.replace(buildNewOriginUrl());
++  }
++
++  function showMovedBanner() {
++    var bar = document.createElement('div');
++    bar.setAttribute('role', 'status');
++    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2000;' +
++      'background:#3e2723;color:#fff;padding:14px 5%;display:flex;gap:16px;' +
++      'align-items:center;justify-content:center;flex-wrap:wrap;' +
++      'font:15px/1.4 "Segoe UI",Tahoma,Geneva,Verdana,sans-serif;' +
++      'box-shadow:0 -2px 8px rgba(0,0,0,.25)';
++    var msg = document.createElement('span');
++    msg.textContent = 'The Daily Grind app has moved to a new home. Your settings will come with you.';
++    var btn = document.createElement('button');
++    btn.type = 'button';
++    btn.textContent = 'Continue';
++    btn.style.cssText = 'background:#ffab40;color:#3e2723;border:0;border-radius:4px;' +
++      'padding:8px 18px;font-weight:600;cursor:pointer';
++    btn.addEventListener('click', goToNewOrigin);
++    bar.appendChild(msg);
++    bar.appendChild(btn);
++    document.body.appendChild(bar);
++  }
++
++  function runLegacy() {
++    if (isStandalone()) {
++      // Inside the installed app window: give the browser a chance to fetch
++      // legacy.webmanifest and run its own (shortcut-preserving) migration,
++      // and let the user continue manually with their settings in tow.
++      var show = function () { showMovedBanner(); };
++      if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
++      return;
++    }
++    // Regular browser tab: forward straight away.
++    goToNewOrigin();
++  }
++
++  // --------------------------------------------------------- new -> import
++
++  function referrerIsLegacy() {
++    if (!document.referrer) return false;
++    try { return new URL(document.referrer).origin === LEGACY_ORIGIN; } catch (e) { return false; }
++  }
++
++  function importConfig() {
++    var fragment = parseFragment();
++    var payload = fragment.get(HANDOFF_PARAM);
++    if (payload === null) return;
++
++    // Always strip the payload from the address bar / history first.
++    fragment.delete(HANDOFF_PARAM);
++    var rest = fragment.toString();
++    var cleanUrl = window.location.pathname + window.location.search + (rest ? '#' + rest : '');
++    try { history.replaceState(history.state, '', cleanUrl); } catch (e) { /* ignore */ }
++
++    var ls = storage();
++    if (!ls) return;
++    var state = readState(ls);
++    if (state.importedAt) return;                 // one-time import only
++    // Only accept data that genuinely came from our legacy origin, so a crafted
++    // link from elsewhere can't seed this origin's storage.
++    if (!referrerIsLegacy()) return;
++    if (payload.length > MAX_HANDOFF_CHARS) return;
++
++    var parsed;
++    try { parsed = JSON.parse(b64urlDecode(payload)); } catch (e) { return; }
++    if (!parsed || parsed.v !== 1 || parsed.from !== LEGACY_ORIGIN ||
++        typeof parsed.data !== 'object' || parsed.data === null) return;
++
++    var imported = 0;
++    var keys = Object.keys(parsed.data).slice(0, MAX_ENTRIES);
++    for (var i = 0; i < keys.length; i++) {
++      var key = keys[i];
++      var value = parsed.data[key];
++      if (key === STATE_KEY || typeof value !== 'string') continue;
++      if (ls.getItem(key) !== null) continue;     // never clobber newer settings
++      try { ls.setItem(key, value); imported++; } catch (e) { break; }
++    }
++    writeState(ls, { importedAt: Date.now(), importedKeys: imported, from: LEGACY_ORIGIN });
++    try {
++      window.dispatchEvent(new CustomEvent('dg:config-migrated', { detail: { imported: imported } }));
++    } catch (e) { /* old browsers */ }
++  }
++
++  // ------------------------------------------------------------------ boot
++
++  selectManifest();
++  if (isLegacy) runLegacy();
++  else if (isNew) importConfig();
++
++  window.DailyGrindMigration = {
++    LEGACY_ORIGIN: LEGACY_ORIGIN,
++    NEW_ORIGIN: NEW_ORIGIN,
++    isLegacy: isLegacy,
++    isNew: isNew,
++    continueToNewOrigin: goToNewOrigin
++  };
++})();

@@ -1,0 +1,94 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,44 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .calendar-section {
++      margin-top: 56px;
++      padding-top: 32px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .calendar-heading { text-align: center; }
++    .calendar-heading p { margin: 8px auto 24px; max-width: 620px; }
++    .calendar-controls { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; }
++    .calendar-controls label { font-weight: 600; }
++    .calendar-controls input, .calendar-controls button {
++      font: inherit;
++      min-height: 44px;
++      padding: 8px 12px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++    .calendar-controls button { cursor: pointer; }
++    .calendar-controls button:hover { background: var(--secondary); }
++    .calendar-section :focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
++    .calendar-status { text-align: center; margin-top: 12px; }
++    .calendar-card { text-align: left; min-width: 0; border-top: 4px solid var(--accent); }
++    .calendar-card h3 { margin-bottom: 4px; }
++    .calendar-localized { min-height: 52px; font-size: 1.1rem; overflow-wrap: anywhere; }
++    .calendar-fields { margin: 16px 0; }
++    .calendar-fields div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid #eee7e4; }
++    .calendar-fields dd { font-weight: 600; }
++    .calendar-card summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
++    .calendar-months { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
++    .calendar-months li { display: flex; justify-content: space-between; gap: 8px; background: #f5f0ed; border-radius: 4px; padding: 6px 8px; font-size: 0.85rem; }
++    .calendar-months .selected-month { background: var(--secondary); outline: 1px solid var(--primary); }
++    .calendar-note { margin-top: 18px; text-align: center; font-size: 0.85rem; }
++    .calendar-grid[hidden] { display: none; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,10 +230,45 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section class="calendar-section" aria-labelledby="calendar-title">
++      <div class="calendar-heading">
++        <h2 id="calendar-title">World Calendar Converter</h2>
++        <p>One day, different traditions. Explore your date in the Islamic, Hebrew, and Japanese calendars.</p>
++      </div>
++      <div class="calendar-controls">
++        <label for="calendar-date">Choose a date</label>
++        <input type="date" id="calendar-date" required aria-describedby="calendar-status">
++        <button type="button" id="calendar-today">Use today</button>
++      </div>
++      <p id="calendar-status" class="calendar-status" role="status">Loading calendars…</p>
++      <div id="calendar-results" class="grid calendar-grid" hidden></div>
++      <p class="calendar-note">Dates follow your device’s local day. Islamic dates use the calculated civil calendar; local observances may differ. The outlined month contains your selected date.</p>
++      <noscript><p>Enable JavaScript to use the world calendar converter.</p></noscript>
++    </section>
+   </main>
+ 
++  <template id="calendar-card-template">
++    <article class="card calendar-card">
++      <h3></h3>
++      <p class="calendar-localized"></p>
++      <dl class="calendar-fields">
++        <div><dt>Converted year</dt><dd data-field="year"></dd></div>
++        <div><dt>Numeric month</dt><dd data-field="month"></dd></div>
++        <div><dt>Month code</dt><dd data-field="monthCode"></dd></div>
++        <div><dt>Months in year</dt><dd data-field="monthsInYear"></dd></div>
++        <div><dt>Selected date</dt><dd data-field="relative"></dd></div>
++      </dl>
++      <details open>
++        <summary>Months in this calendar year</summary>
++        <ul class="calendar-months"></ul>
++      </details>
++    </article>
++  </template>
++  <script type="module" src="./calendar.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+       <a href="/careers">Join the Team</a> |

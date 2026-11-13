@@ -1,0 +1,192 @@
+diff --git a/index.html b/index.html
+index 66c9173..a5308be 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,116 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee FAQ Accordion */
++    .faq {
++      margin-top: 60px;
++    }
++
++    .faq h2 {
++      text-align: center;
++    }
++
++    .faq-intro {
++      text-align: center;
++      margin-bottom: 20px;
++    }
++
++    .faq-list {
++      max-width: 800px;
++      margin: 0 auto;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .faq details {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border-left: 4px solid transparent;
++      transition: border-color 0.3s;
++    }
++
++    .faq details[open] {
++      border-left-color: var(--accent);
++    }
++
++    .faq summary {
++      list-style: none;
++      display: flex;
++      align-items: center;
++      gap: 0.75ch;
++      padding: 16px 20px;
++      font-weight: 600;
++      color: var(--primary);
++      cursor: pointer;
++      border-radius: 8px;
++      transition: background 0.3s;
++    }
++
++    .faq summary::-webkit-details-marker {
++      display: none;
++    }
++
++    .faq summary:hover {
++      background: var(--secondary);
++    }
++
++    .faq summary:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .faq summary::before {
++      content: "";
++      inline-size: 1em;
++      block-size: 1em;
++      flex-shrink: 0;
++      background-color: var(--accent);
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat center / contain;
++      rotate: -90deg;
++    }
++
++    .faq summary:dir(rtl)::before {
++      rotate: 90deg;
++    }
++
++    .faq details[open] > summary::before {
++      rotate: 0deg;
++    }
++
++    .faq details::details-content {
++      interpolate-size: allow-keywords;
++      overflow: clip;
++      contain: layout;
++    }
++
++    .faq details:not([open])::details-content {
++      block-size: 0;
++    }
++
++    .faq-answer {
++      padding: 0 20px 18px calc(20px + 1em + 0.75ch);
++    }
++
++    .faq-answer a {
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .faq summary::before {
++        transition: rotate 0.3s ease-in-out;
++      }
++
++      .faq details::details-content {
++        transition: block-size, content-visibility;
++        transition-duration: 0.35s;
++        transition-timing-function: ease-in-out;
++        transition-behavior: allow-discrete;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +305,49 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="faq" id="coffee-faq" aria-labelledby="coffee-faq-heading">
++      <h2 id="coffee-faq-heading">Coffee Questions, Answered</h2>
++      <p class="faq-intro">Everything you've wondered about where our beans come from, how we roast them, and how to earn free drinks.</p>
++      <div class="faq-list">
++        <details name="coffee-faq">
++          <summary>Where do you source your coffee beans?</summary>
++          <div class="faq-answer">
++            <p>We partner directly with small farms and cooperatives in Colombia, Ethiopia, Guatemala, and Sumatra. Buying direct lets us pay well above Fair Trade minimums and trace every bag back to the farm it came from.</p>
++          </div>
++        </details>
++        <details name="coffee-faq">
++          <summary>Are your coffees ethically and sustainably grown?</summary>
++          <div class="faq-answer">
++            <p>Yes. Every origin we buy from is either certified organic or Rainforest Alliance certified, and we visit our partner farms each harvest to make sure growing and labor practices meet our standards.</p>
++          </div>
++        </details>
++        <details name="coffee-faq">
++          <summary>How and where do you roast your coffee?</summary>
++          <div class="faq-answer">
++            <p>All of our beans are small-batch roasted in-house at our local roastery, a few miles from our flagship café. We roast several times a week so the coffee in your cup is never more than seven days off the roaster.</p>
++          </div>
++        </details>
++        <details name="coffee-faq">
++          <summary>What's the difference between your light, medium, and dark roasts?</summary>
++          <div class="faq-answer">
++            <p>Light roasts keep the bright, fruity notes of the origin. Medium roasts balance sweetness and body with caramel and chocolate notes. Dark roasts, like our Dark Roast Espresso, are bold and smoky with lower acidity.</p>
++          </div>
++        </details>
++        <details name="coffee-faq">
++          <summary>How does The Daily Grind Rewards program work?</summary>
++          <div class="faq-answer">
++            <p>Earn 1 bean for every dollar you spend, in the café or online. Collect 50 beans for a free drink of any size, plus a free birthday treat every year. <a href="/rewards">See your rewards balance</a>.</p>
++          </div>
++        </details>
++        <details name="coffee-faq">
++          <summary>Do my rewards ever expire?</summary>
++          <div class="faq-answer">
++            <p>Beans stay in your account for 12 months after you earn them. Making any purchase keeps your account active, and you can check upcoming expirations anytime under <a href="/account">My Account</a>.</p>
++          </div>
++        </details>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +360,20 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without exclusive <details name> support: keep only one FAQ item open
++    if (!Object.hasOwn(HTMLDetailsElement.prototype, "name")) {
++      document.addEventListener("toggle", (event) => {
++        const details = event.target;
++        if (!(details instanceof HTMLDetailsElement) || !details.open || !details.hasAttribute("name")) return;
++        const name = CSS.escape(details.getAttribute("name"));
++        for (const other of document.querySelectorAll(`details[name="${name}"]`)) {
++          if (other !== details) other.open = false;
++        }
++      }, { capture: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

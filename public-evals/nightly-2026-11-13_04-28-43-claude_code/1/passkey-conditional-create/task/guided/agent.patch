@@ -1,0 +1,305 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,89 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++
++    /* Sign-in */
++    .signin {
++      max-width: 420px;
++      margin: 40px auto 0;
++      background: white;
++      padding: 28px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .signin h2 {
++      color: var(--primary);
++      margin-bottom: 16px;
++      text-align: center;
++    }
++
++    .field {
++      display: flex;
++      flex-direction: column;
++      gap: 4px;
++      margin-bottom: 14px;
++    }
++
++    .field input {
++      font: inherit;
++      padding: 10px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++    }
++
++    .field input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++    }
++
++    .field-row {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      font-size: 0.85rem;
++      margin-bottom: 14px;
++    }
++
++    .field-row a {
++      color: var(--primary);
++    }
++
++    .signin button[type="submit"] {
++      width: 100%;
++      font: inherit;
++      font-weight: bold;
++      border: 0;
++      cursor: pointer;
++      background: var(--primary);
++      color: white;
++      padding: 12px 20px;
++      border-radius: 5px;
++      transition: background 0.3s;
++    }
++
++    .signin button[type="submit"]:hover {
++      background: #3e2723;
++    }
++
++    .signin button[disabled] {
++      opacity: 0.7;
++      cursor: progress;
++    }
++
++    .signin-status {
++      margin-top: 12px;
++      min-height: 1.6em;
++      text-align: center;
++      font-size: 0.9rem;
++    }
++
++    .signin-status.error {
++      color: #b71c1c;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -152,8 +233,20 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="importmap">
++    {
++      "imports": {
++        "webauthn-polyfills": "https://cdn.jsdelivr.net/npm/webauthn-polyfills@0.1.7/+esm"
++      },
++      "integrity": {
++        "https://cdn.jsdelivr.net/npm/webauthn-polyfills@0.1.7/+esm": "sha384-+H7fj42pgfU8T63STw5mlSBFp8aG6RSXWRfTlzq7RcnceJCz5pEHKaMPI+QwYvD3",
++        "https://cdn.jsdelivr.net/npm/ua-parser-js@1.0.40/+esm": "sha384-XlJg4lMwd24SKqo+1Y5kHvf1LFEePs722puJgAcndEEfTYSoKgSjUgEc+9B8cjjb",
++        "https://cdn.jsdelivr.net/npm/compare-versions@6.1.1/+esm": "sha384-P859y4rV3/a78/n7WMxQ4kQnkg6kkx34l3vKJbODtTi4a7DssywxwtSqT6rH7/7+"
++      }
++    }
++  </script>
+ </head>
+ 
+ <body>
+ 
+@@ -173,8 +266,30 @@
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <section class="signin" aria-labelledby="signin-heading">
++    <h2 id="signin-heading">Sign in to your account</h2>
++    <form id="signin-form" action="/api/login" method="post">
++      <div class="field">
++        <label for="email">Email</label>
++        <input type="email" id="email" name="email" autocomplete="username" spellcheck="false"
++          enterkeyhint="next" required>
++      </div>
++      <div class="field">
++        <label for="current-password">Password</label>
++        <input type="password" id="current-password" name="password" autocomplete="current-password"
++          enterkeyhint="done" required>
++      </div>
++      <div class="field-row">
++        <label><input type="checkbox" id="show-password"> Show password</label>
++        <a href="/forgot-password">Forgot password?</a>
++      </div>
++      <button type="submit" data-testid="signin-button">Sign in</button>
++      <p id="signin-status" class="signin-status" role="status" aria-live="polite"></p>
++    </form>
++  </section>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+@@ -206,7 +321,159 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const form = document.getElementById('signin-form');
++    const statusEl = document.getElementById('signin-status');
++    const submitBtn = form.querySelector('[data-testid="signin-button"]');
++    const passwordInput = document.getElementById('current-password');
++
++    document.getElementById('show-password').addEventListener('change', (e) => {
++      passwordInput.type = e.target.checked ? 'text' : 'password';
++    });
++
++    function setStatus(message, isError = false) {
++      statusEl.textContent = message;
++      statusEl.classList.toggle('error', isError);
++    }
++
++    form.addEventListener('submit', async (event) => {
++      event.preventDefault();
++      setStatus('');
++      submitBtn.disabled = true;
++
++      try {
++        const response = await fetch(form.action, {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({
++            email: form.email.value.trim(),
++            password: form.password.value,
++          }),
++        });
++
++        if (!response.ok) {
++          setStatus('Incorrect email or password. Please try again.', true);
++          return;
++        }
++
++        // Full password sign-in succeeded and the session is active.
++        // If the server requires more factors, it should indicate it and we stop here.
++        const result = await response.json().catch(() => ({}));
++        if (result?.mfaRequired) {
++          setStatus('Additional verification required.');
++          return;
++        }
++
++        setStatus('Signed in. Welcome back!');
++        form.reset();
++
++        // Fire-and-forget: never block or surface UI for passkey upgrade.
++        silentlyRegisterPasskey().catch(() => {});
++      } catch {
++        setStatus('Unable to sign in right now. Please try again.', true);
++      } finally {
++        submitBtn.disabled = false;
++      }
++    });
++
++    /**
++     * Ensures getClientCapabilities / parseCreationOptionsFromJSON / toJSON exist
++     * in browsers that support WebAuthn but not these newer helpers.
++     */
++    async function ensureWebAuthnHelpers() {
++      if (
++        typeof PublicKeyCredential.getClientCapabilities === 'function' &&
++        typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
++        typeof PublicKeyCredential.prototype.toJSON === 'function'
++      ) {
++        return;
++      }
++      await import('webauthn-polyfills');
++    }
++
++    async function signalOrphanedCredential(rpId, credentialId) {
++      if (!rpId || typeof PublicKeyCredential.signalUnknownCredential !== 'function') return;
++      try {
++        await PublicKeyCredential.signalUnknownCredential({ rpId, credentialId });
++      } catch {
++        // Best-effort cleanup only.
++      }
++    }
++
++    /**
++     * Conditional Create: silently register a passkey after a successful password sign-in.
++     * No dialogs, no error UI — every failure path returns quietly.
++     */
++    async function silentlyRegisterPasskey() {
++      if (!window.isSecureContext || typeof window.PublicKeyCredential === 'undefined') return;
++
++      try {
++        await ensureWebAuthnHelpers();
++      } catch {
++        return;
++      }
++
++      let capabilities;
++      try {
++        capabilities = await PublicKeyCredential.getClientCapabilities();
++      } catch {
++        return;
++      }
++      if (capabilities?.conditionalCreate !== true) return;
++
++      // Fetch creation options; the server should include rp.id and excludeCredentials,
++      // and remember this is a conditional request so verification can relax user presence.
++      let publicKey;
++      try {
++        const optionsResponse = await fetch('/api/register/options', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify({ conditional: true }),
++        });
++        if (!optionsResponse.ok) return;
++        const creationOptionsJSON = await optionsResponse.json();
++        publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
++      } catch {
++        return;
++      }
++
++      let credential;
++      try {
++        credential = await navigator.credentials.create({
++          publicKey,
++          mediation: 'conditional',
++        });
++      } catch (e) {
++        if (!['InvalidStateError', 'NotAllowedError', 'AbortError'].includes(e?.name)) {
++          console.debug('Conditional passkey creation failed:', e);
++        }
++        return;
++      }
++      if (!credential) return;
++
++      const encodedResponse = credential.toJSON();
++      // Always use the server-provided RP ID, never window.location.hostname.
++      const rpId = publicKey.rp?.id;
++
++      try {
++        const verifyResponse = await fetch('/api/register/verify', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++          credentials: 'same-origin',
++          body: JSON.stringify(encodedResponse),
++        });
++        if (!verifyResponse.ok) {
++          await signalOrphanedCredential(rpId, encodedResponse.id);
++        }
++      } catch {
++        await signalOrphanedCredential(rpId, encodedResponse.id);
++      }
++    }
++  </script>
++
+ </body>
+ 
+ </html>

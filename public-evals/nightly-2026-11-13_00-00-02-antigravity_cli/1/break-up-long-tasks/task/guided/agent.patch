@@ -1,0 +1,629 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -134,8 +134,223 @@
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    .btn:disabled {
++      opacity: 0.65;
++      cursor: not-allowed;
++    }
++
++    /* Flavor Profile Simulator */
++    .simulator-section {
++      margin-top: 50px;
++      background: white;
++      padding: 30px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++      contain: layout style paint;
++    }
++
++    .simulator-header {
++      text-align: center;
++      margin-bottom: 24px;
++    }
++
++    .simulator-header h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
++    .simulator-controls {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
++      gap: 16px;
++      align-items: end;
++      background: var(--light);
++      padding: 20px;
++      border-radius: 6px;
++      border: 1px solid var(--secondary);
++    }
++
++    .control-group {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .control-group label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .control-group select,
++    .control-group input {
++      padding: 10px;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: white;
++    }
++
++    .simulator-actions {
++      display: flex;
++      gap: 12px;
++      align-items: center;
++      flex-wrap: wrap;
++      margin-top: 16px;
++    }
++
++    .simulator-actions .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font-size: 0.95rem;
++      font-weight: 600;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    .simulator-progress-wrap {
++      margin-top: 20px;
++    }
++
++    .progress-status-row {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.9rem;
++      margin-bottom: 6px;
++      font-weight: 500;
++    }
++
++    progress {
++      width: 100%;
++      height: 12px;
++      border-radius: 6px;
++      overflow: hidden;
++      appearance: none;
++    }
++
++    progress::-webkit-progress-bar {
++      background-color: var(--secondary);
++      border-radius: 6px;
++    }
++
++    progress::-webkit-progress-value {
++      background-color: var(--accent);
++      border-radius: 6px;
++      transition: width 0.1s linear;
++    }
++
++    progress::-moz-progress-bar {
++      background-color: var(--accent);
++      border-radius: 6px;
++    }
++
++    .metrics-summary {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
++      gap: 12px;
++      margin-top: 24px;
++    }
++
++    .metric-box {
++      background: var(--light);
++      border-left: 4px solid var(--accent);
++      padding: 12px 16px;
++      border-radius: 4px;
++    }
++
++    .metric-box .metric-label {
++      font-size: 0.8rem;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
++    }
++
++    .metric-box .metric-value {
++      font-size: 1.4rem;
++      font-weight: bold;
++      color: var(--primary);
++      margin-top: 4px;
++    }
++
++    .blend-results-grid {
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
++      gap: 16px;
++      margin-top: 20px;
++    }
++
++    .blend-card {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 16px;
++      background: #fffdfb;
++    }
++
++    .blend-card-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      margin-bottom: 8px;
++    }
++
++    .blend-card-header h4 {
++      color: var(--primary);
++      font-size: 1.05rem;
++    }
++
++    .blend-score {
++      background: var(--primary);
++      color: white;
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-size: 0.8rem;
++      font-weight: 600;
++    }
++
++    .blend-meta {
++      font-size: 0.85rem;
++      color: #5d4037;
++      margin-bottom: 10px;
++    }
++
++    .flavor-bars {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      font-size: 0.8rem;
++    }
++
++    .flavor-bar-row {
++      display: grid;
++      grid-template-columns: 75px 1fr 32px;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .flavor-bar-track {
++      height: 8px;
++      background: var(--secondary);
++      border-radius: 4px;
++      overflow: hidden;
++    }
++
++    .flavor-bar-fill {
++      height: 100%;
++      background: var(--primary);
++      border-radius: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -194,8 +409,85 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+     </section>
++
++    <section id="flavor-simulator" class="simulator-section" aria-labelledby="simulator-title">
++      <div class="simulator-header">
++        <h2 id="simulator-title">Coffee Flavor Profile Simulator</h2>
++        <p>Simulate extraction thermodynamics and aromatic harmony across a large batch of artisanal recipe blends without blocking UI responsiveness.</p>
++      </div>
++
++      <form id="simulator-form" class="simulator-controls">
++        <div class="control-group">
++          <label for="roast-level">Target Roast Profile</label>
++          <select id="roast-level" name="roastLevel">
++            <option value="light">Light Roast (Bright &amp; Floral)</option>
++            <option value="medium" selected>Medium Roast (Balanced &amp; Sweet)</option>
++            <option value="medium-dark">Medium-Dark (Rich &amp; Caramelized)</option>
++            <option value="dark">Dark Roast (Bold &amp; Smokey)</option>
++          </select>
++        </div>
++
++        <div class="control-group">
++          <label for="brew-method">Brewing Method</label>
++          <select id="brew-method" name="brewMethod">
++            <option value="pour-over" selected>Pour-Over (V60 / Chemex)</option>
++            <option value="espresso">Pressure Espresso (9 Bar)</option>
++            <option value="french-press">Immersion French Press</option>
++            <option value="cold-brew">18-Hour Cold Extraction</option>
++          </select>
++        </div>
++
++        <div class="control-group">
++          <label for="batch-size">Recipe Batch Size</label>
++          <select id="batch-size" name="batchSize">
++            <option value="1200">1,200 Recipe Blends</option>
++            <option value="2500" selected>2,500 Recipe Blends</option>
++            <option value="5000">5,000 Recipe Blends</option>
++          </select>
++        </div>
++
++        <div class="control-group">
++          <label for="tasting-filter">Live Tasting Note Filter</label>
++          <input type="search" id="tasting-filter" placeholder="e.g. Cocoa, Citrus, Jasmine..." autocomplete="off">
++        </div>
++      </form>
++
++      <div class="simulator-actions">
++        <button type="button" id="run-simulation-btn" class="btn">Simulate Recipe Batch</button>
++        <button type="button" id="test-responsive-btn" class="btn btn-secondary">Test UI Responsiveness (0 clicks)</button>
++      </div>
++
++      <div class="simulator-progress-wrap">
++        <div class="progress-status-row">
++          <span id="simulation-status" aria-live="polite">Ready to simulate 2,500 recipe blends.</span>
++          <span id="simulation-percentage">0%</span>
++        </div>
++        <progress id="simulation-progress" max="100" value="0" aria-label="Batch simulation progress"></progress>
++      </div>
++
++      <div id="simulation-summary" class="metrics-summary" aria-live="polite">
++        <div class="metric-box">
++          <div class="metric-label">Blends Processed</div>
++          <div class="metric-value" id="metric-processed">0</div>
++        </div>
++        <div class="metric-box">
++          <div class="metric-label">Avg Harmony Score</div>
++          <div class="metric-value" id="metric-harmony">--</div>
++        </div>
++        <div class="metric-box">
++          <div class="metric-label">Dominant Note</div>
++          <div class="metric-value" id="metric-note">--</div>
++        </div>
++        <div class="metric-box">
++          <div class="metric-label">Main-Thread Yields</div>
++          <div class="metric-value" id="metric-yields">0</div>
++        </div>
++      </div>
++
++      <div id="top-blends-results" class="blend-results-grid" aria-live="polite"></div>
++    </section>
+   </main>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -206,7 +498,315 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    const ORIGINS = [
++      { name: 'Ethiopian Yirgacheffe', acidity: 88, body: 58, sweetness: 84, bitterness: 30, aroma: 94, notes: ['Jasmine', 'Bergamot', 'Citrus', 'Peach'] },
++      { name: 'Colombian Huila', acidity: 76, body: 74, sweetness: 86, bitterness: 42, aroma: 85, notes: ['Caramel', 'Red Apple', 'Panela', 'Citrus'] },
++      { name: 'Sumatra Mandheling', acidity: 48, body: 94, sweetness: 68, bitterness: 72, aroma: 80, notes: ['Dark Cocoa', 'Cedar', 'Earthy Spice', 'Molasses'] },
++      { name: 'Guatemalan Antigua', acidity: 72, body: 80, sweetness: 82, bitterness: 50, aroma: 86, notes: ['Milk Chocolate', 'Toasted Hazelnut', 'Orange Peel', 'Brown Sugar'] },
++      { name: 'Kenyan AA Nyeri', acidity: 92, body: 70, sweetness: 79, bitterness: 36, aroma: 91, notes: ['Blackcurrant', 'Grapefruit', 'Hibiscus', 'Cane Sugar'] },
++      { name: 'Brazilian Cerrado', acidity: 52, body: 84, sweetness: 80, bitterness: 58, aroma: 76, notes: ['Roasted Almond', 'Cocoa', 'Caramel', 'Malt'] }
++    ];
++
++    const ROAST_MODIFIERS = {
++      'light': { acidity: 1.15, body: 0.9, sweetness: 1.05, bitterness: 0.75, aroma: 1.12, targetTemp: 198 },
++      'medium': { acidity: 1.0, body: 1.0, sweetness: 1.12, bitterness: 0.92, aroma: 1.05, targetTemp: 210 },
++      'medium-dark': { acidity: 0.85, body: 1.1, sweetness: 1.04, bitterness: 1.12, aroma: 0.98, targetTemp: 221 },
++      'dark': { acidity: 0.7, body: 1.18, sweetness: 0.88, bitterness: 1.32, aroma: 0.9, targetTemp: 232 }
++    };
++
++    const BREW_MODIFIERS = {
++      'pour-over': { clarity: 1.14, extractionRate: 0.20, bodyFactor: 0.92 },
++      'espresso': { clarity: 0.95, extractionRate: 0.22, bodyFactor: 1.22 },
++      'french-press': { clarity: 0.88, extractionRate: 0.21, bodyFactor: 1.15 },
++      'cold-brew': { clarity: 1.04, extractionRate: 0.19, bodyFactor: 1.08 }
++    };
++
++    async function yieldToMain() {
++      if ('scheduler' in window && 'yield' in window.scheduler) {
++        return await window.scheduler.yield();
++      }
++      return new Promise(resolve => setTimeout(resolve, 0));
++    }
++
++    function generateRecipeBatch(count) {
++      const batch = new Array(count);
++      for (let i = 0; i < count; i++) {
++        const primary = ORIGINS[i % ORIGINS.length];
++        const secondary = ORIGINS[(i * 3 + 1) % ORIGINS.length];
++        const tertiary = ORIGINS[(i * 5 + 2) % ORIGINS.length];
++        const primaryRatio = 0.45 + ((i % 7) * 0.05);
++        const secondaryRatio = Math.min(0.45, 1 - primaryRatio - 0.1);
++        const tertiaryRatio = Math.max(0, +(1 - primaryRatio - secondaryRatio).toFixed(2));
++
++        batch[i] = {
++          id: i + 1,
++          name: `Blend #${String(i + 1).padStart(4, '0')}: ${primary.name.split(' ')[0]} / ${secondary.name.split(' ')[0]}`,
++          components: [
++            { origin: primary, ratio: primaryRatio },
++            { origin: secondary, ratio: secondaryRatio },
++            { origin: tertiary, ratio: tertiaryRatio }
++          ],
++          grindMicrons: 400 + ((i * 29) % 650),
++          waterMineralPpm: 75 + ((i * 17) % 120)
++        };
++      }
++      return batch;
++    }
++
++    function simulateSingleBlend(blend, roastKey, brewKey) {
++      const roast = ROAST_MODIFIERS[roastKey] || ROAST_MODIFIERS.medium;
++      const brew = BREW_MODIFIERS[brewKey] || BREW_MODIFIERS['pour-over'];
++
++      let baseAcidity = 0;
++      let baseBody = 0;
++      let baseSweetness = 0;
++      let baseBitterness = 0;
++      let baseAroma = 0;
++      const noteSet = new Set();
++
++      for (const comp of blend.components) {
++        baseAcidity += comp.origin.acidity * comp.ratio;
++        baseBody += comp.origin.body * comp.ratio;
++        baseSweetness += comp.origin.sweetness * comp.ratio;
++        baseBitterness += comp.origin.bitterness * comp.ratio;
++        baseAroma += comp.origin.aroma * comp.ratio;
++        comp.origin.notes.forEach(n => noteSet.add(n));
++      }
++
++      // Multi-step extraction curve simulation (volatile aromatics & Maillard equilibrium)
++      let volatileEquilibrium = 0;
++      const steps = 180;
++      for (let step = 1; step <= steps; step++) {
++        const t = step / steps;
++        const diffusion = Math.sin(t * Math.PI) * Math.exp(-t * brew.extractionRate);
++        const maillardCurve = Math.cos((blend.grindMicrons / 1000) * t) * (roast.targetTemp / 210);
++        volatileEquilibrium += (diffusion * maillardCurve) / steps;
++      }
++
++      const mineralBalance = 1 - Math.abs(blend.waterMineralPpm - 125) / 350;
++      const clamp = val => Math.max(10, Math.min(99, Math.round(val)));
++
++      const acidity = clamp(baseAcidity * roast.acidity * brew.clarity * mineralBalance);
++      const body = clamp(baseBody * roast.body * brew.bodyFactor);
++      const sweetness = clamp(baseSweetness * roast.sweetness * (1 + volatileEquilibrium * 0.15));
++      const bitterness = clamp(baseBitterness * roast.bitterness * (2 - mineralBalance));
++      const aroma = clamp(baseAroma * roast.aroma * brew.clarity * (1 + volatileEquilibrium * 0.1));
++
++      const harmonyScore = +(
++        acidity * 0.22 +
++        body * 0.22 +
++        sweetness * 0.28 +
++        aroma * 0.20 -
++        Math.max(0, bitterness - 65) * 0.18
++      ).toFixed(1);
++
++      return {
++        id: blend.id,
++        name: blend.name,
++        composition: blend.components
++          .filter(c => c.ratio > 0.05)
++          .map(c => `${Math.round(c.ratio * 100)}% ${c.origin.name}`)
++          .join(' + '),
++        acidity,
++        body,
++        sweetness,
++        bitterness,
++        aroma,
++        harmonyScore,
++        notes: Array.from(noteSet)
++      };
++    }
++
++    async function processRecipeBatch(items, config, onProgress) {
++      let deadline = performance.now() + 50;
++      let yieldCount = 0;
++      const processed = [];
++
++      for (let i = 0; i < items.length; i++) {
++        const result = simulateSingleBlend(items[i], config.roastLevel, config.brewMethod);
++        processed.push(result);
++
++        if (performance.now() >= deadline) {
++          yieldCount++;
++          if (onProgress) {
++            onProgress(i + 1, items.length, yieldCount);
++          }
++          if ('scheduler' in window && 'yield' in window.scheduler) {
++            await scheduler.yield();
++          } else {
++            await new Promise(resolve => setTimeout(resolve, 0));
++          }
++          deadline = performance.now() + 50;
++        }
++      }
++
++      if (onProgress) {
++        onProgress(items.length, items.length, yieldCount);
++      }
++
++      return { processed, yieldCount };
++    }
++
++    const runBtn = document.getElementById('run-simulation-btn');
++    const responsiveBtn = document.getElementById('test-responsive-btn');
++    const roastSelect = document.getElementById('roast-level');
++    const brewSelect = document.getElementById('brew-method');
++    const batchSelect = document.getElementById('batch-size');
++    const filterInput = document.getElementById('tasting-filter');
++    const statusEl = document.getElementById('simulation-status');
++    const pctEl = document.getElementById('simulation-percentage');
++    const progressEl = document.getElementById('simulation-progress');
++    const metricProcessedEl = document.getElementById('metric-processed');
++    const metricHarmonyEl = document.getElementById('metric-harmony');
++    const metricNoteEl = document.getElementById('metric-note');
++    const metricYieldsEl = document.getElementById('metric-yields');
++    const resultsContainer = document.getElementById('top-blends-results');
++
++    let latestResults = [];
++    let clickCount = 0;
++    let isSimulating = false;
++
++    responsiveBtn.addEventListener('click', () => {
++      clickCount++;
++      responsiveBtn.textContent = `Test UI Responsiveness (${clickCount} click${clickCount === 1 ? '' : 's'})`;
++    });
++
++    function renderResults(results, filterText = '') {
++      const normalizedFilter = filterText.trim().toLowerCase();
++      const filtered = normalizedFilter
++        ? results.filter(r =>
++            r.name.toLowerCase().includes(normalizedFilter) ||
++            r.composition.toLowerCase().includes(normalizedFilter) ||
++            r.notes.some(n => n.toLowerCase().includes(normalizedFilter))
++          )
++        : results;
++
++      const topBlends = filtered
++        .slice()
++        .sort((a, b) => b.harmonyScore - a.harmonyScore)
++        .slice(0, 6);
++
++      const fragment = document.createDocumentFragment();
++      for (const blend of topBlends) {
++        const card = document.createElement('article');
++        card.className = 'blend-card';
++        card.innerHTML = `
++          <div class="blend-card-header">
++            <h4>${blend.name}</h4>
++            <span class="blend-score">${blend.harmonyScore} pts</span>
++          </div>
++          <p class="blend-meta">${blend.composition}</p>
++          <p class="blend-meta"><strong>Notes:</strong> ${blend.notes.slice(0, 4).join(', ')}</p>
++          <div class="flavor-bars">
++            <div class="flavor-bar-row">
++              <span>Acidity</span>
++              <div class="flavor-bar-track"><div class="flavor-bar-fill" style="width: ${blend.acidity}%"></div></div>
++              <span>${blend.acidity}</span>
++            </div>
++            <div class="flavor-bar-row">
++              <span>Body</span>
++              <div class="flavor-bar-track"><div class="flavor-bar-fill" style="width: ${blend.body}%"></div></div>
++              <span>${blend.body}</span>
++            </div>
++            <div class="flavor-bar-row">
++              <span>Sweetness</span>
++              <div class="flavor-bar-track"><div class="flavor-bar-fill" style="width: ${blend.sweetness}%"></div></div>
++              <span>${blend.sweetness}</span>
++            </div>
++            <div class="flavor-bar-row">
++              <span>Aroma</span>
++              <div class="flavor-bar-track"><div class="flavor-bar-fill" style="width: ${blend.aroma}%"></div></div>
++              <span>${blend.aroma}</span>
++            </div>
++          </div>
++        `;
++        fragment.appendChild(card);
++      }
++
++      resultsContainer.replaceChildren(fragment);
++    }
++
++    filterInput.addEventListener('input', () => {
++      if (latestResults.length > 0) {
++        renderResults(latestResults, filterInput.value);
++      }
++    });
++
++    async function runSimulation() {
++      if (isSimulating) return;
++      isSimulating = true;
++      runBtn.disabled = true;
++
++      const count = Number.parseInt(batchSelect.value, 10) || 2500;
++      const config = {
++        roastLevel: roastSelect.value,
++        brewMethod: brewSelect.value
++      };
++
++      const startTime = performance.now();
++      statusEl.textContent = `Generating & simulating ${count.toLocaleString()} recipe blends...`;
++      progressEl.value = 0;
++      pctEl.textContent = '0%';
++
++      const batch = generateRecipeBatch(count);
++
++      const { processed, yieldCount } = await processRecipeBatch(
++        batch,
++        config,
++        (completed, total, yields) => {
++          const pct = Math.round((completed / total) * 100);
++          progressEl.value = pct;
++          pctEl.textContent = `${pct}%`;
++          metricProcessedEl.textContent = completed.toLocaleString();
++          metricYieldsEl.textContent = String(yields);
++          statusEl.textContent = `Simulating batch: ${completed.toLocaleString()} / ${total.toLocaleString()} blends processed...`;
++        }
++      );
++
++      latestResults = processed;
++      let totalHarmony = 0;
++      const noteCounts = new Map();
++
++      for (const item of processed) {
++        totalHarmony += item.harmonyScore;
++        for (const note of item.notes) {
++          noteCounts.set(note, (noteCounts.get(note) || 0) + 1);
++        }
++      }
++
++      let topNote = '--';
++      let topNoteFreq = 0;
++      for (const [note, freq] of noteCounts.entries()) {
++        if (freq > topNoteFreq) {
++          topNoteFreq = freq;
++          topNote = note;
++        }
++      }
++
++      const elapsedMs = Math.round(performance.now() - startTime);
++      const avgHarmony = (totalHarmony / processed.length).toFixed(1);
++
++      metricProcessedEl.textContent = processed.length.toLocaleString();
++      metricHarmonyEl.textContent = `${avgHarmony} / 100`;
++      metricNoteEl.textContent = topNote;
++      metricYieldsEl.textContent = String(yieldCount);
++      statusEl.textContent = `Completed ${processed.length.toLocaleString()} recipe blends in ${elapsedMs}ms (${yieldCount} main-thread yields).`;
++
++      renderResults(latestResults, filterInput.value);
++
++      isSimulating = false;
++      runBtn.disabled = false;
++    }
++
++    runBtn.addEventListener('click', runSimulation);
++
++    // Run an initial batch automatically after page load so results are immediately available
++    window.addEventListener('load', () => {
++      runSimulation();
++    });
++  </script>
+ </body>
+ 
+ </html>

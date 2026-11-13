@@ -1,0 +1,336 @@
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..2b47354
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,251 @@
++/**
++ * <coffee-card> — an autonomous custom element for menu items.
++ *
++ * Attributes / properties (kept in sync both ways):
++ *   name        (string)   -> .name         Drink name shown as the card heading.
++ *   href        (string)   -> .href         Link for the "View Details" button.
++ *   image       (string)   -> .image        Optional photo URL.
++ *   button-label(string)   -> .buttonLabel  Button text (default "View Details").
++ *   price       (number)   -> .price        Price in USD; invalid/empty -> null.
++ *   featured    (boolean)  -> .featured     Highlights the card with a badge.
++ *   sold-out    (boolean)  -> .soldOut      Dims the card and disables the button.
++ *
++ * The default slot holds the description, so the text stays in the light DOM
++ * (readable before the element upgrades and by crawlers).
++ *
++ * Events:
++ *   coffee-card-select (bubbles, composed, cancelable)
++ *     Fired when the button is activated. detail: { name, price, href }.
++ *     Calling preventDefault() on it cancels navigation.
++ */
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      position: relative;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      overflow: hidden;
++      transition: box-shadow 0.3s, transform 0.3s, opacity 0.3s;
++    }
++    :host([hidden]) { display: none; }
++    :host(:hover) { box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15); transform: translateY(-2px); }
++    :host([featured]) { outline: 2px solid var(--accent, #ffab40); }
++    :host([sold-out]) { opacity: 0.65; }
++    :host([sold-out]:hover) { transform: none; }
++
++    .media { display: none; aspect-ratio: 16 / 10; background: var(--secondary, #d7ccc8); }
++    .media.has-image { display: block; }
++    .media img { width: 100%; height: 100%; object-fit: cover; display: block; }
++
++    .badges { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; }
++    .badge {
++      display: none;
++      font-size: 0.7rem;
++      font-weight: bold;
++      text-transform: uppercase;
++      letter-spacing: 0.5px;
++      padding: 3px 8px;
++      border-radius: 999px;
++    }
++    :host([featured]) .badge.featured { display: inline-block; background: var(--accent, #ffab40); color: var(--text, #3e2723); }
++    :host([sold-out]) .badge.sold-out { display: inline-block; background: var(--text, #3e2723); color: white; }
++
++    .body { padding: 20px; }
++    h3 { margin: 0 0 10px; color: var(--primary, #4e342e); }
++    .price { display: block; font-weight: bold; color: var(--text, #3e2723); margin-bottom: 8px; }
++    .price[hidden] { display: none; }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: white;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++      cursor: pointer;
++    }
++    .btn:hover { background: #3e2723; }
++    .btn:focus-visible { outline: 3px solid var(--accent, #ffab40); outline-offset: 2px; }
++    .btn[aria-disabled="true"] { background: #9e9e9e; cursor: not-allowed; }
++  </style>
++  <article part="card">
++    <div class="badges">
++      <span class="badge featured" part="badge">Featured</span>
++      <span class="badge sold-out" part="badge">Sold out</span>
++    </div>
++    <div class="media" part="media"><img alt="" loading="lazy" decoding="async"></div>
++    <div class="body">
++      <h3 part="name"></h3>
++      <span class="price" part="price" hidden></span>
++      <slot></slot>
++      <a class="btn" part="button"></a>
++    </div>
++  </article>
++`;
++
++const priceFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
++
++/** Property name -> { attr, type } */
++const PROPS = {
++  name: { attr: 'name', type: 'string' },
++  href: { attr: 'href', type: 'string' },
++  image: { attr: 'image', type: 'string' },
++  buttonLabel: { attr: 'button-label', type: 'string' },
++  price: { attr: 'price', type: 'number' },
++  featured: { attr: 'featured', type: 'boolean' },
++  soldOut: { attr: 'sold-out', type: 'boolean' },
++};
++
++export class CoffeeCard extends HTMLElement {
++  static get observedAttributes() {
++    return Object.values(PROPS).map((p) => p.attr);
++  }
++
++  #els;
++  #abort = null;
++
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open' });
++    root.appendChild(template.content.cloneNode(true));
++    this.#els = {
++      name: root.querySelector('h3'),
++      price: root.querySelector('.price'),
++      media: root.querySelector('.media'),
++      img: root.querySelector('img'),
++      button: root.querySelector('.btn'),
++    };
++  }
++
++  connectedCallback() {
++    // Properties set on the instance before the element was upgraded would
++    // shadow the prototype accessors; re-run them through the setters.
++    for (const prop of Object.keys(PROPS)) this.#upgradeProperty(prop);
++
++    this.#abort = new AbortController();
++    const { signal } = this.#abort;
++    this.#els.button.addEventListener('click', (e) => this.#onActivate(e), { signal });
++
++    this.#render();
++  }
++
++  disconnectedCallback() {
++    this.#abort?.abort();
++    this.#abort = null;
++  }
++
++  adoptedCallback() {
++    this.#render();
++  }
++
++  attributeChangedCallback(_attr, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    this.#render();
++  }
++
++  // ---- String properties ----
++  get name() { return this.getAttribute('name') ?? ''; }
++  set name(v) { this.#setString('name', v); }
++
++  get href() { return this.getAttribute('href') ?? ''; }
++  set href(v) { this.#setString('href', v); }
++
++  get image() { return this.getAttribute('image') ?? ''; }
++  set image(v) { this.#setString('image', v); }
++
++  get buttonLabel() { return this.getAttribute('button-label') ?? 'View Details'; }
++  set buttonLabel(v) { this.#setString('button-label', v); }
++
++  // ---- Numeric property ----
++  get price() {
++    const raw = this.getAttribute('price');
++    if (raw === null || raw.trim() === '') return null;
++    const n = Number(raw);
++    return Number.isFinite(n) ? n : null;
++  }
++  set price(v) {
++    const n = v === null || v === undefined || v === '' ? NaN : Number(v);
++    if (Number.isFinite(n)) this.setAttribute('price', String(n));
++    else this.removeAttribute('price');
++  }
++
++  // ---- Boolean properties ----
++  get featured() { return this.hasAttribute('featured'); }
++  set featured(v) { this.toggleAttribute('featured', Boolean(v)); }
++
++  get soldOut() { return this.hasAttribute('sold-out'); }
++  set soldOut(v) { this.toggleAttribute('sold-out', Boolean(v)); }
++
++  // ---- Internals ----
++  #setString(attr, v) {
++    if (v === null || v === undefined) this.removeAttribute(attr);
++    else this.setAttribute(attr, String(v));
++  }
++
++  #upgradeProperty(prop) {
++    if (Object.prototype.hasOwnProperty.call(this, prop)) {
++      const value = this[prop];
++      delete this[prop];
++      this[prop] = value;
++    }
++  }
++
++  #onActivate(event) {
++    if (this.soldOut) {
++      event.preventDefault();
++      return;
++    }
++    const select = new CustomEvent('coffee-card-select', {
++      bubbles: true,
++      composed: true,
++      cancelable: true,
++      detail: { name: this.name, price: this.price, href: this.href },
++    });
++    if (!this.dispatchEvent(select)) event.preventDefault();
++  }
++
++  #render() {
++    const { name, price, media, img, button } = this.#els;
++    const label = this.name;
++
++    name.textContent = label;
++
++    const p = this.price;
++    price.hidden = p === null;
++    price.textContent = p === null ? '' : priceFormatter.format(p);
++
++    const src = this.image;
++    media.classList.toggle('has-image', Boolean(src));
++    if (src) {
++      if (img.getAttribute('src') !== src) img.src = src;
++      img.alt = label;
++    } else {
++      img.removeAttribute('src');
++    }
++
++    button.textContent = this.soldOut ? 'Sold Out' : this.buttonLabel;
++    if (this.soldOut || !this.href) {
++      button.removeAttribute('href');
++      button.setAttribute('aria-disabled', 'true');
++      button.setAttribute('role', 'link');
++      button.tabIndex = this.soldOut ? -1 : 0;
++    } else {
++      button.href = this.href;
++      button.removeAttribute('aria-disabled');
++      button.removeAttribute('role');
++      button.removeAttribute('tabindex');
++    }
++    button.setAttribute('aria-label', label ? `${button.textContent}: ${label}` : button.textContent);
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..202ea25 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,15 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
++    /* Pre-upgrade fallback so cards don't flash unstyled before coffee-card.js loads */
++    coffee-card:not(:defined) {
++      display: block;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++      min-height: 200px;
+     }
+ 
+     .btn {
+@@ -153,6 +151,7 @@
+       font-size: 0.85rem;
+     }
+   </style>
++  <script type="module" src="./coffee-card.js"></script>
+ </head>
+ 
+ <body>
+@@ -178,21 +177,29 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <coffee-card
++          name="Maple Oat Latte"
++          price="5.25"
++          href="/menu/seasonal"
++          image="https://images.unsplash.com/photo-1561882468-9110e03e0f78?auto=format&fit=crop&w=600&q=80"
++          featured>
++          Creamy oat milk with a hint of Vermont maple syrup.
++        </coffee-card>
++        <coffee-card
++          name="Dark Roast Espresso"
++          price="3.50"
++          href="/menu/espresso"
++          image="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80">
++          Bold, smokey, and perfect for a morning boost.
++        </coffee-card>
++        <coffee-card
++          name="Cold Brew"
++          price="4.75"
++          href="/menu/cold-brew"
++          image="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80"
++          sold-out>
++          Steeped for 18 hours for maximum smoothness.
++        </coffee-card>
+       </div>
+     </section>
+   </main>

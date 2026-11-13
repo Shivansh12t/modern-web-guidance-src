@@ -1,0 +1,966 @@
+diff --git a/index.html b/index.html
+index 66c9173..e143406 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,197 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Visually hidden utility */
++    .visually-hidden:where(:not(:focus-within, :active)) {
++      position: absolute !important;
++      clip-path: inset(50%) !important;
++      overflow: hidden !important;
++      width: 1px !important;
++      height: 1px !important;
++      margin: -1px !important;
++      padding: 0 !important;
++      border: 0 !important;
++      white-space: nowrap !important;
++    }
++
++    /* Custom element upgrade guard (fail open) */
++    star-rating:not(:defined) {
++      visibility: hidden;
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        visibility: visible;
++        opacity: 1;
++      }
++    }
++
++    /* Feedback Form Section */
++    .feedback-section {
++      margin-top: 60px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
++    }
++
++    .feedback-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++      text-align: center;
++    }
++
++    .feedback-intro {
++      text-align: center;
++      margin-bottom: 24px;
++      color: #5d4037;
++    }
++
++    .feedback-fieldset {
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 24px;
++      margin-bottom: 20px;
++    }
++
++    .feedback-fieldset:disabled {
++      opacity: 0.6;
++      background-color: #f5f5f5;
++    }
++
++    .feedback-fieldset legend {
++      font-weight: bold;
++      color: var(--primary);
++      padding: 0 8px;
++      font-size: 1.1rem;
++    }
++
++    .form-group {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      gap: 0.25rem;
++      margin-block-end: 1.5rem;
++    }
++
++    .form-group label {
++      font-weight: 600;
++      color: var(--text);
++    }
++
++    .required-mark {
++      color: #d93025;
++    }
++
++    .hint {
++      display: block;
++      color: #5f6368;
++      font-size: 0.85rem;
++      margin-bottom: 0.25rem;
++    }
++
++    .form-control {
++      width: 100%;
++      font: inherit;
++      font-size: max(1rem, 1em);
++      padding: 0.75rem;
++      min-height: 48px;
++      border: 1px solid #767676;
++      border-radius: 5px;
++      background-color: #fff;
++      color: var(--text);
++    }
++
++    @media (pointer: coarse) {
++      .form-control {
++        min-height: 52px;
++      }
++    }
++
++    textarea.form-control {
++      min-height: 110px;
++      resize: vertical;
++    }
++
++    .form-control:focus-visible,
++    .btn:focus-visible,
++    .btn-secondary:focus-visible {
++      outline: 3px solid #0b57d0;
++      outline-offset: 2px;
++    }
++
++    .error-msg {
++      display: none;
++      color: #d93025;
++      font-size: 0.875rem;
++      margin-top: 0.25rem;
++    }
++
++    :is(.form-control:user-invalid, .form-control.user-invalid-fallback) {
++      border-color: #d93025;
++      background-color: #fce8e6;
++    }
++
++    :is(.form-control:user-invalid, .form-control.user-invalid-fallback) + .error-msg,
++    star-rating:state(user-invalid) + .error-msg,
++    star-rating.user-invalid-fallback + .error-msg {
++      display: block;
++    }
++
++    :is(.form-control:user-valid, .form-control.user-valid-fallback) {
++      border-color: #188038;
++    }
++
++    .form-actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      margin-top: 8px;
++    }
++
++    .form-actions .btn {
++      margin-top: 0;
++      border: none;
++      cursor: pointer;
++      font: inherit;
++      font-weight: 600;
++      min-height: 48px;
++    }
++
++    .btn-secondary {
++      display: inline-block;
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++      padding: 10px 20px;
++      border-radius: 5px;
++      cursor: pointer;
++      font: inherit;
++      font-weight: 600;
++      min-height: 48px;
++      transition: background 0.3s, color 0.3s;
++    }
++
++    .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    .feedback-status {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-radius: 5px;
++      background: #e6f4ea;
++      color: #137333;
++      border: 1px solid #188038;
++    }
++
++    .feedback-status[hidden] {
++      display: none;
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +386,116 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="feedback-section" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">Coffee Feedback</h2>
++      <p class="feedback-intro">Tell us how we did on your latest cup at The Daily Grind.</p>
++
++      <form id="coffee-feedback-form" action="/feedback" method="POST" aria-labelledby="feedback-heading">
++        <fieldset id="feedback-fieldset" class="feedback-fieldset">
++          <legend>Your Tasting Experience</legend>
++
++          <div class="form-group">
++            <label for="customer-name">Full Name <span class="required-mark" aria-hidden="true">*</span></label>
++            <input
++              type="text"
++              id="customer-name"
++              name="customer_name"
++              class="form-control"
++              autocomplete="name"
++              required
++              maxlength="100"
++              enterkeyhint="next"
++              data-error="customer-name-error"
++            >
++            <div id="customer-name-error" class="error-msg">
++              <span role="img" aria-label="Error">❌</span> Please enter your full name.
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="customer-email">Email Address <span class="required-mark" aria-hidden="true">*</span></label>
++            <span id="email-hint" class="hint">Format: you@example.com</span>
++            <input
++              type="email"
++              id="customer-email"
++              name="customer_email"
++              class="form-control"
++              autocomplete="email"
++              autocorrect="off"
++              autocapitalize="none"
++              spellcheck="false"
++              required
++              enterkeyhint="next"
++              aria-describedby="email-hint"
++              data-error="customer-email-error"
++            >
++            <div id="customer-email-error" class="error-msg">
++              <span role="img" aria-label="Error">❌</span> Enter an email address in the format you@example.com.
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="drink-choice">Drink Ordered <span class="required-mark" aria-hidden="true">*</span></label>
++            <select
++              id="drink-choice"
++              name="drink"
++              class="form-control"
++              required
++              data-error="drink-choice-error"
++            >
++              <option value="">Select your drink...</option>
++              <option value="maple-oat-latte">Maple Oat Latte</option>
++              <option value="dark-roast-espresso">Dark Roast Espresso</option>
++              <option value="cold-brew">Cold Brew</option>
++              <option value="pour-over">Single-Origin Pour Over</option>
++              <option value="cappuccino">Artisanal Cappuccino</option>
++              <option value="matcha-latte">Ceremonial Matcha Latte</option>
++            </select>
++            <div id="drink-choice-error" class="error-msg">
++              <span role="img" aria-label="Error">❌</span> Please select the drink you ordered.
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label id="coffee-rating-label" for="coffee-rating">Overall Rating <span class="required-mark" aria-hidden="true">*</span></label>
++            <span id="rating-hint" class="hint">Select 1 to 5 stars using mouse or arrow keys.</span>
++            <star-rating
++              id="coffee-rating"
++              name="rating"
++              max="5"
++              required
++              aria-describedby="rating-hint"
++              data-error="coffee-rating-error"
++            ></star-rating>
++            <div id="coffee-rating-error" class="error-msg">
++              <span role="img" aria-label="Error">❌</span> Please choose a star rating between 1 and 5.
++            </div>
++          </div>
++
++          <div class="form-group">
++            <label for="tasting-notes">Tasting Notes &amp; Comments</label>
++            <span id="notes-hint" class="hint">Optional: Share thoughts on aroma, flavor, or service.</span>
++            <textarea
++              id="tasting-notes"
++              name="comments"
++              class="form-control"
++              maxlength="500"
++              aria-describedby="notes-hint"
++              enterkeyhint="done"
++            ></textarea>
++          </div>
++        </fieldset>
++
++        <div class="form-actions">
++          <button type="submit" id="submit-feedback-btn" class="btn">Submit Feedback</button>
++          <button type="reset" id="reset-feedback-btn" class="btn-secondary">Reset Form</button>
++          <button type="button" id="toggle-fieldset-btn" class="btn-secondary" aria-pressed="false" aria-controls="feedback-fieldset">Lock Fieldset</button>
++        </div>
++
++        <div id="feedback-status" class="feedback-status" role="status" aria-live="polite" hidden></div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +508,646 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const supportsFACE =
++      'attachInternals' in HTMLElement.prototype &&
++      typeof ElementInternals !== 'undefined' &&
++      'setFormValue' in ElementInternals.prototype;
++
++    class StarRating extends HTMLElement {
++      static formAssociated = true;
++      static observedAttributes = ['value', 'max', 'required', 'disabled', 'name'];
++
++      #internals = null;
++      #value = '';
++      #max = 5;
++      #disabled = false;
++      #fallbackInput = null;
++      #rendered = false;
++
++      constructor() {
++        super();
++        if ('attachInternals' in this) {
++          this.#internals = this.attachInternals();
++          try {
++            this.#internals.role = 'radiogroup';
++          } catch {
++            // Fallback to host role attribute on connect if ElementInternals ARIA mixin is unsupported
++          }
++        }
++        this.attachShadow({ mode: 'open', delegatesFocus: true });
++      }
++
++      connectedCallback() {
++        if (!this.#internals || !('role' in this.#internals)) {
++          if (!this.hasAttribute('role')) {
++            this.setAttribute('role', 'radiogroup');
++          }
++        }
++
++        if (!this.#rendered) {
++          this.#render();
++          this.#rendered = true;
++        }
++
++        if (this.hasAttribute('max')) {
++          const parsedMax = Number(this.getAttribute('max'));
++          if (parsedMax > 0) this.#max = parsedMax;
++        }
++
++        if (this.hasAttribute('value') && !this.#value) {
++          this.#value = this.getAttribute('value') ?? '';
++        }
++
++        this.#ensureFallbackInput();
++        this.#syncFormValue();
++        this.#updateUI();
++        this.#validate();
++      }
++
++      get value() {
++        return this.#value;
++      }
++
++      set value(v) {
++        const next = v == null ? '' : String(v);
++        if (this.#value === next) return;
++        this.#value = next;
++        this.#syncFormValue();
++        this.#updateUI();
++        this.#validate();
++        if (this.#value) {
++          this.#setCustomState('user-invalid', false);
++          this.#setCustomState('user-valid', true);
++        }
++      }
++
++      get max() {
++        return Number(this.getAttribute('max')) || 5;
++      }
++
++      set max(v) {
++        const n = Math.max(1, Number(v) || 5);
++        this.setAttribute('max', String(n));
++      }
++
++      get name() {
++        return this.getAttribute('name') ?? '';
++      }
++
++      set name(v) {
++        v ? this.setAttribute('name', v) : this.removeAttribute('name');
++      }
++
++      get required() {
++        return this.hasAttribute('required');
++      }
++
++      set required(on) {
++        this.toggleAttribute('required', !!on);
++      }
++
++      get disabled() {
++        return this.hasAttribute('disabled');
++      }
++
++      set disabled(on) {
++        this.toggleAttribute('disabled', !!on);
++      }
++
++      get form() {
++        return supportsFACE && this.#internals ? this.#internals.form : this.closest('form');
++      }
++
++      get validity() {
++        return supportsFACE && this.#internals ? this.#internals.validity : this.#fallbackInput?.validity;
++      }
++
++      get validationMessage() {
++        return supportsFACE && this.#internals ? this.#internals.validationMessage : (this.#fallbackInput?.validationMessage ?? '');
++      }
++
++      get willValidate() {
++        return supportsFACE && this.#internals ? this.#internals.willValidate : (this.#fallbackInput?.willValidate ?? true);
++      }
++
++      checkValidity() {
++        return supportsFACE && this.#internals ? this.#internals.checkValidity() : (this.#fallbackInput?.checkValidity() ?? true);
++      }
++
++      reportValidity() {
++        return supportsFACE && this.#internals ? this.#internals.reportValidity() : (this.#fallbackInput?.reportValidity() ?? true);
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal === newVal) return;
++        if (name === 'value') {
++          this.value = newVal ?? '';
++        } else if (name === 'max') {
++          const parsedMax = Number(newVal);
++          this.#max = parsedMax > 0 ? parsedMax : 5;
++          if (this.#rendered) {
++            this.#renderButtons();
++            this.#updateUI();
++            this.#validate();
++          }
++        } else if (name === 'required') {
++          if (this.#fallbackInput) {
++            this.#fallbackInput.required = this.hasAttribute('required');
++          }
++          this.#validate();
++        } else if (name === 'disabled') {
++          this.formDisabledCallback(this.hasAttribute('disabled') || this.matches(':disabled'));
++        } else if (name === 'name') {
++          if (this.#fallbackInput) {
++            this.#fallbackInput.name = newVal ?? '';
++          }
++        }
++      }
++
++      // FACE lifecycle callbacks
++      formResetCallback() {
++        const defaultVal = this.getAttribute('value') ?? '';
++        this.#value = defaultVal;
++        this.#syncFormValue();
++        this.#setCustomState('user-invalid', false);
++        this.#setCustomState('user-valid', false);
++        this.classList.remove('user-invalid-fallback', 'user-valid-fallback');
++        this.#updateUI();
++        this.#validate();
++      }
++
++      formDisabledCallback(disabled) {
++        this.#disabled = Boolean(disabled);
++        if (this.#internals && 'ariaDisabled' in this.#internals) {
++          this.#internals.ariaDisabled = String(this.#disabled);
++        } else {
++          this.setAttribute('aria-disabled', String(this.#disabled));
++        }
++        // Disable internal controls so they leave the tab order and ignore clicks.
++        // Do NOT toggle `disabled` on `this`, or a `<fieldset disabled>` toggle will
++        // leave the host permanently stuck with its own `disabled` attribute.
++        for (const el of this.shadowRoot.querySelectorAll('button')) {
++          el.disabled = this.#disabled;
++        }
++        if (this.#fallbackInput) {
++          this.#fallbackInput.disabled = this.#disabled;
++        }
++      }
++
++      formStateRestoreCallback(state, _mode) {
++        this.value = typeof state === 'string' ? state : '';
++      }
++
++      #setCustomState(stateName, active) {
++        if (!this.#internals?.states) return;
++        if (active) {
++          this.#internals.states.add(stateName);
++        } else {
++          this.#internals.states.delete(stateName);
++        }
++      }
++
++      #ensureFallbackInput() {
++        if (supportsFACE) return;
++        if (!this.#fallbackInput) {
++          this.#fallbackInput = document.createElement('input');
++          this.#fallbackInput.type = 'text';
++          this.#fallbackInput.tabIndex = -1;
++          this.#fallbackInput.setAttribute('aria-hidden', 'true');
++          this.#fallbackInput.className = 'visually-hidden';
++          this.append(this.#fallbackInput);
++        }
++        this.#fallbackInput.name = this.name;
++        this.#fallbackInput.required = this.required;
++        this.#fallbackInput.disabled = this.#disabled;
++        this.#fallbackInput.value = this.#value;
++      }
++
++      #syncFormValue() {
++        if (supportsFACE && this.#internals) {
++          this.#internals.setFormValue(this.#value || null, this.#value || null);
++        } else if (this.#fallbackInput) {
++          this.#fallbackInput.value = this.#value;
++        }
++      }
++
++      #validate() {
++        const anchor = this.shadowRoot?.querySelector('button[tabindex="0"]') || this.shadowRoot?.querySelector('button');
++        if (this.hasAttribute('required') && !this.#value) {
++          if (supportsFACE && this.#internals) {
++            this.#internals.setValidity(
++              { valueMissing: true },
++              'Please choose a star rating.',
++              anchor || undefined
++            );
++          } else if (this.#fallbackInput) {
++            this.#fallbackInput.setCustomValidity('Please choose a star rating.');
++          }
++        } else {
++          if (supportsFACE && this.#internals) {
++            this.#internals.setValidity({});
++          } else if (this.#fallbackInput) {
++            this.#fallbackInput.setCustomValidity('');
++          }
++        }
++      }
++
++      #selectByUser(newVal) {
++        if (this.#disabled) return;
++        const nextStr = String(newVal);
++        const changed = this.#value !== nextStr;
++        this.value = nextStr;
++        if (changed) {
++          this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++          this.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++      }
++
++      #render() {
++        this.shadowRoot.innerHTML = `
++          <style>
++            @layer base, state;
++
++            @layer base {
++              :host {
++                --_star-active: var(--star-active-color, #ffab40);
++                --_star-inactive: var(--star-inactive-color, #d7ccc8);
++                --_star-hover: var(--star-hover-color, #ff9100);
++                --_star-focus: var(--star-focus-color, #0b57d0);
++                display: inline-block;
++              }
++
++              :host([hidden]) {
++                display: none;
++              }
++
++              .stars-wrapper {
++                display: inline-flex;
++                align-items: center;
++                gap: 6px;
++                padding: 4px 8px;
++                border: 1px solid transparent;
++                border-radius: 6px;
++              }
++
++              button.star {
++                font: inherit;
++                color: var(--_star-inactive);
++                background: transparent;
++                border: none;
++                padding: 6px;
++                min-width: 48px;
++                min-height: 48px;
++                font-size: 1.85rem;
++                line-height: 1;
++                cursor: pointer;
++                border-radius: 6px;
++                display: inline-flex;
++                align-items: center;
++                justify-content: center;
++                transition: transform 0.15s ease, color 0.15s ease;
++              }
++
++              @media (pointer: coarse) {
++                button.star {
++                  min-width: 52px;
++                  min-height: 52px;
++                }
++              }
++
++              button.star[aria-checked="true"],
++              button.star.filled {
++                color: var(--_star-active);
++              }
++
++              button.star:hover:not(:disabled) {
++                color: var(--_star-hover);
++                transform: scale(1.1);
++              }
++
++              button.star:focus-visible {
++                outline: 3px solid var(--_star-focus);
++                outline-offset: 2px;
++              }
++
++              button.star:disabled {
++                cursor: not-allowed;
++                opacity: 0.55;
++              }
++
++              .rating-readout {
++                margin-inline-start: 8px;
++                font-size: 0.9rem;
++                font-weight: 600;
++                color: inherit;
++              }
++            }
++
++            @layer state {
++              :host(:disabled) .stars-wrapper {
++                opacity: 0.7;
++              }
++
++              :host(:state(user-invalid)) .stars-wrapper {
++                border-color: #d93025;
++                background-color: #fce8e6;
++              }
++
++              :host(:state(user-valid)) .stars-wrapper {
++                border-color: #188038;
++              }
++            }
++          </style>
++          <div class="stars-wrapper" part="wrapper">
++            <div class="stars" part="stars"></div>
++            <span class="rating-readout" part="readout" aria-live="polite">No rating selected</span>
++          </div>
++        `;
++
++        this.#renderButtons();
++
++        const starsContainer = this.shadowRoot.querySelector('.stars');
++        starsContainer.addEventListener('click', (e) => {
++          const btn = e.target.closest('button.star');
++          if (!btn || btn.disabled) return;
++          this.#selectByUser(btn.dataset.rating);
++          btn.focus();
++        });
++
++        starsContainer.addEventListener('keydown', (e) => {
++          const buttons = [...this.shadowRoot.querySelectorAll('button.star')];
++          if (!buttons.length || this.#disabled) return;
++          const currentNum = Number(this.#value) || 0;
++          let nextVal = null;
++
++          if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
++            e.preventDefault();
++            nextVal = currentNum < this.#max ? currentNum + 1 : this.#max;
++          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
++            e.preventDefault();
++            nextVal = currentNum > 1 ? currentNum - 1 : 1;
++          } else if (e.key === 'Home') {
++            e.preventDefault();
++            nextVal = 1;
++          } else if (e.key === 'End') {
++            e.preventDefault();
++            nextVal = this.#max;
++          } else if (e.key === ' ' || e.key === 'Enter') {
++            const focused = this.shadowRoot.activeElement;
++            if (focused?.matches('button.star')) {
++              e.preventDefault();
++              nextVal = Number(focused.dataset.rating);
++            }
++          }
++
++          if (nextVal !== null) {
++            this.#selectByUser(nextVal);
++            const targetBtn = buttons[nextVal - 1];
++            targetBtn?.focus();
++          }
++        });
++
++        this.addEventListener('invalid', () => {
++          this.#setCustomState('user-invalid', true);
++          this.#setCustomState('user-valid', false);
++        });
++      }
++
++      #renderButtons() {
++        const starsContainer = this.shadowRoot?.querySelector('.stars');
++        if (!starsContainer) return;
++        starsContainer.innerHTML = '';
++
++        for (let i = 1; i <= this.#max; i++) {
++          const btn = document.createElement('button');
++          btn.type = 'button';
++          btn.className = 'star';
++          btn.setAttribute('part', 'star');
++          btn.setAttribute('role', 'radio');
++          btn.dataset.rating = String(i);
++          btn.setAttribute('aria-label', `${i} ${i === 1 ? 'star' : 'stars'}`);
++          btn.setAttribute('aria-checked', 'false');
++          btn.tabIndex = i === 1 ? 0 : -1;
++          btn.disabled = this.#disabled;
++          btn.innerHTML = '<span aria-hidden="true">★</span>';
++          starsContainer.append(btn);
++        }
++      }
++
++      #updateUI() {
++        if (!this.shadowRoot) return;
++        const buttons = [...this.shadowRoot.querySelectorAll('button.star')];
++        const selectedNum = Number(this.#value) || 0;
++
++        buttons.forEach((btn, idx) => {
++          const starNum = idx + 1;
++          const isSelected = starNum === selectedNum;
++          const isFilled = starNum <= selectedNum;
++          btn.classList.toggle('filled', isFilled);
++          btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
++          const shouldBeTabbable = selectedNum > 0 ? isSelected : starNum === 1;
++          btn.tabIndex = shouldBeTabbable ? 0 : -1;
++        });
++
++        const readout = this.shadowRoot.querySelector('.rating-readout');
++        if (readout) {
++          readout.textContent = selectedNum > 0
++            ? `${selectedNum} of ${this.#max} ${selectedNum === 1 ? 'star' : 'stars'}`
++            : 'No rating selected';
++        }
++      }
++    }
++
++    customElements.define('star-rating', StarRating);
++
++    // Form validation ARIA sync, :user-invalid fallback, fieldset toggle, and submission handler
++    (() => {
++      const form = document.getElementById('coffee-feedback-form');
++      const fieldset = document.getElementById('feedback-fieldset');
++      const toggleFieldsetBtn = document.getElementById('toggle-fieldset-btn');
++      const statusBox = document.getElementById('feedback-status');
++      const submitBtn = document.getElementById('submit-feedback-btn');
++
++      // List the field's error message (the id in data-error) in aria-describedby only while
++      // it's shown: text that aria-describedby references is announced even when it's hidden.
++      const linkError = (el, shown) => {
++        const errorId = el.dataset?.error;
++        if (!errorId) return;
++        const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter((id) => id && id !== errorId);
++        if (shown) ids.push(errorId);
++        if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
++        else el.removeAttribute('aria-describedby');
++      };
++
++      // One polite live region for the page announces an error that appears when the user
++      // leaves or changes a field.
++      const announcer = document.createElement('div');
++      announcer.setAttribute('aria-live', 'polite');
++      announcer.classList.add('visually-hidden');
++      document.body.append(announcer);
++      let announceTimer;
++      let announcedField;
++
++      const spokenText = (node) => {
++        const copy = node.cloneNode(true);
++        copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
++        copy.querySelectorAll('[role="img"][aria-label]').forEach((n) => n.replaceWith(`${n.getAttribute('aria-label')}: `));
++        return copy.textContent.replace(/\s+/g, ' ').trim();
++      };
++
++      const announceError = (el) => {
++        const error = document.getElementById(el.dataset.error);
++        if (!error) return;
++        const labelEl = el.labels?.[0] || (el.id ? document.querySelector(`label[for="${el.id}"]`) : null);
++        const label = labelEl ? `${spokenText(labelEl)}: ` : '';
++        clearTimeout(announceTimer);
++        announcer.textContent = '';
++        announcedField = el;
++        announceTimer = setTimeout(() => {
++          announcer.textContent = label + spokenText(error);
++        }, 500);
++      };
++
++      const supportsUserInvalid = CSS.supports('selector(:user-invalid)');
++      const dirtyState = new WeakMap();
++      const flagged = new WeakSet();
++      const announced = new WeakSet();
++
++      const isFieldControl = (el) => el?.matches?.('input, select, textarea, star-rating');
++
++      const checkIsUserInvalid = (el) => {
++        if (el.matches('star-rating')) {
++          return el.matches(':state(user-invalid)') || el.classList.contains('user-invalid-fallback');
++        }
++        if (supportsUserInvalid) {
++          return el.matches(':user-invalid');
++        }
++        return el.classList.contains('user-invalid-fallback');
++      };
++
++      const syncAria = (el, announce = false) => {
++        if (!isFieldControl(el)) return;
++        const invalid = checkIsUserInvalid(el);
++        if (invalid) {
++          if (announce && !announced.has(el)) {
++            announceError(el);
++            announced.add(el);
++          }
++          el.setAttribute('aria-invalid', 'true');
++          linkError(el, true);
++          flagged.add(el);
++        } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
++          el.setAttribute('aria-invalid', 'false');
++          linkError(el, false);
++          flagged.delete(el);
++          announced.delete(el);
++          if (announcedField === el) {
++            clearTimeout(announceTimer);
++            announcer.textContent = '';
++          }
++        }
++      };
++
++      const updateFallbackState = (input) => {
++        if (!input.validity) return;
++        const isValid = input.validity.valid;
++        input.classList.toggle('user-invalid-fallback', !isValid);
++        input.classList.toggle('user-valid-fallback', isValid);
++      };
++
++      // Start every field at aria-invalid="false".
++      form.querySelectorAll('input, select, textarea, star-rating').forEach((el) => syncAria(el));
++
++      form.addEventListener('blur', (e) => {
++        const el = e.target;
++        if (!isFieldControl(el)) return;
++        if (!supportsUserInvalid || el.matches('star-rating')) {
++          const state = dirtyState.get(el) || { hasInteracted: false, hasBlurred: false };
++          state.hasBlurred = true;
++          dirtyState.set(el, state);
++          if (state.hasInteracted) {
++            updateFallbackState(el);
++          }
++        }
++        syncAria(el, true);
++      }, true);
++
++      form.addEventListener('input', (e) => {
++        const el = e.target;
++        if (!isFieldControl(el)) return;
++        if (!supportsUserInvalid || el.matches('star-rating')) {
++          const state = dirtyState.get(el) || { hasInteracted: false, hasBlurred: false };
++          state.hasInteracted = true;
++          dirtyState.set(el, state);
++          if (state.hasBlurred || el.classList.contains('user-invalid-fallback')) {
++            updateFallbackState(el);
++          }
++        }
++        if (el.hasAttribute('aria-invalid')) syncAria(el);
++      });
++
++      form.addEventListener('change', (e) => {
++        const el = e.target;
++        if (!isFieldControl(el)) return;
++        if (!supportsUserInvalid || el.matches('star-rating')) {
++          const state = dirtyState.get(el) || { hasInteracted: false, hasBlurred: false };
++          state.hasInteracted = true;
++          dirtyState.set(el, state);
++          updateFallbackState(el);
++        }
++        syncAria(el, true);
++      }, true);
++
++      form.addEventListener('invalid', (e) => {
++        const el = e.target;
++        if (!isFieldControl(el)) return;
++        dirtyState.set(el, { hasInteracted: true, hasBlurred: true });
++        updateFallbackState(el);
++        announced.add(el);
++        syncAria(el);
++      }, true);
++
++      form.addEventListener('reset', () => {
++        statusBox.hidden = true;
++        statusBox.textContent = '';
++        submitBtn.disabled = false;
++        setTimeout(() => {
++          form.querySelectorAll('input, select, textarea, star-rating').forEach((el) => {
++            dirtyState.delete(el);
++            el.classList.remove('user-invalid-fallback', 'user-valid-fallback');
++            syncAria(el);
++          });
++        });
++      }, true);
++
++      // Toggle disabled state on the parent <fieldset> to exercise formDisabledCallback
++      toggleFieldsetBtn.addEventListener('click', () => {
++        const nextDisabled = !fieldset.disabled;
++        fieldset.disabled = nextDisabled;
++        toggleFieldsetBtn.setAttribute('aria-pressed', String(nextDisabled));
++        toggleFieldsetBtn.textContent = nextDisabled ? 'Unlock Fieldset' : 'Lock Fieldset';
++      });
++
++      // Handle form submission via FormData (natively includes <star-rating>'s value)
++      form.addEventListener('submit', (e) => {
++        e.preventDefault();
++        if (!form.checkValidity()) {
++          form.reportValidity();
++          return;
++        }
++        const data = new FormData(form);
++        const name = data.get('customer_name');
++        const drinkChoice = document.getElementById('drink-choice');
++        const drinkLabel = drinkChoice.options[drinkChoice.selectedIndex]?.text || data.get('drink');
++        const rating = data.get('rating');
++
++        statusBox.textContent = `Thank you, ${name}! Your ${rating}-star review for ${drinkLabel} has been submitted.`;
++        statusBox.hidden = false;
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
